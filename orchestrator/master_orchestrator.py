@@ -33,6 +33,7 @@ from typing import List, Optional
 from config import SCHEDULE, MAX_DRAWDOWN_PCT
 from models import MarketSnapshot, TradeSignal, Portfolio
 from utils  import get_logger
+from utils.kill_switch import is_trading_enabled, get_kill_switch_status
 
 # ── Layer imports ──────────────────────────────────────────────────────────
 from market_intelligence.market_data_ai      import MarketDataAI
@@ -393,6 +394,18 @@ class MasterOrchestrator:
         """Execute one complete analysis + execution cycle."""
         if self._halt:
             log.warning("Trading halted — skipping cycle.")
+            return
+
+        # ── Emergency Kill Switch Check ──────────────────────────────────
+        # Professional safety mechanism: if kill_switch.json has
+        # "trading_enabled": false, stop ALL trading immediately, regardless
+        # of other conditions. This allows instant remote halt via file change.
+        if not is_trading_enabled():
+            status = get_kill_switch_status()
+            log.critical(
+                "🚨 EMERGENCY KILL SWITCH ACTIVE — Trading disabled. Reason: %s",
+                status.get("reason", "Unknown")
+            )
             return
 
         log.info("▶ Starting full analysis cycle — %s",
