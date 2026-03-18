@@ -1,0 +1,385 @@
+🔐 VPS SSH & SECURITY SETUP — STEP-BY-STEP GUIDE
+═══════════════════════════════════════════════════════════════════════════════
+Date: March 18, 2026
+VPS IP: 178.18.252.24
+Your SSH Key: ~/.ssh/trading_vps (ed25519)
+═══════════════════════════════════════════════════════════════════════════════
+
+⚠️ IMPORTANT PREREQUISITES
+───────────────────────────────────────────────────────────────────────────────
+
+Before proceeding, you need:
+✓ VPS root password (for first login)
+✓ SSH client available on your local computer
+✓ Network connection to VPS
+
+✓ Your SSH public key (already generated):
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnC3Z+q02D7GVDvyC3Hr9PvcDfTGsCRIiJYN2C1pFd7 
+  ucic@DESKTOP-I02Q3AF
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 1: VERIFY SSH CLIENT IS AVAILABLE (Windows PowerShell)
+═══════════════════════════════════════════════════════════════════════════════
+
+Open PowerShell and test SSH:
+
+  ssh -V
+
+Expected Output:
+  OpenSSH_for_Windows_8.6p1, LibreSSL 3.4.3
+
+If this fails:
+  ❌ SSH is not installed on Windows
+  ✅ Solution: Windows 10+ has built-in SSH. Try using Git Bash or Windows Terminal.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 2: CONNECT TO VPS WITH PASSWORD (Initial Login)
+═══════════════════════════════════════════════════════════════════════════════
+
+In PowerShell, run:
+
+  ssh root@178.18.252.24
+
+You'll see:
+  The authenticity of host '178.18.252.24' can't be established.
+  Are you sure you want to continue connecting (yes/no)?
+
+Type: yes
+
+Then enter your VPS root password when prompted.
+
+Expected Success:
+  root@vps:~#
+
+You're now logged into the VPS! ✅
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 3: ADD YOUR SSH PUBLIC KEY TO VPS (One-Time Setup)
+═══════════════════════════════════════════════════════════════════════════════
+
+On VPS (after login above), run these commands one by one:
+
+# Create SSH directory (if it doesn't exist)
+mkdir -p ~/.ssh
+
+# Set correct permissions
+chmod 700 ~/.ssh
+
+# Add your public key to authorized_keys
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnC3Z+q02D7GVDvyC3Hr9PvcDfTGsCRIiJYN2C1pFd7 ucic@DESKTOP-I02Q3AF" >> ~/.ssh/authorized_keys
+
+# Set correct permissions on authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+
+# Verify it was added
+cat ~/.ssh/authorized_keys
+
+Expected Output:
+  ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnC3Z+q02D7GVDvyC3Hr9PvcDfTGsCRIiJYN2C1pFd7 ucic@DESKTOP-I02Q3AF
+
+Type: exit
+(to logout and return to your local computer)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 4: TEST SSH KEY LOGIN (Verify Key Auth Works)
+═══════════════════════════════════════════════════════════════════════════════
+
+Back on your local computer (PowerShell), run:
+
+  ssh -i "$env:USERPROFILE\.ssh\trading_vps" root@178.18.252.24
+
+Expected Result:
+  ✅ Login WITHOUT asking for password
+  ✅ You see: root@vps:~#
+
+Success! Your SSH key is working! 🎉
+
+If it fails:
+  ❌ "Permission denied (publickey)"
+  → Verify authorized_keys has the correct key (Step 3)
+  → Check file permissions: chmod 600 ~/.ssh/authorized_keys
+  → Check directory permissions: chmod 700 ~/.ssh
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 5: CREATE SHORTCUT/ALIAS FOR QUICK ACCESS (Optional)
+═══════════════════════════════════════════════════════════════════════════════
+
+To make future logins easier, create an SSH config:
+
+On your local computer, create: $env:USERPROFILE\.ssh\config
+
+Add this content:
+
+Host trading-vps
+    HostName 178.18.252.24
+    User root
+    IdentityFile ~/.ssh/trading_vps
+    IdentitiesOnly yes
+
+Then you can login simply by:
+  ssh trading-vps
+
+Or if using PowerShell profile:
+  echo 'Set-Alias ssh-trading "ssh -i $env:USERPROFILE\.ssh\trading_vps root@178.18.252.24"' >> $Profile
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 6: DOWNLOAD VPS SETUP SCRIPT & CLONE REPO
+═══════════════════════════════════════════════════════════════════════════════
+
+SSH into VPS (using key):
+
+  ssh -i "$env:USERPROFILE\.ssh\trading_vps" root@178.18.252.24
+
+Now on VPS, download the project:
+
+  cd /root
+  git clone https://github.com/amitkhatkar92/ai-trading-brain.git
+
+This creates: /root/ai-trading-brain/
+
+Verify the setup script exists:
+
+  ls -l ai-trading-brain/scripts/vps_setup.sh
+
+Expected:
+  -rw-r--r-- 1 root root 8574 Mar 18 12:00 ai-trading-brain/scripts/vps_setup.sh
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 7: MAKE SETUP SCRIPT EXECUTABLE & RUN IT
+═══════════════════════════════════════════════════════════════════════════════
+
+On VPS (still logged in), run:
+
+  cd ai-trading-brain
+  chmod +x scripts/vps_setup.sh
+  sudo bash scripts/vps_setup.sh
+
+This script will:
+  ✅ Update system packages (2 min)
+  ✅ Install UFW firewall (1 min)
+  ✅ Configure firewall rules (1 min)
+  ✅ Install Fail2Ban (1 min)
+  ✅ Harden file permissions (1 min)
+  ✅ Setup log rotation (1 min)
+  ✅ Ask about systemd service (optional)
+
+Total time: ~10-15 minutes
+
+The script will print progress like:
+  [INFO] ═════════════════════════════════════
+  [INFO] PHASE 1: System Updates & Dependencies
+  [INFO] ═════════════════════════════════════
+  [INFO] Updating system packages...
+  ...
+  [✓] Phase 1 complete: System updated and dependencies installed
+  [INFO] ═════════════════════════════════════
+  [INFO] PHASE 2: UFW Firewall Configuration
+  ...
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 8: VERIFY SECURITY SETUP (After Script Completes)
+═══════════════════════════════════════════════════════════════════════════════
+
+Run these commands to verify everything is secure:
+
+# Check UFW firewall status
+ufw status
+
+Expected:
+  Status: active
+  
+  To                         Action      From
+  --                         ------      ----
+  22/tcp                     ALLOW       Anywhere
+  8501/tcp                   ALLOW       Anywhere
+
+# Check Fail2Ban is running
+fail2ban-client status
+
+Expected:
+  Status: 1 jail(s) activated
+
+# Check SSH jail specifically
+fail2ban-client status sshd
+
+Expected:
+  Status for the jail sshd:
+  |- Filter set to: sshd
+  |- Currently failed: 0
+  |- Currently banned: 0
+  `- Total banned: 0
+
+# Check file permissions are hardened
+ls -ld /root/ai-trading-brain
+
+Expected: drwx------ (mode 700, owner root)
+
+# Check logs directory permissions
+ls -la /root/ai-trading-brain/logs/
+
+Expected: All files with 600 or 700 permissions
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 9: OPTIONAL - SETUP SYSTEMD AUTO-START SERVICE
+═══════════════════════════════════════════════════════════════════════════════
+
+When the setup script asks:
+  "Would you like to create systemd service for auto-start? (y/n)"
+
+Type: y
+
+This will:
+  ✅ Create /etc/systemd/system/trading-brain.service
+  ✅ Enable to start on boot
+  ✅ Start the service immediately
+
+Verify service is running:
+  systemctl status trading-brain.service
+
+View trading engine logs:
+  journalctl -u trading-brain.service -f
+
+(Press Ctrl+C to exit)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STEP 10: TEST DASHBOARD ACCESS
+═══════════════════════════════════════════════════════════════════════════════
+
+On your local computer (not VPS), open a browser:
+
+  http://178.18.252.24:8501
+
+You should see:
+  🔐 AI Trading Brain Dashboard
+  Login Required
+
+Enter password: trading-brain-2026
+
+If successful:
+  ✅ Dashboard loads with KPI metrics
+  ✅ 4 metric cards visible
+  ✅ Real-time data showing
+
+If fails:
+  ❌ Connection refused
+  → Wait 1-2 minutes for dashboard to start
+  → Check firewall allows 8501: ufw status
+  → Check service is running: systemctl status trading-brain.service
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SUMMARY OF COMMANDS (Copy & Paste Sequence)
+═══════════════════════════════════════════════════════════════════════════════
+
+LOCAL COMPUTER (PowerShell):
+───────────────────────────
+# Test SSH
+ssh -V
+
+# Verify your SSH key exists
+ls $env:USERPROFILE\.ssh\trading_vps*
+
+# LOGIN 1: With password (first time)
+ssh root@178.18.252.24
+# [On VPS, run Step 3 commands below]
+
+# LOGIN 2: Test key-based auth
+ssh -i "$env:USERPROFILE\.ssh\trading_vps" root@178.18.252.24
+# [Success - you see root@vps:~# without password]
+
+
+VPS TERMINAL (After SSH login):
+───────────────────────────────
+# Setup SSH keys (first login only)
+mkdir -p ~/.ssh
+chmod 700 ~/.ssh
+echo "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKnC3Z+q02D7GVDvyC3Hr9PvcDfTGsCRIiJYN2C1pFd7 ucic@DESKTOP-I02Q3AF" >> ~/.ssh/authorized_keys
+chmod 600 ~/.ssh/authorized_keys
+cat ~/.ssh/authorized_keys
+exit
+
+# Clone repo and run setup (after key-based login)
+cd /root
+git clone https://github.com/amitkhatkar92/ai-trading-brain.git
+cd ai-trading-brain
+chmod +x scripts/vps_setup.sh
+sudo bash scripts/vps_setup.sh
+
+# Verify everything is secure
+ufw status
+fail2ban-client status sshd
+ls -ld /root/ai-trading-brain
+echo "✅ Security setup complete!"
+
+
+TEST VERIFICATION:
+───────────────────
+# Check dashboard access
+# Browser: http://178.18.252.24:8501
+# Password: trading-brain-2026
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Issue: "ssh: command not found" on Windows
+→ Install OpenSSH for Windows, or use Git Bash/WSL
+→ Or use PuTTY with your key
+
+Issue: "Permission denied (publickey)" after adding key
+→ Verify in VPS: cat ~/.ssh/authorized_keys (shows your key)
+→ Check permissions: chmod 600 ~/.ssh/authorized_keys
+→ Try again: ssh -vvv (for debug output)
+
+Issue: "Could not open connection to 178.18.252.24:22"
+→ Firewall blocking SSH? Contact VPS provider
+→ Wrong IP? Verify IP with VPS provider console
+→ VPS down? Check VPS status in provider dashboard
+
+Issue: UFW blocks SSH after enable
+→ Emergency access: Use VPS web console
+→ Run: ufw allow 22/tcp
+→ Run: ufw enable
+
+Issue: "git clone" fails with "fatal: repository not found"
+→ Ensure GitHub repo is public
+→ Check internet connection on VPS: ping google.com
+
+Issue: Script asks for password during sudo
+→ Root user shouldn't need password
+→ Run without sudo: bash scripts/vps_setup.sh
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT: READY TO START!
+═══════════════════════════════════════════════════════════════════════════════
+
+Ready? Start with STEP 1 above and follow each step sequentially.
+
+All commands are provided. Just copy-paste them into your terminal.
+
+After completing all steps, your trading system will be:
+✅ Secured with SSH key authentication
+✅ Protected by UFW firewall
+✅ Monitored by Fail2Ban
+✅ Password-protected dashboard
+✅ Automatically rotating logs
+✅ Ready for live trading!
+
+Questions? Check the troubleshooting section above or refer to:
+  - SECURITY_DEPLOYMENT_SUMMARY.md
+  - QUICK_DEPLOY_ACTIONS.txt
+  - VPS_SECURITY_HARDENING.txt
+
+═══════════════════════════════════════════════════════════════════════════════
