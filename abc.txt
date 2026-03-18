@@ -1,0 +1,7 @@
+# Start the trading brain (writes to SQLite)
+python main.py
+
+# In a second terminal — open the dashboard
+python main.py --dashboard
+# or directly:
+streamlit run control_tower/dashboard_app.py

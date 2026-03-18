@@ -1,0 +1,316 @@
+{
+  "day_num": 24,
+  "trading_date": "2025-10-13",
+  "total_events": 23,
+  "event_summary": {
+    "EventType.CYCLE_STARTED": 1,
+    "EventType.DISTORTION_DETECTED": 1,
+    "EventType.MARKET_DATA_READY": 1,
+    "EventType.MARKET_REGIME_CLASSIFIED": 1,
+    "EventType.REGIME_PROBABILITY_COMPUTED": 1,
+    "EventType.META_LEARNING_APPLIED": 1,
+    "EventType.EQUITY_SIGNAL_FOUND": 11,
+    "EventType.SCAN_COMPLETE": 1,
+    "EventType.STRATEGY_LAB_COMPLETE": 1,
+    "EventType.SIMULATION_COMPLETE": 1,
+    "EventType.CYCLE_COMPLETE": 1,
+    "EventType.LEARNING_CYCLE_COMPLETE": 1,
+    "EventType.EOD_SELF_EVAL_COMPLETE": 1
+  },
+  "trace": [
+    {
+      "ts": "2026-03-12T17:14:37.917054",
+      "event_type": "EventType.CYCLE_STARTED",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "ts": "2026-03-12T17:14:37.917049"
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:37.929441",
+      "event_type": "EventType.DISTORTION_DETECTED",
+      "source": "MarketDistortionScanner",
+      "payload": {
+        "risk_level": "LOW",
+        "stress_score": 0,
+        "any_distortion": false,
+        "active_flags": [],
+        "trading_allowed": true,
+        "size_multiplier": 1.0,
+        "max_new_trades": 10,
+        "hedge_preferred": false,
+        "sector_watches": []
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:37.936391",
+      "event_type": "EventType.MARKET_DATA_READY",
+      "source": "MarketDataAI",
+      "payload": {
+        "vix": 11.01,
+        "regime": "bull_trend",
+        "breadth": 0.5,
+        "pcr": 0.8
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:37.950462",
+      "event_type": "EventType.MARKET_REGIME_CLASSIFIED",
+      "source": "MarketRegimeAI",
+      "payload": {
+        "regime": "bull_trend",
+        "volatility": "VolatilityLevel.LOW"
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.001251",
+      "event_type": "EventType.REGIME_PROBABILITY_COMPUTED",
+      "source": "RegimeProbabilityModel",
+      "payload": {
+        "trend_prob": 0.1804,
+        "range_prob": 0.8087,
+        "volatile_prob": 0.0054,
+        "bear_prob": 0.0054,
+        "dominant": "range_market",
+        "confidence": 0.6282,
+        "stress_adjusted": false,
+        "strategy_mix": {
+          "momentum": 0.0992,
+          "breakout": 0.0812,
+          "mean_reversion": 0.8087,
+          "hedging": 0.0049,
+          "options_spread": 0.006
+        }
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.011105",
+      "event_type": "EventType.META_LEARNING_APPLIED",
+      "source": "MetaLearningEngine",
+      "payload": {
+        "top_strategy": "Breakout_Volume",
+        "model_active": false,
+        "allocations": {
+          "Breakout_Volume": 0.025,
+          "Momentum_Retest": 0.025,
+          "Mean_Reversion": 0.025,
+          "Bull_Call_Spread": 0.025,
+          "Iron_Condor_Range": 0.025,
+          "Hedging_Model": 0.025,
+          "Short_Straddle_IV_Spike": 0.025,
+          "Long_Straddle_Pre_Event": 0.025,
+          "Futures_Basis_Arb": 0.025,
+          "ETF_NAV_Arb": 0.025,
+          "Breakout_Volume_RSI_HiVol": 0.025,
+          "Mean_Reversion_RSI_HiVol": 0.025,
+          "EDG_COMPOS_92_EE0002": 0.025,
+          "EDG_MACRO__78_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0004": 0.025,
+          "EDG_VOLATI_68_EE0000": 0.025,
+          "EDG_VOLATI_63_EE0002": 0.025,
+          "EDG_VOLATI_61_EE0001": 0.025,
+          "EDG_COMPOS_93_EE0003": 0.025,
+          "EDG_COMPOS_82_EE0000": 0.025,
+          "EDG_MACRO__72_EE0001": 0.025,
+          "EDG_COMPOS_94_EE0003": 0.025,
+          "EDG_MACRO__64_EE0001": 0.025,
+          "EDG_COMPOS_86_EE0001": 0.025,
+          "EDG_VOLATI_93_EE0002": 0.025,
+          "EDG_VOLATI_74_EE0000": 0.025,
+          "EDG_VOLATI_94_EE0002": 0.025,
+          "EDG_VOLATI_75_EE0000": 0.025,
+          "EDG_VOLATI_89_EE0002": 0.025,
+          "EDG_VOLATI_76_EE0000": 0.025,
+          "EDG_VOLATI_77_EE0000": 0.025,
+          "EDG_VOLATI_90_EE0002": 0.025,
+          "EDG_VOLATI_78_EE0000": 0.025,
+          "EDG_VOLATI_79_EE0000": 0.025,
+          "EDG_VOLATI_80_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0002": 0.025,
+          "EDG_VOLATI_81_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0003": 0.025,
+          "EDG_VOLATI_82_EE0000": 0.025,
+          "EDG_VOLATI_92_EE0003": 0.025
+        }
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.021493",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "SBIN",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.028393",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BAJFINANCE",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.036056",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HCLTECH",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.043258",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "MARUTI",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.050450",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "SUNPHARMA",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.057098",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.642857142857142
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.065463",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.75
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.071725",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.078081",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.085136",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTYBEES",
+        "direction": "SignalDirection.BUY",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.090754",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKBEES",
+        "direction": "SignalDirection.SELL",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.096544",
+      "event_type": "EventType.SCAN_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "equity": 5,
+        "options": 2,
+        "arb": 4,
+        "total": 11
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.112355",
+      "event_type": "EventType.STRATEGY_LAB_COMPLETE",
+      "source": "StrategyGeneratorAI",
+      "payload": {
+        "assigned": 2,
+        "after_evo": 2,
+        "after_bt": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.126315",
+      "event_type": "EventType.SIMULATION_COMPLETE",
+      "source": "SimulationEngine",
+      "payload": {
+        "approved": 0,
+        "rejected": 0,
+        "rate": 0.0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.132694",
+      "event_type": "EventType.CYCLE_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "signals_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.143015",
+      "event_type": "EventType.LEARNING_CYCLE_COMPLETE",
+      "source": "LearningEngine",
+      "payload": {
+        "trades_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:14:38.778425",
+      "event_type": "EventType.EOD_SELF_EVAL_COMPLETE",
+      "source": "DailyAISelfEvaluator",
+      "payload": {
+        "overall_score": 0.0,
+        "grade": "N/A",
+        "issues_count": 0
+      }
+    }
+  ]
+}

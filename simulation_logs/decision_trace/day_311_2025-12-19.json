@@ -1,0 +1,530 @@
+{
+  "day_num": 311,
+  "trading_date": "2025-12-19",
+  "total_events": 30,
+  "event_summary": {
+    "EventType.CYCLE_STARTED": 1,
+    "EventType.DISTORTION_DETECTED": 1,
+    "EventType.MARKET_DATA_READY": 1,
+    "EventType.MARKET_REGIME_CLASSIFIED": 1,
+    "EventType.REGIME_PROBABILITY_COMPUTED": 1,
+    "EventType.META_LEARNING_APPLIED": 1,
+    "EventType.EQUITY_SIGNAL_FOUND": 16,
+    "EventType.SCAN_COMPLETE": 1,
+    "EventType.STRATEGY_LAB_COMPLETE": 1,
+    "EventType.RISK_CHECK_FAILED": 1,
+    "EventType.SIMULATION_COMPLETE": 1,
+    "EventType.CYCLE_COMPLETE": 1,
+    "EventType.LEARNING_CYCLE_COMPLETE": 1,
+    "EventType.EDGE_DISCOVERED": 1,
+    "EventType.EOD_SELF_EVAL_COMPLETE": 1
+  },
+  "trace": [
+    {
+      "ts": "2026-03-12T18:49:49.275612",
+      "event_type": "EventType.CYCLE_STARTED",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "ts": "2026-03-12T18:49:49.275607"
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.287361",
+      "event_type": "EventType.DISTORTION_DETECTED",
+      "source": "MarketDistortionScanner",
+      "payload": {
+        "risk_level": "LOW",
+        "stress_score": 0,
+        "any_distortion": false,
+        "active_flags": [],
+        "trading_allowed": true,
+        "size_multiplier": 1.0,
+        "max_new_trades": 10,
+        "hedge_preferred": false,
+        "sector_watches": []
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.316846",
+      "event_type": "EventType.MARKET_DATA_READY",
+      "source": "MarketDataAI",
+      "payload": {
+        "vix": 9.52,
+        "regime": "bull_trend",
+        "breadth": 0.62,
+        "pcr": 0.8
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.328179",
+      "event_type": "EventType.MARKET_REGIME_CLASSIFIED",
+      "source": "MarketRegimeAI",
+      "payload": {
+        "regime": "bull_trend",
+        "volatility": "VolatilityLevel.LOW"
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.354194",
+      "event_type": "EventType.REGIME_PROBABILITY_COMPUTED",
+      "source": "RegimeProbabilityModel",
+      "payload": {
+        "trend_prob": 0.883,
+        "range_prob": 0.1081,
+        "volatile_prob": 0.0044,
+        "bear_prob": 0.0044,
+        "dominant": "bull_trend",
+        "confidence": 0.7749,
+        "stress_adjusted": false,
+        "strategy_mix": {
+          "momentum": 0.4857,
+          "breakout": 0.3974,
+          "mean_reversion": 0.1081,
+          "hedging": 0.004,
+          "options_spread": 0.0048
+        }
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.364621",
+      "event_type": "EventType.META_LEARNING_APPLIED",
+      "source": "MetaLearningEngine",
+      "payload": {
+        "top_strategy": "Breakout_Volume",
+        "model_active": false,
+        "allocations": {
+          "Breakout_Volume": 0.0056,
+          "Momentum_Retest": 0.0056,
+          "Mean_Reversion": 0.0056,
+          "Bull_Call_Spread": 0.0056,
+          "Iron_Condor_Range": 0.0056,
+          "Hedging_Model": 0.0056,
+          "Short_Straddle_IV_Spike": 0.0056,
+          "Long_Straddle_Pre_Event": 0.0056,
+          "Futures_Basis_Arb": 0.0056,
+          "ETF_NAV_Arb": 0.0056,
+          "Breakout_Volume_RSI_HiVol": 0.0056,
+          "Mean_Reversion_RSI_HiVol": 0.0056,
+          "EDG_COMPOS_92_EE0002": 0.0056,
+          "EDG_MACRO__78_EE0000": 0.0056,
+          "EDG_VOLATI_91_EE0004": 0.0056,
+          "EDG_VOLATI_68_EE0000": 0.0056,
+          "EDG_VOLATI_63_EE0002": 0.0056,
+          "EDG_VOLATI_61_EE0001": 0.0056,
+          "EDG_COMPOS_93_EE0003": 0.0056,
+          "EDG_COMPOS_82_EE0000": 0.0056,
+          "EDG_MACRO__72_EE0001": 0.0056,
+          "EDG_COMPOS_94_EE0003": 0.0056,
+          "EDG_MACRO__64_EE0001": 0.0056,
+          "EDG_COMPOS_86_EE0001": 0.0056,
+          "EDG_VOLATI_93_EE0002": 0.0056,
+          "EDG_VOLATI_74_EE0000": 0.0056,
+          "EDG_VOLATI_94_EE0002": 0.0056,
+          "EDG_VOLATI_75_EE0000": 0.0056,
+          "EDG_VOLATI_89_EE0002": 0.0056,
+          "EDG_VOLATI_76_EE0000": 0.0056,
+          "EDG_VOLATI_77_EE0000": 0.0056,
+          "EDG_VOLATI_90_EE0002": 0.0056,
+          "EDG_VOLATI_78_EE0000": 0.0056,
+          "EDG_VOLATI_79_EE0000": 0.0056,
+          "EDG_VOLATI_80_EE0000": 0.0056,
+          "EDG_VOLATI_91_EE0002": 0.0056,
+          "EDG_VOLATI_81_EE0000": 0.0056,
+          "EDG_VOLATI_91_EE0003": 0.0056,
+          "EDG_VOLATI_82_EE0000": 0.0056,
+          "EDG_VOLATI_92_EE0003": 0.0056,
+          "EDG_MOMENT_98_EE0005": 0.0056,
+          "EDG_MOMENT_91_EE0002": 0.0056,
+          "EDG_MOMENT_79_EE0001": 0.0056,
+          "EDG_MOMENT_69_>0.000": 0.0056,
+          "EDG_MOMENT_68_EE0000": 0.0056,
+          "EDG_MOMENT_70_EE0001": 0.0056,
+          "EDG_MOMENT_68_>0.000": 0.0056,
+          "EDG_MOMENT_66_EE0000": 0.0056,
+          "EDG_MOMENT_97_EE0005": 0.0056,
+          "EDG_MOMENT_89_EE0002": 0.0056,
+          "EDG_MOMENT_71_EE0003": 0.0056,
+          "EDG_MOMENT_67_EE0000": 0.0056,
+          "EDG_MOMENT_66_EE0001": 0.0056,
+          "EDG_MOMENT_65_>0.000": 0.0056,
+          "EDG_MOMENT_95_EE0004": 0.0056,
+          "EDG_MOMENT_86_EE0002": 0.0056,
+          "EDG_MOMENT_67_EE0003": 0.0056,
+          "EDG_MOMENT_59_EE0000": 0.0056,
+          "EDG_MOMENT_58_>0.000": 0.0056,
+          "EDG_MOMENT_97_EE0004": 0.0056,
+          "EDG_MOMENT_89_EE0001": 0.0056,
+          "EDG_MOMENT_72_EE0002": 0.0056,
+          "EDG_MOMENT_64_>0.000": 0.0056,
+          "EDG_MOMENT_100_EE0004": 0.0056,
+          "EDG_MOMENT_65_EE0001": 0.0056,
+          "EDG_MOMENT_98_EE0003": 0.0056,
+          "EDG_MOMENT_83_EE0001": 0.0056,
+          "EDG_MOMENT_69_EE0000": 0.0056,
+          "EDG_MOMENT_84_EE0001": 0.0056,
+          "EDG_MOMENT_70_EE0000": 0.0056,
+          "EDG_MOMENT_66_>0.000": 0.0056,
+          "EDG_MOMENT_98_EE0004": 0.0056,
+          "EDG_MOMENT_90_EE0002": 0.0056,
+          "EDG_MOMENT_88_EE0002": 0.0056,
+          "EDG_MOMENT_70_EE0003": 0.0056,
+          "EDG_MOMENT_85_EE0002": 0.0056,
+          "EDG_MOMENT_63_EE0000": 0.0056,
+          "EDG_MOMENT_80_EE0001": 0.0056,
+          "EDG_MOMENT_64_EE0000": 0.0056,
+          "EDG_MOMENT_85_EE0003": 0.0056,
+          "EDG_MOMENT_80_EE0002": 0.0056,
+          "EDG_MOMENT_100_EE0005": 0.0056,
+          "EDG_MOMENT_67_EE0004": 0.0056,
+          "EDG_MOMENT_61_EE0000": 0.0056,
+          "EDG_MOMENT_87_EE0002": 0.0056,
+          "EDG_MOMENT_65_EE0000": 0.0056,
+          "EDG_MOMENT_62_EE0003": 0.0056,
+          "EDG_MOMENT_96_EE0004": 0.0056,
+          "EDG_MOMENT_87_EE0001": 0.0056,
+          "EDG_MOMENT_65_EE0003": 0.0056,
+          "EDG_MOMENT_96_EE0002": 0.0056,
+          "EDG_MOMENT_78_EE0000": 0.0056,
+          "EDG_MOMENT_67_EE0001": 0.0056,
+          "EDG_MOMENT_79_EE0000": 0.0056,
+          "EDG_MOMENT_68_EE0001": 0.0056,
+          "EDG_MOMENT_80_EE0000": 0.0056,
+          "EDG_MOMENT_69_EE0001": 0.0056,
+          "EDG_MOMENT_81_EE0000": 0.0056,
+          "EDG_MOMENT_71_EE0001": 0.0056,
+          "EDG_MOMENT_97_EE0002": 0.0056,
+          "EDG_MOMENT_82_EE0000": 0.0056,
+          "EDG_MOMENT_72_EE0001": 0.0056,
+          "EDG_MOMENT_73_EE0001": 0.0056,
+          "EDG_MOMENT_95_EE0002": 0.0056,
+          "EDG_MOMENT_77_EE0000": 0.0056,
+          "EDG_MOMENT_63_EE0001": 0.0056,
+          "EDG_MOMENT_64_EE0001": 0.0056,
+          "EDG_MOMENT_83_EE0000": 0.0056,
+          "EDG_MOMENT_74_EE0001": 0.0056,
+          "EDG_MOMENT_84_EE0000": 0.0056,
+          "EDG_MOMENT_75_EE0001": 0.0056,
+          "EDG_MOMENT_85_EE0000": 0.0056,
+          "EDG_MOMENT_76_EE0001": 0.0056,
+          "EDG_MOMENT_77_EE0001": 0.0056,
+          "EDG_MOMENT_86_EE0000": 0.0056,
+          "EDG_MOMENT_97_EE0003": 0.0056,
+          "EDG_MOMENT_78_EE0002": 0.0056,
+          "EDG_MOMENT_72_EE0000": 0.0056,
+          "EDG_MOMENT_73_EE0000": 0.0056,
+          "EDG_MOMENT_81_EE0001": 0.0056,
+          "EDG_MOMENT_79_EE0002": 0.0056,
+          "EDG_MOMENT_74_EE0000": 0.0056,
+          "EDG_MOMENT_82_EE0001": 0.0056,
+          "EDG_MOMENT_71_EE0000": 0.0056,
+          "EDG_MOMENT_81_EE0002": 0.0056,
+          "EDG_MOMENT_83_EE0002": 0.0056,
+          "EDG_MOMENT_82_EE0003": 0.0056,
+          "EDG_MOMENT_84_EE0002": 0.0056,
+          "EDG_MOMENT_83_EE0003": 0.0056,
+          "EDG_MOMENT_75_EE0000": 0.0056,
+          "EDG_MOMENT_76_EE0000": 0.0056,
+          "EDG_MOMENT_84_EE0003": 0.0056,
+          "EDG_MOMENT_86_EE0003": 0.0056,
+          "EDG_MOMENT_68_EE0003": 0.0056,
+          "EDG_MOMENT_85_EE0001": 0.0056,
+          "EDG_MOMENT_86_EE0001": 0.0056,
+          "EDG_MOMENT_99_EE0003": 0.0056,
+          "EDG_MOMENT_64_EE0003": 0.0056,
+          "EDG_MOMENT_62_EE0000": 0.0056,
+          "EDG_MOMENT_71_EE0002": 0.0056,
+          "EDG_MOMENT_73_EE0002": 0.0056,
+          "EDG_MOMENT_95_EE0003": 0.0056,
+          "EDG_MOMENT_65_EE0002": 0.0056,
+          "EDG_MOMENT_91_EE0003": 0.0056,
+          "EDG_MOMENT_96_EE0003": 0.0056,
+          "EDG_MOMENT_99_EE0004": 0.0056,
+          "EDG_MOMENT_88_EE0001": 0.0056,
+          "EDG_MOMENT_90_EE0001": 0.0056,
+          "EDG_MOMENT_95_EE0005": 0.0056,
+          "EDG_MOMENT_96_EE0001": 0.0056,
+          "EDG_MOMENT_74_>0.000": 0.0056,
+          "EDG_MOMENT_58_EE0000": 0.0056,
+          "EDG_MOMENT_60_EE0000": 0.0056,
+          "EDG_MOMENT_100_EE0003": 0.0056,
+          "EDG_MOMENT_81_EE0004": 0.0056,
+          "EDG_MOMENT_82_EE0004": 0.0056,
+          "EDG_MOMENT_70_>0.000": 0.0056,
+          "EDG_MOMENT_98_EE0002": 0.0056,
+          "EDG_MOMENT_78_EE0001": 0.0056,
+          "EDG_MOMENT_82_EE0002": 0.0056,
+          "EDG_VOLATI_60_EE0000": 0.0056,
+          "EDG_VOLATI_61_EE0000": 0.0056,
+          "EDG_VOLATI_62_EE0000": 0.0056,
+          "EDG_VOLATI_64_EE0000": 0.0056,
+          "EDG_VOLATI_65_EE0000": 0.0056,
+          "EDG_MOMENT_78_EE0003": 0.0056,
+          "EDG_MOMENT_60_EE0004": 0.0056,
+          "EDG_MOMENT_67_EE0002": 0.0056,
+          "EDG_MOMENT_74_EE0002": 0.0056,
+          "EDG_MOMENT_62_EE0001": 0.0056,
+          "EDG_COMPOS_77_EE0000": 0.0056,
+          "EDG_MOMENT_66_EE0002": 0.0056,
+          "EDG_COMPOS_60_EE0001": 0.0056,
+          "EDG_MOMENT_67_>0.000": 0.0056,
+          "EDG_VOLATI_66_EE0000": 0.0056,
+          "EDG_VOLATI_67_EE0000": 0.0056,
+          "EDG_VOLATI_69_EE0000": 0.0056,
+          "EDG_VOLATI_70_EE0000": 0.0056
+        }
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.393537",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HDFCBANK",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Trend_Pullback",
+        "confidence": 6.8
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.399856",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "SBIN",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.405177",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BAJAJFINSV",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Trend_Pullback",
+        "confidence": 6.8
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.411254",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "INFY",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Breakout_Volume",
+        "confidence": 7.71
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.416852",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HCLTECH",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Trend_Pullback",
+        "confidence": 6.8
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.421583",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "RELIANCE",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Trend_Pullback",
+        "confidence": 6.8
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.427208",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "COALINDIA",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.433051",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "LT",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.438074",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "DRREDDY",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.443162",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "TITAN",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.448907",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.642857142857142
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.454499",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.75
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.459832",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.465274",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.471039",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTYBEES",
+        "direction": "SignalDirection.BUY",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.476831",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKBEES",
+        "direction": "SignalDirection.SELL",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.482023",
+      "event_type": "EventType.SCAN_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "equity": 10,
+        "options": 2,
+        "arb": 4,
+        "total": 16
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.895184",
+      "event_type": "EventType.STRATEGY_LAB_COMPLETE",
+      "source": "StrategyGeneratorAI",
+      "payload": {
+        "assigned": 10,
+        "after_evo": 10,
+        "after_bt": 5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.938165",
+      "event_type": "EventType.RISK_CHECK_FAILED",
+      "source": "RiskManagerAI",
+      "payload": {
+        "rejected": 5
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.947985",
+      "event_type": "EventType.SIMULATION_COMPLETE",
+      "source": "SimulationEngine",
+      "payload": {
+        "approved": 0,
+        "rejected": 0,
+        "rate": 0.0
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.955837",
+      "event_type": "EventType.CYCLE_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "signals_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:49.996482",
+      "event_type": "EventType.LEARNING_CYCLE_COMPLETE",
+      "source": "LearningEngine",
+      "payload": {
+        "trades_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:50.202520",
+      "event_type": "EventType.EDGE_DISCOVERED",
+      "source": "EdgeDiscoveryEngine",
+      "payload": {
+        "promoted": 2,
+        "deprecated": 0,
+        "top_edge": "EDG_MOMENT_100_EE0004",
+        "active_edges": 10
+      }
+    },
+    {
+      "ts": "2026-03-12T18:49:50.232215",
+      "event_type": "EventType.EOD_SELF_EVAL_COMPLETE",
+      "source": "DailyAISelfEvaluator",
+      "payload": {
+        "overall_score": 0.0,
+        "grade": "N/A",
+        "issues_count": 0
+      }
+    }
+  ]
+}

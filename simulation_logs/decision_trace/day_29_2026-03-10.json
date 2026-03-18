@@ -1,0 +1,541 @@
+{
+  "day_num": 29,
+  "trading_date": "2026-03-10",
+  "total_events": 44,
+  "event_summary": {
+    "EventType.CYCLE_STARTED": 1,
+    "EventType.DISTORTION_DETECTED": 1,
+    "EventType.MARKET_DATA_READY": 1,
+    "EventType.MARKET_REGIME_CLASSIFIED": 1,
+    "EventType.REGIME_PROBABILITY_COMPUTED": 1,
+    "EventType.META_LEARNING_APPLIED": 1,
+    "EventType.EQUITY_SIGNAL_FOUND": 19,
+    "EventType.SCAN_COMPLETE": 1,
+    "EventType.STRATEGY_LAB_COMPLETE": 1,
+    "EventType.RISK_CHECK_PASSED": 1,
+    "EventType.SIMULATION_COMPLETE": 1,
+    "EventType.TRADE_APPROVED": 6,
+    "EventType.ORDER_PLACED": 6,
+    "EventType.CYCLE_COMPLETE": 1,
+    "EventType.LEARNING_CYCLE_COMPLETE": 1,
+    "EventType.EOD_SELF_EVAL_COMPLETE": 1
+  },
+  "trace": [
+    {
+      "ts": "2026-03-11T17:53:38.460328",
+      "event_type": "EventType.CYCLE_STARTED",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "ts": "2026-03-11T17:53:38.460324"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.472239",
+      "event_type": "EventType.DISTORTION_DETECTED",
+      "source": "MarketDistortionScanner",
+      "payload": {
+        "risk_level": "LOW",
+        "stress_score": 0,
+        "any_distortion": false,
+        "active_flags": [],
+        "trading_allowed": true,
+        "size_multiplier": 1.0,
+        "max_new_trades": 10,
+        "hedge_preferred": false,
+        "sector_watches": []
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.478689",
+      "event_type": "EventType.MARKET_DATA_READY",
+      "source": "MarketDataAI",
+      "payload": {
+        "vix": 18.91,
+        "regime": "range_market",
+        "breadth": 0.62,
+        "pcr": 1.1
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.490083",
+      "event_type": "EventType.MARKET_REGIME_CLASSIFIED",
+      "source": "MarketRegimeAI",
+      "payload": {
+        "regime": "range_market",
+        "volatility": "VolatilityLevel.HIGH"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.506199",
+      "event_type": "EventType.REGIME_PROBABILITY_COMPUTED",
+      "source": "RegimeProbabilityModel",
+      "payload": {
+        "trend_prob": 0.0498,
+        "range_prob": 0.9051,
+        "volatile_prob": 0.0369,
+        "bear_prob": 0.0082,
+        "dominant": "range_market",
+        "confidence": 0.8553,
+        "stress_adjusted": false,
+        "strategy_mix": {
+          "momentum": 0.0274,
+          "breakout": 0.0224,
+          "mean_reversion": 0.9051,
+          "hedging": 0.0146,
+          "options_spread": 0.0306
+        }
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.511840",
+      "event_type": "EventType.META_LEARNING_APPLIED",
+      "source": "MetaLearningEngine",
+      "payload": {
+        "top_strategy": "Breakout_Volume",
+        "model_active": false,
+        "allocations": {
+          "Breakout_Volume": 0.025,
+          "Momentum_Retest": 0.025,
+          "Mean_Reversion": 0.025,
+          "Bull_Call_Spread": 0.025,
+          "Iron_Condor_Range": 0.025,
+          "Hedging_Model": 0.025,
+          "Short_Straddle_IV_Spike": 0.025,
+          "Long_Straddle_Pre_Event": 0.025,
+          "Futures_Basis_Arb": 0.025,
+          "ETF_NAV_Arb": 0.025,
+          "Breakout_Volume_RSI_HiVol": 0.025,
+          "Mean_Reversion_RSI_HiVol": 0.025,
+          "EDG_COMPOS_92_EE0002": 0.025,
+          "EDG_MACRO__78_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0004": 0.025,
+          "EDG_VOLATI_68_EE0000": 0.025,
+          "EDG_VOLATI_63_EE0002": 0.025,
+          "EDG_VOLATI_61_EE0001": 0.025,
+          "EDG_COMPOS_93_EE0003": 0.025,
+          "EDG_COMPOS_82_EE0000": 0.025,
+          "EDG_MACRO__72_EE0001": 0.025,
+          "EDG_COMPOS_94_EE0003": 0.025,
+          "EDG_MACRO__64_EE0001": 0.025,
+          "EDG_COMPOS_86_EE0001": 0.025,
+          "EDG_VOLATI_93_EE0002": 0.025,
+          "EDG_VOLATI_74_EE0000": 0.025,
+          "EDG_VOLATI_94_EE0002": 0.025,
+          "EDG_VOLATI_75_EE0000": 0.025,
+          "EDG_VOLATI_89_EE0002": 0.025,
+          "EDG_VOLATI_76_EE0000": 0.025,
+          "EDG_VOLATI_77_EE0000": 0.025,
+          "EDG_VOLATI_90_EE0002": 0.025,
+          "EDG_VOLATI_78_EE0000": 0.025,
+          "EDG_VOLATI_79_EE0000": 0.025,
+          "EDG_VOLATI_80_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0002": 0.025,
+          "EDG_VOLATI_81_EE0000": 0.025,
+          "EDG_VOLATI_91_EE0003": 0.025,
+          "EDG_VOLATI_82_EE0000": 0.025,
+          "EDG_VOLATI_92_EE0003": 0.025
+        }
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.517319",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HDFCBANK",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 7.3100000000000005
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.523508",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "SBIN",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 7.0
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.528856",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BAJFINANCE",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.83
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.533916",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BAJAJFINSV",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.89
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.538682",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "TCS",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 7.27
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.544109",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "INFY",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.86
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.549568",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HCLTECH",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.97
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.554639",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "TECHM",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 8.379999999999999
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.559798",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BPCL",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.77
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.565794",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "LT",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.14
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.570727",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "HINDUNILVR",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Mean_Reversion",
+        "confidence": 6.2299999999999995
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.575478",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "SUNPHARMA",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Mean_Reversion",
+        "confidence": 8.5
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.580341",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "DRREDDY",
+        "direction": "SignalDirection.BUY",
+        "strategy": "Momentum_Retest",
+        "confidence": 6.5
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.585554",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.642857142857142
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.590197",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SELL",
+        "strategy": "Short_Straddle_IV_Spike",
+        "confidence": 7.75
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.595256",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.601059",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKNIFTY",
+        "direction": "SignalDirection.SHORT",
+        "strategy": "Futures_Basis_Arb",
+        "confidence": 8.0
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.606329",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "NIFTYBEES",
+        "direction": "SignalDirection.BUY",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.612081",
+      "event_type": "EventType.EQUITY_SIGNAL_FOUND",
+      "source": "EquityScannerAI",
+      "payload": {
+        "symbol": "BANKBEES",
+        "direction": "SignalDirection.SELL",
+        "strategy": "ETF_NAV_Arb",
+        "confidence": 7.5
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.616646",
+      "event_type": "EventType.SCAN_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "equity": 13,
+        "options": 2,
+        "arb": 4,
+        "total": 19
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.629451",
+      "event_type": "EventType.STRATEGY_LAB_COMPLETE",
+      "source": "StrategyGeneratorAI",
+      "payload": {
+        "assigned": 13,
+        "after_evo": 13,
+        "after_bt": 12
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.641231",
+      "event_type": "EventType.RISK_CHECK_PASSED",
+      "source": "RiskManagerAI",
+      "payload": {
+        "approved": 6
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.923875",
+      "event_type": "EventType.SIMULATION_COMPLETE",
+      "source": "SimulationEngine",
+      "payload": {
+        "approved": 6,
+        "rejected": 0,
+        "rate": 1.0
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.970382",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "HDFCBANK",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.8,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:38.983516",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "HDFCBANK",
+        "order_id": "SIM_HDFCBANK_BUY_192"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.010814",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "SBIN",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.71,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.023717",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "SBIN",
+        "order_id": "SIM_SBIN_BUY_146"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.098428",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "BAJFINANCE",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.67,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.110632",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "BAJFINANCE",
+        "order_id": "SIM_BAJFINANCE_BUY_65"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.174608",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "BAJAJFINSV",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.68,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.186628",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "BAJAJFINSV",
+        "order_id": "SIM_BAJAJFINSV_BUY_32"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.259126",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "TCS",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.79,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.272186",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "TCS",
+        "order_id": "SIM_TCS_BUY_103"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.365547",
+      "event_type": "EventType.TRADE_APPROVED",
+      "source": "DecisionEngine",
+      "payload": {
+        "symbol": "INFY",
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "score": 6.68,
+        "modifier": 0.879,
+        "votes": {}
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.379344",
+      "event_type": "EventType.ORDER_PLACED",
+      "source": "OrderManager",
+      "payload": {
+        "symbol": "INFY",
+        "order_id": "SIM_INFY_BUY_126"
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.399041",
+      "event_type": "EventType.CYCLE_COMPLETE",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "signals_processed": 6
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.455594",
+      "event_type": "EventType.LEARNING_CYCLE_COMPLETE",
+      "source": "LearningEngine",
+      "payload": {
+        "trades_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-11T17:53:39.669295",
+      "event_type": "EventType.EOD_SELF_EVAL_COMPLETE",
+      "source": "DailyAISelfEvaluator",
+      "payload": {
+        "overall_score": 0.0,
+        "grade": "N/A",
+        "issues_count": 0
+      }
+    }
+  ]
+}

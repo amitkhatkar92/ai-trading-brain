@@ -1,0 +1,47 @@
+Here's your personalized quick reference:
+
+🎯 Your Setup Summary
+Component	Value
+Email	amitkhatkar92@gmail.com
+GitHub Username	amitkhatkar92
+Docker Hub Username	amitkhatkar92
+GitHub Repo URL	https://github.com/amitkhatkar92/ai-trading-brain
+Docker Image	amitkhatkar92/ai-trading-brain
+VPS IP	178.18.252.24 (Contabo, EU)
+Dashboard URL	http://178.18.252.24:8501
+📋 Quick Start Commands
+1. Local Setup
+cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+
+git init
+git add --all
+git commit -m "Initial: AI Trading Brain with Docker + CI/CD"
+git remote add origin https://github.com/amitkhatkar92/ai-trading-brain.git
+git branch -M main
+git push -u origin main
+
+2. GitHub Secrets (only 2 fields to fill!)
+Go to: https://github.com/amitkhatkar92/ai-trading-brain/settings/secrets/actions
+
+Add:DOCKER_USERNAME = amitkhatkar92 ✅ (pre-set)
+DOCKER_PASSWORD = [get from Docker Hub security settings]
+VPS_HOST = 178.18.252.24 ✅ (pre-set)
+VPS_SSH_KEY = [your SSH private key]
+3. VPS Setup
+ssh root@178.18.252.24
+curl -O https://raw.githubusercontent.com/amitkhatkar92/ai-trading-brain/main/scripts/setup-vps.sh
+bash setup-vps.sh
+4. First Deploy
+cd /root/ai_trading_brain
+git clone https://github.com/amitkhatkar92/ai-trading-brain.git .
+docker-compose up -d
+What's Ready
+All deployment files updated:
+
+✅ DEPLOYMENT_GUIDE.md — Full guide with your username
+✅ DEPLOYMENT_CHECKLIST.md — Step-by-step checklist
+✅ deploy.yml — GitHub Actions pipeline
+✅ Dockerfile — Docker container config
+✅ docker-compose.yml — Multi-container orchestration
+✅ setup-vps.sh — VPS one-command setup
+Next: Follow DEPLOYMENT_CHECKLIST.md and you're live in 40 minutes! 

@@ -1,0 +1,65 @@
+{
+  "day_num": 30,
+  "trading_date": "2026-01-28",
+  "total_events": 5,
+  "event_summary": {
+    "EventType.ORDER_REJECTED": 1,
+    "EventType.CYCLE_STARTED": 1,
+    "EventType.DISTORTION_DETECTED": 1,
+    "EventType.LEARNING_CYCLE_COMPLETE": 1,
+    "EventType.EOD_SELF_EVAL_COMPLETE": 1
+  },
+  "trace": [
+    {
+      "ts": "2026-03-12T17:03:07.695047",
+      "event_type": "EventType.ORDER_REJECTED",
+      "source": "OrderManager",
+      "payload": {
+        "order_id": "SIM_HCLTECH_SELL_21",
+        "reason": "context_invalidated"
+      }
+    },
+    {
+      "ts": "2026-03-12T17:03:07.701333",
+      "event_type": "EventType.CYCLE_STARTED",
+      "source": "MasterOrchestrator",
+      "payload": {
+        "ts": "2026-03-12T17:03:07.701328"
+      }
+    },
+    {
+      "ts": "2026-03-12T17:03:07.713406",
+      "event_type": "EventType.DISTORTION_DETECTED",
+      "source": "MarketDistortionScanner",
+      "payload": {
+        "risk_level": "LOW",
+        "stress_score": 0,
+        "any_distortion": false,
+        "active_flags": [],
+        "trading_allowed": true,
+        "size_multiplier": 1.0,
+        "max_new_trades": 10,
+        "hedge_preferred": false,
+        "sector_watches": []
+      }
+    },
+    {
+      "ts": "2026-03-12T17:03:07.720149",
+      "event_type": "EventType.LEARNING_CYCLE_COMPLETE",
+      "source": "LearningEngine",
+      "payload": {
+        "trades_processed": 0
+      }
+    },
+    {
+      "ts": "2026-03-12T17:03:08.075313",
+      "event_type": "EventType.EOD_SELF_EVAL_COMPLETE",
+      "source": "DailyAISelfEvaluator",
+      "payload": {
+        "overall_score": 0.0,
+        "grade": "N/A",
+        "issues_count": 0
+      }
+    }
+  ]
+}

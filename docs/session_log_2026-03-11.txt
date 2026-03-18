@@ -1,0 +1,313 @@
+================================================================================
+  AI TRADING BRAIN — SESSION LOG
+  Date : 2026-03-11
+  Scope: Pre-paper-trading audit, bug fixes, live test run, live data snapshot
+================================================================================
+
+────────────────────────────────────────────────────────────────────────────────
+1. SESSION OBJECTIVES
+────────────────────────────────────────────────────────────────────────────────
+
+  1. "Anything that you think would make it best — since from tomorrow we will
+     start the paper trading."
+     → Full pre-launch audit + fix all critical issues.
+
+  2. "Run the program and test it."
+     → Full end-to-end verification of the fixed system.
+
+  3. "Mention every time date, NIFTY, VIX and BANKNIFTY live data so we can
+     ensure by comparing that you are fetching the correct information."
+     → Replaced random simulation with real yfinance data for NIFTY/BANKNIFTY/VIX;
+       added a LIVE DATA SNAPSHOT banner printed every cycle.
+
+
+────────────────────────────────────────────────────────────────────────────────
+2. BUGS FOUND & FIXED
+────────────────────────────────────────────────────────────────────────────────
+
+  BUG 1 — CRITICAL  |  strategy_lab/strategy_generator_ai.py
+  ─────────────────────────────────────────────────────────────
+  File    : strategy_lab/strategy_generator_ai.py
+  Method  : _best_evolved_variant()
+  Symptom : 0/N signals assigned every cycle — NO trades EVER executed.
+  Root cause:
+    The method picked the variant with the HIGHEST min_rr regardless of the
+    signal's actual risk:reward ratio.
+    e.g. Breakout_Volume_RSI_HiVol needs min_rr=2.5 but signal delivers
+    R:R=2.0 → variant always rejected → 0 assignments.
+  Fix:
+    Added  min_signal_rr: float = 0.0  parameter.
+    Only variants where  params["min_rr"] <= min_signal_rr  are eligible.
+    Then picks the highest-scored among those.
+
+  BUG 2 — CRITICAL  |  strategy_lab/strategy_generator_ai.py
+  ─────────────────────────────────────────────────────────────
+  File    : strategy_lab/strategy_generator_ai.py
+  Method  : _load_evolved_strategies()
+  Symptom : JSON's explicit min_rr values silently overwritten by base
+            strategy value — EDG_MACRO__78_EE0000 had min_rr=2.0 in JSON
+            but loaded as 2.5 (inherited from Breakout_Volume base).
+  Fix:
+    Changed  base_params["min_rr"]
+         to  params.get("min_rr") or base_params["min_rr"]
+    JSON value takes priority.
+  Verified:
+    EDG_MACRO__78_EE0000  min_rr: 2.0  ✅
+    EDG_COMPOS_92_EE0002  min_rr: 1.8  ✅
+
+  BUG 3 — CRITICAL (same file, same cycle as Bug 1)
+  ─────────────────────────────────────────────────────────────
+  File    : strategy_lab/strategy_generator_ai.py
+  Method  : _pick_strategy() and _assign()
+  Fix:
+    Both methods now extract  rr = signal.risk_reward_ratio
+    and pass  min_signal_rr=rr  to every _best_evolved_variant() call.
+
+  BUG 4 — MINOR  |  main.py
+  ─────────────────────────────────────────────────────────────
+  File    : main.py
+  Symptom : Hardcoded date  "Date: 2026-03-10"  in startup banner.
+  Fix:
+    Changed to  _dt.now().strftime("%Y-%m-%d")  (dynamic).
+    Also removed a shadowing  from datetime import datetime as _dt
+    inside the --discover block that caused UnboundLocalError.
+
+  BUG 5 — MINOR  |  execution_engine/order_manager.py
+  ─────────────────────────────────────────────────────────────
+  File    : execution_engine/order_manager.py
+  Symptom : Paper mode relied on kiteconnect simply not being installed.
+            No explicit PAPER_TRADING guard, no trade journal.
+  Fix:
+    Added  self._paper_mode = getattr(_cfg, "PAPER_TRADING", True)
+    Sets   self._broker = None  directly in paper mode — never loads broker.
+    Logs   "[OrderManager] PAPER TRADING mode — no live orders will be sent."
+    Added  _journal_write()  and  _journal_write_close()  methods.
+    Appends every trade to  data/paper_trades.csv  (persistent across runs).
+
+
+────────────────────────────────────────────────────────────────────────────────
+3. LIVE DATA SNAPSHOT FEATURE
+────────────────────────────────────────────────────────────────────────────────
+
+  Files changed:
+    market_intelligence/market_data_ai.py
+    orchestrator/master_orchestrator.py
+
+  What changed in market_data_ai.py:
+    • Added  _YF_INDEX_MAP  dict mapping index names to yfinance aliases:
+        "NIFTY 50"     → "NIFTY"      (^NSEI)
+        "NIFTY BANK"   → "BANKNIFTY"  (^NSEBANK)
+        "NIFTY IT"     → ^CNXIT
+        "NIFTY PSU BANK" → ^CNXPSUBAN
+        "NIFTY PHARMA" → ^CNXPHARMA
+        "NIFTY AUTO"   → ^CNXAUTO
+        "NIFTY FMCG"   → ^CNXFMCG
+    • Added  _VIX_ALIAS = "INDIAVIX"  (→ ^INDIAVIX)
+    • _fetch_live_data() now calls YahooFeed.get_quote() for each key index.
+    • Each index carries "source": "LIVE" or "SIM" tag.
+    • Returns "vix_source" and "data_source" fields for downstream use.
+    • Remaining indices (NIFTY 500, MIDCAP, SMALLCAP) stay simulated —
+      yfinance coverage for them is inconsistent.
+
+  What changed in master_orchestrator.py:
+    After every data integrity check, prints a banner:
+
+      ┌──────────────────────────────────────────────────────────┐
+      │  LIVE DATA SNAPSHOT  │  2026-03-11 15:35:47    [LIVE]   │
+      ├──────────────────────────────────────────────────────────┤
+      │  NIFTY 50    :    23866.85   (-1.63%)  [LIVE]           │
+      │  BANKNIFTY   :    55735.75   (-2.13%)  [LIVE]           │
+      │  INDIA VIX   :       21.06            [LIVE]            │
+      ├──────────────────────────────────────────────────────────┤
+      │  ▶ Cross-check vs NSE / Groww / Kite to verify accuracy  │
+      └──────────────────────────────────────────────────────────┘
+
+    Printed every single cycle so you can verify in real time.
+    [SIM] tag appears automatically if yfinance fails — no silent errors.
+
+
+────────────────────────────────────────────────────────────────────────────────
+4. FULL TEST RUN RESULTS  (2026-03-11 ~15:27)
+────────────────────────────────────────────────────────────────────────────────
+
+  Command : python main.py --paper
+  Mode    : Paper trading — no live orders sent
+
+  Market context:
+    Regime   : range_market
+    VIX      : 21.06  (LIVE)
+    NIFTY 50 : 23,866.85  (-1.63%)  (LIVE)
+    BANKNIFTY: 55,735.75  (-2.13%)  (LIVE)
+    PCR      : 0.95
+    Breadth  : 68%
+    Liquidity: FII +₹3,098Cr | DII +₹1,034Cr | STRONG_INFLOW
+
+  Signal pipeline:
+    10 raw opportunities found
+    4/10 signals assigned strategies    ← was 0/10 before Bug 1+2 fix
+    4/4  passed backtest quality gates
+    4/4  approved by Risk Manager
+    4/4  survived Monte Carlo stress tests
+
+  Trades executed:
+
+    Symbol      Score     Qty    Entry      SL        Target    R:R
+    ──────────  ────────  ─────  ─────────  ────────  ────────  ───
+    RELIANCE    7.26/10   86     2841.90    2799.27   2927.16   2.0
+    ICICIBANK   7.34/10   268    925.44     911.56    953.20    2.0
+    TATASTEEL   7.43/10   1135   163.88     161.42    168.80    2.0
+    BANKBARODA  7.50/10   720    258.36     254.48    266.11    2.0
+
+  Capital deployed: ₹131,173 / ₹500,000 (26%)
+
+  Layer timings:
+    GlobalIntelligence  : 18ms  ✅
+    MarketIntelligence  : 17ms  ✅
+    MetaLearning        :  7ms  ✅
+    OpportunityEngine   : 70ms  ✅
+    StrategyLab         : 12ms  ✅
+    CapitalRiskEngine   :  1ms  ✅
+    RiskControl         : 11ms  ✅
+    MarketSimulation    : 70ms  ✅
+    RiskGuardian        :  0ms  ✅
+    DebateAndDecision   : 199ms ✅
+    FULL CYCLE          : 428ms ✅  HEALTHY
+
+  Journal: data/paper_trades.csv populated with 4 OPEN rows.
+
+
+────────────────────────────────────────────────────────────────────────────────
+5. ALL FILES MODIFIED THIS SESSION
+────────────────────────────────────────────────────────────────────────────────
+
+  File                                              Change summary
+  ──────────────────────────────────────────────    ─────────────────────────────────────────────────
+  strategy_lab/strategy_generator_ai.py             Fixed _best_evolved_variant R:R filter (Bug 1)
+                                                    Fixed _load_evolved_strategies JSON min_rr (Bug 2)
+                                                    Fixed _pick_strategy + _assign to pass min_signal_rr
+  execution_engine/order_manager.py                 Explicit PAPER_TRADING flag; CSV trade journal
+  main.py                                           Dynamic date; removed shadowing import
+  market_intelligence/market_data_ai.py             Real yfinance data for NIFTY/BANKNIFTY/INDIA VIX
+  orchestrator/master_orchestrator.py               LIVE DATA SNAPSHOT banner every cycle
+
+
+────────────────────────────────────────────────────────────────────────────────
+6. FILES MODIFIED IN PRIOR SESSIONS (stable — do not touch)
+────────────────────────────────────────────────────────────────────────────────
+
+  global_intelligence/global_data_ai.py             5-min cache + background pre-warm thread
+  data_feeds/yahoo_feed.py                           timeout=8 on yf.download()
+  system_monitor/system_monitor.py                   Per-layer WARN/CRIT latency overrides
+  orchestrator/master_orchestrator.py                Full scheduler (prior session additions)
+  config.py                                          SCHEDULE expanded, CONTINUOUS_SCAN_INTERVAL=30
+  market_intelligence/market_monitor.py              NEW — 30s continuous scan + 6 deep-scan slots
+  learning_system/strategy_performance_tracker.py   NEW — win rate / auto-disable
+  meta_learning/regime_strategy_map.py               NEW — regime→strategy learning map
+  notifications/telegram_bot.py                      +/perf, +/learn commands (13 total)
+  main.py                                            SIGTERM handler (prior session)
+  scripts/autostart.bat                              NEW — Windows Task Scheduler entry point
+  scripts/setup_windows_task.py                      NEW — registers 08:00 weekday Task Scheduler job
+  .github/copilot-instructions.md                    Governance: Intentional Evolution rules
+  ARCHITECTURE.md                                    Full 17-layer reference document
+
+
+────────────────────────────────────────────────────────────────────────────────
+7. NEW DATA FILES
+────────────────────────────────────────────────────────────────────────────────
+
+  data/paper_trades.csv
+    Persistent paper trade journal. Created automatically on first run.
+    Format:
+      timestamp, order_id, symbol, direction, quantity, entry_price,
+      stop_loss, target, strategy, confidence, rr, event
+
+    OPEN row  → trade entered
+    CLOSE row → trade exited (also includes exit_price, pnl, reason)
+
+    Sample:
+      2026-03-11 15:27:58,SIM_RELIANCE_BUY_86,RELIANCE,BUY,86,2841.90,
+        2799.27,2927.16,EDG_MACRO__78_EE0000,9.1,2.0,OPEN
+
+
+────────────────────────────────────────────────────────────────────────────────
+8. HOW TO START PAPER TRADING (MARCH 12, 2026 ONWARDS)
+────────────────────────────────────────────────────────────────────────────────
+
+  Option A — Single cycle (manual test any time):
+    .venv\Scripts\python.exe main.py --paper
+
+  Option B — Full scheduled daemon (follows 08:00→15:35 schedule):
+    # Clear old journal for a fresh day:
+    Remove-Item data\paper_trades.csv -ErrorAction SilentlyContinue
+    # Start daemon:
+    .venv\Scripts\python.exe main.py --schedule
+
+  Option C — Windows Task Scheduler (auto-start at 08:00 weekdays):
+    .venv\Scripts\python.exe scripts/setup_windows_task.py          # register
+    .venv\Scripts\python.exe scripts/setup_windows_task.py --status # verify
+
+  Telegram monitoring (@Amitkhatkarbot):
+    # Kill stale instances first:
+    Get-Process python* -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Sleep -Seconds 3
+    # Start bot:
+    .venv\Scripts\python.exe main.py --telegram
+    # Commands: /status  /positions  /pnl  /perf  /learn
+
+
+────────────────────────────────────────────────────────────────────────────────
+9. THINGS TO WATCH ON DAY 1
+────────────────────────────────────────────────────────────────────────────────
+
+  1. data/paper_trades.csv        — every OPEN row = trade taken; CLOSE = exit
+  2. Telegram /positions          — open paper positions
+  3. Telegram /pnl                — running P&L
+  4. data/logs/ai_trading_brain.log — full cycle log
+  5. logs/scheduler.log           — scheduler daemon output
+  6. LIVE DATA SNAPSHOT box       — verify NIFTY/BANKNIFTY/VIX match
+                                    NSE/Groww/Kite every cycle
+
+  Expected behaviour:
+    • 4–8 signals per cycle in range_market regime
+    • Primary strategy: EDG_MACRO__78_EE0000 (Breakout_Volume base, min_rr=2.0)
+    • Capital deployment: 20–35% of ₹500,000 typically
+    • Decision threshold: 6.5/10 (only high-conviction trades pass)
+    • RiskGuardian kill conditions: VIX > 45 or daily loss > 2%
+
+
+────────────────────────────────────────────────────────────────────────────────
+10. ARCHITECTURE QUICK REFERENCE
+────────────────────────────────────────────────────────────────────────────────
+
+  Stack  : Python 3.14 | .venv/ | 17-layer hierarchical multi-agent system
+  Broker : Dhan (login OK, data API 451 blocked) → yfinance auto-fallback
+  Mode   : Paper trading (main.py --paper / --schedule)
+  Agents : ~62 agents across 17 layers
+
+  Layer order:
+     1  GlobalIntelligence      overnight global context (S&P, Nikkei, bonds, FX)
+     2  MarketIntelligence      NIFTY/BANKNIFTY regime, sector, liquidity, events
+     3  MetaLearning            k-NN strategy weight predictor
+     4  OpportunityEngine       equity scanner, options, arbitrage
+     5  StrategyLab             MetaStrategyController, backtesting, evolution
+     6  CapitalRiskEngine       position sizing per strategy budget
+     7  RiskControl             RiskManagerAI, PortfolioAllocation, StressTest
+     8  MarketSimulation        Monte Carlo, 14 scenarios
+     9  RiskGuardian            final kill-switch (VIX>45, daily loss>2%)
+    10  DebateAndDecision       5-agent debate, DecisionEngine (threshold 6.5)
+    11  ExecutionEngine         OrderManager → paper mode CSV journal
+    12  TradeMonitoring         TradeMonitor, StrategyHealthMonitor
+    13  LearningSystem          LearningEngine, StrategyPerformanceTracker
+    14  PerformanceAnalytics    DrawdownAnalyzer, WalkForwardTester
+    15  ResearchLab             promotion gates WinRate≥50% Sharpe>0.8 MaxDD<15%
+    16  ValidationEngine        6-stage: Backtest→WFT→CrossMarket→MC→Sensitivity→Regime
+    17  ControlTower            SQLite telemetry, Streamlit dashboard, EventBus
+
+  Performance baseline (do not regress):
+    GlobalIntelligence :  18ms  ✅
+    MarketIntelligence :  17ms  ✅
+    Full cycle         : 428ms  ✅  HEALTHY
+
+================================================================================
+  END OF SESSION LOG
+================================================================================
