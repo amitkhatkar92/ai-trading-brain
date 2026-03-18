@@ -1,0 +1,579 @@
+═══════════════════════════════════════════════════════════════════════════════
+AI TRADING BRAIN — RECOMMENDED SECURITY SETUP
+VPS: 178.18.252.24 | Date: March 18, 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+SECURITY MODEL (Balances Convenience + Protection)
+───────────────────────────────────────────────────
+
+Component        │ Configuration
+─────────────────┼────────────────────────────────────────────────────
+SSH              │ Port 22 open globally + SSH key auth only
+Firewall (UFW)   │ Block all except 22/TCP, 8501/TCP
+Fail2Ban         │ Enabled (5 attempts → 10min ban)
+Dashboard        │ Password protected (Streamlit)
+Trading Engine   │ Systemd auto-start + auto-restart
+Git Pushes       │ Triggers auto-deployment via GitHub Actions
+─────────────────┴────────────────────────────────────────────────────
+
+This model lets you:
+✓ Access VPS from anywhere (SSH keys only)
+✓ Run dashboard without IP restrictions
+✓ Auto-protect against brute-force attacks
+✓ Run trading system without manual login
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 1: SSH KEY AUTHENTICATION (LOCAL COMPUTER)
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 1: Generate SSH Key Pair (if you don't have one)
+────────────────────────────────────────────────────────
+
+On your local computer (Windows, Mac, Linux):
+
+Option A — PowerShell (Windows 10+):
+  ssh-keygen -t ed25519 -C "trading-vps-key"
+  
+  You'll be asked:
+    Enter file where key is saved: C:\Users\YourUsername\.ssh\trading_vps
+    Enter passphrase: [leave empty OR add strong passphrase]
+    Confirm passphrase: [confirm]
+
+Option B — WSL/SSH Terminal (Windows):
+  ssh-keygen -t ed25519 -C "trading-vps-key"
+
+Option C — Mac/Linux:
+  ssh-keygen -t ed25519 -C "trading-vps-key"
+
+Check keys were created:
+  
+  Windows (PowerShell):
+    ls $env:USERPROFILE\.ssh\
+    
+    Should show:
+      trading_vps
+      trading_vps.pub
+
+  Mac/Linux:
+    ls -la ~/.ssh/
+    
+    Should show:
+      trading_vps (private key, -rw-------, 600 permissions)
+      trading_vps.pub (public key, -rw-r--r--, 644 permissions)
+
+
+ACTION 2: Copy Public Key to VPS
+────────────────────────────────
+
+On your local computer:
+
+Option A — Automated (Recommended):
+  
+  Windows (PowerShell):
+    $key = Get-Content "$env:USERPROFILE\.ssh\trading_vps.pub"
+    ssh -i "$env:USERPROFILE\.ssh\trading_vps" root@178.18.252.24 `
+      "echo '$key' >> ~/.ssh/authorized_keys"
+
+  Mac/Linux:
+    ssh-copy-id -i ~/.ssh/trading_vps.pub root@178.18.252.24
+
+Option B — Manual (if above fails):
+  
+  Step 1: Display your public key
+    Windows (PowerShell): type $env:USERPROFILE\.ssh\trading_vps.pub
+    Mac/Linux: cat ~/.ssh/trading_vps.pub
+    
+  Step 2: Copy the entire output (starts with "ssh-ed25519...")
+  
+  Step 3: SSH into VPS using current password
+    ssh root@178.18.252.24
+    (password login still works for now)
+  
+  Step 4: Create SSH directory and add key
+    mkdir -p ~/.ssh
+    chmod 700 ~/.ssh
+    echo "PASTE_YOUR_PUBLIC_KEY_HERE" >> ~/.ssh/authorized_keys
+    chmod 600 ~/.ssh/authorized_keys
+    exit
+
+ACTION 3: Test SSH Key Login (from local computer)
+───────────────────────────────────────────────────
+
+Windows (PowerShell):
+  ssh -i "$env:USERPROFILE\.ssh\trading_vps" root@178.18.252.24
+  
+  Expected: You should login WITHOUT being asked for a password
+
+Mac/Linux:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  
+  Expected: You should login WITHOUT being asked for a password
+
+If this works: ✅ SSH Key auth successful!
+If this fails: Check Action 2 steps or check SSH debug output:
+  ssh -vvv -i path/to/key root@178.18.252.24
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 2: DISABLE PASSWORD LOGIN ON VPS
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 4: Disable SSH Password Authentication
+──────────────────────────────────────────────
+
+SSH into VPS using key (from Phase 1, Action 3):
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+Edit SSH config:
+  nano /etc/ssh/sshd_config
+
+Find these lines (use Ctrl+W to search):
+  #PubkeyAuthentication yes
+  PasswordAuthentication yes
+  #PermitRootLogin yes
+
+Change them to:
+  PubkeyAuthentication yes
+  PasswordAuthentication no
+  PermitRootLogin without-password
+
+Save and exit (Ctrl+X, then Y, then Enter)
+
+Restart SSH service:
+  systemctl restart ssh
+
+Verify SSH is still running:
+  systemctl status ssh
+  
+  Should show: active (running)
+
+WARNING: From now on, only SSH key login will work.
+Do NOT close this terminal yet! Test in a new window first.
+
+
+ACTION 5: Test Password Login is Disabled
+──────────────────────────────────────────
+
+Open NEW terminal/PowerShell on local computer:
+
+Try to login with password:
+  ssh root@178.18.252.24
+  
+  Expected: "Permission denied (publickey)." or "Connection refused"
+  This is CORRECT - password login is now blocked!
+
+Try to login with key:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  
+  Expected: ✅ Login SUCCESS
+  
+If key login fails: DO NOT CLOSE the original terminal!
+Go back to the original terminal and undo the changes:
+  nano /etc/ssh/sshd_config
+  (restore PasswordAuthentication yes)
+  systemctl restart ssh
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 3: UFW FIREWALL SETUP
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 6: Install and Configure UFW
+────────────────────────────────────
+
+SSH into VPS:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+Install UFW and Fail2Ban:
+  apt update
+  apt install ufw fail2ban -y
+
+Set default policies (block incoming, allow outgoing):
+  ufw default deny incoming
+  ufw default allow outgoing
+
+Allow SSH (CRITICAL - do this before enabling UFW!):
+  ufw allow 22/tcp
+  
+Allow Dashboard:
+  ufw allow 8501/tcp
+
+Enable UFW:
+  ufw enable
+  
+  When asked "Command may disrupt existing ssh connections. Proceed?", type:
+    y
+
+Check firewall status:
+  ufw status
+  
+  Expected output:
+    Status: active
+    
+    To                         Action      From
+    --                         ------      ----
+    22/tcp                     ALLOW       Anywhere
+    8501/tcp                   ALLOW       Anywhere
+    22/tcp (v6)                ALLOW       Anywhere (v6)
+    8501/tcp (v6)              ALLOW       Anywhere (v6)
+
+Verify SSH still works (open new terminal):
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  
+  If this works: ✅ Firewall configured successfully!
+  If this fails: You may have locked yourself out - use VPS console to restore
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 4: FAIL2BAN INTRUSION PROTECTION
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 7: Enable and Configure Fail2Ban
+────────────────────────────────────────
+
+SSH into VPS:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+Start Fail2Ban:
+  systemctl enable fail2ban
+  systemctl start fail2ban
+
+Check status:
+  fail2ban-client status
+  
+  Expected: Shows "Jail activated", with "sshd"
+
+Verify SSH jail is monitoring:
+  fail2ban-client status sshd
+  
+  Expected:
+    Status for the jail sshd:
+    |- Filter set to: sshd
+    |- Currently failed: 0
+    |- Currently banned: 0
+    `- Total banned: 0
+
+How it works:
+  - After 5 failed SSH login attempts, IP is automatically banned
+  - Ban lasts 10 minutes (default)
+  - Only applies to IPs, not your SSH key auth
+  - Blocks automated brute-force attacks
+
+Manually check ban list:
+  fail2ban-client set sshd banip iplist
+  
+Or view logs:
+  tail -50 /var/log/fail2ban.log
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 5: STREAMLIT DASHBOARD PASSWORD PROTECTION
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 8: Update Dashboard with Password Protection
+─────────────────────────────────────────────────────
+
+Add password check to monitoring/streamlit_kpi_dashboard.py:
+
+At the top of the file (after imports), add:
+
+────────────────────────────────────────────────────
+import streamlit as st
+
+# PASSWORD PROTECTION
+DASHBOARD_PASSWORD = "your-secure-password-here"
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.title("🔐 AI Trading Brain Dashboard")
+    password = st.text_input("Enter Dashboard Password:", type="password")
+    
+    if st.button("Login"):
+        if password == DASHBOARD_PASSWORD:
+            st.session_state.authenticated = True
+            st.success("✅ Authentication successful!")
+            st.rerun()
+        else:
+            st.error("❌ Incorrect password. Try again.")
+    st.stop()
+
+# Rest of dashboard code continues below...
+────────────────────────────────────────────────────
+
+Steps:
+  1. Open: monitoring/streamlit_kpi_dashboard.py
+  2. Find the first `import streamlit as st` line
+  3. Add the password protection block right after imports
+  4. Change DASHBOARD_PASSWORD to a strong password
+  5. Save the file
+  6. Test locally:
+       streamlit run monitoring/streamlit_kpi_dashboard.py
+  7. Verify password prompt appears before dashboard loads
+  8. git add monitoring/streamlit_kpi_dashboard.py
+  9. git commit -m "Add password protection to dashboard"
+  10. git push origin main
+
+Testing:
+  - Local: http://localhost:8501 → Should prompt for password
+  - Remote: http://178.18.252.24:8501 → Should prompt for password
+  - Login with password set in DASHBOARD_PASSWORD variable
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 6: SYSTEMD AUTO-START SERVICE (Optional but Recommended)
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 9: Create Systemd Service for Trading Engine
+─────────────────────────────────────────────────────
+
+Benefits:
+  ✓ Starts automatically after VPS reboot
+  ✓ Restarts if process crashes
+  ✓ Can be controlled with systemctl commands
+  ✓ Logs captured to journalctl
+
+On VPS, create service file:
+  sudo nano /etc/systemd/system/trading-brain.service
+
+Paste this content:
+
+────────────────────────────────────────────────────
+[Unit]
+Description=AI Trading Brain - Paper Trading Engine
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ai-trading-brain
+ExecStart=/root/ai-trading-brain/.venv/bin/python main.py --paper
+Restart=always
+RestartSec=10s
+StandardOutput=journal
+StandardError=journal
+
+Environment="PYTHONUNBUFFERED=1"
+SuccessExitStatus=0 2
+
+[Install]
+WantedBy=multi-user.target
+────────────────────────────────────────────────────
+
+Save (Ctrl+X, Y, Enter)
+
+Enable and start the service:
+  systemctl daemon-reload
+  systemctl enable trading-brain.service
+  systemctl start trading-brain.service
+
+Check status:
+  systemctl status trading-brain.service
+  
+  Should show: ● trading-brain.service - loaded active running
+
+View logs in real-time:
+  journalctl -u trading-brain.service -f
+  
+  (Press Ctrl+C to exit)
+
+View recent logs:
+  journalctl -u trading-brain.service --lines=50
+
+Control commands:
+  systemctl stop trading-brain.service    # Stop the service
+  systemctl restart trading-brain.service # Restart
+  systemctl start trading-brain.service   # Start
+
+
+═══════════════════════════════════════════════════════════════════════════════
+PHASE 7: REMOTE COMMAND EXECUTION (Optional)
+═══════════════════════════════════════════════════════════════════════════════
+
+ACTION 10: Run Commands on VPS Without Interactive Login
+──────────────────────────────────────────────────────────
+
+Instead of SSH login each time, run commands directly:
+
+Check system status:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24 \
+    "systemctl status trading-brain.service"
+
+Restart trading engine:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24 \
+    "systemctl restart trading-brain.service"
+
+View trading logs:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24 \
+    "tail -100 data/logs/trading_engine.log"
+
+Run monitoring report:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24 \
+    "cd /root/ai-trading-brain && python -m monitoring.first_month_tracker"
+
+Run specific Python script:
+  ssh -i ~/.ssh/trading_vps root@178.18.252.24 \
+    "cd /root/ai-trading-brain && python scripts/send_daily_summary.py"
+
+Create an alias on local computer for quick access (Mac/Linux):
+  echo 'alias trading-status="ssh -i ~/.ssh/trading_vps root@178.18.252.24 systemctl status trading-brain.service"' >> ~/.bashrc
+  source ~/.bashrc
+  trading-status  # Now you can just type this
+
+
+═══════════════════════════════════════════════════════════════════════════════
+QUICK VERIFICATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+Run this checklist to verify everything is configured:
+
+ Phase 1 — SSH Key Auth
+ ☐ SSH key pair created (trading_vps + trading_vps.pub)
+ ☐ Public key in /root/.ssh/authorized_keys on VPS
+ ☐ Can SSH into VPS using key: ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+ Phase 2 — Disable Password Login
+ ☐ SSH config updated: PasswordAuthentication no
+ ☐ SSH service restarted
+ ☐ Can login with key ✅
+ ☐ Cannot login with password ✅
+
+ Phase 3 — UFW Firewall
+ ☐ UFW installed and enabled
+ ☐ Port 22 (SSH) allowed
+ ☐ Port 8501 (Dashboard) allowed
+ ☐ Other ports blocked
+ ☐ Verify: ufw status (should show Status: active)
+
+ Phase 4 — Fail2Ban
+ ☐ Fail2Ban installed and running
+ ☐ SSH jail activated
+ ☐ Verify: fail2ban-client status
+ ☐ Verify: fail2ban-client status sshd
+
+ Phase 5 — Dashboard Password
+ ☐ Password protection code added to streamlit_kpi_dashboard.py
+ ☐ Changes committed and pushed to GitHub
+ ☐ Auto-deployment triggered on VPS
+ ☐ Test: http://178.18.252.24:8501 shows password prompt
+
+ Phase 6 — Systemd Service
+ ☐ trading-brain.service created in /etc/systemd/system/
+ ☐ Service enabled and started
+ ☐ Service restarts after crash: systemctl status trading-brain.service
+ ☐ Can view logs: journalctl -u trading-brain.service -f
+
+ Phase 7 — Remote Commands
+ ☐ Can execute remote commands: ssh -i key root@IP "command"
+ ☐ Can check status without login
+ ☐ Can restart service remotely
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SECURITY SUMMARY (After All Phases)
+═══════════════════════════════════════════════════════════════════════════════
+
+Layer 1: SSH Access Protection
+  ✅ SSH keys required (no passwords)
+  ✅ Key-based authentication is cryptographically secure
+  ✅ Can be used from multiple devices (just copy key)
+  ✅ Can be revoked by removing public key from authorized_keys
+
+Layer 2: Firewall Protection
+  ✅ UFW explicitly allows only SSH (22) and Dashboard (8501)
+  ✅ All other ports blocked by default
+  ✅ Blocks unauthorized port scanning
+
+Layer 3: Brute-Force Protection
+  ✅ Fail2Ban blocks attackers after 5 failed attempts
+  ✅ Automatic IP ban for 10 minutes
+  ✅ Protects against automated brute-force scripts
+
+Layer 4: Application Protection
+  ✅ Dashboard protected with password
+  ✅ Can be enhanced later with OAuth login
+
+Layer 5: Service Reliability
+  ✅ Trading engine auto-starts after reboot
+  ✅ Service auto-restarts if it crashes
+  ✅ Logs available via journalctl
+
+Result: You have a secure, reliable, remotely-manageable trading system!
+
+
+═══════════════════════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Issue: "Permission denied (publickey)" when connecting with SSH key
+─────────────────────────────────────────────────────────────────
+Solution:
+  1. Verify key file exists: ls ~/.ssh/trading_vps
+  2. Check permissions: ls -la ~/.ssh/trading_vps (should be -rw-------)
+  3. If wrong permissions: chmod 600 ~/.ssh/trading_vps
+  4. Verify public key in VPS: ssh root@178.18.252.24 "cat ~/.ssh/authorized_keys"
+  5. Try SSH with verbose output: ssh -vvv -i ~/.ssh/trading_vps root@178.18.252.24
+
+Issue: Locked out after enabling UFW
+─────────────────────────────────────
+Solution:
+  1. Use VPS provider's web console (emergency access)
+  2. Disable UFW: ufw disable
+  3. Check SSH: systemctl status ssh
+  4. Re-enable UFW properly: ufw allow 22, then ufw enable
+  5. Test SSH connection before closing console
+
+Issue: Systemd service crashes repeatedly
+──────────────────────────────────────
+Solution:
+  1. Check systemd status: systemctl status trading-brain.service
+  2. View detailed logs: journalctl -u trading-brain.service --lines=100
+  3. Check for Python errors: journalctl -u trading-brain.service | grep -i error
+  4. Verify Python venv path: /root/ai-trading-brain/.venv/bin/python --version
+  5. Test manual run: /root/ai-trading-brain/.venv/bin/python /root/ai-trading-brain/main.py --paper
+
+Issue: Dashboard password not working
+──────────────────────────────────────
+Solution:
+  1. Verify code was added to streamlit_kpi_dashboard.py
+  2. Check password string has no extra spaces: DASHBOARD_PASSWORD = "password"
+  3. Restart dashboard: streamlit run monitoring/streamlit_kpi_dashboard.py
+  4. Clear browser cache (Ctrl+Shift+Delete) and reload
+  5. Try incognito/private window to bypass cache
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS (60+ Days)
+═══════════════════════════════════════════════════════════════════════════════
+
+Once first-month monitoring confirms stable performance:
+
+1. Implement HTTPS for Dashboard
+   - Install Nginx reverse proxy
+   - Setup Let's Encrypt SSL certificate
+   - Auto-renew certificates with certbot
+
+2. Implement OAuth Login for Dashboard
+   - Connect to Google/GitHub OAuth
+   - Replace password with single sign-on
+   - Better audit trail
+
+3. Setup Database Backups
+   - Daily backup of SQLite databases
+   - Upload to S3 or external storage
+   - Test restore procedures
+
+4. Implement Monitoring & Alerting
+   - Setup UptimeRobot to monitor VPS
+   - Alert if trading system goes down
+   - Automatic restart procedures
+
+5. Implement CI/CD Pipeline
+   - GitHub Actions already pushing code
+   - Auto-deploy monitoring updates
+   - Auto-restart services as needed
+
+═══════════════════════════════════════════════════════════════════════════════
