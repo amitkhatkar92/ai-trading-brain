@@ -23,6 +23,45 @@ except ImportError:
     st.stop()
 
 
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🔐 PASSWORD PROTECTION FOR DASHBOARD
+# ═══════════════════════════════════════════════════════════════════════════════
+DASHBOARD_PASSWORD = "trading-brain-2026"  # Change this to your secure password
+
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    st.set_page_config(page_title="AI Trading Brain", layout="centered")
+    st.markdown("# 🔐 AI Trading Brain Dashboard")
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("### Login Required")
+        st.markdown("Enter dashboard password to continue")
+        
+        password_input = st.text_input(
+            "Password:",
+            type="password",
+            placeholder="Enter password",
+            key="dashboard_password"
+        )
+        
+        if st.button("🔓 Login", use_container_width=True):
+            if password_input == DASHBOARD_PASSWORD:
+                st.session_state.authenticated = True
+                st.success("✅ Authentication successful! Redirecting...")
+                st.rerun()
+            else:
+                st.error("❌ Incorrect password. Please try again.")
+                st.stop()
+    
+    st.stop()
+
+# ═══════════════════════════════════════════════════════════════════════════════
+
+
 def show_first_month_kpi_dashboard():
     """Display first-month KPI monitoring dashboard."""
     
@@ -38,6 +77,17 @@ def show_first_month_kpi_dashboard():
     kpi_data = tracker.export_json()
     kpis = kpi_data["kpis"]
     trading = kpi_data["trading"]
+    
+    # Generate alerts
+    alerts = []
+    if not kpis["signal_accuracy"]["ok"]:
+        alerts.append(f"⚠️  SIGNAL ACCURACY BELOW TARGET: {kpis['signal_accuracy']['percent']:.2f}% (goal: 40%)")
+    if not kpis["execution_slippage"]["ok"]:
+        alerts.append(f"⚠️  EXECUTION SLIPPAGE EXCEEDED: {kpis['execution_slippage']['percent']:.4f}% (goal: < 0.15%)")
+    if not kpis["drawdown"]["ok"]:
+        alerts.append(f"⚠️  DRAWDOWN EXCEEDED: {kpis['drawdown']['percent']:.2f}% (goal: < 5%)")
+    if not kpis["uptime"]["ok"]:
+        alerts.append(f"⚠️  SYSTEM UPTIME BELOW TARGET: {kpis['uptime']['percent']:.2f}% (goal: 100%)")
     
     # ═══════════════════════════════════════════════════════════════════════
     # KPI CARDS
@@ -175,13 +225,13 @@ def show_first_month_kpi_dashboard():
     
     st.markdown("---")
     
-    if kpi_data["alerts"]:
+    if alerts:
         st.subheader("⚠️  Alerts")
         alert_col1, alert_col2 = st.columns([0.1, 0.9])
         with alert_col1:
             st.markdown("🔴")
         with alert_col2:
-            for alert in kpi_data["alerts"]:
+            for alert in alerts:
                 st.warning(alert)
     else:
         st.success("✅ All KPIs within targets — No alerts")

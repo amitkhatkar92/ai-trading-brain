@@ -73,23 +73,3 @@ jobs:
             # Show logs for verification
             docker logs --tail 50 ai-trading-brain
 
-  notify-status:
-    needs: [build-and-push, deploy-to-vps]
-    runs-on: ubuntu-latest
-    if: always()
-    
-    steps:
-      - name: Notify via Telegram (if configured)
-        if: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-        run: |
-          STATUS="${{ needs.deploy-to-vps.result }}"
-          if [ "$STATUS" = "success" ]; then
-            MESSAGE="✅ AI Trading Brain deployed successfully to VPS 178.18.252.24"
-          else
-            MESSAGE="❌ Deployment failed. Check GitHub Actions logs."
-          fi
-          
-          curl -X POST \
-            https://api.telegram.org/bot${{ secrets.TELEGRAM_BOT_TOKEN }}/sendMessage \
-            -d chat_id=${{ secrets.TELEGRAM_CHAT_ID }} \
-            -d text="$MESSAGE"
