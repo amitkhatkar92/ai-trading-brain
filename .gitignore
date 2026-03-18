@@ -1,23 +1,88 @@
-# Credentials — NEVER commit
+# ═══════════════════════════════════════════════════════════════════════════
+# SECURITY: Credentials & Secrets — NEVER COMMIT
+# ═══════════════════════════════════════════════════════════════════════════
 .env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_rsa.pub
+*.jks
+secrets/
+.aws/
+.gcp/
 
-# Python
+# ═══════════════════════════════════════════════════════════════════════════
+# Python & Virtual Environments
+# ═══════════════════════════════════════════════════════════════════════════
 __pycache__/
 *.py[cod]
 *.pyo
+*.pyd
 .venv/
 venv/
+env/
+ENV/
 *.egg-info/
+dist/
+build/
+*.egg
+.tox/
 
-# Data / logs
+# ═══════════════════════════════════════════════════════════════════════════
+# Sensitive Data: Logs, Database, Trade History
+# ═══════════════════════════════════════════════════════════════════════════
 data/
 logs/
+simulation_logs/
+audit_out.txt
+readiness_out*.txt
 *.log
+*.log.*
 *.db
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
+paper_trades.csv
+paper_trade_log.csv
+*_trades.csv
+trade_history/
 
-# IDE
+# ═══════════════════════════════════════════════════════════════════════════
+# System & IDE
+# ═══════════════════════════════════════════════════════════════════════════
 .vscode/settings.json
+.vscode/extensions.json
 .idea/
 *.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Test & Cache
+# ═══════════════════════════════════════════════════════════════════════════
+.pytest_cache/
+htmlcov/
+.coverage
+.hypothesis/
+
+# ═══════════════════════════════════════════════════════════════════════════
+# OS-specific
+# ═══════════════════════════════════════════════════════════════════════════
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Docker & Deployment
+# ═══════════════════════════════════════════════════════════════════════════
+docker-compose.override.yml

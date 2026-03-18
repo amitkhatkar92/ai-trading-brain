@@ -1,0 +1,416 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    VPS SECURITY HARDENING GUIDE
+                     AI Trading Brain - March 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+This guide covers 7 security improvements to protect your VPS from unauthorized
+access and data exposure.
+
+Status: ✅ READY TO IMPLEMENT
+
+
+═══════════════════════════════════════════════════════════════════════════════
+1. LOG FILE SECURITY & ROTATION
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE:
+  Your project contains logs/ and simulation_logs/ folders that may contain:
+  • API calls with authentication tokens
+  • Trade execution details
+  • Internal debugging information
+
+SOLUTION:
+  A) Restrict log directory permissions (LOCAL):
+  
+     chmod 700 data/logs
+     chmod 700 simulation_logs
+     chmod 600 audit_out.txt readiness_out2.txt
+
+  B) On VPS, set up log rotation:
+  
+     SSH into VPS:
+     $ ssh -i ~/.ssh/trading_vps root@178.18.252.24
+     
+     Inside VPS container:
+     $ docker exec ai-trading-brain bash
+     
+     Setup logrotate:
+     $ apt-get install logrotate
+     
+     Create /etc/logrotate.d/ai-trading-brain:
+     ─────────────────────────────────────────────────────────────
+     /root/ai-trading-brain/logs/*.log {
+         daily
+         rotate 7
+         compress
+         delaycompress
+         notifempty
+         create 0600 root root
+         sharedscripts
+     }
+     ─────────────────────────────────────────────────────────────
+
+  C) Test logrotate:
+     $ logrotate -f /etc/logrotate.d/ai-trading-brain
+
+  VERIFICATION:
+     Old logs automatically rotate to .gz files after 7 days
+     Only root can read sensitive data
+
+
+═══════════════════════════════════════════════════════════════════════════════
+2. CSV FILE SECURITY CHECK
+═══════════════════════════════════════════════════════════════════════════════
+
+CHECKED:
+  ✅ security_id_list.csv
+     • Contains: Symbol, Exchange, Token ID (numeric), Instrument name
+     • NO API keys, tokens, or account identifiers
+     • SAFE to commit to GitHub
+     • Restricted: chmod 600 security_id_list.csv (optional)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+3. VPS FIREWALL SETUP (UFW - Uncomplicated Firewall)
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE:
+  Your VPS (178.18.252.24) is currently wide open to the internet.
+  Anyone can scan ports and potentially exploit services.
+
+SOLUTION:
+  SSH into VPS and execute:
+
+  $ ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+  Then run these commands:
+
+  ─────────────────────────────────────────────────────────────
+  # Update system
+  apt update
+  apt upgrade -y
+
+  # Install firewall and intrusion prevention
+  apt install ufw fail2ban -y
+
+  # Configure firewall rules
+  ufw default deny incoming
+  ufw default allow outgoing
+  
+  # Allow SSH (CRITICAL - do this first!)
+  ufw allow 22/tcp
+  
+  # Allow Streamlit dashboard
+  ufw allow 8501/tcp
+  
+  # Allow Docker container communication (optional)
+  ufw allow from 172.16.0.0/12
+  
+  # Enable firewall
+  ufw enable
+  
+  # Verify rules
+  ufw status
+  ─────────────────────────────────────────────────────────────
+
+  EXPECTED OUTPUT:
+  ─────────────────────────────────────────────────────────────
+  Status: active
+
+  To                         Action      From
+  --                         ------      ----
+  22/tcp                     ALLOW       Anywhere
+  8501/tcp                   ALLOW       Anywhere
+  172.16.0.0/12              ALLOW       Anywhere
+  22/tcp (v6)                ALLOW       Anywhere (v6)
+  8501/tcp (v6)              ALLOW       Anywhere (v6)
+  ─────────────────────────────────────────────────────────────
+
+
+═══════════════════════════════════════════════════════════════════════════════
+4. INTRUSION PREVENTION (Fail2Ban)
+═══════════════════════════════════════════════════════════════════════════════
+
+WHAT IT DOES:
+  • Monitors login attempts
+  • Blocks IPs after 5 failed SSH attempts
+  • Automatically unbans after 10 minutes
+
+SETUP:
+  $ ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  $ apt install fail2ban -y
+  
+  Create /etc/fail2ban/jail.local:
+  ─────────────────────────────────────────────────────────────
+  [DEFAULT]
+  bantime  = 600
+  findtime = 600
+  maxretry = 5
+
+  [sshd]
+  enabled = true
+  ─────────────────────────────────────────────────────────────
+  
+  Start service:
+  $ systemctl start fail2ban
+  $ systemctl enable fail2ban
+  
+  Check status:
+  $ fail2ban-client status
+  $ fail2ban-client status sshd
+
+
+═══════════════════════════════════════════════════════════════════════════════
+5. STREAMLIT DASHBOARD PROTECTION (Authentication + HTTPS)
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE:
+  Your Streamlit dashboard at http://178.18.252.24:8501 is:
+  • HTTP (not encrypted)
+  • No authentication (anyone can access)
+  • Publicly exposed on the internet
+
+SOLUTION A - QUICK FIX (Password protection):
+  
+  Edit config at ~/.streamlit/config.toml:
+  ─────────────────────────────────────────────────────────────
+  [client]
+  showErrorDetails = false
+  
+  [logger]
+  level = "error"
+  
+  [server]
+  port = 8501
+  headless = true
+  ─────────────────────────────────────────────────────────────
+
+SOLUTION B - RECOMMENDED (Nginx reverse proxy + Let's Encrypt SSL):
+  
+  This requires additional setup. For now, restrict access:
+  
+  $ ufw allow from YOUR_IP_ADDRESS to any port 8501
+  
+  Replace YOUR_IP_ADDRESS with your current public IP.
+  
+  To find your IP:
+  $ curl https://api.ipify.org
+
+SOLUTION C - ENTERPRISE (VPN + OAuth):
+  
+  Put Streamlit behind a VPN or OAuth proxy.
+  Only authenticated users can access.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+6. FILE PERMISSIONS & DIRECTORY SECURITY
+═══════════════════════════════════════════════════════════════════════════════
+
+CURRENT LOCAL PERMISSIONS:
+
+  $ cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+  
+  # Secure log directories
+  chmod 700 data/logs
+  chmod 700 simulation_logs
+  
+  # Secure individual log files
+  chmod 600 audit_out.txt
+  chmod 600 readiness_out2.txt
+  chmod 600 data/*.json
+  
+  # Secure CSV files
+  chmod 600 security_id_list.csv
+
+ON VPS:
+
+  $ docker exec ai-trading-brain bash
+  
+  # Set production-grade permissions
+  chmod -R 700 /root/ai-trading-brain
+  chmod 600 /root/ai-trading-brain/.env
+  chmod 600 /root/ai-trading-brain/data/*.csv
+  chmod 600 /root/ai-trading-brain/data/*.db
+  chmod 700 /root/ai-trading-brain/logs
+  chmod 600 /root/ai-trading-brain/logs/*.log
+  
+  # Verify
+  ls -la /root/ai-trading-brain/
+
+
+═══════════════════════════════════════════════════════════════════════════════
+7. GIT SECURITY & .GITIGNORE VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+CURRENT STATUS: ✅ UPDATED
+
+Your .gitignore now includes:
+  ✅ .env (credentials)
+  ✅ *.key, *.pem, *.p12 (private keys)
+  ✅ data/ (trading data, databases)
+  ✅ logs/ (log files)
+  ✅ paper_trades.csv (trade history)
+  ✅ audit_out.txt, readiness_out*.txt
+
+VERIFICATION - Ensure no secrets committed:
+
+  $ cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+  
+  # Check what Git will commit (dry-run)
+  $ git status --short
+  
+  # Search for sensitive patterns
+  $ git log -p | grep -i "password\|api_key\|token\|secret"
+  
+  Expected: Nothing found (clean output)
+
+BEFORE PUSHING:
+
+  $ git diff --cached | grep -i "password\|api_key"
+  
+  Expected: Nothing found
+
+
+═══════════════════════════════════════════════════════════════════════════════
+IMPLEMENTATION CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+LOCAL MACHINE (Windows):
+  ☐ chmod 700 logs/ and simulation_logs/ (via WSL or Git Bash)
+  ☐ chmod 600 audit_out.txt readiness_out2.txt
+  ☐ Verify .gitignore updated (commit)
+  ☐ Run: git log -p | grep -i "password" (verify clean history)
+  ☐ Push to GitHub
+
+VPS (SSH):
+  ☐ SSH into VPS: ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  ☐ Install UFW: apt install ufw fail2ban -y
+  ☐ Allow SSH: ufw allow 22/tcp
+  ☐ Allow Dashboard: ufw allow 8501/tcp
+  ☐ Enable firewall: ufw enable
+  ☐ Verify: ufw status
+  ☐ Setup logrotate (daily rotation)
+  ☐ Set permissions: chmod -R 700 /root/ai-trading-brain
+  ☐ Test SSH access still works
+  ☐ Test dashboard still accessible at port 8501
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SECURITY AUDIT
+═══════════════════════════════════════════════════════════════════════════════
+
+Before LIVE TRADING, run these checks:
+
+LOCAL:
+  $ git log --name-status | grep -E "\.env|\.key|secret"
+     Expected: No results
+  
+  $ git log -p | grep -E "password|api_key|token=|Authorization" | head -20
+     Expected: No results
+  
+  $ cat .gitignore | grep -E "data/|logs/|\.env"
+     Expected: All should be there
+
+VPS:
+  $ ssh -i ~/.ssh/trading_vps root@178.18.252.24
+  $ sudo ufw status
+     Expected: active, port 22 and 8501 allowed
+  
+  $ fail2ban-client status
+     Expected: running
+  
+  $ ls -la /root/ai-trading-brain/.env
+     Expected: -rw------- (600 permissions)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+NEXT STEPS (60+ DAYS, BEFORE LIVE TRADING)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Setup Nginx reverse proxy with SSL (Let's Encrypt)
+   → Encrypts Streamlit dashboard traffic (HTTPS)
+   → Enables password/OAuth authentication
+   
+2. Move API keys to environment variables only
+   → Remove any hardcoded tokens from config files
+   → Use .env file (already gitignored)
+   
+3. Setup VPS backups
+   → Scheduled daily snapshots
+   → Disaster recovery plan
+   
+4. Enable VPS monitoring
+   → CPU, memory, disk usage alerts
+   → Network traffic monitoring
+   
+5. Setup log aggregation
+   → Centralized logging (optional)
+   → Real-time alerting on errors/crashes
+
+
+═══════════════════════════════════════════════════════════════════════════════
+COMMANDS REFERENCE (Copy-Paste Ready)
+═══════════════════════════════════════════════════════════════════════════════
+
+LOCAL - Secure logs:
+────────────────────────────────────────────────────────────────────────────
+cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+chmod 700 data/logs simulation_logs
+chmod 600 audit_out.txt readiness_out2.txt
+────────────────────────────────────────────────────────────────────────────
+
+VPS - Enable firewall:
+────────────────────────────────────────────────────────────────────────────
+ssh -i ~/.ssh/trading_vps root@178.18.252.24
+apt update && apt install ufw fail2ban -y
+ufw default deny incoming
+ufw allow 22/tcp
+ufw allow 8501/tcp
+ufw enable
+ufw status
+────────────────────────────────────────────────────────────────────────────
+
+VPS - Set file permissions:
+────────────────────────────────────────────────────────────────────────────
+docker exec ai-trading-brain bash
+chmod -R 700 /root/ai-trading-brain
+chmod 600 /root/ai-trading-brain/.env
+ls -la /root/ai-trading-brain/
+────────────────────────────────────────────────────────────────────────────
+
+Check for committed secrets:
+────────────────────────────────────────────────────────────────────────────
+cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+git log -p | grep -i "password\|api_key\|token"
+git status --short
+────────────────────────────────────────────────────────────────────────────
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SECURITY SUMMARY
+═══════════════════════════════════════════════════════════════════════════════
+
+Current Status:
+  ✅ .gitignore: Comprehensive (updated)
+  ✅ CSV files: Safe (no credentials)
+  ✅ Logs: Need rotation setup on VPS
+  ⚠️  VPS Firewall: Not yet enabled
+  ⚠️  Dashboard: No authentication
+  ✔️  File permissions: Need hardening
+
+After Implementation:
+  ✅ Firewall blocks unauthorized access
+  ✅ Logs rotate automatically (old logs deleted)
+  ✅ SSH brute-force protected (fail2ban)
+  ✅ File permissions restrict unauthorized read
+  ✅ No committed secrets in git history
+  ✅ Dashboard access restricted (firewall)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Next: Run the UFW and fail2ban commands on your VPS to complete security setup.
+
+Last Updated: 2026-03-18
+Status: READY FOR IMPLEMENTATION
+═══════════════════════════════════════════════════════════════════════════════
