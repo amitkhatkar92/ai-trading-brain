@@ -1,0 +1,273 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║            FIRST-MONTH KPI MONITORING — QUICK START GUIDE                    ║
+║                                                                              ║
+║  Your Goals:                                                                 ║
+║    ✅ Signal Accuracy:     Win Rate ≥ 40%     (Reasonable baseline)          ║
+║    ✅ Execution Slippage:  < 0.15% per trade  (Minimal slippage)             ║
+║    ✅ Drawdown:            < 5% of capital    (Controlled losses)            ║
+║    ✅ System Uptime:       100%               (No crashes)                   ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+═══════════════════════════════════════════════════════════════════════════════
+1. DAILY MONITORING (5 minutes)
+═══════════════════════════════════════════════════════════════════════════════
+
+MORNING REPORT (Before market open):
+$ cd c:\Users\UCIC\OneDrive\Desktop\ai_trading_brain
+$ python monitoring/generate_monitoring_report.py
+
+Expected output:
+  ────────────────────────────────────────────────────────────
+  Signal Accuracy:    66.67%  ✅ (goal: ≥40%)
+  Execution Slippage: 0.0012% ✅ (goal: <0.15%)
+  Drawdown:            2.34%  ✅ (goal: <5%)
+  System Uptime:     100.00%  ✅ (goal: 100%)
+  ────────────────────────────────────────────────────────────
+  Closed Trades:  12
+  Open Trades:    273
+  ✅ All KPIs within targets
+
+
+EVENING REPORT (After market close, 4 PM):
+$ python monitoring/generate_monitoring_report.py
+
+→ If any ⚠️  ALERT: investigate immediately
+→ Check trading journal for root cause
+→ Adjust strategy parameters if needed
+
+
+═══════════════════════════════════════════════════════════════════════════════
+2. STREAMLIT DASHBOARD (Real-time, Browser)
+═══════════════════════════════════════════════════════════════════════════════
+
+Start dashboard:
+$ streamlit run monitoring/streamlit_kpi_dashboard.py
+
+Then open browser to:
+→ http://localhost:8501
+
+Dashboard shows:
+┌─────────────────────────────────────────────────────────────┐
+│  4 METRIC CARDS (live, auto-refresh every 5 seconds)       │
+├─────────────────────────────────────────────────────────────┤
+│  📊 Signal Accuracy: 66.67%  🟢 ON TARGET                  │
+│  📊 Exec Slippage:    0.0012% 🟢 ON TARGET                 │
+│  📊 Drawdown:         2.34%   🟢 ON TARGET                 │
+│  📊 System Uptime:  100.00%   🟢 ON TARGET                 │
+├─────────────────────────────────────────────────────────────┤
+│  Trading Activity: 12 closed, 273 open, +1.87R avg win    │
+├─────────────────────────────────────────────────────────────┤
+│  [✅ NO ALERTS]  Download JSON Report Button               │
+└─────────────────────────────────────────────────────────────┘
+
+Keep this tab open during trading hours for real-time monitoring.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+3. WEEKLY TREND ANALYSIS (Friday EOD)
+═══════════════════════════════════════════════════════════════════════════════
+
+Check weekly trends:
+$ python -c "from monitoring.first_month_tracker import FirstMonthTracker; \
+tracker = FirstMonthTracker(); \
+tracker.update(); \
+print(tracker.get_weekly_report())"
+
+Output shows:
+  ALL-TIME vs RECENT(20 trades) comparison
+  → Is win rate improving or degrading?
+  → Are losses getting controlled?
+  → System stable?
+
+
+═══════════════════════════════════════════════════════════════════════════════
+4. PROGRAMMATIC ACCESS (Python Integration)
+═══════════════════════════════════════════════════════════════════════════════
+
+Use in your code:
+────────────────────────────────────────────────────────────────────────────
+
+from monitoring.first_month_tracker import FirstMonthTracker
+
+# Init tracker
+tracker = FirstMonthTracker(initial_capital=1_000_000)
+tracker.update()
+
+# Get KPIs
+win_rate = tracker.get_signal_accuracy()           # 0.6667 (66.67%)
+slippage = tracker.get_execution_slippage()        # 0.000012 (0.0012%)
+curr_dd, max_dd = tracker.get_drawdown()           # (2.34, 3.12)
+uptime = tracker.get_system_uptime()               # 1.0 (100%)
+
+# Check status
+status = tracker.get_kpi_status()
+# → {"signal_accuracy_ok": True, "slippage_ok": True, ...}
+
+# Export JSON
+data = tracker.export_json()
+print(data)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+5. ALERTS & THRESHOLDS
+═══════════════════════════════════════════════════════════════════════════════
+
+ALERT LEVEL          ACTION
+─────────────────────────────────────────────────────────────────────────────
+🟢 All KPIs OK       ✅ Continue trading normally
+
+🟡 Win Rate < 40%    ⚠️  Investigate signal quality
+                     • Disable underperforming strategies
+                     • Review entry criteria
+
+🟡 Slippage > 0.15%  ⚠️  Check market liquidity
+                     • Adjust entry timing
+                     • Use limit orders instead of market
+
+🔴 Drawdown > 5%     🔴 URGENT: REDUCE RISK IMMEDIATELY
+                     • Cut position size by 50%
+                     • Pause new signals
+                     • Investigate root cause
+
+🔴 Uptime < 100%     🔴 URGENT: DEBUG CRASHES
+                     • Review error logs
+                     • Check system resources
+                     • Restart containers
+
+
+═══════════════════════════════════════════════════════════════════════════════
+6. ON VPS (Automatic Monitoring)
+═══════════════════════════════════════════════════════════════════════════════
+
+VPS Container generates reports automatically:
+
+SSH into VPS:
+$ ssh -i ~/.ssh/trading_vps root@178.18.252.24
+
+Generate report inside container:
+$ docker exec ai-trading-brain python monitoring/generate_monitoring_report.py
+
+Or view Streamlit dashboard (port 8501):
+$ http://178.18.252.24:8501
+
+
+═══════════════════════════════════════════════════════════════════════════════
+7. FILES
+═══════════════════════════════════════════════════════════════════════════════
+
+monitoring/
+├── __init__.py                      # Module exports
+├── first_month_tracker.py           # Core KPI engine
+├── generate_monitoring_report.py    # Daily report script
+├── streamlit_kpi_dashboard.py       # Live dashboard UI
+└── FIRST_MONTH_KPI_GOALS.md         # Full documentation
+
+
+═══════════════════════════════════════════════════════════════════════════════
+8. TYPICAL WORKFLOW
+═══════════════════════════════════════════════════════════════════════════════
+
+MONDAY - FRIDAY (Trading Days):
+
+08:00 AM (Pre-Market)
+  → python monitoring/generate_monitoring_report.py
+  → Review KPIs
+  → Check for any alerts
+
+09:15 AM (Market Open)
+  → Start Streamlit dashboard: streamlit run monitoring/streamlit_kpi_dashboard.py
+  → Keep browser tab open for real-time monitoring
+
+16:00 (Market Close)
+  → Final report: python monitoring/generate_monitoring_report.py
+  → Document any trades that breached thresholds
+  → Adjust parameters if needed
+
+FRIDAY 16:30 (Weekly Review)
+  → python <weekly_report_command>
+  → Trend analysis: are KPIs improving?
+  → Plan changes for next week if needed
+
+
+═══════════════════════════════════════════════════════════════════════════════
+9. SUCCESS CRITERIA (End of Month)
+═══════════════════════════════════════════════════════════════════════════════
+
+READY FOR LIVE TRADING if ALL are true:
+  ✅ Signal Accuracy ≥ 40%      (win rate acceptable)
+  ✅ Slippage < 0.15%           (execution quality good)
+  ✅ Drawdown < 5%              (risk managed)
+  ✅ Uptime = 100%              (system stable)
+  ✅ At least 50 closed trades  (statistically significant)
+  ✅ No major bugs found        (system robust)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+10. COMMAND REFERENCE
+═══════════════════════════════════════════════════════════════════════════════
+
+# Generate daily text report
+python monitoring/generate_monitoring_report.py
+
+# Start real-time dashboard
+streamlit run monitoring/streamlit_kpi_dashboard.py
+
+# Get weekly trend report
+python -c "from monitoring.first_month_tracker import FirstMonthTracker; \
+tracker = FirstMonthTracker(); tracker.update(); print(tracker.get_weekly_report())"
+
+# Export KPI data as JSON
+python -c "from monitoring.first_month_tracker import FirstMonthTracker; \
+import json; tracker = FirstMonthTracker(); tracker.update(); \
+print(json.dumps(tracker.export_json(), indent=2))"
+
+# Quick status check (Python)
+python -c "from monitoring.first_month_tracker import FirstMonthTracker; \
+tracker = FirstMonthTracker(); tracker.update(); \
+status = tracker.get_kpi_status(); \
+print(f'✅ All OK' if all(status.values()) else '⚠️  ALERT')"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+💡 TIPS
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Run morning report BEFORE market opens (catches overnight crashes)
+2. Keep Streamlit dashboard open during trading for real-time alerts
+3. If drawdown exceeds 5%, STOP new trades immediately
+4. Save weekly reports for trend analysis
+5. Document any manual interventions in trading journal
+6. Check system logs if uptime < 100%
+
+
+═══════════════════════════════════════════════════════════════════════════════
+📞 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+Q: Win rate shows 0% but I see winning trades
+A: Check paper_trades.csv — exit_price must be populated for closed trades
+
+Q: Slippage shows extremely high values
+A: Low-liquidity symbols or poor entry timing
+→ Use only high-volume pairs (RELIANCE, ICICIBANK, BANKNIFTY)
+
+Q: Drawdown exceeds 5%
+A: URGENT — Reduce position size by 50% immediately
+→ Review last 5 trades for root cause
+→ May need to pause new signals
+
+Q: System Uptime < 100%
+A: System crashed — check error logs:
+→ docker logs ai-trading-brain
+→ Review system resources (memory, CPU)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+QUESTIONS? See: monitoring/FIRST_MONTH_KPI_GOALS.md for full documentation
+
+Created: 2026-03-18
+Status: ✅ READY FOR MONITORING
+═══════════════════════════════════════════════════════════════════════════════
