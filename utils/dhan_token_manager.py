@@ -50,10 +50,12 @@ _watcher_should_stop = threading.Event()
 _token_lock = threading.Lock()
 
 # Token expiration settings
-# Note: Use 30-day window by default (configurable via config/api_tokens.json)
-# OAuth server will automatically handle token refresh before expiry
-TOKEN_TTL_DAYS = 30   # Target 30-day window (can be overridden per token)
-TOKEN_WARN_DAYS = 3   # Warn 3 days before expiration
+# CRITICAL: Dhan tokens are DAILY SESSION tokens, NOT 30-day tokens
+# Each trading day requires a NEW token at market open (09:15 IST)
+# Token expires at end of trading session (16:51 UTC)
+TOKEN_TTL_DAYS = 1     # Dhan tokens valid for 1 day only (daily session)
+TOKEN_WARN_MINUTES = 10  # Warn 10 mins before market close (16:51 UTC)
+TOKEN_WARN_DAYS = 0    # Deprecat ed - use minutes for daily tokens
 
 
 def get_dhan_token() -> Optional[str]:
@@ -139,27 +141,45 @@ def _load_token_from_file() -> Optional[str]:
 
         # Check if token is expired by expires_at field (if present)
         expires_at_str = data.get("expires_at")
+        token_type_field = data.get("token_type", "Bearer")  # Can be "Bearer" or "DAILY_SESSION"
+        
         if expires_at_str:
             try:
                 expires_at = datetime.fromisoformat(expires_at_str.replace("Z", "+00:00"))
                 now = datetime.utcnow()
                 
+                # Check if token is expired
                 if now > expires_at:
                     days_expired = (now - expires_at).days
+                    hours_expired = (now - expires_at).total_seconds() / 3600
                     log.error(
-                        f"❌ Token EXPIRED {days_expired} days ago "
+                        f"❌ Token EXPIRED {hours_expired:.1f} hours ago "
                         f"[was: {expires_at.isoformat()}]"
                     )
-                    _emit_token_expiration_alert(expires_at, days_expired)
+                    _emit_token_expiration_alert(expires_at, hours_expired)
                     return None
                 
-                # Check if refresh needed (< 3 days left)
-                days_left = (expires_at - now).total_seconds() / (24 * 3600)
-                if days_left < TOKEN_WARN_DAYS:
-                    log.warning(
-                        f"⚠️  Token expiring soon ({days_left:.1f} days left) - "
-                        f"recommend refresh"
-                    )
+                # For DAILY_SESSION tokens: check if expiring soon (< 10 mins)
+                if token_type_field == "DAILY_SESSION":
+                    seconds_left = (expires_at - now).total_seconds()
+                    minutes_left = seconds_left / 60
+                    if minutes_left < TOKEN_WARN_MINUTES:
+                        log.warning(
+                            f"⚠️  DAILY token expiring SOON ({minutes_left:.0f} mins) - "
+                            f"daily refresh required"
+                        )
+                    elif seconds_left < 3600:  # Less than 1 hour
+                        log.info(
+                            f"ℹ️  DAILY token valid for {minutes_left:.0f} more minutes"
+                        )
+                else:
+                    # For regular Bearer tokens: check if refresh needed (< 3 days left)
+                    days_left = (expires_at - now).total_seconds() / (24 * 3600)
+                    if days_left < TOKEN_WARN_DAYS:
+                        log.warning(
+                            f"⚠️  Token expiring soon ({days_left:.1f} days left) - "
+                            f"recommend refresh"
+                        )
 
             except Exception as e:
                 log.debug(f"Could not parse expires_at timestamp: {e}")

@@ -150,20 +150,34 @@ class DhanOAuthHandler(BaseHTTPRequestHandler):
             access_token = self._exchange_code_for_token(code, client_id)
             
             if access_token:
-                # SUCCESS: Save access_token format (NEW)
+                # SUCCESS: Save access_token format (NEW FORMAT - DAILY SESSION)
                 from datetime import timedelta
-                expiry_days = 30
-                expires_at = datetime.utcnow() + timedelta(days=expiry_days)
+                
+                # CRITICAL: Dhan tokens are DAILY SESSION tokens
+                # Token expires at market close (16:51 UTC same day)
+                now = datetime.utcnow()
+                
+                # Calculate expire time: same day at 16:51 UTC
+                # If already past 16:51 UTC, token expires TODAY at 16:51
+                expires_at = now.replace(hour=16, minute=51, second=0, microsecond=0)
+                
+                # If current time is already past 16:51, use today's time anyway
+                # (will be expired immediately, triggering daily refresh tomorrow)
+                ttl_days = 0  # Daily token - expires same day
                 
                 token_data = {
                     "access_token": access_token,
                     "client_id": client_id,
-                    "captured_at": datetime.utcnow().isoformat(),
+                    "dhan_client_id": os.getenv("DHAN_CLIENT_ID", ""),
+                    "captured_at": now.isoformat(),
                     "expires_at": expires_at.isoformat(),
-                    "ttl_days": expiry_days,
+                    "ttl_days": ttl_days,
+                    "token_type": "DAILY_SESSION",
+                    "refresh_required": True,
+                    "critical_note": "Dhan tokens are daily session tokens. New token required daily at market open.",
                     "status": "active"
                 }
-                log.info(f"✅ Exchanged code → access_token (expires in {expiry_days} days)")
+                log.info(f"✅ Exchanged code → access_token (DAILY_SESSION, expires at {expires_at.isoformat()})")
             else:
                 # FALLBACK: Save authorization code (OLD)
                 log.warning("⚠️  Token exchange failed, saving authorization code for manual exchange")
