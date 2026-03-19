@@ -1,0 +1,23 @@
+[Unit]
+Description=Dhan OAuth Callback Server
+After=network.target
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ai-trading-brain
+ExecStart=/root/ai-trading-brain/venv/bin/python3 /root/ai-trading-brain/scripts/dhan_oauth_server.py
+Restart=always
+RestartSec=5
+
+# Logging
+StandardOutput=append:/root/ai-trading-brain/data/logs/oauth-callback.log
+StandardError=append:/root/ai-trading-brain/data/logs/oauth-callback-error.log
+
+# Environment
+Environment="PYTHONUNBUFFERED=1"
+
+[Install]
+WantedBy=multi-user.target

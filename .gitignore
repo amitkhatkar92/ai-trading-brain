@@ -15,6 +15,10 @@ id_rsa.pub
 secrets/
 .aws/
 .gcp/
+config/api_tokens.json
+config/api_tokens.json.*
+config/*.token
+config/*.token.*
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Python & Virtual Environments

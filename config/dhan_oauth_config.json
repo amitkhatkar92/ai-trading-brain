@@ -1,0 +1,20 @@
+{
+  "dhan": {
+    "client_id": "2603183256",
+    "sandbox_mode": true,
+    "token_ttl_days": 30,
+    "redirect_uri": "http://localhost:8000/callback",
+    "notes": "Sandbox Client ID for testing. Update to production ID when ready for live trading."
+  },
+  "token_refresh": {
+    "enabled": true,
+    "refresh_threshold_days": 3,
+    "auto_refresh": true,
+    "refresh_check_interval": 3600
+  },
+  "oauth_server": {
+    "port": 8000,
+    "host": "0.0.0.0",
+    "timeout": 300
+  }
+}
