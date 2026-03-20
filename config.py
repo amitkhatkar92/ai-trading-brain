@@ -112,7 +112,7 @@ CONTINUOUS_SCAN_INTERVAL = 30   # seconds between price/volume/breakout checks
 # LOGGING
 # ─────────────────────────────────────────────
 LOG_DIR   = os.path.join(os.path.dirname(__file__), "data", "logs")
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL = os.getenv("LOG_LEVEL", "DEBUG")
 
 # ─────────────────────────────────────────────
 # NOTIFICATIONS (Telegram)
