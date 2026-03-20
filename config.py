@@ -33,9 +33,9 @@ ACTIVE_BROKER = os.getenv("ACTIVE_BROKER", "zerodha")   # zerodha | dhan | angel
 # ─────────────────────────────────────────────
 TOTAL_CAPITAL            = float(os.getenv("TOTAL_CAPITAL", 1_000_000))   # INR
 MAX_RISK_PER_TRADE_PCT   = 0.01      # 1% of capital per trade
-MAX_PORTFOLIO_RISK_PCT   = 0.05      # 5% total portfolio risk
+MAX_PORTFOLIO_RISK_PCT   = 0.08      # 8% total portfolio risk (INCREASED 5→8 to unlock execution)
 MAX_DRAWDOWN_PCT         = 0.10      # 10% drawdown → halt trading
-MIN_CONFIDENCE_SCORE     = 6.2       # Minimum Decision AI score to execute (keep fixed)
+MIN_CONFIDENCE_SCORE     = 6.8       # Minimum Decision AI score to execute (INCREASED 6.2→6.8 to filter weak trades)
 
 # ─────────────────────────────────────────────
 # ATR-BASED EXECUTION  (replaces all hardcoded % stops)

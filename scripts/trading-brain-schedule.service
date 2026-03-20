@@ -1,0 +1,26 @@
+[Unit]
+Description=AI Trading Brain - Automated Schedule Mode
+After=network.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/ai-trading-brain
+EnvironmentFile=/root/ai-trading-brain/.env
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/root/ai-trading-brain/venv/bin/python main.py --schedule
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=trading-brain
+
+# Graceful shutdown
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

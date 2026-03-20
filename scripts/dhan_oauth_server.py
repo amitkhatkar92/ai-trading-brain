@@ -223,7 +223,11 @@ class DhanOAuthHandler(BaseHTTPRequestHandler):
             import requests
             
             DHAN_TOKEN_ENDPOINT = "https://api.dhan.co/oauth2/token"
-            redirect_uri = "http://localhost:8000/callback"
+            # IMPORTANT: This must match the redirect_uri used in the OAuth authorize request
+            # Dhan is registered with root path only (no /callback suffix)
+            # Get from environment or use default (178.18.252.24:8000 for VPS, localhost:8000 for local)
+            vps_host = os.getenv("VPS_HOST", "localhost")
+            redirect_uri = f"http://{vps_host}:8000"
             
             payload = {
                 "grant_type": "authorization_code",

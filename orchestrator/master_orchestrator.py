@@ -30,7 +30,7 @@ import threading
 from datetime import datetime
 from typing import List, Optional
 
-from config import SCHEDULE, MAX_DRAWDOWN_PCT
+from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
 from models import MarketSnapshot, TradeSignal, Portfolio
 from utils  import get_logger
 from utils.kill_switch import is_trading_enabled, get_kill_switch_status
@@ -58,6 +58,8 @@ from risk_control.risk_manager_ai           import RiskManagerAI
 from risk_control.portfolio_allocation_ai   import PortfolioAllocationAI
 from risk_control.stress_test_ai            import StressTestAI
 from risk_control.capital_risk_engine       import CapitalRiskEngine
+from risk_control.smart_execution           import SmartExecutionEngine
+from risk_control.correlation_engine        import CorrelationEngine
 
 from debate_system.multi_agent_debate       import MultiAgentDebate
 from decision_ai.decision_engine            import DecisionEngine
@@ -198,6 +200,17 @@ class MasterOrchestrator:
         self.risk_manager        = RiskManagerAI()
         self.portfolio_allocator = PortfolioAllocationAI()
         self.stress_test_ai      = StressTestAI()
+        
+        # ── Layer 5.5: Smart Execution & Correlation Control ──────────
+        # Get capital from config; defaults to 50k for safety
+        from config import TOTAL_CAPITAL
+        _capital = getattr(_cfg, 'TOTAL_CAPITAL', TOTAL_CAPITAL) if '_cfg' in dir() else TOTAL_CAPITAL
+        try:
+            _capital = float(TOTAL_CAPITAL)
+        except (TypeError, ValueError):
+            _capital = 50_000
+        self.smart_execution = SmartExecutionEngine(capital=_capital)
+        self.correlation_engine = CorrelationEngine(max_per_sector=2)
 
         # ── Market Simulation Engine (between Risk Control and Debate) ────
         self.simulation_engine   = SimulationEngine(mc_runs=1_000)
@@ -654,10 +667,109 @@ class MasterOrchestrator:
             self.system_monitor.finalize_cycle()
             return
 
+        # ── STEP 5.5: Smart Execution & Correlation Filtering ─────────────
+        # Apply intelligent trade selection BEFORE debate & decision
+        log.info("── Layer 5.5: Smart Execution & Correlation Filtering ──")
+        
+        # Step 1: Decorrelate by sector
+        # Convert TradeSignal objects to dicts for correlation engine
+        signals_as_dicts_for_corr = [
+            {
+                "symbol": s.symbol,
+                "sector": getattr(s, "sector", "OTHER"),
+                "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
+                "confidence": getattr(s, "confidence_score", 0.7),
+                "_original_signal": s,  # Keep reference
+            }
+            for s in guardian_decision.approved_signals
+        ]
+        
+        with self.system_monitor.time_layer("CorrelationEngine"):
+            decorrelated_dicts = self.correlation_engine.reduce_correlation(signals_as_dicts_for_corr)
+            
+            # Extract original signals from decorrelated dicts
+            decorrelated_signals = [
+                d.get("_original_signal") for d in decorrelated_dicts
+                if "_original_signal" in d and d.get("_original_signal") is not None
+            ]
+            
+            sector_summary = self.correlation_engine.get_sector_summary(decorrelated_dicts)
+            log.info(
+                "[CorrelationEngine] After decorrelation: %d signals "
+                "(Sector breakdown: %s)",
+                len(decorrelated_signals),
+                ", ".join(f"{s}: {c}" for s, c in sector_summary.items())
+            )
+            self.bus.publish(SystemEvent(
+                event_type=EventType.RISK_CHECK_PASSED,
+                source_agent="CorrelationEngine",
+                payload={
+                    "before_correlation": len(guardian_decision.approved_signals),
+                    "after_correlation": len(decorrelated_signals),
+                    "sector_breakdown": sector_summary,
+                },
+            ))
+        
+        # Step 2: Apply smart execution filtering
+        with self.system_monitor.time_layer("SmartExecutionEngine"):
+            portfolio = self.order_manager.get_portfolio()
+            current_capital = portfolio.total_capital if hasattr(portfolio, 'total_capital') else snapshot.portfolio_value if hasattr(snapshot, 'portfolio_value') else TOTAL_CAPITAL
+            
+            final_signals = self.smart_execution.filter_trades(
+                trades=[
+                    {
+                        "symbol": s.symbol,
+                        "sector": getattr(s, "sector", "OTHER"),
+                        "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
+                        "confidence": getattr(s, "confidence_score", 0.7),
+                        "entry_price": s.entry_price,
+                        "stop_loss": s.stop_loss,
+                        "target": s.target if hasattr(s, "target") else None,
+                        "original_signal": s,  # keep reference to full signal
+                    }
+                    for s in decorrelated_signals
+                ],
+                vix=snapshot.vix,
+                drawdown_factor=1.0,  # Could be adjusted based on portfolio drawdown
+            )
+            
+            # Separate accepted and rejected
+            accepted_trade_dicts = [t for t in final_signals if "position_size" in t]
+            rejected_trade_dicts = [t for t in final_signals if "rejection_reason" in t]
+            
+            # Extract original signals from accepted trades
+            final_approved_signals = [
+                t.get("original_signal") for t in accepted_trade_dicts
+                if "original_signal" in t and t.get("original_signal") is not None
+            ]
+            
+            # Log summary
+            exec_summary = self.smart_execution.get_summary(final_signals)
+            log.info(
+                "[SmartExecutionEngine] Summary: "
+                "Accepted=%d | Rejected=%d | "
+                "Total Exposure=$%.0f (%.1f%%) | "
+                "Bullish=$%.0f | Bearish=$%.0f",
+                exec_summary["accepted_count"],
+                exec_summary["rejected_count"],
+                exec_summary["total_exposure"],
+                exec_summary["exposure_pct"],
+                exec_summary["direction_breakdown"]["BUY"],
+                exec_summary["direction_breakdown"]["SELL"],
+            )
+            self.bus.publish(SystemEvent(
+                event_type=EventType.PORTFOLIO_UPDATED,
+                source_agent="SmartExecutionEngine",
+                payload=exec_summary,
+            ))
+        
+        # Use filtered signals for debate & decision
+        signals_for_debate = final_approved_signals
+
         # ── STEP 6: Debate + Decision ──────────────────────────────────
         executed: List[dict] = []
         with self.system_monitor.time_layer("DebateAndDecision"):
-            for signal in guardian_decision.approved_signals:
+            for signal in signals_for_debate:
                 row = self._run_debate_and_decide(signal, snapshot)
                 if row:
                     executed.append(row)

@@ -3,73 +3,30 @@ name: Deploy Trading Brain to VPS
 on:
   push:
     branches: [main, develop]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-      
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: |
-            amitkhatkar92/ai-trading-brain:latest
-            amitkhatkar92/ai-trading-brain:${{ github.sha }}
-          cache-from: type=registry,ref=amitkhatkar92/ai-trading-brain:buildcache
-          cache-to: type=registry,ref=amitkhatkar92/ai-trading-brain:buildcache,mode=max
-
   deploy-to-vps:
-    needs: build-and-push
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       
-      - name: Deploy to Contabo VPS
-        uses: appleboy/ssh-action@master
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
-          username: root
+          username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          port: 22
+          port: ${{ secrets.VPS_PORT }}
           script: |
-            cd /root/ai-trading-brain || { mkdir -p /root/ai-trading-brain && cd /root/ai-trading-brain; }
-            
-            # Pull latest code from GitHub
-            git init
-            git remote add origin https://github.com/amitkhatkar92/ai-trading-brain.git || true
-            git fetch origin ${{ github.ref_name }}
-            git reset --hard origin/${{ github.ref_name }}
-            
-            # Pull latest Docker image
-            docker pull amitkhatkar92/ai-trading-brain:latest
-            
-            # Stop and remove old container
-            docker stop ai-trading-brain || true
-            docker rm ai-trading-brain || true
-            
-            # Start new container with docker-compose
-            docker-compose -f docker-compose.yml up -d
-            
-            # Verify container is running
-            docker ps | grep ai-trading-brain && echo "✅ Deployment successful" || echo "❌ Deployment failed"
-            
-            # Show logs for verification
-            docker logs --tail 50 ai-trading-brain
+            cd /root/ai-trading-brain
+            git pull origin main
+            source venv/bin/activate
+            pip install -r requirements.txt 2>&1 | tail -5
+            sudo systemctl restart trading-brain-schedule
+            sleep 2
+            systemctl status trading-brain-schedule | head -5
+            echo "✅ Deployment complete"
 

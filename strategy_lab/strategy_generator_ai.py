@@ -163,6 +163,17 @@ class StrategyGeneratorAI:
         strategy = self._pick_strategy(signal, regime, vol_level, active)
         if strategy:
             signal.strategy_name = strategy
+        else:
+            # Fallback: if no strategy picked (active set empty or no match),
+            # assign a safe default based on signal type
+            if signal.signal_type == SignalType.EQUITY:
+                signal.strategy_name = "Mean_Reversion"  # safest default for equities
+            elif signal.signal_type in (SignalType.OPTIONS, SignalType.SPREAD):
+                signal.strategy_name = "Bull_Call_Spread"
+            else:
+                signal.strategy_name = "Mean_Reversion"
+            log.debug("[StrategyGeneratorAI] %s assigned fallback strategy %s.",
+                     signal.symbol, signal.strategy_name)
         return signal
 
     def _pick_strategy(self, signal: TradeSignal,

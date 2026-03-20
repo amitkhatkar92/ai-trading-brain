@@ -97,7 +97,6 @@ class OptionsOpportunityAI:
             entry_price  = premium,
             stop_loss    = round(premium * 2.0, 2),   # max loss: premium doubles
             target_price = round(premium * 0.20, 2),  # target: 80% premium decay
-            strategy_name= "Short_Straddle_IV_Spike",
             confidence   = min(5.0 + iv_ratio * 2, 9.0),
             source_agent = "OptionsOpportunityAI",
             strike_price = float(strike),
@@ -120,7 +119,6 @@ class OptionsOpportunityAI:
             entry_price  = premium,
             stop_loss    = round(premium * 0.50, 2),
             target_price = round(premium * 3.00, 2),
-            strategy_name= "Long_Straddle_Pre_Event",
             confidence   = 6.5,
             source_agent = "OptionsOpportunityAI",
             strike_price = float(strike),
@@ -145,7 +143,6 @@ class OptionsOpportunityAI:
             entry_price  = ic_credit,
             stop_loss    = round(ic_credit * 2.50, 2),
             target_price = round(ic_credit * 0.20, 2),
-            strategy_name= "Iron_Condor_Range",
             confidence   = 7.0,
             source_agent = "OptionsOpportunityAI",
             strike_price = float(strike),

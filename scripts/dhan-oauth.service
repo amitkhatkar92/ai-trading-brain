@@ -18,6 +18,8 @@ StandardError=append:/root/ai-trading-brain/data/logs/oauth-callback-error.log
 
 # Environment
 Environment="PYTHONUNBUFFERED=1"
+Environment="VPS_HOST=178.18.252.24"
+Environment="DHAN_CLIENT_ID=2603183256"
 
 [Install]
 WantedBy=multi-user.target

@@ -40,8 +40,8 @@ RETRY_BASE_DELAY  = 0.5    # seconds; doubles each attempt (0.5 → 1.0 → 2.0)
 
 # ── Limit-order expiry ───────────────────────────────────────────────────────
 # NSE 5-minute candle = 300 s.  Cancel any unfilled LIMIT order after
-# LIMIT_CANDLE_EXPIRY candles (default 3 × 5 min = 15 minutes).
-LIMIT_CANDLE_EXPIRY  = 3     # number of candles before stale limit is cancelled
+# LIMIT_CANDLE_EXPIRY candles (increased 3→8 × 5 min = 40 minutes for better fill).
+LIMIT_CANDLE_EXPIRY  = 8     # number of candles before stale limit is cancelled [EXTENDED]
 CANDLE_SECONDS       = 300   # seconds per candle (5-minute default)
 
 # ── Re-entry window ────────────────────────────────────────────────────────
@@ -79,7 +79,7 @@ ZONE_VIX_MAX_FACTOR = 2.00  # maximum scale (fear markets: double the band)
 # zone-adjusted price, not on the raw signal price.
 AET_VIX_CONFIRM_THRESHOLD = 18.0  # VIX must be below this to confirm entry
 AET_PULLBACK_DIP_PCT      = 0.10  # extra % deeper into zone for PULLBACK mode
-AET_MAX_WAIT_CANDLES      = 2     # max candles a CONFIRMATION slot may wait
+AET_MAX_WAIT_CANDLES      = 1     # max candles a CONFIRMATION slot may wait [REDUCED 2→1]
 
 # ── Paper trade journal ───────────────────────────────────────────────────
 _DATA_DIR        = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -91,9 +91,9 @@ _JOURNAL_HEADER  = [
 ]
 
 # ── Risk Guards (prevent trade volume explosion & duplicates) ──────────────
-MAX_OPEN_POSITIONS = 5        # maximum concurrent positions (portfolio guard)
+MAX_OPEN_POSITIONS = 15       # maximum concurrent positions (INCREASED 5→15 for capital deployment)
 MAX_CAPITAL_PER_TRADE_PCT = 25.0  # max % of capital per single trade (pilot: ₹20k → ₹5k)
-MAX_TOTAL_OPEN_EXPOSURE_PCT = 65.0  # max % of total capital in open positions
+MAX_TOTAL_OPEN_EXPOSURE_PCT = 85.0  # max % of total capital in open positions (INCREASED 65→85)
 
 
 @dataclass

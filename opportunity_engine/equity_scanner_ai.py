@@ -205,7 +205,6 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + 2.5 * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                strategy_name   = "Breakout_Volume",
                 confidence      = min(6.0 + vol_ratio, 9.5),
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
@@ -227,7 +226,6 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + 2.5 * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                strategy_name   = "Momentum_Retest",
                 confidence      = 6.5,
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
@@ -264,7 +262,6 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + 2.5 * stop_dist, 2),  # trend runs further
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                strategy_name   = "Trend_Pullback",
                 confidence      = 6.8,
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
@@ -291,7 +288,6 @@ class EquityScannerAI:
                     stop_loss       = round(ltp + stop_dist, 2),
                     target_price    = round(target, 2),
                     quantity        = 1,   # placeholder — Risk Engine will overwrite
-                    strategy_name   = "Mean_Reversion",
                     confidence      = min(5.5 + rsi / 20, 8.5),
                     source_agent    = "EquityScannerAI",
                     atr             = atr,
@@ -312,7 +308,7 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + 2.5 * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                strategy_name   = "Mean_Reversion",
+
                 confidence      = min(5.5 + (40 - rsi) / 10, 8.5),
                 source_agent    = "EquityScannerAI",
                 atr             = atr,

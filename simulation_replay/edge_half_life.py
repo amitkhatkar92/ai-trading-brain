@@ -54,8 +54,8 @@ CANDLES_PER_DAY  = 75     # NSE 5-min session: 09:15–15:30 = 375 min / 5
 MAX_DELAY_CANDLES = 6     # analyse delays 0 → 6
 
 # Current execution parameter values (for calibration report)
-_CURRENT_EXPIRY      = 3    # LIMIT_CANDLE_EXPIRY
-_CURRENT_AET_WAIT    = 2    # AET_MAX_WAIT_CANDLES
+_CURRENT_EXPIRY      = 8    # LIMIT_CANDLE_EXPIRY [SYNC: 3→8]
+_CURRENT_AET_WAIT    = 1    # AET_MAX_WAIT_CANDLES [SYNC: 2→1]
 _CURRENT_REENTRY_WIN = 10   # REENTRY_WINDOW_CANDLES
 
 # Fallback VIX if not derivable from replay
