@@ -37,6 +37,18 @@ from utils import get_logger
 log = get_logger(__name__)
 
 
+def _get_nifty_str() -> str:
+    """Return '\nNIFTY: ₹XX,XXX.XX' string or empty string if unavailable."""
+    try:
+        from data_feeds import get_feed_manager
+        q = get_feed_manager().get_quote("NIFTY")
+        if q and getattr(q, "ltp", None):
+            return f"\nNIFTY: ₹{float(q.ltp):,.2f}"
+    except Exception:
+        pass
+    return ""
+
+
 class AlertType(str, Enum):
     TRADE_OPENED    = "trade_opened"
     TRADE_CLOSED    = "trade_closed"
@@ -188,11 +200,13 @@ class NotifierManager:
         strategy: str, mode: str = "paper",
     ) -> None:
         rr    = abs(target - entry) / abs(entry - stop) if entry != stop else 0
+        _nifty = _get_nifty_str()
         body  = (f"Symbol: `{symbol}`\n"
                  f"Direction: {direction}\n"
                  f"Entry: ₹{entry:.2f}  SL: ₹{stop:.2f}  Target: ₹{target:.2f}\n"
                  f"R:R = {rr:.1f}  Strategy: `{strategy}`\n"
-                 f"Mode: {'🧪 PAPER' if mode == 'paper' else '💵 LIVE'}")
+                 f"Mode: {'🧪 PAPER' if mode == 'paper' else '💵 LIVE'}"
+                 f"{_nifty}")
         self._dispatch(Alert(AlertType.TRADE_OPENED, f"Trade Opened: {symbol}", body))
 
     def trade_closed(
@@ -202,10 +216,12 @@ class NotifierManager:
     ) -> None:
         won   = pnl > 0
         icon  = "💰" if won else "🔴"
+        _nifty = _get_nifty_str()
         body  = (f"Symbol: `{symbol}`\n"
                  f"Net P&L: {'₹' + f'{pnl:+,.0f}'}\n"
                  f"R-Multiple: {r_multiple:+.2f}R\n"
-                 f"Strategy: `{strategy}`  Mode: {'🧪 PAPER' if mode == 'paper' else '💵 LIVE'}")
+                 f"Strategy: `{strategy}`  Mode: {'🧪 PAPER' if mode == 'paper' else '💵 LIVE'}"
+                 f"{_nifty}")
         title = f"{icon} Trade Closed: {symbol} ({'WIN' if won else 'LOSS'})"
         self._dispatch(Alert(AlertType.TRADE_CLOSED, title, body,
                              priority=2 if abs(r_multiple) >= 2 else 1))

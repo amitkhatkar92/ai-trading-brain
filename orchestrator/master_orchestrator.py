@@ -1290,6 +1290,14 @@ class MasterOrchestrator:
             import config as _cfg_eod
             _pilot_cap = getattr(_cfg_eod, "TOTAL_CAPITAL", 1_000_000)
             _eod_date  = datetime.now().strftime("%Y-%m-%d")
+            _nifty_eod = 0.0
+            try:
+                from data_feeds import get_feed_manager as _gfm_eod
+                _q_eod = _gfm_eod().get_quote("NIFTY")
+                if _q_eod and getattr(_q_eod, "ltp", None):
+                    _nifty_eod = float(_q_eod.ltp)
+            except Exception:
+                pass
             _csv_path  = _pl.Path("data/paper_trades.csv")
             _open_trades, _closed_trades = [], []
             if _csv_path.exists():
@@ -1318,6 +1326,7 @@ class MasterOrchestrator:
                     "cum_return_pct": round(_cum_pnl / _pilot_cap * 100, 3) if _pilot_cap else 0,
                 },
                 "pilot_capital": _pilot_cap,
+                "nifty_ltp":     _nifty_eod,
                 "mode":          "paper",
             }
             _pl.Path("data").mkdir(exist_ok=True)
@@ -1411,9 +1420,11 @@ class MasterOrchestrator:
             n = get_notifier()
             now_str = datetime.now().strftime("%d %b %Y, %H:%M")
             _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            _nifty = self._get_nifty_str()
             _body = (
                 f"Date: {now_str}\n"
                 f"Mode: {_mode} | Capital: ₹{getattr(_cfg, 'TOTAL_CAPITAL', 1_000_000):,.0f}\n"
+                f"{_nifty}\n"
                 f"First scan: 09:05 | Full cycles: 09:45 / 10:30 / 13:00\n"
                 f"EOD report will be sent at 15:35.\n"
                 f"Ready for market open at 09:15."
@@ -1438,6 +1449,17 @@ class MasterOrchestrator:
         except Exception as exc:
             log.warning("[Orchestrator] Data warm-up failed: %s", exc)
 
+    def _get_nifty_str(self) -> str:
+        """Return current NIFTY LTP formatted for Telegram messages (or 'NIFTY: N/A')."""
+        try:
+            from data_feeds import get_feed_manager
+            q = get_feed_manager().get_quote("NIFTY")
+            if q and getattr(q, "ltp", None):
+                return f"NIFTY: ₹{float(q.ltp):,.2f}"
+        except Exception:
+            pass
+        return "NIFTY: N/A"
+
     def _market_open_notify(self) -> None:
         """Send Telegram notification when NSE market opens at 09:15."""
         log.info("[Orchestrator] 🔔 Market OPEN — 09:15 notification")
@@ -1446,10 +1468,12 @@ class MasterOrchestrator:
             import config as _cfg
             n = get_notifier()
             _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            _nifty = self._get_nifty_str()
             n.market_alert(
                 "🟢 Market OPEN — Trading Started",
                 f"NSE/BSE opened at 09:15\n"
                 f"Mode: {_mode}\n"
+                f"{_nifty}\n"
                 f"First full cycle: 09:45\n"
                 f"Scanning every 30 seconds for opportunities.",
             )
@@ -1478,10 +1502,12 @@ class MasterOrchestrator:
                         summary = f"\nTrades today: {len(today_rows)}"
             except Exception:
                 pass
+            _nifty = self._get_nifty_str()
             n.market_alert(
                 "🔴 Market CLOSED — Session Ended",
                 f"NSE/BSE closed at 15:30\n"
                 f"Mode: {_mode}{summary}\n"
+                f"{_nifty}\n"
                 f"EOD learning & report will run at 15:35.",
             )
         except Exception as exc:
@@ -1514,11 +1540,13 @@ class MasterOrchestrator:
             from notifications import get_notifier
             import config as _cfg
             _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            _nifty = self._get_nifty_str()
             get_notifier().market_alert(
                 "🚀 AI Trading Brain Started",
                 f"System is ONLINE on cloud server\n"
                 f"Date: {datetime.now().strftime('%d %b %Y, %H:%M IST')}\n"
                 f"Mode: {_mode}\n"
+                f"{_nifty}\n"
                 f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/13:00 cycles → 15:30 close → 15:35 EOD\n"
                 f"Dashboard: http://178.18.252.24:8501",
             )

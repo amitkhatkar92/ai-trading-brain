@@ -56,6 +56,7 @@ def send_daily_summary():
     open_total = cumul.get("open_trades", 0)
     cum_pnl = cumul.get("cum_pnl", 0)
     cum_return = cumul.get("cum_return_pct", 0)
+    nifty_ltp = summary.get("nifty_ltp", 0)
     
     # Decision icon
     icon = "💰" if pnl_today >= 0 else "🔴"
@@ -77,6 +78,7 @@ def send_daily_summary():
         f"Return %:       {cum_return:+.2f}%\n\n"
         f"<b>CAPITAL</b>\n"
         f"Trading Capital: ₹{capital:,.0f}\n"
+        f"NIFTY Close:     {'₹{:,.2f}'.format(nifty_ltp) if nifty_ltp else 'N/A'}\n"
         f"Generated:      {gen_at}\n"
         f"Mode:           📝 Paper (Simulation)"
     )
