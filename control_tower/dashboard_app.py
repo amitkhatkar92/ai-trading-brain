@@ -170,8 +170,64 @@ def fetch_funnel_history(n: int = 20) -> List[Dict[str, Any]]:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# Service-status helpers
+# ══════════════════════════════════════════════════════════════════════════
+
+def fetch_service_status() -> Dict[str, Any]:
+    """Derive live/offline status from the most-recent event timestamp."""
+    rows = _query("SELECT ts, event_type FROM ct_events ORDER BY rowid DESC LIMIT 1")
+    if not rows:
+        return {"status": "UNKNOWN", "last_ts": None, "last_event": "", "age_min": None}
+    ts_str = rows[0]["ts"]
+    last_event = rows[0]["event_type"]
+    try:
+        # strip microseconds if present
+        ts = datetime.fromisoformat(ts_str[:19])
+        age = (datetime.now() - ts).total_seconds() / 60
+    except Exception:
+        return {"status": "UNKNOWN", "last_ts": ts_str, "last_event": last_event, "age_min": None}
+    if age < 10:
+        status = "ONLINE"
+    elif age < 60:
+        status = "IDLE"
+    else:
+        status = "OFFLINE"
+    return {"status": status, "last_ts": ts_str[:19], "last_event": last_event, "age_min": round(age, 1)}
+
+
+def fetch_today_events_count() -> int:
+    today = datetime.now().strftime("%Y-%m-%d")
+    return _scalar("SELECT COUNT(*) FROM ct_events WHERE ts LIKE ?", (today + "%",), 0)
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Paper trading EOD helpers
 # ══════════════════════════════════════════════════════════════════════════
+
+def fetch_paper_trades_csv() -> List[Dict[str, Any]]:
+    """Read data/paper_trades.csv and return the last 50 rows newest-first."""
+    _path = os.path.join(_ROOT, "data", "paper_trades.csv")
+    if not os.path.exists(_path):
+        return []
+    try:
+        with open(_path, encoding="utf-8") as fh:
+            lines = fh.readlines()
+        if len(lines) < 2:
+            return []
+        header = [h.strip() for h in lines[0].split(",")]
+        rows = []
+        for ln in reversed(lines[1:]):
+            if not ln.strip():
+                continue
+            vals = [v.strip() for v in ln.split(",")]
+            if len(vals) >= len(header):
+                rows.append(dict(zip(header, vals[:len(header)])))
+            if len(rows) >= 50:
+                break
+        return rows
+    except Exception:
+        return []
+
 
 def fetch_paper_trading_eod() -> Optional[Dict[str, Any]]:
     """Read data/paper_trading_daily.json written by the orchestrator at 15:35."""
@@ -280,6 +336,23 @@ def run_dashboard() -> None:
     # ── Header ─────────────────────────────────────────────────────────────
     st.title("🧠 AI Trading Brain — Control Tower")
     st.caption(f"Auto-refreshing every {REFRESH_S}s  ·  DB: {DB_PATH}")
+
+    # ── Service status banner ───────────────────────────────────────────────
+    svc = fetch_service_status()
+    s_status  = svc["status"]
+    s_icon    = {"ONLINE": "🟢", "IDLE": "🟡", "OFFLINE": "🔴", "UNKNOWN": "⚪"}.get(s_status, "⚪")
+    s_colour  = {"ONLINE": "#00ff88", "IDLE": "#ffd700", "OFFLINE": "#ff4444", "UNKNOWN": "#aaaaaa"}.get(s_status, "#aaa")
+    s_age_txt = f"{svc['age_min']} min ago" if svc["age_min"] is not None else "unknown"
+    today_evts = fetch_today_events_count()
+    st.markdown(
+        f"<div style='background:#162a47;border-radius:8px;padding:12px 18px;"
+        f"border-left:5px solid {s_colour};margin-bottom:8px'>"
+        f"<span style='font-size:1.3em;font-weight:bold;color:{s_colour}'>{s_icon} VPS Service: {s_status}</span>"
+        f"&nbsp;&nbsp;&nbsp;<span style='color:#aaa'>Last activity: {svc['last_ts'] or 'none'} ({s_age_txt})&nbsp;|&nbsp;"
+        f"Today events: {today_evts}&nbsp;|&nbsp;Mode: 🧪 PAPER</span>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
 
     if not os.path.exists(DB_PATH):
         st.error("⚠️  Database not found.  Start the trading brain first "
@@ -415,7 +488,36 @@ def run_dashboard() -> None:
         st.info("No agent events recorded yet.")
 
     st.divider()
-    # ── Row 3b: Paper Trading EOD Report ────────────────────────────
+    # ── Row 3b: Paper Trades (live CSV) ─────────────────────────────────────
+    st.subheader("📋 Paper Trades Log")
+    pt_rows = fetch_paper_trades_csv()
+    if pt_rows and HAS_PANDAS:
+        df_pt = pd.DataFrame(pt_rows)
+        # Colour the direction column
+        def _dir_colour(val):
+            if str(val).upper() == "BUY":  return "color:#00ff88;font-weight:bold"
+            if str(val).upper() == "SELL": return "color:#ff6b6b;font-weight:bold"
+            return ""
+        def _ev_colour(val):
+            if str(val) in ("CLOSE", "CANCELLED"): return "color:#ffd700"
+            if str(val) == "OPEN": return "color:#64b5f6"
+            return ""
+        styled_pt = df_pt.style
+        if "direction" in df_pt.columns:
+            styled_pt = styled_pt.map(_dir_colour, subset=["direction"])
+        if "event" in df_pt.columns:
+            styled_pt = styled_pt.map(_ev_colour, subset=["event"])
+        st.dataframe(styled_pt, width='stretch', hide_index=True,
+                     height=min(60 + 35 * len(df_pt), 400))
+        st.caption(f"Showing {len(pt_rows)} most-recent trades (newest first). Full CSV: data/paper_trades.csv")
+    elif pt_rows:
+        for r in pt_rows[:20]:
+            st.write(r)
+    else:
+        st.info("No paper trades recorded yet. First trade will appear here automatically.")
+
+    st.divider()
+    # ── Row 3c: Paper Trading EOD Report ────────────────────────────
     eod = fetch_paper_trading_eod()
     if eod:
         _today       = eod.get("today",       {})

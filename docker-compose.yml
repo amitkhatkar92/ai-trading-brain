@@ -53,10 +53,8 @@ services:
     volumes:
       - ./data:/app/data:ro
       - .env:/app/.env:ro
-    
-    environment:
-      - PYTHONUNBUFFERED=1
-      - TZ=Europe/London
+      - ./control_tower:/app/control_tower:ro
+
     
     ports:
       - "8501:8501"  # Streamlit dashboard

@@ -34,6 +34,8 @@ jobs:
             systemctl daemon-reload
             systemctl enable trading-brain-schedule
             systemctl restart trading-brain-schedule
+            # Restart dashboard container so it picks up latest dashboard_app.py
+            docker restart trading-dashboard 2>/dev/null || true
             sleep 2
             systemctl status trading-brain-schedule | head -5
             echo "✅ Deployment complete"
