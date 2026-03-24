@@ -25,7 +25,8 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             cd /root/ai-trading-brain
-            git pull origin main
+            git fetch origin main
+            git reset --hard origin/main
             source venv/bin/activate
             pip install -r requirements.txt 2>&1 | tail -5
             # Ensure service file is installed (idempotent)
