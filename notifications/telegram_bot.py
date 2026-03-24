@@ -301,7 +301,7 @@ class TelegramCommandBot:
         try:
             import config as cfg
             mode    = "🧪 PAPER" if getattr(cfg, "PAPER_TRADING", True) else "💵 LIVE"
-            capital = f"₹{getattr(cfg, 'PILOT_CAPITAL', 20000):,.0f}"
+            capital = f"₹{getattr(cfg, 'TOTAL_CAPITAL', 1_000_000):,.0f}"
         except Exception:
             mode    = "unknown"
             capital = "unknown"

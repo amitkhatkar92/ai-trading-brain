@@ -1410,7 +1410,7 @@ class MasterOrchestrator:
             _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
             _body = (
                 f"Date: {now_str}\n"
-                f"Mode: {_mode} | Capital: ₹{getattr(_cfg, 'PILOT_CAPITAL', 100_000):,.0f}\n"
+                f"Mode: {_mode} | Capital: ₹{getattr(_cfg, 'TOTAL_CAPITAL', 1_000_000):,.0f}\n"
                 f"First scan: 09:05 | Full cycles: 09:45 / 10:30 / 13:00\n"
                 f"EOD report will be sent at 15:35.\n"
                 f"Ready for market open at 09:15."
