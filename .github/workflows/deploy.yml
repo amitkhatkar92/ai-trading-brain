@@ -28,7 +28,11 @@ jobs:
             git pull origin main
             source venv/bin/activate
             pip install -r requirements.txt 2>&1 | tail -5
-            sudo systemctl restart trading-brain-schedule
+            # Ensure service file is installed (idempotent)
+            cp scripts/trading-brain-schedule.service /etc/systemd/system/ 2>/dev/null || true
+            systemctl daemon-reload
+            systemctl enable trading-brain-schedule
+            systemctl restart trading-brain-schedule
             sleep 2
             systemctl status trading-brain-schedule | head -5
             echo "✅ Deployment complete"

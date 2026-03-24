@@ -37,7 +37,10 @@ start "AiTradingDashboard" /B "%PYTHON%" -m streamlit run control_tower\dashboar
 timeout /t 3 /nobreak > nul
 
 :: ── Run in paper trading + pilot capital mode (no live orders, ₹1L reference capital) ──
-"%PYTHON%" main.py --schedule --paper --pilot >> "%LOGFILE%" 2>&1
+:: Use START /B so Python detaches from this CMD window.
+:: The CMD window closes immediately; Python keeps running in the background.
+:: stdout/stderr still captured in the log file via the redirect.
+start "AiTradingBrain" /B "%PYTHON%" main.py --schedule --paper --pilot >> "%LOGFILE%" 2>&1
 
 :: Log exit
 for /f "tokens=1-2 delims= " %%A in ('powershell -Command "Get-Date -Format \"yyyy-MM-dd HH:mm:ss\""') do set "TS2=%%A %%B"

@@ -1435,6 +1435,55 @@ class MasterOrchestrator:
         except Exception as exc:
             log.warning("[Orchestrator] Data warm-up failed: %s", exc)
 
+    def _market_open_notify(self) -> None:
+        """Send Telegram notification when NSE market opens at 09:15."""
+        log.info("[Orchestrator] 🔔 Market OPEN — 09:15 notification")
+        try:
+            from notifications import get_notifier
+            import config as _cfg
+            n = get_notifier()
+            _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            n.market_alert(
+                "🟢 Market OPEN — Trading Started",
+                f"NSE/BSE opened at 09:15\n"
+                f"Mode: {_mode}\n"
+                f"First full cycle: 09:45\n"
+                f"Scanning every 30 seconds for opportunities.",
+            )
+        except Exception as exc:
+            log.debug("Telegram market-open notify failed: %s", exc)
+
+    def _market_close_notify(self) -> None:
+        """Send Telegram notification when NSE market closes at 15:30."""
+        log.info("[Orchestrator] 🔔 Market CLOSE — 15:30 notification")
+        try:
+            from notifications import get_notifier
+            import config as _cfg
+            n = get_notifier()
+            _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            # Gather quick P&L summary from paper journal if available
+            summary = ""
+            try:
+                import csv, os
+                journal = os.path.join(os.path.dirname(__file__), "..", "data", "paper_trades.csv")
+                if os.path.exists(journal):
+                    with open(journal, newline="", encoding="utf-8") as f:
+                        rows = list(csv.DictReader(f))
+                    today = datetime.now().strftime("%Y-%m-%d")
+                    today_rows = [r for r in rows if r.get("timestamp", "").startswith(today)]
+                    if today_rows:
+                        summary = f"\nTrades today: {len(today_rows)}"
+            except Exception:
+                pass
+            n.market_alert(
+                "🔴 Market CLOSED — Session Ended",
+                f"NSE/BSE closed at 15:30\n"
+                f"Mode: {_mode}{summary}\n"
+                f"EOD learning & report will run at 15:35.",
+            )
+        except Exception as exc:
+            log.debug("Telegram market-close notify failed: %s", exc)
+
     def _guarded_cycle(self) -> None:
         """Run a full cycle only during market hours; log a skip otherwise."""
         if self._is_market_session():
@@ -1457,6 +1506,22 @@ class MasterOrchestrator:
         """
         import schedule as sched_lib   # pip install schedule
 
+        # ── Startup ping — immediate Telegram on service boot ──────────
+        try:
+            from notifications import get_notifier
+            import config as _cfg
+            _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
+            get_notifier().market_alert(
+                "🚀 AI Trading Brain Started",
+                f"System is ONLINE on cloud server\n"
+                f"Date: {datetime.now().strftime('%d %b %Y, %H:%M IST')}\n"
+                f"Mode: {_mode}\n"
+                f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/13:00 cycles → 15:30 close → 15:35 EOD\n"
+                f"Dashboard: http://178.18.252.24:8501",
+            )
+        except Exception as exc:
+            log.debug("Telegram startup ping failed: %s", exc)
+
         # ── Start continuous monitoring thread (30s light scan) ────────
         self._start_monitor()
 
@@ -1471,6 +1536,10 @@ class MasterOrchestrator:
         sched_lib.every().day.at(SCHEDULE["mid_morning_scan"]).do(self._guarded_cycle)
         # 13:00  afternoon session
         sched_lib.every().day.at(SCHEDULE["afternoon_scan"]).do(self._guarded_cycle)
+
+        # ── Market open / close notifications ─────────────────────────
+        sched_lib.every().day.at("09:15").do(self._market_open_notify)
+        sched_lib.every().day.at("15:30").do(self._market_close_notify)
 
         # ── EOD learning ───────────────────────────────────────────────
         sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(self.run_eod_learning)

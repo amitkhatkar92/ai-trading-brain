@@ -378,6 +378,17 @@ class OrderManager:
             self._journal_write(
                 order_id=order_id, signal=signal, qty=qty, event="OPEN"
             )
+        try:
+            from notifications.notifier_manager import get_notifier
+            _mode = "paper" if self._paper_mode else "live"
+            get_notifier().trade_opened(
+                symbol=signal.symbol, direction=signal.direction.value,
+                entry=signal.entry_price, stop=signal.stop_loss,
+                target=signal.target_price, strategy=signal.strategy_name,
+                mode=_mode,
+            )
+        except Exception:
+            pass
         return record
 
     def close_position(self, order_id: str,
@@ -405,6 +416,17 @@ class OrderManager:
                  rec.symbol, pnl, reason)
         if self._paper_mode:
             self._journal_write_close(rec, exit_price, reason)
+        try:
+            from notifications.notifier_manager import get_notifier
+            _r_risk = abs(rec.entry_price - rec.stop_loss)
+            _r_mult = (pnl / rec.quantity / _r_risk) if _r_risk > 0 and rec.quantity > 0 else 0.0
+            _mode = "paper" if self._paper_mode else "live"
+            get_notifier().trade_closed(
+                symbol=rec.symbol, pnl=pnl, r_multiple=_r_mult,
+                strategy=rec.strategy, mode=_mode,
+            )
+        except Exception:
+            pass
         return True
 
     def close_all_positions(self):
