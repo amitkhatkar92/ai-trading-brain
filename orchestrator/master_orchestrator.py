@@ -1297,6 +1297,9 @@ class MasterOrchestrator:
                     for _row in _csv.DictReader(_fh):
                         (_closed_trades if _row.get("event","").upper() == "CLOSED"
                          else _open_trades).append(_row)
+            # Only count TODAY's in-memory open orders (not stale CSV rows from
+            # previous sessions whose in-memory state was lost on restart)
+            _live_open_count = len(self.order_manager.get_open_orders()) if self.order_manager else len(_open_trades)
             _cum_pnl  = sum(float(_r.get("pnl", 0) or 0) for _r in _closed_trades)
             _eod_payload = {
                 "date":         _eod_date,
@@ -1310,7 +1313,7 @@ class MasterOrchestrator:
                 },
                 "cumulative": {
                     "closed_trades": len(_closed_trades),
-                    "open_trades":   len(_open_trades),
+                    "open_trades":   _live_open_count,
                     "cum_pnl":       round(_cum_pnl, 2),
                     "cum_return_pct": round(_cum_pnl / _pilot_cap * 100, 3) if _pilot_cap else 0,
                 },

@@ -76,7 +76,7 @@ def send_daily_summary():
         f"Cumulative P&amp;L: {cumul_icon} ₹{cum_pnl:+,.0f}\n"
         f"Return %:       {cum_return:+.2f}%\n\n"
         f"<b>CAPITAL</b>\n"
-        f"Pilot Capital:  ₹{capital:,.0f}\n"
+        f"Trading Capital: ₹{capital:,.0f}\n"
         f"Generated:      {gen_at}\n"
         f"Mode:           📝 Paper (Simulation)"
     )
