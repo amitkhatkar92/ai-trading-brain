@@ -1564,8 +1564,22 @@ class MasterOrchestrator:
         ))
 
         def _run():
+            _heartbeat_counter = 0
             while not self._halt:
                 sched_lib.run_pending()
+                _heartbeat_counter += 1
+                # Publish a heartbeat every 5 min (20 × 15s) so ct_events stays
+                # fresh and the dashboard shows ONLINE, not IDLE.
+                if _heartbeat_counter >= 20:
+                    _heartbeat_counter = 0
+                    try:
+                        self.bus.publish(SystemEvent(
+                            event_type=EventType.SYSTEM_HEARTBEAT,
+                            source_agent="MasterOrchestrator",
+                            payload={"ts": datetime.now().isoformat(), "uptime": "ok"},
+                        ))
+                    except Exception:
+                        pass
                 time.sleep(15)   # 15s resolution gives < 15s slot jitter
 
         t = threading.Thread(target=_run, daemon=True, name="Scheduler")

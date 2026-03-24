@@ -103,6 +103,7 @@ class EventType(str, Enum):
     SYSTEM_STARTUP           = "system.startup"
     SYSTEM_SHUTDOWN          = "system.shutdown"
     SYSTEM_HALT              = "system.halt"
+    SYSTEM_HEARTBEAT         = "system.heartbeat"
     CYCLE_STARTED            = "system.cycle.started"
     CYCLE_COMPLETE           = "system.cycle.complete"
     AGENT_ERROR              = "system.agent.error"
