@@ -1288,7 +1288,7 @@ class MasterOrchestrator:
             import pathlib as _pl
             import csv as _csv
             import config as _cfg_eod
-            _pilot_cap = getattr(_cfg_eod, "PILOT_CAPITAL", 100_000)
+            _pilot_cap = getattr(_cfg_eod, "TOTAL_CAPITAL", 1_000_000)
             _eod_date  = datetime.now().strftime("%Y-%m-%d")
             _csv_path  = _pl.Path("data/paper_trades.csv")
             _open_trades, _closed_trades = [], []
@@ -1370,8 +1370,9 @@ class MasterOrchestrator:
         now = datetime.now()
         if now.weekday() >= 5:          # Saturday=5, Sunday=6
             return False
-        market_open  = now.replace(hour=9,  minute=0,  second=0, microsecond=0)
-        market_close = now.replace(hour=15, minute=31, second=0, microsecond=0)
+        # VPS runs in CET (UTC+1). NSE hours: 09:15–15:30 IST = 04:45–11:00 CET
+        market_open  = now.replace(hour=4,  minute=45, second=0, microsecond=0)
+        market_close = now.replace(hour=11, minute=2,  second=0, microsecond=0)
         return market_open <= now <= market_close
 
     def _premarket_init(self) -> None:
@@ -1538,7 +1539,7 @@ class MasterOrchestrator:
 
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
-        sched_lib.every().day.at("15:30").do(self._market_close_notify)
+        sched_lib.every().day.at("11:00").do(self._market_close_notify)  # 11:00 CET = 15:30 IST
 
         # ── EOD learning ───────────────────────────────────────────────
         sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(self.run_eod_learning)

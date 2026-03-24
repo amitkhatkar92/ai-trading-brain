@@ -92,13 +92,13 @@ SCHEDULE = {
     "market_open_regime":     "09:05",   # regime detection after open
     "first_opportunity_scan": "09:10",   # first equity + options scan
     "strategy_evaluation":    "09:20",   # select active strategies
-    "trade_decision":         "09:45",   # first trade window
+    "trade_decision":         "09:45",   # first trade window  (09:45 CET = 14:15 IST)
     # ── Intraday deep scans ────────────────────────────────────────────────
-    "mid_morning_scan":       "10:30",   # re-check regime + new setups
-    "afternoon_scan":         "13:00",   # post-lunch session
-    "closing_analysis":       "15:00",   # pre-expiry / closing trades
+    "mid_morning_scan":       "10:30",   # re-check regime + new setups    (10:30 CET = 15:00 IST)
+    "afternoon_scan":         "08:45",   # post-lunch session               (08:45 CET = 13:15 IST)
+    "closing_analysis":       "10:25",   # pre-expiry / closing trades      (10:25 CET = 14:55 IST)
     # ── EOD ────────────────────────────────────────────────────────────────
-    "eod_learning":           "15:35",   # performance learning cycle
+    "eod_learning":           "11:05",   # performance learning cycle       (11:05 CET = 15:35 IST)
     # ── Legacy aliases (kept for backward compatibility) ───────────────────
     "market_regime_analysis": "09:05",
     "opportunity_scan":       "09:10",
