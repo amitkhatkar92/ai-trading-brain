@@ -1021,8 +1021,7 @@ class MasterOrchestrator:
                     "strategy": signal.strategy_name or "",
                     "score":    decision.confidence_score,
                     "modifier": decision.position_size_modifier,
-                    "votes":    {k: getattr(v, "score", v)
-                                 for k, v in (votes.votes if hasattr(votes, "votes") else {}).items()},
+                    "votes":    {v.agent_name: v.score for v in votes},
                 },
             ))
             order = self.order_manager.execute(

@@ -89,7 +89,7 @@ class MultiAgentDebate:
 
     def _macro_vote(self, sig: TradeSignal,
                     snapshot: MarketSnapshot) -> DebateVote:
-        """Macro Analyst checks global market conditions."""
+        """Macro Analyst checks global market conditions + global sentiment."""
         if snapshot.events_today:
             return DebateVote(
                 agent_name="MacroAnalystAI",
@@ -108,33 +108,58 @@ class MultiAgentDebate:
                 suggested_position_modifier=0.0,
             )
 
+        # Use global_sentiment_score (−1 → +1) to calibrate macro score (5–9).
+        # A positive global bias (US/Asia green) adds conviction; negative subtracts.
+        gs = getattr(snapshot, "global_sentiment_score", 0.0)  # −1 → +1
+        base_score = 7.0 + gs * 2.0   # gs=+1 → 9.0, gs=0 → 7.0, gs=-1 → 5.0
+        base_score = round(max(5.0, min(9.0, base_score)), 2)
+        size_mod   = 1.0 if gs >= -0.3 else 0.75
+        sentiment_label = "positive" if gs > 0.1 else ("negative" if gs < -0.1 else "neutral")
         return DebateVote(
             agent_name="MacroAnalystAI",
             vote="approve",
-            score=7.5,
-            reasoning="Macro environment supportive",
-            suggested_position_modifier=1.0,
+            score=base_score,
+            reasoning=f"Macro {sentiment_label} (gs={gs:+.2f}) → score={base_score}",
+            suggested_position_modifier=size_mod,
         )
 
     def _risk_vote(self, sig: TradeSignal,
                    snapshot: MarketSnapshot) -> DebateVote:
-        """Risk agent adjusts size based on VIX and volatility."""
+        """Risk agent adjusts size based on VIX, volatility, and signal R:R."""
         vix        = snapshot.vix
+        rr         = sig.risk_reward_ratio
         size_mod   = 1.0
         vote_label = "approve"
-        score      = 7.0
-        reasoning  = f"Risk acceptable. VIX={vix:.1f}"
+        reasoning  = f"Risk acceptable. VIX={vix:.1f} R:R={rr:.1f}"
 
+        # VIX component: 7.0 base, penalise for elevated volatility
         if vix >= 22:
-            size_mod   = 0.5
+            vix_score = 4.5
+            size_mod  = 0.5
             vote_label = "reduce_size"
-            score      = 5.5
-            reasoning  = f"High VIX={vix:.1f} — halve position size"
         elif vix >= 18:
-            size_mod   = 0.75
+            vix_score = 6.0
+            size_mod  = 0.75
             vote_label = "reduce_size"
-            score      = 6.5
-            reasoning  = f"Elevated VIX={vix:.1f} — reduce to 75%"
+        else:
+            vix_score = 7.0
+
+        # R:R component: reward asymmetric setups
+        if rr >= 4.0:
+            rr_bonus = 1.5
+        elif rr >= 3.0:
+            rr_bonus = 1.0
+        elif rr >= 2.0:
+            rr_bonus = 0.5
+        elif rr < 1.5:
+            rr_bonus = -1.5
+            size_mod = min(size_mod, 0.5)
+            vote_label = "reduce_size"
+        else:
+            rr_bonus = 0.0
+
+        score = round(min(9.5, max(3.0, vix_score + rr_bonus)), 2)
+        reasoning = f"VIX={vix:.1f} R:R={rr:.1f} → score={score}"
 
         return DebateVote(
             agent_name="RiskDebateAI",
