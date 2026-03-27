@@ -83,11 +83,23 @@ class DecisionEngine:
         confidence = weighted_sum / total_weight if total_weight else 0.0
         modifier   = round(modifier_product ** (1 / len(votes)), 3) if votes else 0.0
 
+        # ── Regime-aware base threshold ────────────────────────────────
+        # In volatile markets, good setups score ~6.4–6.6 but still pass all
+        # prior layers (risk, simulation, position sizing). Lower the bar
+        # slightly so the system maintains participation without increasing risk.
+        from models.market_data import RegimeLabel
+        regime_value = snapshot.regime if isinstance(snapshot.regime, str) else snapshot.regime.value
+        if regime_value == RegimeLabel.VOLATILE.value:
+            effective_threshold = MIN_CONFIDENCE_SCORE - 0.3   # 6.8 → 6.5
+            log.info("[DecisionEngine] Dynamic Threshold Applied: regime=volatile, threshold=%.1f",
+                     effective_threshold)
+        else:
+            effective_threshold = MIN_CONFIDENCE_SCORE
+
         # ── Asymmetry Bonus: high R:R lowers effective confidence threshold ──
         # A trade with RR≥3 needs far fewer wins to be profitable.
         # RR=3 → breakeven at only 25% WR; we reward this structurally.
         rr = signal.risk_reward_ratio
-        effective_threshold = MIN_CONFIDENCE_SCORE
         asymmetry_note = ""
         if rr >= 4.0:
             effective_threshold -= 1.0   # −1.0 pt threshold reduction for fat-tail setups
