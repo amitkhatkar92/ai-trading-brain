@@ -284,10 +284,11 @@ class OrderManager:
             )
             return None
 
+        _trade_type = getattr(decision, "trade_type", "FULL")
         log.info("[OrderManager] ➡  Executing LIMIT %s %s qty=%d  signal=%.2f  "
-                 "zone=%.2f  SL=%.2f  TGT=%.2f",
+                 "trade_type=%s  zone=%.2f  SL=%.2f  TGT=%.2f",
                  signal.direction.value, signal.symbol,
-                 qty, signal.entry_price,
+                 qty, signal.entry_price, _trade_type,
                  self._calc_entry_zone_price(
                      signal.entry_price, signal.direction.value,
                      float((signal_context or {}).get("vix", 0.0)),

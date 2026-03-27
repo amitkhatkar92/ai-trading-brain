@@ -56,10 +56,12 @@ class DecisionResult:
     position_size_modifier: float = 1.0   # Scaling factor for position size
     reasoning: str = ""
     timestamp: datetime = field(default_factory=datetime.now)
+    # Tiered execution tag: "FULL" | "PARTIAL" | "REJECT"
+    trade_type: str = "FULL"
 
     def summary(self) -> str:
         decision = "APPROVED" if self.approved else "REJECTED"
         return (
-            f"[Decision] {decision} | Score: {self.confidence_score:.1f}/10 | "
+            f"[Decision] {decision} ({self.trade_type}) | Score: {self.confidence_score:.1f}/10 | "
             f"Size modifier: {self.position_size_modifier:.0%} | {self.reasoning}"
         )
