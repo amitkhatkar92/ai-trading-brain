@@ -45,7 +45,14 @@ STRATEGY_PARAMS = {
     "Long_Straddle_Pre_Event":{"min_rr": 2.5, "max_loss_pct": 0.02},   # event plays → fat tail
     "Futures_Basis_Arb":      {"min_rr": 1.2, "max_loss_pct": 0.005},  # arb — tight spreads
     "ETF_NAV_Arb":            {"min_rr": 1.2, "max_loss_pct": 0.003},  # arb — tight spreads
+    # Volatile-regime equity strategies — higher RR bars reflect the tougher environment
+    "Equity_Breakout":        {"min_rr": 3.0, "max_loss_pct": 0.015},  # volatile breakout — fat tail needed
+    "Equity_Retest":          {"min_rr": 2.5, "max_loss_pct": 0.015},  # volatile retest — still asymmetric
 }
+
+# Minimum confidence (0–10) required for equity signals in volatile regime.
+# Raises the bar by 0.5 above the DecisionEngine default threshold of 6.5.
+VOLATILE_EQUITY_MIN_CONFIDENCE: float = 7.0
 
 
 class StrategyGeneratorAI:
@@ -157,6 +164,17 @@ class StrategyGeneratorAI:
                 log.debug("[StrategyGeneratorAI] %s RR %.1f < min %.1f — skipped.",
                           signal.symbol, rr, params["min_rr"])
                 return None
+            # Volatile regime: apply stricter risk controls for equity strategies
+            if (regime == RegimeLabel.VOLATILE
+                    and signal.strategy_name in ("Equity_Breakout", "Equity_Retest")):
+                if signal.confidence < VOLATILE_EQUITY_MIN_CONFIDENCE:
+                    log.debug("[StrategyGeneratorAI] %s volatile equity rejected — "
+                              "confidence %.1f < %.1f",
+                              signal.symbol, signal.confidence, VOLATILE_EQUITY_MIN_CONFIDENCE)
+                    return None
+                signal.quantity = max(1, int(signal.quantity * 0.5))
+                log.info("[StrategyGeneratorAI] Volatile regime: Equity strategies enabled "
+                         "with reduced risk — %s qty halved.", signal.symbol)
             return signal
 
         # ── Auto-assign based on regime + signal type ─────────────────
@@ -174,6 +192,17 @@ class StrategyGeneratorAI:
                 signal.strategy_name = "Mean_Reversion"
             log.debug("[StrategyGeneratorAI] %s assigned fallback strategy %s.",
                      signal.symbol, signal.strategy_name)
+        # Volatile regime: apply stricter risk controls for equity strategies
+        if (regime == RegimeLabel.VOLATILE
+                and signal.strategy_name in ("Equity_Breakout", "Equity_Retest")):
+            if signal.confidence < VOLATILE_EQUITY_MIN_CONFIDENCE:
+                log.debug("[StrategyGeneratorAI] %s volatile equity rejected — "
+                          "confidence %.1f < %.1f",
+                          signal.symbol, signal.confidence, VOLATILE_EQUITY_MIN_CONFIDENCE)
+                return None
+            signal.quantity = max(1, int(signal.quantity * 0.5))
+            log.info("[StrategyGeneratorAI] Volatile regime: Equity strategies enabled "
+                     "with reduced risk — %s qty halved.", signal.symbol)
         return signal
 
     def _pick_strategy(self, signal: TradeSignal,
@@ -212,7 +241,12 @@ class StrategyGeneratorAI:
             elif signal.signal_type == SignalType.ETF:
                 return _choose(["ETF_NAV_Arb"])
 
-        elif regime in (RegimeLabel.BEAR_MARKET, RegimeLabel.VOLATILE):
+        elif regime == RegimeLabel.VOLATILE:
+            if signal.signal_type == SignalType.EQUITY:
+                return _choose(["Equity_Breakout", "Equity_Retest"])
+            return _choose(["Hedging_Model"])
+
+        elif regime == RegimeLabel.BEAR_MARKET:
             return _choose(["Hedging_Model"])
 
         return _choose(["Breakout_Volume"])   # default fallback

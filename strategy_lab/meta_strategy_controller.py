@@ -67,6 +67,8 @@ _REGIME_MAP: Dict[str, List[str]] = {
         "Hedging_Model",
         "Short_Straddle_IV_Spike",
         "Long_Straddle_Pre_Event",
+        "Equity_Breakout",          # limited equity participation — strict risk controls applied
+        "Equity_Retest",            # limited equity participation — strict risk controls applied
     ],
 }
 

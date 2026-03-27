@@ -1382,9 +1382,9 @@ class MasterOrchestrator:
         now = datetime.now()
         if now.weekday() >= 5:          # Saturday=5, Sunday=6
             return False
-        # VPS runs in CET (UTC+1). NSE hours: 09:15–15:30 IST = 04:45–11:00 CET
-        market_open  = now.replace(hour=4,  minute=45, second=0, microsecond=0)
-        market_close = now.replace(hour=11, minute=2,  second=0, microsecond=0)
+        # Container runs in IST (Asia/Kolkata). NSE hours: 09:15–15:30 IST
+        market_open  = now.replace(hour=9,  minute=15, second=0, microsecond=0)
+        market_close = now.replace(hour=15, minute=32, second=0, microsecond=0)
         return market_open <= now <= market_close
 
     def _premarket_init(self) -> None:
@@ -1570,7 +1570,7 @@ class MasterOrchestrator:
 
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
-        sched_lib.every().day.at("11:00").do(self._market_close_notify)  # 11:00 CET = 15:30 IST
+        sched_lib.every().day.at("15:30").do(self._market_close_notify)  # 15:30 IST = NSE close
 
         # ── EOD learning ───────────────────────────────────────────────
         sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(self.run_eod_learning)

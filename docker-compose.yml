@@ -17,7 +17,7 @@ services:
     # Environment variables
     environment:
       - PYTHONUNBUFFERED=1
-      - TZ=Europe/London  # EU timezone
+      - TZ=Asia/Kolkata  # IST — all schedule times are in IST
     
     # Resource limits
     mem_limit: 2g
