@@ -267,6 +267,10 @@ class NotifierManager:
     def market_alert(self, title: str, body: str) -> None:
         self._dispatch(Alert(AlertType.MARKET_ALERT, title, body))
 
+    def send_alert(self, message: str) -> None:
+        """Single-argument convenience wrapper used by MasterOrchestrator."""
+        self._dispatch(Alert(AlertType.MARKET_ALERT, "⚠️ Market Alert", message))
+
 
 # ── Singleton ──────────────────────────────────────────────────────────────
 _INSTANCE: Optional[NotifierManager] = None
