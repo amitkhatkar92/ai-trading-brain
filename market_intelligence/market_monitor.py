@@ -116,10 +116,14 @@ class MarketMonitor:
 
     @staticmethod
     def _is_market_hours() -> bool:
-        """Returns True only on weekdays between 09:00 and 15:35 IST."""
+        """Returns True only on weekdays (non-holiday) between 09:00 and 15:35 IST."""
+        from config import is_nse_holiday
         now = datetime.now()
         # Skip weekends (Mon=0 … Sun=6)
         if now.weekday() >= 5:
+            return False
+        # Skip NSE public holidays
+        if is_nse_holiday(now.date()):
             return False
         start = now.replace(hour=9,  minute=0,  second=0, microsecond=0)
         end   = now.replace(hour=15, minute=35, second=0, microsecond=0)

@@ -1179,6 +1179,10 @@ class MasterOrchestrator:
 
     def run_eod_learning(self) -> None:
         """End-of-day: feed outcomes back into the Learning Engine via TaskQueue."""
+        from config import is_nse_holiday
+        if is_nse_holiday():
+            log.info("[Orchestrator] 🏖️  NSE HOLIDAY — EOD learning skipped.")
+            return
         self.task_queue.submit_to(
             "LearningEngine",
             fn=self._do_eod_learning,
@@ -1375,12 +1379,15 @@ class MasterOrchestrator:
     @staticmethod
     def _is_market_session() -> bool:
         """
-        Returns True only during NSE trading hours on weekdays.
-        Prevents the scheduler from firing full cycles on weekends or
-        during overnight hours when no data is available.
+        Returns True only during NSE trading hours on weekdays that are not
+        public holidays. Prevents the scheduler from firing full cycles on
+        weekends, overnight hours, or NSE holidays.
         """
+        from config import is_nse_holiday
         now = datetime.now()
         if now.weekday() >= 5:          # Saturday=5, Sunday=6
+            return False
+        if is_nse_holiday(now.date()):  # NSE public holiday
             return False
         # Container runs in IST (Asia/Kolkata). NSE hours: 09:15–15:30 IST
         market_open  = now.replace(hour=9,  minute=15, second=0, microsecond=0)
@@ -1391,8 +1398,12 @@ class MasterOrchestrator:
         """
         Pre-market initialization — runs at 08:00.
         Warms caches, validates data feeds, and notifies via Telegram.
-        Runs regardless of _is_market_session() (market hasn't opened yet).
+        Skipped on NSE holidays.
         """
+        from config import is_nse_holiday
+        if is_nse_holiday():
+            log.info("[Orchestrator] 🏖️  NSE HOLIDAY — pre-market init skipped.")
+            return
         log.info("═" * 60)
         log.info("  🌅 PRE-MARKET INITIALIZATION — %s",
                  datetime.now().strftime("%Y-%m-%d %H:%M"))
@@ -1462,6 +1473,10 @@ class MasterOrchestrator:
 
     def _market_open_notify(self) -> None:
         """Send Telegram notification when NSE market opens at 09:15."""
+        from config import is_nse_holiday
+        if is_nse_holiday():
+            log.info("[Orchestrator] 🏖️  NSE HOLIDAY — market-open notify skipped.")
+            return
         log.info("[Orchestrator] 🔔 Market OPEN — 09:15 notification")
         try:
             from notifications import get_notifier
@@ -1482,6 +1497,10 @@ class MasterOrchestrator:
 
     def _market_close_notify(self) -> None:
         """Send Telegram notification when NSE market closes at 15:30."""
+        from config import is_nse_holiday
+        if is_nse_holiday():
+            log.info("[Orchestrator] 🏖️  NSE HOLIDAY — market-close notify skipped.")
+            return
         log.info("[Orchestrator] 🔔 Market CLOSE — 15:30 notification")
         try:
             from notifications import get_notifier

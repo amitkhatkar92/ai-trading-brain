@@ -4,6 +4,7 @@ All system-wide settings, constants, and environment variable bindings.
 """
 
 import os
+import datetime as _dt
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -146,3 +147,29 @@ PILOT_CAPITAL        = float(os.getenv("PILOT_CAPITAL",         20_000))
 PILOT_RISK_PCT       = float(os.getenv("PILOT_RISK_PCT",         0.005))   # 0.5% → ₹100
 PILOT_MAX_TRADES     = int(os.getenv("PILOT_MAX_TRADES",             2))
 PILOT_DAILY_LOSS_PCT = float(os.getenv("PILOT_DAILY_LOSS_PCT",    0.02))   # 2% → ₹400/day
+
+# ─────────────────────────────────────────────
+# NSE MARKET HOLIDAYS  (update annually)
+# System skips ALL trading activity on these dates.
+# ─────────────────────────────────────────────
+NSE_HOLIDAYS: frozenset = frozenset({
+    # ── FY 2025-26 (already past — harmless to keep) ──────────────────
+    _dt.date(2026, 1, 26),   # Republic Day
+    _dt.date(2026, 2, 19),   # Chhatrapati Shivaji Maharaj Jayanti
+    _dt.date(2026, 3, 31),   # Mahavir Jayanti  ← CONFIRMED closed
+    # ── FY 2026-27 ────────────────────────────────────────────────────
+    _dt.date(2026, 4,  3),   # Good Friday
+    _dt.date(2026, 4, 14),   # Dr. Baba Saheb Ambedkar Jayanti
+    _dt.date(2026, 5,  1),   # Maharashtra Day
+    _dt.date(2026, 8, 15),   # Independence Day
+    _dt.date(2026, 10,  2),  # Gandhi Jayanti
+    _dt.date(2026, 10, 20),  # Diwali – Laxmi Puja
+    _dt.date(2026, 10, 21),  # Diwali – Balipratipada
+    _dt.date(2026, 11,  5),  # Guru Nanak Jayanti
+    _dt.date(2026, 12, 25),  # Christmas
+})
+
+
+def is_nse_holiday(d: "_dt.date | None" = None) -> bool:
+    """Return True if *d* (default: today) is in the NSE holiday list."""
+    return (d or _dt.date.today()) in NSE_HOLIDAYS
