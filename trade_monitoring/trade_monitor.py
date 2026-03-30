@@ -154,6 +154,10 @@ class TradeMonitor:
     def get_open_trades(self) -> List[OrderRecord]:
         return list(self._open_orders.values())
 
+    def check_open_positions(self):
+        """Alias for check_all() — used by MasterOrchestrator."""
+        return self.check_all()
+
     def summary(self) -> str:
         open_ct   = len(self._open_orders)
         closed_ct = len(self._closed_orders)
