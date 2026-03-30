@@ -33,6 +33,11 @@ jobs:
             cp scripts/trading-brain-schedule.service /etc/systemd/system/ 2>/dev/null || true
             systemctl daemon-reload
             systemctl enable trading-brain-schedule
+            # Clear stale PID lock before restart — without this, a dead-process
+            # PID file blocks the restart and deploy silently fails (same root
+            # cause that took the service down for 3 days on 2026-03-27).
+            rm -f /root/ai-trading-brain/data/trading_engine.pid
+            systemctl reset-failed trading-brain-schedule 2>/dev/null || true
             systemctl restart trading-brain-schedule
             # Restart dashboard container so it picks up latest dashboard_app.py
             docker restart trading-dashboard 2>/dev/null || true
