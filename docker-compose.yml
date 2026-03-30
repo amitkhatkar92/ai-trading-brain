@@ -4,7 +4,10 @@ services:
   ai-trading-brain:
     build: .
     container_name: ai-trading-brain
-    restart: always
+    # DISABLED: trading engine is managed by systemd (trading-brain-schedule.service)
+    # Running both Docker AND systemd causes duplicate signals. Use systemd only.
+    # To re-enable Docker management: comment out restart:no and set restart:always
+    restart: "no"
     
     # Mounted volumes for persistent data
     volumes:
