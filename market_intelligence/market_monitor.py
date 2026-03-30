@@ -114,11 +114,25 @@ class MarketMonitor:
 
     # ── Main loop ─────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def _is_market_hours() -> bool:
+        """Returns True only on weekdays between 09:00 and 15:35 IST."""
+        now = datetime.now()
+        # Skip weekends (Mon=0 … Sun=6)
+        if now.weekday() >= 5:
+            return False
+        start = now.replace(hour=9,  minute=0,  second=0, microsecond=0)
+        end   = now.replace(hour=15, minute=35, second=0, microsecond=0)
+        return start <= now <= end
+
     def _loop(self) -> None:
         while self._running:
             try:
-                self._tick()
-                self._check_deep_schedule()
+                if self._is_market_hours():
+                    self._tick()
+                    self._check_deep_schedule()
+                else:
+                    log.debug("[MarketMonitor] Outside market hours — scan skipped.")
             except Exception as exc:
                 log.warning("[MarketMonitor] Tick error: %s", exc)
             time.sleep(TICK_INTERVAL)
@@ -240,24 +254,30 @@ class MarketMonitor:
 
     # ── Signal dispatcher ─────────────────────────────────────────────────────
 
-    # Minimum seconds between repeated Telegram alerts for the same event type
+    # Minimum seconds between repeated Telegram alerts.
+    # Keyed per-symbol for CIRCUIT_DROP_ALERT/VIX_SPIKE so that a BANKNIFTY
+    # alert does NOT reset the cooldown timer for NIFTY (and vice versa).
     _ALERT_COOLDOWN_S: Dict[str, int] = {
-        "CIRCUIT_DROP_ALERT": 300,   # 5 min
-        "VIX_SPIKE":          300,
-        "VOLUME_SPIKE":       120,
-        "BREAKOUT":            60,
+        "CIRCUIT_DROP_ALERT": 3600,  # 1 hour — persistent drop should alert once/hour
+        "VIX_SPIKE":           600,  # 10 min
+        "VOLUME_SPIKE":        120,  # 2 min
+        "BREAKOUT":             60,  # 1 min
     }
 
     def _fire(self, event_type: str, data: dict) -> None:
         import time as _time
         now = _time.monotonic()
         cooldown = self._ALERT_COOLDOWN_S.get(event_type, 0)
-        last = self._last_alert_ts.get(event_type, 0.0)
+        # Use per-symbol key so BANKNIFTY and NIFTY cooldowns don't share state
+        symbol = data.get("symbol", "")
+        cooldown_key = f"{event_type}:{symbol}" if symbol else event_type
+        last = self._last_alert_ts.get(cooldown_key, 0.0)
         if cooldown and (now - last) < cooldown:
-            log.debug("[MarketMonitor] %s suppressed (cooldown %ds)", event_type, cooldown)
+            log.debug("[MarketMonitor] %s suppressed (cooldown %ds, key=%s)",
+                      event_type, cooldown, cooldown_key)
             return
         if cooldown:
-            self._last_alert_ts[event_type] = now
+            self._last_alert_ts[cooldown_key] = now
         log.info("[MarketMonitor] ⚡ %s — %s", event_type, data)
         if self._on_signal:
             try:
