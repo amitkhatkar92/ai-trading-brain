@@ -20,11 +20,13 @@ for /f "tokens=1-2 delims= " %%A in ('powershell -Command "Get-Date -Format \"yy
 
 echo. >> "%LOGFILE%"
 echo ============================================================ >> "%LOGFILE%"
-echo %TS% | AI Trading Brain starting >> "%LOGFILE%"
+echo %TS%: AI Trading Brain starting >> "%LOGFILE%"
 echo ============================================================ >> "%LOGFILE%"
 
 :: Set Unicode output and change to project root
 set "PYTHONIOENCODING=utf-8"
+:: Required: main.py checks for this env var to allow execution outside Docker
+set "RUNNING_IN_DOCKER=1"
 cd /d "%ROOT%"
 
 :: ── Launch Streamlit dashboard in background (port 8501) ───────────────────
@@ -44,4 +46,4 @@ start "AiTradingBrain" /B "%PYTHON%" main.py --schedule --paper --pilot >> "%LOG
 
 :: Log exit
 for /f "tokens=1-2 delims= " %%A in ('powershell -Command "Get-Date -Format \"yyyy-MM-dd HH:mm:ss\""') do set "TS2=%%A %%B"
-echo %TS2% | Scheduler exited (code %ERRORLEVEL%) >> "%LOGFILE%"
+echo %TS2%: Scheduler exited (code %ERRORLEVEL%) >> "%LOGFILE%"

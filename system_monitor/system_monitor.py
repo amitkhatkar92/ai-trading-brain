@@ -49,10 +49,12 @@ HISTORY_WINDOW         = 10     # cycles to keep for error-rate calculation
 # Per-layer WARN overrides — for layers that make external network calls
 # and are expected to be slower than the default 2 000 ms threshold.
 LAYER_LATENCY_WARN_OVERRIDES: dict = {
-    "GlobalIntelligence": 5_000,   # first call fetches 13 yfinance symbols (~3-4s cold)
+    "GlobalIntelligence":  5_000,   # first call fetches 13 yfinance symbols (~3-4s cold)
+    "MarketIntelligence":  5_000,   # batch yfinance fetch for 7 Indian index symbols
 }
 LAYER_LATENCY_CRIT_OVERRIDES: dict = {
-    "GlobalIntelligence": 12_000,  # only CRITICAL if truly hung (>12s)
+    "GlobalIntelligence":  12_000,  # only CRITICAL if truly hung (>12s)
+    "MarketIntelligence":  15_000,  # only abort cycle if yfinance is completely hung (>15s)
 }
 
 
