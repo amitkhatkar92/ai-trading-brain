@@ -98,20 +98,37 @@ def main():
         return
 
     # ── Docker-only runtime guard ─────────────────────────────────────────
-    # The Dockerfile sets RUNNING_IN_DOCKER=1.  Any execution path that
-    # reaches here without that variable is running outside the container
-    # (e.g. systemd service, bare `python main.py`).  Exit immediately so
-    # we never have two simultaneous execution environments.
-    if os.getenv("RUNNING_IN_DOCKER") != "1":
+    # Uses three independent detection methods so ENV propagation issues
+    # inside a container never cause a false exit.
+    def _is_running_in_docker() -> bool:
+        # Method 1: explicit env variable (Dockerfile sets RUNNING_IN_DOCKER=1)
+        if os.getenv("RUNNING_IN_DOCKER") == "1":
+            return True
+        # Method 2: Docker always creates /.dockerenv on the container root fs
+        if os.path.exists("/.dockerenv"):
+            return True
+        # Method 3: cgroup v1 / v2 containment markers
+        for cg_path in ("/proc/1/cgroup", "/proc/self/cgroup"):
+            try:
+                with open(cg_path, "r") as _f:
+                    _cg = _f.read()
+                    if "docker" in _cg or "kubepods" in _cg or "containerd" in _cg:
+                        return True
+            except Exception:
+                pass
+        return False
+
+    if not _is_running_in_docker():
         log.error(
-            "[GUARD] RUNNING_IN_DOCKER is not set. "
-            "This system must run inside the Docker container only. "
-            "Stop any systemd service (trading-brain-schedule.service) "
-            "and use 'docker compose up' instead. Exiting."
+            "[GUARD] Docker detection failed — not running inside a container. "
+            "ENV RUNNING_IN_DOCKER=%s  /.dockerenv=%s  "
+            "Use 'docker compose up' or set RUNNING_IN_DOCKER=1. Exiting.",
+            os.getenv("RUNNING_IN_DOCKER", "<unset>"),
+            os.path.exists("/.dockerenv"),
         )
         sys.exit(1)
 
-    log.info("[Guard] Running in Docker mode — single runtime enforced.")
+    log.info("[Guard] Running inside Docker — single runtime enforced.")
 
     log.info("=" * 65)
     log.info("  AI TRADING BRAIN  |  HIERARCHICAL MULTI-AGENT SYSTEM")
