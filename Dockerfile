@@ -24,6 +24,11 @@ RUN mkdir -p /app/data/logs /app/data/live /app/data/historical
 # Set environment for unbuffered output (real-time logs)
 ENV PYTHONUNBUFFERED=1
 
+# Runtime guard: signals to main.py that we are inside the container.
+# main.py checks this and exits immediately if the value is absent,
+# preventing accidental execution via systemd or bare `python main.py`.
+ENV RUNNING_IN_DOCKER=1
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('http://localhost:8501/healthz', timeout=5)" || exit 1

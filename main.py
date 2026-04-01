@@ -97,6 +97,22 @@ def main():
         _print_status()
         return
 
+    # ── Docker-only runtime guard ─────────────────────────────────────────
+    # The Dockerfile sets RUNNING_IN_DOCKER=1.  Any execution path that
+    # reaches here without that variable is running outside the container
+    # (e.g. systemd service, bare `python main.py`).  Exit immediately so
+    # we never have two simultaneous execution environments.
+    if os.getenv("RUNNING_IN_DOCKER") != "1":
+        log.error(
+            "[GUARD] RUNNING_IN_DOCKER is not set. "
+            "This system must run inside the Docker container only. "
+            "Stop any systemd service (trading-brain-schedule.service) "
+            "and use 'docker compose up' instead. Exiting."
+        )
+        sys.exit(1)
+
+    log.info("[Guard] Running in Docker mode — single runtime enforced.")
+
     log.info("=" * 65)
     log.info("  AI TRADING BRAIN  |  HIERARCHICAL MULTI-AGENT SYSTEM")
     log.info("  Layers: 17  |  Agents: ~62  |  Date: %s",
@@ -303,9 +319,15 @@ def main():
             if hasattr(signal, "SIGBREAK"):          # Windows Ctrl+Break
                 signal.signal(signal.SIGBREAK, _handle_stop)
 
+            # Give the scheduler thread the real stop event so a kill-switch
+            # halt (drawdown breach) also wakes the main loop and exits cleanly.
+            brain.set_stop_event(_stop)
+
             try:
                 while not _stop.is_set():
                     _stop.wait(timeout=60)
+                    if _stop.is_set():
+                        log.info("[Main] Stop event set — exiting main loop.")
             except KeyboardInterrupt:
                 log.info("KeyboardInterrupt — shutting down scheduler…")
                 brain.shutdown()

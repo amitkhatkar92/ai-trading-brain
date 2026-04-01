@@ -1613,15 +1613,19 @@ class MasterOrchestrator:
             payload={"ts": datetime.now().isoformat()},
         ))
 
-        def _run():
+        def _run(_stop_event: threading.Event):
             _heartbeat_counter = 0
+            log.info("[Scheduler] SYSTEM LOOP ACTIVE — 15s resolution")
             while not self._halt:
-                sched_lib.run_pending()
+                try:
+                    sched_lib.run_pending()
+                except Exception as _exc:
+                    log.error("[Scheduler] Exception in run_pending — continuing: %s", _exc)
                 _heartbeat_counter += 1
-                # Publish a heartbeat every 5 min (20 × 15s) so ct_events stays
-                # fresh and the dashboard shows ONLINE, not IDLE.
+                # Log heartbeat + publish event every 5 min (20 × 15s)
                 if _heartbeat_counter >= 20:
                     _heartbeat_counter = 0
+                    log.info("[Scheduler] SYSTEM LOOP ACTIVE — heartbeat OK")
                     try:
                         self.bus.publish(SystemEvent(
                             event_type=EventType.SYSTEM_HEARTBEAT,
@@ -1631,10 +1635,27 @@ class MasterOrchestrator:
                     except Exception:
                         pass
                 time.sleep(15)   # 15s resolution gives < 15s slot jitter
+            # _halt was set (kill-switch / drawdown breach) — signal main to exit
+            # so the container can be restarted cleanly by Docker/systemd.
+            log.critical("[Scheduler] _halt=True — scheduler loop exited. Signalling main thread.")
+            _stop_event.set()
 
-        t = threading.Thread(target=_run, daemon=True, name="Scheduler")
+        # _stop_event is injected after signal handlers are registered in main.py;
+        # use a placeholder Event here — main.py will replace it via set_stop_event().
+        self._main_stop_event = threading.Event()
+
+        t = threading.Thread(
+            target=_run,
+            args=(self._main_stop_event,),
+            daemon=True,
+            name="Scheduler",
+        )
         t.start()
         log.info("[Orchestrator] Scheduler thread running (15s resolution).")
+
+    def set_stop_event(self, stop_event: threading.Event) -> None:
+        """Let main.py inject the real stop Event so halt propagates to the main loop."""
+        self._main_stop_event = stop_event
 
     def shutdown(self):
         """Gracefully shut down the task queue and publish SYSTEM_SHUTDOWN event."""
