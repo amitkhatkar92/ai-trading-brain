@@ -10,7 +10,10 @@ User=root
 WorkingDirectory=/root/ai-trading-brain
 EnvironmentFile=/root/ai-trading-brain/.env
 Environment="PYTHONUNBUFFERED=1"
-Environment="RUNNING_IN_DOCKER=1"
+# NOTE: RUNNING_IN_DOCKER is intentionally NOT set here.
+# main.py will detect it is not inside a container and exit immediately.
+# This service file is kept only as a fallback reference; it must NOT be
+# enabled.  Use docker compose (see deploy.yml) to run the engine.
 ExecStart=/root/ai-trading-brain/venv/bin/python main.py --schedule
 Restart=on-failure
 RestartSec=10

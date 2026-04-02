@@ -34,6 +34,26 @@ from utils import get_logger
 log = get_logger("main")
 
 
+def is_running_in_docker() -> bool:
+    """Three independent checks — robust against ENV propagation gaps."""
+    # Method 1: explicit env variable (Dockerfile and docker-compose set RUNNING_IN_DOCKER=1)
+    if os.getenv("RUNNING_IN_DOCKER") == "1":
+        return True
+    # Method 2: Docker always creates /.dockerenv on the container root fs
+    if os.path.exists("/.dockerenv"):
+        return True
+    # Method 3: cgroup v1 / v2 containment markers
+    for cg_path in ("/proc/1/cgroup", "/proc/self/cgroup"):
+        try:
+            with open(cg_path, "r") as _f:
+                _cg = _f.read()
+                if "docker" in _cg or "kubepods" in _cg or "containerd" in _cg:
+                    return True
+        except Exception:
+            pass
+    return False
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="AI Trading Brain — Hierarchical Multi-Agent System"
@@ -98,27 +118,7 @@ def main():
         return
 
     # ── Docker-only runtime guard ─────────────────────────────────────────
-    # Uses three independent detection methods so ENV propagation issues
-    # inside a container never cause a false exit.
-    def _is_running_in_docker() -> bool:
-        # Method 1: explicit env variable (Dockerfile sets RUNNING_IN_DOCKER=1)
-        if os.getenv("RUNNING_IN_DOCKER") == "1":
-            return True
-        # Method 2: Docker always creates /.dockerenv on the container root fs
-        if os.path.exists("/.dockerenv"):
-            return True
-        # Method 3: cgroup v1 / v2 containment markers
-        for cg_path in ("/proc/1/cgroup", "/proc/self/cgroup"):
-            try:
-                with open(cg_path, "r") as _f:
-                    _cg = _f.read()
-                    if "docker" in _cg or "kubepods" in _cg or "containerd" in _cg:
-                        return True
-            except Exception:
-                pass
-        return False
-
-    if not _is_running_in_docker():
+    if not is_running_in_docker():
         log.error(
             "[GUARD] Docker detection failed — not running inside a container. "
             "ENV RUNNING_IN_DOCKER=%s  /.dockerenv=%s  "
@@ -374,4 +374,15 @@ def main():
 
 
 if __name__ == "__main__":
+    # Hard guard BEFORE any heavy imports or orchestrator init.
+    # Prevents accidental execution via systemd, cron, nohup, or bare
+    # `python main.py` on the host.  Only Docker sets RUNNING_IN_DOCKER=1
+    # (or has /.dockerenv), so this exits immediately outside a container.
+    if not is_running_in_docker():
+        print(
+            "ERROR: This system must run only inside Docker.\n"
+            "Use: docker compose up -d\n"
+            "Direct execution on the host is permanently blocked."
+        )
+        sys.exit(1)
     main()

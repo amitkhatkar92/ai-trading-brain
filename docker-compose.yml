@@ -21,6 +21,7 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
       - TZ=Asia/Kolkata  # IST — all schedule times are in IST
+      - RUNNING_IN_DOCKER=1  # Required — main.py exits if this is absent
     
     # Resource limits
     mem_limit: 2g
