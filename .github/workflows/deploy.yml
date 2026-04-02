@@ -69,15 +69,24 @@ jobs:
             done
 
             # ═══════════════════════════════════════════════════════════════════════
-            # STEP 4 — Kill any lingering host main.py processes
+            # STEP 4 — Gracefully stop lingering host main.py processes
+            # SIGTERM only; skip any PID that is an ancestor of this SSH session
+            # (kill -9 on a session ancestor kills the deploy script itself).
             # ═══════════════════════════════════════════════════════════════════════
-            HOST_PIDS=$(pgrep -f "python.*main\.py" 2>/dev/null || true)
-            if [ -n "$HOST_PIDS" ]; then
-              echo "[ procs  ] killing host main.py PIDs: $HOST_PIDS"
-              kill -9 $HOST_PIDS 2>/dev/null || true
-            else
-              echo "[ procs  ] ✅ no main.py running on host"
-            fi
+            _session_tree=""
+            _p=$$
+            while [ -n "$_p" ] && [ "$_p" -gt 1 ] 2>/dev/null; do
+              _session_tree="$_session_tree $_p"
+              _p=$(ps -o ppid= -p "$_p" 2>/dev/null | tr -d ' ' || echo "")
+            done
+            for _pid in $(pgrep -f "python.*main\.py" 2>/dev/null || true); do
+              if echo "$_session_tree" | grep -qw "$_pid"; then
+                echo "[ procs  ] skipping PID $_pid (current SSH session ancestor)"
+              else
+                kill -15 "$_pid" 2>/dev/null && echo "[ procs  ] SIGTERM → PID $_pid" || true
+              fi
+            done
+            echo "[ procs  ] ✅ lingering host processes handled"
 
             # ═══════════════════════════════════════════════════════════════════════
             # STEP 5 — Remove stale PID locks so Docker start is clean
