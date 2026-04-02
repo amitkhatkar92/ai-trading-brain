@@ -252,20 +252,31 @@ class BacktestingAI:
     # PUBLIC
     # ─────────────────────────────────────────────────────────────────
 
+    @staticmethod
+    def get_dynamic_backtest_threshold(
+        vix: float | None,
+        regime: RegimeLabel | None,
+    ) -> float:
+        """Return the minimum passing score (out of 6) for the current market regime."""
+        if vix is None:
+            return 4.0  # safe default when no market data available
+        # Volatile market → allow more signals through to Decision Engine
+        if vix > 25.0 or (regime is not None and regime == RegimeLabel.VOLATILE):
+            return 2.5
+        # Normal market
+        return 3.5
+
     def filter_by_backtest(
         self,
         signals: List[TradeSignal],
         vix: float = 0.0,
         regime: Optional[RegimeLabel] = None,
     ) -> List[TradeSignal]:
-        # ── Adaptive threshold ──────────────────────────────────────────
-        # Volatile market or VIX > 25 → relax to 3/6 so valid signals
-        # aren’t starved in high-uncertainty conditions.
-        _volatile = (regime == RegimeLabel.VOLATILE) or (vix > 25.0)
-        _threshold = 3 if _volatile else 4
+        _threshold = self.get_dynamic_backtest_threshold(vix, regime)
         log.info(
-            "[BacktestingAI] Threshold=%d/6 | VIX=%.1f | Regime=%s",
-            _threshold, vix, regime.value if regime else "unknown",
+            "[BacktestingAI] Threshold=%.1f | VIX=%.1f | Regime=%s",
+            _threshold, vix if vix is not None else 0.0,
+            regime.value if regime else "unknown",
         )
 
         approved_signals = []
@@ -329,7 +340,7 @@ class BacktestingAI:
             
             log.debug("[BacktestingAI] %s | score=%d/6 | %s",
                      signal.strategy_name, score, ",".join(score_details))
-            log.info("[BacktestingAI] Backtest Threshold Applied: %d | Score: %d | %s",
+            log.info("[BacktestingAI] Backtest Threshold Applied: %.1f | Score: %d | %s",
                      _threshold, score, signal.strategy_name)
 
             if score >= _threshold:
@@ -337,10 +348,10 @@ class BacktestingAI:
                 signal.confidence = min(10.0, signal.confidence + round(boost, 2))
                 approved_signals.append(signal)
             else:
-                log.info("[BacktestingAI] %s rejected | score=%d/6 below threshold %d",
+                log.info("[BacktestingAI] %s rejected | score=%d/6 below threshold %.1f",
                          signal.strategy_name, score, _threshold)
 
-        log.info("[BacktestingAI] %d/%d signals passed all quality gates",
+        log.info("[BacktestingAI] Signals passed: %d / %d",
                  len(approved_signals), len(signals))
         return approved_signals
 
