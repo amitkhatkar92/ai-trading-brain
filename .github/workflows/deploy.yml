@@ -28,22 +28,71 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
 
-            # ── One-time cleanup: disable systemd service permanently ──────────────
-            # The old service set RUNNING_IN_DOCKER=1 which bypassed the Docker guard
-            # and allowed main.py to run outside the container.  Kill it for good.
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 1 — SYSTEMD: disable and delete service permanently
+            # ═══════════════════════════════════════════════════════════════════════
             systemctl stop    trading-brain-schedule 2>/dev/null || true
             systemctl disable trading-brain-schedule 2>/dev/null || true
             rm -f /etc/systemd/system/trading-brain-schedule.service
+            systemctl daemon-reexec 2>/dev/null || true
             systemctl daemon-reload
+            echo "[ systemd ] ✅ service removed"
 
-            # ── Remove any stale PID lock so Docker start is clean ─────────────────
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 2 — CRON: remove any entry that references main.py / trading
+            # ═══════════════════════════════════════════════════════════════════════
+            # User crontab — strip matching lines in-place
+            crontab -l 2>/dev/null \
+              | grep -vE "main\.py|ai.trading.brain|autostart" \
+              | crontab - 2>/dev/null || true
+            # System cron files
+            rm -f /etc/cron.d/*trading*   2>/dev/null || true
+            rm -f /etc/cron.daily/*trading* 2>/dev/null || true
+            # Verify
+            REMAINING=$(crontab -l 2>/dev/null | grep -E "main\.py|ai.trading.brain|autostart" || true)
+            if [ -z "$REMAINING" ]; then
+              echo "[ cron    ] ✅ no trading cron entries"
+            else
+              echo "[ cron    ] ❌ entries still present: $REMAINING"
+            fi
+
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 3 — SHELL STARTUP FILES: remove auto-launch lines
+            # ═══════════════════════════════════════════════════════════════════════
+            for f in /root/.bashrc /root/.profile /root/.bash_profile; do
+              if [ -f "$f" ]; then
+                sed -i '/main\.py/d'       "$f"
+                sed -i '/autostart\.sh/d'  "$f"
+                sed -i '/ai.trading.brain/d' "$f"
+                echo "[ shell  ] ✅ cleaned $f"
+              fi
+            done
+
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 4 — Kill any lingering host main.py processes
+            # ═══════════════════════════════════════════════════════════════════════
+            HOST_PIDS=$(pgrep -f "python.*main\.py" 2>/dev/null || true)
+            if [ -n "$HOST_PIDS" ]; then
+              echo "[ procs  ] killing host main.py PIDs: $HOST_PIDS"
+              kill -9 $HOST_PIDS 2>/dev/null || true
+            else
+              echo "[ procs  ] ✅ no main.py running on host"
+            fi
+
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 5 — Remove stale PID locks so Docker start is clean
+            # ═══════════════════════════════════════════════════════════════════════
             rm -f /root/ai-trading-brain/data/trading_engine.pid
+            rm -f /tmp/trading_brain.pid
+            echo "[ pid    ] ✅ stale locks cleared"
 
-            # ── Docker-only restart ─────────────────────────────────────────────────
+            # ═══════════════════════════════════════════════════════════════════════
+            # STEP 6 — Docker-only restart
+            # ═══════════════════════════════════════════════════════════════════════
             docker compose down --remove-orphans 2>/dev/null || true
             docker compose up -d --build
 
             sleep 3
             docker ps --filter name=ai-trading-brain --format "table {{.Names}}\t{{.Status}}"
-            echo "✅ Deployment complete — only Docker runtime active"
+            echo "✅ Deployment complete — ONLY Docker runtime active"
 

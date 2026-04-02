@@ -16,6 +16,7 @@ Usage:
 """
 
 import argparse
+import atexit
 import sys
 import os
 import threading
@@ -129,6 +130,28 @@ def main():
         sys.exit(1)
 
     log.info("[Guard] Running inside Docker — single runtime enforced.")
+
+    # ── /tmp PID lock — container-internal duplicate-process guard ──────────
+    # /tmp is ephemeral: cleared automatically on every container restart.
+    # This catches the one edge case where the volume-based instance_lock
+    # is stale but the container is still warm.
+    _TMP_PID = "/tmp/trading_brain.pid"
+    if os.path.exists(_TMP_PID):
+        try:
+            _existing_pid = int(open(_TMP_PID).read().strip())
+            os.kill(_existing_pid, 0)          # 0 = just check existence
+            log.error(
+                "[GUARD] Another instance is already running inside this container "
+                "(PID %d). Exiting.", _existing_pid
+            )
+            sys.exit(1)
+        except (ProcessLookupError, ValueError):
+            # Stale lock — dead process, safe to overwrite
+            os.remove(_TMP_PID)
+    with open(_TMP_PID, "w") as _pf:
+        _pf.write(str(os.getpid()))
+    atexit.register(lambda: os.path.exists(_TMP_PID) and os.remove(_TMP_PID))
+    log.info("[Guard] /tmp PID lock acquired (PID %d).", os.getpid())
 
     log.info("=" * 65)
     log.info("  AI TRADING BRAIN  |  HIERARCHICAL MULTI-AGENT SYSTEM")
