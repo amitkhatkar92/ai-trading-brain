@@ -100,6 +100,8 @@ jobs:
             # ═══════════════════════════════════════════════════════════════════════
             # STEP 6 — Docker-only restart
             # ═══════════════════════════════════════════════════════════════════════
+            # Ensure .env exists (bind-mounted :ro — Docker fails if file absent)
+            touch /root/ai-trading-brain/.env
             docker compose down --remove-orphans 2>/dev/null || true
             docker compose up -d --build
 
