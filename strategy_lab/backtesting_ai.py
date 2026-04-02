@@ -252,17 +252,8 @@ class BacktestingAI:
     # ─────────────────────────────────────────────────────────────────
 
     def filter_by_backtest(self, signals: List[TradeSignal]) -> List[TradeSignal]:
-        # FORCED SCORING MODE: Ensure signals pass with relaxed thresholds for debugging
         approved_signals = []
-        
-        # ── DEBUG MODE: Pass first 2 signals to verify pipeline ──────────────────────
-        if len(signals) > 0:
-            log.warning("[BacktestingAI-DEBUG] Allowing first 2 signals for pipeline verification")
-            approved_signals = signals[:2]
-            log.info("[BacktestingAI] %d/%d signals passed (DEBUG MODE - first 2 unconditional).",
-                     len(approved_signals), len(signals))
-            return approved_signals
-        
+
         for signal in signals:
             result = self._get_result(signal.strategy_name)
             if result is None:
@@ -281,13 +272,11 @@ class BacktestingAI:
             expectancy = getattr(result, "expectancy", 0.001) or 0.001
             sharpe = getattr(result, "sharpe", 1.5) or 1.5
             
-            # ── DEBUG LOG: Show what we're evaluating ──────────────────────────────────
-            log.info("[BacktestingAI-DATA CHECK] %s | WR=%.1f%% | DD=%.1f%% | WF=%.1f%% | "
+            log.debug("[BacktestingAI] %s | WR=%.1f%% | DD=%.1f%% | WF=%.1f%% | "
                      "OF=%.2f | XMKT=%.1f%% | EXP=%.3f%% | Sharpe=%.2f",
-                     signal.strategy_name, win_rate*100, drawdown*100, wf*100, 
+                     signal.strategy_name, win_rate*100, drawdown*100, wf*100,
                      overfit, xmkt*100, expectancy*100, sharpe)
             
-            # ── FORCED SIMPLIFIED SCORING (bypass gates) ──────────────────────────────
             score = 0
             score_details = []
             
@@ -322,20 +311,18 @@ class BacktestingAI:
                 score += 1
                 score_details.append(f"OvFit{overfit:.2f}")
             
-            # ── FORCED DECISION: score >= 2 (temporary relaxed) ────────────────────────
-            log.info("[BacktestingAI-FORCED] %s | score=%d/6 | %s",
+            log.debug("[BacktestingAI] %s | score=%d/6 | %s",
                      signal.strategy_name, score, ",".join(score_details))
-            
-            if score >= 2:  # TEMP: very relaxed threshold for forcing
-                # Boost confidence by Sharpe, tempered by overfitting ratio
+
+            if score >= 4:  # 4/6 quality threshold (passes_gate criterion)
                 boost = (0.5 * sharpe) / max(overfit, 1.0)
                 signal.confidence = min(10.0, signal.confidence + round(boost, 2))
                 approved_signals.append(signal)
             else:
-                log.info("[BacktestingAI-FORCED-REJECT] %s | score too low (%d/6)",
+                log.info("[BacktestingAI] %s rejected | score=%d/6 below threshold",
                          signal.strategy_name, score)
 
-        log.info("[BacktestingAI] %d/%d signals passed all quality gates (FORCED MODE).",
+        log.info("[BacktestingAI] %d/%d signals passed all quality gates",
                  len(approved_signals), len(signals))
         return approved_signals
 
