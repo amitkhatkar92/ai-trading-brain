@@ -69,15 +69,32 @@ jobs:
             done
 
             # ═══════════════════════════════════════════════════════════════════════
-            # STEP 4 — (intentionally omitted)
-            # Host main.py processes are NOT killed here.  Sending any signal to
-            # a process that is an ancestor of this SSH session terminates the
-            # deploy script itself (exit 137).  These processes cannot respawn
-            # after this deploy because main.py's Docker guard blocks all host
-            # execution.  They will exit on their own at the end of their current
-            # cycle.  Docker starts independently and does not need them gone.
+            # STEP 4 — Kill ALL host main.py processes safely via detached subshell
+            # ─────────────────────────────────────────────────────────────────────
+            # We cannot kill inline (signal 137 risk — kills SSH session ancestor).
+            # Solution: nohup + disown spawns a child that outlives this session.
+            # It runs AFTER we exit, so it is never an ancestor of this script.
+            # SIGTERM first (graceful), SIGKILL 5s later for stubborn processes.
+            # Also kills any tmux/screen sessions holding main.py.
             # ═══════════════════════════════════════════════════════════════════════
-            echo "[ procs  ] ✅ host process cleanup skipped (safe — Docker guard prevents respawn)"
+            nohup bash -c '
+              sleep 1
+              pkill -TERM -f "python.*main\.py" 2>/dev/null || true
+              sleep 5
+              pkill -KILL -f "python.*main\.py" 2>/dev/null || true
+              # Kill tmux sessions that may be holding a main.py process
+              for s in $(tmux ls -F "#{session_name}" 2>/dev/null || true); do
+                if tmux list-panes -t "$s" -F "#{pane_current_command}" 2>/dev/null | grep -q python; then
+                  tmux kill-session -t "$s" 2>/dev/null || true
+                fi
+              done
+              # Kill detached screen sessions
+              screen -ls 2>/dev/null | grep -oP "\d+\.\S+" | while read sn; do
+                screen -X -S "$sn" quit 2>/dev/null || true
+              done
+            ' >/tmp/kill_main_py.log 2>&1 &
+            disown
+            echo "[ procs  ] ✅ background kill scheduled (SIGTERM+SIGKILL, detached from session)"
 
             # ═══════════════════════════════════════════════════════════════════════
             # STEP 5 — Remove stale PID locks so Docker start is clean
