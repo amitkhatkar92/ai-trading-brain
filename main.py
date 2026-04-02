@@ -35,24 +35,30 @@ log = get_logger("main")
 
 
 def is_running_in_docker() -> bool:
-    """Three independent checks — robust against ENV propagation gaps.
+    """Detect Docker execution via structural evidence only.
 
-    NOTE: On Windows, the ENV check (Method 1) is deliberately skipped.
-    autostart.bat used to set RUNNING_IN_DOCKER=1 to bypass this guard.
-    Docker Desktop on Windows does mount /.dockerenv, so Method 2 is
-    sufficient for legitimate container execution.
+    The RUNNING_IN_DOCKER=1 env var is NOT sufficient proof on Linux.
+    Old systemd-spawned host processes can carry that env var inherited
+    from the service file.  We require physical container evidence:
+      - /.dockerenv  (Docker bind-mounts this on every container)
+      - cgroup markers (docker / kubepods / containerd in cgroup entries)
+
+    The env var is accepted ONLY on Windows (where /.dockerenv cannot
+    exist on the host and cgroup files don't exist).
     """
     import platform
     _on_windows = platform.system() == "Windows"
 
-    # Method 1: explicit env variable (Dockerfile and docker-compose set RUNNING_IN_DOCKER=1)
-    # Skipped on Windows — a .bat file can set this env var to bypass the guard.
-    if not _on_windows and os.getenv("RUNNING_IN_DOCKER") == "1":
-        return True
-    # Method 2: Docker always creates /.dockerenv on the container root fs
+    # Windows: Docker Desktop containers don't have /proc or /.dockerenv
+    # reliably, so fall back to the explicit env var as the only signal.
+    if _on_windows:
+        return os.getenv("RUNNING_IN_DOCKER") == "1"
+
+    # Linux / macOS: require structural evidence — NOT just the env var.
+    # /.dockerenv is bind-mounted by Docker on every container.
     if os.path.exists("/.dockerenv"):
         return True
-    # Method 3: cgroup v1 / v2 containment markers (Linux only)
+    # cgroup v1 / v2 containment markers
     for cg_path in ("/proc/1/cgroup", "/proc/self/cgroup"):
         try:
             with open(cg_path, "r") as _f:

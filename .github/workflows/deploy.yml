@@ -69,32 +69,27 @@ jobs:
             done
 
             # ═══════════════════════════════════════════════════════════════════════
-            # STEP 4 — Kill ALL host main.py processes safely via detached subshell
+            # STEP 4 — Schedule host main.py cleanup via atd (independent of SSH)
             # ─────────────────────────────────────────────────────────────────────
-            # We cannot kill inline (signal 137 risk — kills SSH session ancestor).
-            # Solution: nohup + disown spawns a child that outlives this session.
-            # It runs AFTER we exit, so it is never an ancestor of this script.
-            # SIGTERM first (graceful), SIGKILL 5s later for stubborn processes.
-            # Also kills any tmux/screen sessions holding main.py.
+            # nohup+disown caused SIGTERM (the kill ran while still inside the
+            # SSH session's process group).  `at` is a system daemon completely
+            # independent of any SSH session — zero risk of SIGTERM to deploy.
+            # Kill runs 2 minutes after this deploy exits.
             # ═══════════════════════════════════════════════════════════════════════
-            nohup bash -c '
-              sleep 1
-              pkill -TERM -f "python.*main\.py" 2>/dev/null || true
-              sleep 5
-              pkill -KILL -f "python.*main\.py" 2>/dev/null || true
-              # Kill tmux sessions that may be holding a main.py process
-              for s in $(tmux ls -F "#{session_name}" 2>/dev/null || true); do
-                if tmux list-panes -t "$s" -F "#{pane_current_command}" 2>/dev/null | grep -q python; then
-                  tmux kill-session -t "$s" 2>/dev/null || true
-                fi
-              done
-              # Kill detached screen sessions
-              screen -ls 2>/dev/null | grep -oP "\d+\.\S+" | while read sn; do
-                screen -X -S "$sn" quit 2>/dev/null || true
-              done
-            ' >/tmp/kill_main_py.log 2>&1 &
-            disown
-            echo "[ procs  ] ✅ background kill scheduled (SIGTERM+SIGKILL, detached from session)"
+            if command -v at >/dev/null 2>&1; then
+              printf '%s\n' \
+                'pkill -TERM -f "python.*main\.py" 2>/dev/null || true' \
+                'sleep 5' \
+                'pkill -KILL -f "python.*main\.py" 2>/dev/null || true' \
+                'echo done > /tmp/kill_main_py.log' \
+                | at now + 2 minutes 2>/dev/null
+              echo "[ procs  ] ✅ kill scheduled via atd in 2 minutes"
+            else
+              # atd not available — write a self-deleting cron job instead
+              printf '* * * * * root pkill -KILL -f "python.*main\\.py" 2>/dev/null; rm -f /etc/cron.d/kill-main-py\n' \
+                > /etc/cron.d/kill-main-py
+              echo "[ procs  ] ✅ kill scheduled via cron (self-deleting)"
+            fi
 
             # ═══════════════════════════════════════════════════════════════════════
             # STEP 5 — Remove stale PID locks so Docker start is clean
