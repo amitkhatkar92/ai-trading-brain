@@ -83,7 +83,6 @@ jobs:
             # STEP 5 — Remove stale PID locks so Docker start is clean
             # ═══════════════════════════════════════════════════════════════════════
             rm -f /root/ai-trading-brain/data/trading_engine.pid
-            rm -f /tmp/trading_brain.pid
             echo "[ pid    ] ✅ stale locks cleared"
 
             # ═══════════════════════════════════════════════════════════════════════
