@@ -966,7 +966,9 @@ class MasterOrchestrator:
 
         matched = self.strategy_generator.assign_strategy(signals, snapshot)
         evolved = self.strategy_evolution.apply_evolved_params(matched)
-        tested  = self.backtesting_ai.filter_by_backtest(evolved)
+        tested  = self.backtesting_ai.filter_by_backtest(
+            evolved, vix=snapshot.vix, regime=snapshot.regime
+        )
         log.info("  %d signals after strategy lab", len(tested))
 
         self.bus.publish(SystemEvent(
