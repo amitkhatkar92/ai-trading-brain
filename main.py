@@ -35,14 +35,24 @@ log = get_logger("main")
 
 
 def is_running_in_docker() -> bool:
-    """Three independent checks — robust against ENV propagation gaps."""
+    """Three independent checks — robust against ENV propagation gaps.
+
+    NOTE: On Windows, the ENV check (Method 1) is deliberately skipped.
+    autostart.bat used to set RUNNING_IN_DOCKER=1 to bypass this guard.
+    Docker Desktop on Windows does mount /.dockerenv, so Method 2 is
+    sufficient for legitimate container execution.
+    """
+    import platform
+    _on_windows = platform.system() == "Windows"
+
     # Method 1: explicit env variable (Dockerfile and docker-compose set RUNNING_IN_DOCKER=1)
-    if os.getenv("RUNNING_IN_DOCKER") == "1":
+    # Skipped on Windows — a .bat file can set this env var to bypass the guard.
+    if not _on_windows and os.getenv("RUNNING_IN_DOCKER") == "1":
         return True
     # Method 2: Docker always creates /.dockerenv on the container root fs
     if os.path.exists("/.dockerenv"):
         return True
-    # Method 3: cgroup v1 / v2 containment markers
+    # Method 3: cgroup v1 / v2 containment markers (Linux only)
     for cg_path in ("/proc/1/cgroup", "/proc/self/cgroup"):
         try:
             with open(cg_path, "r") as _f:
