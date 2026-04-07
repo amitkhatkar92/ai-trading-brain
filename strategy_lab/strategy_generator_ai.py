@@ -45,14 +45,15 @@ STRATEGY_PARAMS = {
     "Long_Straddle_Pre_Event":{"min_rr": 2.5, "max_loss_pct": 0.02},   # event plays → fat tail
     "Futures_Basis_Arb":      {"min_rr": 1.2, "max_loss_pct": 0.005},  # arb — tight spreads
     "ETF_NAV_Arb":            {"min_rr": 1.2, "max_loss_pct": 0.003},  # arb — tight spreads
-    # Volatile-regime equity strategies — higher RR bars reflect the tougher environment
-    "Equity_Breakout":        {"min_rr": 3.0, "max_loss_pct": 0.015},  # volatile breakout — fat tail needed
-    "Equity_Retest":          {"min_rr": 2.5, "max_loss_pct": 0.015},  # volatile retest — still asymmetric
+    # Volatile-regime equity strategies — balanced: lowered rr bars allow 1-3 trades/day
+    # while keeping meaningful asymmetry (2.5:1 and 2.0:1 still require more winners than losers)
+    "Equity_Breakout":        {"min_rr": 2.5, "max_loss_pct": 0.015},  # balanced: was 3.0
+    "Equity_Retest":          {"min_rr": 2.0, "max_loss_pct": 0.015},  # balanced: was 2.5
 }
 
 # Minimum confidence (0–10) required for equity signals in volatile regime.
-# Raises the bar by 0.5 above the DecisionEngine default threshold of 6.5.
-VOLATILE_EQUITY_MIN_CONFIDENCE: float = 7.0
+# Balanced: 6.8 — modestly above the DecisionEngine default of 6.5 (was 7.0).
+VOLATILE_EQUITY_MIN_CONFIDENCE: float = 6.8
 
 
 class StrategyGeneratorAI:
