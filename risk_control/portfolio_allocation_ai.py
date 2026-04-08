@@ -22,6 +22,12 @@ from learning_system.strategy_performance_tracker import get_performance_tracker
 
 log = get_logger(__name__)
 
+# Maximum fraction of TOTAL_CAPITAL allowed for a single trade.
+# Must stay in sync with MAX_CAPITAL_PER_TRADE_PCT in execution_engine/order_manager.py
+# (25.0%).  Enforcing it here — one layer earlier — means the OrderManager guard
+# only ever fires as a true last-resort safety net, never as a normal reject path.
+_MAX_SINGLE_TRADE_FRACTION = 0.25
+
 # Sector → cap-category mapping (simplified)
 LARGE_CAP_SYMBOLS = {"RELIANCE", "HDFCBANK", "ICICIBANK", "INFY", "TCS",
                      "HDFC", "KOTAKBANK", "LT", "AXISBANK", "SBIN"}
@@ -83,6 +89,15 @@ class PortfolioAllocationAI:
             log.debug("[PortfolioAllocationAI] %s perf_weight=%.2f× (%s)",
                       sig.symbol, perf_weight, sig.strategy_name)
             qty = max(1, int(qty * perf_weight))
+
+        # Hard capital cap: ensure notional never exceeds 25% of TOTAL_CAPITAL so
+        # the OrderManager guard never triggers during normal operation.
+        if sig.entry_price > 0:
+            max_qty_by_capital = max(1, int(TOTAL_CAPITAL * _MAX_SINGLE_TRADE_FRACTION / sig.entry_price))
+            if qty > max_qty_by_capital:
+                log.debug("[PortfolioAllocationAI] %s qty capped by 25%% capital limit: %d → %d",
+                          sig.symbol, qty, max_qty_by_capital)
+                qty = max_qty_by_capital
 
         sig.quantity = qty
         log.debug(f"[PortfolioAllocationAI] {sig.symbol} qty={qty} (cap=\u20b9{bucket_capital:,.0f})")
