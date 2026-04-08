@@ -1,6 +1,13 @@
 """Single-instance lock — prevents multiple copies of main.py running simultaneously.
 
-Uses a JSON PID file at ``data/trading_engine.pid``.
+Lock file location:
+  - Inside Docker: ``/tmp/trading_engine.pid`` — ephemeral per-container filesystem,
+    wiped on every container start. Avoids the PID-1 stale-lock trap caused by
+    mounting ``data/`` as a volume (stored PID is always 1; os.kill(1, 0) always
+    succeeds on Linux, so stale detection never fires → restart loop).
+  - On host:       ``data/trading_engine.pid`` — persists across runs, correctly
+    blocks a second host process using the signal-0 trick.
+
 Stale locks (process no longer alive) are automatically cleared on the next start.
 """
 
@@ -12,7 +19,16 @@ import sys
 log = logging.getLogger("instance_lock")
 
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-LOCK_FILE = os.path.join(_PROJECT_ROOT, "data", "trading_engine.pid")
+
+# Use /tmp/ inside Docker so the lock file is NOT persisted in the volume-mounted
+# data/ directory.  Every container restart starts with a clean /tmp/, which
+# prevents a stale {"pid": 1} entry from being treated as a live process.
+_in_docker = os.path.exists("/.dockerenv") or os.getenv("RUNNING_IN_DOCKER") == "1"
+LOCK_FILE = (
+    "/tmp/trading_engine.pid"
+    if _in_docker
+    else os.path.join(_PROJECT_ROOT, "data", "trading_engine.pid")
+)
 
 
 def _is_pid_running(pid: int) -> bool:
@@ -41,7 +57,11 @@ def acquire(mode: str = "unknown") -> bool:
             with open(LOCK_FILE) as fh:
                 data = json.load(fh)
             pid = int(data.get("pid", 0))
-            if _is_pid_running(pid):
+            # If the PID on record is our own PID it means the container was
+            # restarted (restart: unless-stopped keeps /tmp intact, so PID 1
+            # survives across restarts even though the process is brand-new).
+            # Treat this as a stale lock and overwrite it.
+            if pid != os.getpid() and _is_pid_running(pid):
                 print(
                     f"Another instance already running "
                     f"(PID {pid}, mode={data.get('mode', '?')}, "

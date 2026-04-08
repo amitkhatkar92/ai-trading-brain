@@ -6,6 +6,13 @@ services:
     # process exits cleanly (SIGTERM from host/OOM/daemon restart) or crashes.
     # NOTE: if systemd also manages this service, disable one to avoid duplicates.
     restart: unless-stopped
+    # Delete any stale PID file left in the volume-mounted data/ directory before
+    # starting.  Without this, a previous run's {"pid": 1} lock survives container
+    # teardown and causes an infinite restart loop (os.kill(1, 0) always succeeds
+    # on Linux; the stale-lock detection in instance_lock.py never fires).
+    # `exec` replaces the shell so python is PID 1 and receives SIGTERM directly.
+    command: >
+      sh -c "rm -f /app/data/trading_engine.pid /tmp/trading_engine.pid && exec python main.py --schedule --paper"
     
     # Mounted volumes for persistent data
     volumes:
