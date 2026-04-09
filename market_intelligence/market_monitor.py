@@ -47,6 +47,7 @@ DEEP_SCAN_SCHEDULE: List[str] = [
     "09:20",   # strategy evaluation
     "10:30",   # mid-morning scan
     "13:00",   # afternoon scan
+    "14:00",   # early afternoon momentum scan
     "15:00",   # closing analysis
 ]
 
@@ -252,6 +253,7 @@ class MarketMonitor:
             "09:20": "strategy_evaluation",
             "10:30": "mid_morning_scan",
             "13:00": "afternoon_scan",
+            "14:00": "early_afternoon_scan",
             "15:00": "closing_analysis",
         }
         return names.get(hhmm, f"scan_{hhmm.replace(':', '')}")

@@ -385,7 +385,7 @@ class MasterOrchestrator:
                 raw = self.market_data_ai.fetch()
                 self.market_regime_ai.classify(raw)
             elif scan_name in ("first_opportunity_scan", "mid_morning_scan",
-                               "afternoon_scan"):
+                               "afternoon_scan", "early_afternoon_scan"):
                 # Lightweight opportunity re-scan (non-blocking)
                 self.task_queue.submit_to(
                     "MasterOrchestrator",

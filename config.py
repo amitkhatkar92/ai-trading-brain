@@ -97,6 +97,7 @@ SCHEDULE = {
     # ── Intraday deep scans ────────────────────────────────────────────────
     "mid_morning_scan":       "10:30",   # re-check regime + new setups    (10:30 IST)
     "afternoon_scan":         "13:00",   # post-lunch session               (13:00 IST)
+    "early_afternoon_scan":   "14:00",   # afternoon momentum window        (14:00 IST)
     "closing_analysis":       "14:55",   # pre-expiry / closing trades      (14:55 IST)
     # ── EOD ────────────────────────────────────────────────────────────────
     "eod_learning":           "15:35",   # performance learning cycle       (15:35 IST = post market close)
