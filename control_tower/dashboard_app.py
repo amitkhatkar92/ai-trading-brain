@@ -256,6 +256,147 @@ def fetch_latest_eod_report_text() -> Optional[str]:
 
 
 # ══════════════════════════════════════════════════════════════════════════
+# New panel helpers — Cycle Monitor · Rejection Funnel · Trade Decision · Scheduler
+# ══════════════════════════════════════════════════════════════════════════
+
+def fetch_cycle_monitor() -> Dict[str, Any]:
+    """Latest cycle with decision_passed derived from ct_decisions."""
+    cycle = fetch_latest_cycle()
+    if not cycle:
+        return {}
+    cid = cycle.get("cycle_id", "")
+    cycle["decision_passed"] = _scalar(
+        "SELECT COUNT(*) FROM ct_decisions WHERE cycle_id=? AND decision='APPROVED'",
+        (cid,)
+    )
+    if cycle.get("had_error"):
+        cycle["cycle_status"] = "ERROR"
+    elif cycle.get("completed_at"):
+        cycle["cycle_status"] = "COMPLETE"
+    else:
+        cycle["cycle_status"] = "RUNNING"
+    # Compute duration from timestamps when cycle_ms is 0
+    if not cycle.get("cycle_ms") and cycle.get("started_at") and cycle.get("completed_at"):
+        try:
+            s = datetime.fromisoformat(cycle["started_at"][:19])
+            e = datetime.fromisoformat(cycle["completed_at"][:19])
+            cycle["cycle_ms"] = int((e - s).total_seconds() * 1000)
+        except Exception:
+            pass
+    return cycle
+
+
+def fetch_latest_approved_trade() -> Dict[str, Any]:
+    """Latest APPROVED decision + order details from ct_events payload."""
+    rows = _query(
+        "SELECT * FROM ct_decisions WHERE decision='APPROVED' ORDER BY id DESC LIMIT 1"
+    )
+    if not rows:
+        return {}
+    trade = dict(rows[0])
+    # Try to enrich with ORDER_PLACED event payload for qty / rr / capital_pct
+    order_rows = _query(
+        "SELECT payload FROM ct_events "
+        "WHERE event_type='order.placed' AND cycle_id=? AND payload LIKE ? "
+        "ORDER BY id DESC LIMIT 1",
+        (trade.get("cycle_id", ""), f"%{trade.get('symbol', '')}%")
+    )
+    if order_rows:
+        try:
+            pay = json.loads(order_rows[0].get("payload") or "{}")
+            trade["qty"]         = pay.get("qty", "—")
+            trade["rr"]          = pay.get("rr", pay.get("risk_reward", "—"))
+            trade["capital_pct"] = pay.get("capital_pct", "—")
+            trade["exec_status"] = pay.get("status", "PENDING")
+        except Exception:
+            trade.setdefault("qty", "—"); trade.setdefault("rr", "—")
+            trade.setdefault("capital_pct", "—"); trade.setdefault("exec_status", "—")
+    else:
+        trade["qty"] = "—"; trade["rr"] = "—"
+        trade["capital_pct"] = "—"; trade["exec_status"] = "DEFERRED"
+    return trade
+
+
+def _read_schedule_from_config() -> Dict[str, str]:
+    """Parse SCHEDULE from config.py with regex — no import needed."""
+    import re
+    _LEGACY = {"market_regime_analysis", "opportunity_scan", "mid_day_review"}
+    schedule: Dict[str, str] = {}
+    try:
+        with open(os.path.join(_ROOT, "config.py"), encoding="utf-8") as fh:
+            in_block = False
+            for line in fh:
+                if re.search(r'^SCHEDULE\s*=\s*\{', line):
+                    in_block = True
+                    continue
+                if in_block:
+                    if "}" in line:
+                        break
+                    ls = line.strip()
+                    if ls.startswith("#"):
+                        continue
+                    m = re.search(r'"(\w+)"\s*:\s*"(\d{2}:\d{2})"', ls)
+                    if m and m.group(1) not in _LEGACY:
+                        schedule[m.group(1)] = m.group(2)
+    except Exception:
+        pass
+    return schedule
+
+
+def fetch_scheduler_status() -> Dict[str, Any]:
+    """Today's scheduled cycle list, completion status, and next-cycle countdown."""
+    schedule = _read_schedule_from_config()
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    now_dt    = datetime.now()
+    now_hhmm  = now_dt.strftime("%H:%M")
+
+    done_rows  = _query(
+        "SELECT started_at FROM ct_cycles WHERE started_at LIKE ?",
+        (today_str + "%",)
+    )
+    done_times = [
+        r["started_at"][11:16] for r in done_rows
+        if len(r.get("started_at", "")) >= 16
+    ]
+
+    cycles = []
+    for name, hhmm in sorted(schedule.items(), key=lambda x: x[1]):
+        fired = any(
+            abs(int(t.replace(":", "")) - int(hhmm.replace(":", ""))) <= 10
+            for t in done_times
+        )
+        if fired:
+            status = "✅ Done"
+        elif hhmm <= now_hhmm:
+            status = "⚠️ Missed"
+        else:
+            status = "⏳ Pending"
+        cycles.append({
+            "Scan": name.replace("_", " ").title(),
+            "Time": hhmm,
+            "Status": status,
+        })
+
+    # Next pending cycle
+    next_name = next_hhmm = secs_until = None
+    for name, hhmm in sorted(schedule.items(), key=lambda x: x[1]):
+        if hhmm > now_hhmm:
+            h, m      = map(int, hhmm.split(":"))
+            tgt       = now_dt.replace(hour=h, minute=m, second=0, microsecond=0)
+            secs_until = (tgt - now_dt).total_seconds()
+            next_name  = name
+            next_hhmm  = hhmm
+            break
+
+    return {
+        "cycles":     cycles,
+        "next_name":  next_name,
+        "next_hhmm":  next_hhmm,
+        "secs_until": secs_until,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════
 # Dashboard layout
 # ══════════════════════════════════════════════════════════════════════════
 
@@ -371,6 +512,153 @@ def run_dashboard() -> None:
     c5.metric("Risk ✓",  cycle.get("risk_approved", 0))
     c6.metric("Sim ✓",   cycle.get("sim_approved", 0))
     c7.metric("Executed",cycle.get("trades_executed", 0))
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PANEL 1 — Cycle Monitor
+    # ══════════════════════════════════════════════════════════════════════
+    st.subheader("🔄 Cycle Monitor")
+    cm = fetch_cycle_monitor()
+    if cm:
+        _cs     = cm.get("cycle_status", "—")
+        _s_col  = {"COMPLETE": "#00ff88", "RUNNING": "#ffd700", "ERROR": "#ff4444"}.get(_cs, "#aaa")
+        _s_icon = {"COMPLETE": "✅", "RUNNING": "🔄", "ERROR": "❌"}.get(_cs, "⚪")
+        _dur    = cm.get("cycle_ms", 0)
+        _start  = (cm.get("started_at") or "")[:19]
+        st.markdown(
+            f"<div style='background:#162a47;border-radius:8px;padding:10px 18px;"
+            f"border-left:5px solid {_s_col};margin-bottom:10px'>"
+            f"<span style='font-size:1.05em;font-weight:bold;color:{_s_col}'>"
+            f"{_s_icon} Cycle — {cm.get('cycle_id','—')}"
+            f"&nbsp;&nbsp;|&nbsp;&nbsp;Started: {_start or '—'}"
+            f"&nbsp;&nbsp;|&nbsp;&nbsp;Duration: {_dur:,} ms</span></div>",
+            unsafe_allow_html=True,
+        )
+        p1, p2, p3, p4, p5, p6, p7, p8 = st.columns(8)
+        p1.metric("Status",      _cs)
+        p2.metric("Signals",     cm.get("signals_generated",   0))
+        p3.metric("Strategy ✓",  cm.get("strategies_assigned", 0))
+        p4.metric("Risk ✓",      cm.get("risk_approved",       0))
+        p5.metric("Sim ✓",       cm.get("sim_approved",        0))
+        p6.metric("Decision ✓",  cm.get("decision_passed",     0))
+        p7.metric("Executed",    cm.get("trades_executed",     0))
+        p8.metric("Duration ms", f"{_dur:,}")
+    else:
+        st.info("No cycle data yet — start the trading brain to see live stats.")
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PANEL 2 — Rejection Funnel  |  PANEL 3 — Latest Approved Trade
+    # ══════════════════════════════════════════════════════════════════════
+    col_rf, col_td = st.columns([1, 1])
+
+    with col_rf:
+        st.subheader("🔽 Rejection Funnel")
+        cm2 = cm or {}
+        funnel_data = [
+            ("Generated",  cm2.get("signals_generated",   0)),
+            ("Strategy ✓", cm2.get("strategies_assigned", 0)),
+            ("Risk ✓",     cm2.get("risk_approved",       0)),
+            ("Sim ✓",      cm2.get("sim_approved",        0)),
+            ("Decision ✓", cm2.get("decision_passed",     0)),
+            ("Executed",   cm2.get("trades_executed",     0)),
+        ]
+        base = funnel_data[0][1] or 1
+        for i, (label, val) in enumerate(funnel_data):
+            prev     = funnel_data[i - 1][1] if i > 0 else val
+            drop     = prev - val if i > 0 and prev > 0 else 0
+            pct      = val / base * 100
+            bar      = "█" * max(int(pct / 5), 0)
+            drop_txt = f"  ▼{drop}" if drop > 0 else ""
+            drop_col = "#ff6b6b" if drop > 0 else "#aaa"
+            fa, fb   = st.columns([3, 1])
+            fa.markdown(f"**{label}** `{val}`  {bar}")
+            fb.markdown(
+                f"<span style='color:{drop_col}'>{pct:.0f}%{drop_txt}</span>",
+                unsafe_allow_html=True,
+            )
+
+    with col_td:
+        st.subheader("🎯 Latest Approved Trade")
+        lt = fetch_latest_approved_trade()
+        if lt:
+            _ec = "#ffd700" if str(lt.get("exec_status", "")).upper() in (
+                "DEFERRED", "PENDING", "—") else "#00ff88"
+            st.markdown(
+                f"<div style='background:#162a47;border-radius:8px;padding:12px;"
+                f"border-left:5px solid #00ff88;margin-bottom:10px'>"
+                f"<span style='font-size:1.4em;font-weight:bold;color:#00ff88'>"
+                f"✅ {lt.get('symbol','—')}</span>"
+                f"&nbsp;&nbsp;<span style='color:#aaa'>{lt.get('strategy','—')}</span>"
+                f"</div>",
+                unsafe_allow_html=True,
+            )
+            ta, tb, tc = st.columns(3)
+            ta.metric("Score",      f"{lt.get('confidence', 0):.2f} / 10")
+            tb.metric("R:R",        str(lt.get("rr", "—")))
+            tc.metric("Qty",        str(lt.get("qty", "—")))
+            td, te, tf = st.columns(3)
+            td.metric("Capital %",  str(lt.get("capital_pct", "—")))
+            te.metric("Pos Mod",    f"{float(lt.get('position_modifier', 1.0)) * 100:.0f}%")
+            tf.metric("Exec Status", str(lt.get("exec_status", "—")))
+            if lt.get("rejection_reason"):
+                st.markdown(
+                    f"<span style='color:#ff6b6b'>Rejection reason: {lt['rejection_reason']}</span>",
+                    unsafe_allow_html=True,
+                )
+            if lt.get("ts"):
+                st.caption(f"Decision at {str(lt['ts'])[:19]}")
+        else:
+            st.info("No approved trade yet today.")
+
+    st.divider()
+
+    # ══════════════════════════════════════════════════════════════════════
+    # PANEL 4 — Scheduler
+    # ══════════════════════════════════════════════════════════════════════
+    st.subheader("📅 Scheduler — Today's Cycles")
+    sch = fetch_scheduler_status()
+    s_cycles = sch.get("cycles", [])
+    if s_cycles:
+        col_sched, col_next = st.columns([2, 1])
+        with col_sched:
+            if HAS_PANDAS:
+                df_sch = pd.DataFrame(s_cycles)
+                st.dataframe(df_sch, hide_index=True, use_container_width=True,
+                             height=min(60 + 35 * len(df_sch), 380))
+            else:
+                for c in s_cycles:
+                    st.write(f"{c['Status']}  `{c['Time']}`  {c['Scan']}")
+        with col_next:
+            next_name  = sch.get("next_name")
+            secs_until = sch.get("secs_until")
+            if next_name and secs_until is not None:
+                mins = int(secs_until // 60)
+                secs = int(secs_until % 60)
+                st.markdown(
+                    f"<div style='background:#1a2e1a;border-radius:8px;padding:20px;"
+                    f"border:2px solid #00ff88;text-align:center'>"
+                    f"<div style='color:#aaa;font-size:0.85em;margin-bottom:6px'>Next Cycle</div>"
+                    f"<div style='color:#00ff88;font-size:2em;font-weight:bold'>⏱ {mins:02d}:{secs:02d}</div>"
+                    f"<div style='color:#fff;font-size:0.9em;margin-top:6px'>"
+                    f"{sch.get('next_hhmm','')} — "
+                    f"{next_name.replace('_',' ').title()}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.markdown(
+                    "<div style='background:#1a1a2e;border-radius:8px;padding:20px;"
+                    "border:2px solid #555;text-align:center'>"
+                    "<div style='color:#aaa'>No more cycles today</div>"
+                    "<div style='color:#ffd700;font-size:1.3em;margin-top:6px'>🌙 Market Closed</div>"
+                    "</div>",
+                    unsafe_allow_html=True,
+                )
+    else:
+        st.info("Schedule not loaded — ensure config.py is present in the project root.")
 
     st.divider()
 
