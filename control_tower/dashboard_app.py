@@ -128,9 +128,12 @@ def fetch_recent_events(n: int = 80) -> List[Dict[str, Any]]:
 
 def fetch_agent_stats() -> List[Dict[str, Any]]:
     """Derive per-agent stats from the events table."""
+    # Exclude intentional risk rejections from error count — 'risk.check.failed'
+    # is normal operation, not a real error.
     return _query(
         "SELECT source_agent, COUNT(*) AS event_count, "
-        "       SUM(CASE WHEN event_type LIKE '%fail%' OR event_type LIKE '%error%' "
+        "       SUM(CASE WHEN (event_type LIKE '%fail%' OR event_type LIKE '%error%') "
+        "                    AND event_type NOT IN ('risk.check.failed','trade.rejected') "
         "               THEN 1 ELSE 0 END) AS error_count, "
         "       MAX(ts) AS last_seen "
         "FROM   ct_events "
@@ -762,13 +765,42 @@ def run_dashboard() -> None:
     agents = fetch_agent_stats()
     if agents and HAS_PANDAS:
         df = pd.DataFrame(agents)
-        def _status(row):
-            if row["error_count"] > 0:
+
+        def _age_str(ts_str) -> str:
+            """Return human-readable age, e.g. '5m', '2h', '3d'."""
+            try:
+                ts  = datetime.fromisoformat(str(ts_str)[:26])
+                age = (datetime.now() - ts).total_seconds()
+                if age < 0:
+                    age = abs(age)
+                if age < 3600:
+                    return f"{int(age/60)}m ago"
+                if age < 86400:
+                    return f"{int(age/3600)}h ago"
+                return f"{int(age/86400)}d ago"
+            except Exception:
+                return str(ts_str)[:19]
+
+        def _status(row) -> str:
+            try:
+                ts  = datetime.fromisoformat(str(row["last_seen"])[:26])
+                age = (datetime.now() - ts).total_seconds()
+                if age < 0:
+                    age = abs(age)
+            except Exception:
+                age = None
+            if row["error_count"] > 0 and row["error_count"] > row["event_count"] * 0.05:
                 return "⚠️ ERROR"
+            if age is not None and age > 86400:   # > 24 h
+                return "💤 STANDBY"
+            if age is not None and age > 3600:    # > 1 h
+                return "🟡 IDLE"
             return "✅ OK"
+
+        df["Age"]    = df["last_seen"].apply(_age_str)
         df["status"] = df.apply(_status, axis=1)
-        df = df[["source_agent", "event_count", "error_count", "last_seen", "status"]]
-        df.columns = ["Agent", "Events", "Errors", "Last Seen", "Status"]
+        df = df[["source_agent", "event_count", "error_count", "Age", "status"]]
+        df.columns   = ["Agent", "Events", "Errors", "Last Seen", "Status"]
         st.dataframe(df, width='stretch', hide_index=True,
                      height=min(60 + 35 * len(df), 350))
     elif agents:
@@ -785,7 +817,16 @@ def run_dashboard() -> None:
     pt_rows = fetch_paper_trades_csv()
     if pt_rows and HAS_PANDAS:
         df_pt = pd.DataFrame(pt_rows)
-        # Colour the direction column
+        # Split into recent (≤3 days) vs legacy (older)
+        cutoff_3d = (datetime.now() - __import__('datetime').timedelta(days=3)).strftime("%Y-%m-%d")
+        if "timestamp" in df_pt.columns:
+            recent_mask = df_pt["timestamp"] >= cutoff_3d
+            df_recent  = df_pt[recent_mask]
+            df_legacy  = df_pt[~recent_mask]
+        else:
+            df_recent = df_pt
+            df_legacy = pd.DataFrame()
+
         def _dir_colour(val):
             if str(val).upper() == "BUY":  return "color:#00ff88;font-weight:bold"
             if str(val).upper() == "SELL": return "color:#ff6b6b;font-weight:bold"
@@ -794,14 +835,24 @@ def run_dashboard() -> None:
             if str(val) in ("CLOSE", "CANCELLED"): return "color:#ffd700"
             if str(val) == "OPEN": return "color:#64b5f6"
             return ""
-        styled_pt = df_pt.style
-        if "direction" in df_pt.columns:
-            styled_pt = styled_pt.map(_dir_colour, subset=["direction"])
-        if "event" in df_pt.columns:
-            styled_pt = styled_pt.map(_ev_colour, subset=["event"])
-        st.dataframe(styled_pt, width='stretch', hide_index=True,
-                     height=min(60 + 35 * len(df_pt), 400))
-        st.caption(f"Showing {len(pt_rows)} most-recent trades (newest first). Full CSV: data/paper_trades.csv")
+
+        if not df_recent.empty:
+            styled_pt = df_recent.style
+            if "direction" in df_recent.columns:
+                styled_pt = styled_pt.map(_dir_colour, subset=["direction"])
+            if "event" in df_recent.columns:
+                styled_pt = styled_pt.map(_ev_colour, subset=["event"])
+            st.dataframe(styled_pt, width='stretch', hide_index=True,
+                         height=min(60 + 35 * len(df_recent), 400))
+            st.caption(f"Showing {len(df_recent)} trades from last 3 days (newest first).")
+        else:
+            st.info("No paper trades in the last 3 days. Waiting for next cycle.")
+
+        if not df_legacy.empty:
+            with st.expander(f"🗂 Legacy positions ({len(df_legacy)} rows — pre-restart, OPEN slots auto-expired)"):
+                st.dataframe(df_legacy, width='stretch', hide_index=True,
+                             height=min(60 + 35 * len(df_legacy), 300))
+                st.caption("These OPEN positions are from a previous container instance and have no effect on current trading.")
     elif pt_rows:
         for r in pt_rows[:20]:
             st.write(r)

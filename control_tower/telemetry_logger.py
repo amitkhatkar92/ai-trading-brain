@@ -224,8 +224,31 @@ class TelemetryLogger:
 
     def _store_decision(self, event: Event, payload: Dict, approved: bool) -> None:
         try:
-            votes  = payload.get("votes", {})
+            symbol   = payload.get("symbol", "")
+            strategy = payload.get("strategy", "")
+            decision = "APPROVED" if approved else "REJECTED"
+            votes    = payload.get("votes", {})
+
             with self._connect() as conn:
+                # ── Dedup: skip if same symbol+strategy+decision was stored in
+                #    the last 10 minutes (prevents continuous-scan flood).
+                cutoff = (event.timestamp.replace(second=0, microsecond=0)
+                          .isoformat()[:16])          # "YYYY-MM-DDTHH:MM"
+                # Compute 10-minute window start
+                from datetime import timedelta
+                window_start = (event.timestamp - timedelta(minutes=10)).isoformat()
+                dup = conn.execute(
+                    "SELECT 1 FROM ct_decisions "
+                    "WHERE symbol=? AND strategy=? AND decision=? AND ts >= ? LIMIT 1",
+                    (symbol, strategy, decision, window_start),
+                ).fetchone()
+                if dup:
+                    log.debug(
+                        "[TelemetryLogger] Dedup: skipping %s %s %s (already recorded in last 10 min)",
+                        decision, symbol, strategy,
+                    )
+                    return
+
                 conn.execute(
                     "INSERT INTO ct_decisions"
                     "(cycle_id,symbol,strategy,confidence,decision,rejection_reason,"
@@ -234,10 +257,10 @@ class TelemetryLogger:
                     " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (
                         self._current_cycle or "",
-                        payload.get("symbol", ""),
-                        payload.get("strategy", ""),
+                        symbol,
+                        strategy,
                         payload.get("score", 0),
-                        "APPROVED" if approved else "REJECTED",
+                        decision,
                         payload.get("reason", "") if not approved else "",
                         votes.get("TechnicalAnalystAI", 0),
                         votes.get("RiskDebateAI", 0),
