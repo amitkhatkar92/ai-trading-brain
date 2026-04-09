@@ -205,15 +205,23 @@ class YahooFeed(BaseFeed):
     def _parse_batch_row(self, alias, ticker, data) -> Optional[TickerQuote]:
         try:
             import pandas as pd
+            import math
             if isinstance(data.columns, pd.MultiIndex):
                 df = data[ticker]
             else:
                 df = data
             if df.empty:
                 return None
+            # Drop NaN rows — multi-market downloads produce NaN on dates when
+            # one market is closed (e.g. Hang Seng closed while US open)
+            df = df.dropna(subset=["Close"])
+            if df.empty:
+                return None
             row  = df.iloc[-1]
             prev = df.iloc[-2]["Close"] if len(df) > 1 else row["Open"]
             ltp  = float(row["Close"])
+            if math.isnan(ltp):
+                return None
             chg  = ltp - float(prev)
             return TickerQuote(
                 symbol=alias, timestamp=datetime.now(),

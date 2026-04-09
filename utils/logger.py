@@ -92,7 +92,13 @@ def get_logger(name: str) -> logging.Logger:
     fh.setFormatter(fmt)
     logger.addHandler(fh)
 
-    # Daily file handler — logs/YYYY-MM-DD.log (shared via root logger, setup once)
-    _setup_daily_log(fmt)
+    # Daily file handler — logs/YYYY-MM-DD.log (written by this child logger directly)
+    os.makedirs(_DAILY_LOG_DIR, exist_ok=True)
+    logger.addHandler(_DailyFileHandler(_DAILY_LOG_DIR, fmt))
+
+    # Prevent records from propagating to root logger.
+    # Without this, any StreamHandler on the root (added by third-party libs
+    # calling logging.basicConfig()) would print every message a second time.
+    logger.propagate = False
 
     return logger

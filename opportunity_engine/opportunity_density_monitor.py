@@ -45,7 +45,7 @@ from utils import get_logger
 log = get_logger(__name__)
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-ROLLING_WINDOW   = 10     # number of cycles in rolling density window
+ROLLING_WINDOW   = 5      # cycles in rolling density window (was 10 — faster universe expansion)
 TIER_NORMAL_PCT  = 5.0    # >  5% → NORMAL
 TIER_MONITOR_PCT = 3.0    # 3–5% → MONITOR
 TIER_EXPAND_PCT  = 1.0    # 1–3% → EXPAND

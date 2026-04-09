@@ -77,9 +77,9 @@ ZONE_VIX_MAX_FACTOR = 2.00  # maximum scale (fear markets: double the band)
 #
 # Interaction with Entry Zone: AET price is always calculated ON TOP of the
 # zone-adjusted price, not on the raw signal price.
-AET_VIX_CONFIRM_THRESHOLD = 18.0  # VIX must be below this to confirm entry
+AET_VIX_CONFIRM_THRESHOLD = 32.0  # VIX must be below this to confirm entry [RAISED 18→32]
 AET_PULLBACK_DIP_PCT      = 0.10  # extra % deeper into zone for PULLBACK mode
-AET_MAX_WAIT_CANDLES      = 1     # max candles a CONFIRMATION slot may wait [REDUCED 2→1]
+AET_MAX_WAIT_CANDLES      = 5     # max candles a CONFIRMATION slot may wait [RAISED 1→5]
 
 # ── Paper trade journal ───────────────────────────────────────────────────
 _DATA_DIR        = os.path.join(os.path.dirname(__file__), "..", "data")
@@ -317,6 +317,12 @@ class OrderManager:
             distortion_active=bool((signal_context or {}).get("distortion", False)),
         )
         _final_px  = self._apply_aet_price(_zone_px, signal.direction.value, _aet_mode)
+
+        # Paper mode: always execute immediately — AET deferral is only meaningful
+        # in live trading where order routing timing matters.
+        if self._paper_mode:
+            _aet_mode = AdaptiveTimingMode.IMMEDIATE
+            log.debug("[OrderManager] Paper mode: AET forced to IMMEDIATE.")
 
         # CONFIRMATION mode: defer placement to next cycle(s)
         if _aet_mode == AdaptiveTimingMode.CONFIRMATION:

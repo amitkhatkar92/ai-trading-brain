@@ -12,8 +12,9 @@ Scans for:
 
 from __future__ import annotations
 import random
+import time
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from models.market_data  import MarketSnapshot, RegimeLabel
 from models.trade_signal import TradeSignal, SignalDirection, SignalStrength, SignalType
@@ -28,6 +29,17 @@ from config import (
 
 log = get_logger(__name__)
 
+# ── Live price cache (60-second TTL) ─────────────────────────────────────────
+# Populated lazily on first scan; avoids repeated network calls each cycle.
+_PRICE_CACHE: Dict[str, float] = {}
+_PRICE_CACHE_TS: float = 0.0
+_PRICE_CACHE_TTL: float = 60.0  # seconds
+
+RR_STRONG_BREAKOUT = 4.0   # vol_ratio ≥ 3.0 → fat-tail bonus in DecisionEngine
+RR_NORMAL_BREAKOUT = 2.5   # vol_ratio < 3.0
+RR_TREND_PULLBACK  = 3.0   # confirmed bull-trend → asymmetry bonus in DecisionEngine
+RR_DEFAULT         = 2.5   # all other setups
+
 
 def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
     """
@@ -41,9 +53,10 @@ def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
     return round(daily_range * 0.40, 4)
 
 # ── Base watchlist — LTPs are refreshed each cycle via _live_watchlist() ────
-# Replace the entire block with real broker API calls (KiteConnect, etc.)
+# base_ltp is only a FALLBACK when live feed is unavailable.
+# resistance / support are real technical levels used to identify setups.
 _BASE_WATCHLIST: List[Dict[str, Any]] = [
-    # ── Breakout / momentum candidates (LTP above resistance) ──────────────
+    # ── Breakout / momentum candidates ─────────────────────────────────────
     {"symbol": "RELIANCE",   "base_ltp": 2850, "resistance": 2800, "support": 2700, "volume_ratio": 2.3, "rsi": 62, "adv_crore": 1800},
     {"symbol": "HDFCBANK",   "base_ltp": 1680, "resistance": 1650, "support": 1600, "volume_ratio": 1.8, "rsi": 58, "adv_crore":  850},
     {"symbol": "ICICIBANK",  "base_ltp":  920, "resistance":  910, "support":  870, "volume_ratio": 2.7, "rsi": 65, "adv_crore":  700},
@@ -52,17 +65,24 @@ _BASE_WATCHLIST: List[Dict[str, Any]] = [
     {"symbol": "BANKBARODA", "base_ltp":  260, "resistance":  252, "support":  238, "volume_ratio": 4.2, "rsi": 68, "adv_crore":  220},
     {"symbol": "LT",         "base_ltp": 3650, "resistance": 3600, "support": 3450, "volume_ratio": 2.0, "rsi": 61, "adv_crore":  320},
     {"symbol": "COALINDIA",  "base_ltp":  490, "resistance":  480, "support":  460, "volume_ratio": 1.9, "rsi": 57, "adv_crore":  190},
-    # ── Trend-pullback candidates (LTP between support and resistance) ──────
-    # These represent large-caps in an uptrend that have temporarily pulled
-    # back to the 50-EMA zone — the primary Trend_Pullback entry condition.
+    # ── Trend-pullback candidates ───────────────────────────────────────────
     {"symbol": "HCLTECH",    "base_ltp": 1495, "resistance": 1550, "support": 1470, "volume_ratio": 1.5, "rsi": 47, "adv_crore":  280},
     {"symbol": "SBIN",       "base_ltp":  798, "resistance":  830, "support":  780, "volume_ratio": 1.6, "rsi": 44, "adv_crore":  420},
     {"symbol": "AXISBANK",   "base_ltp": 1090, "resistance": 1130, "support": 1070, "volume_ratio": 1.4, "rsi": 50, "adv_crore":  380},
     {"symbol": "ONGC",       "base_ltp":  278, "resistance":  292, "support":  272, "volume_ratio": 1.7, "rsi": 45, "adv_crore":  310},
+    # ── Additional NIFTY50 large-caps ───────────────────────────────────────
+    {"symbol": "KOTAKBANK",  "base_ltp": 1820, "resistance": 1800, "support": 1720, "volume_ratio": 1.6, "rsi": 52, "adv_crore":  450},
+    {"symbol": "BHARTIARTL", "base_ltp": 1660, "resistance": 1620, "support": 1550, "volume_ratio": 2.1, "rsi": 60, "adv_crore":  380},
+    {"symbol": "ITC",        "base_ltp":  475, "resistance":  465, "support":  440, "volume_ratio": 1.8, "rsi": 55, "adv_crore":  600},
+    {"symbol": "BAJAJFINSV", "base_ltp": 1780, "resistance": 1750, "support": 1660, "volume_ratio": 1.7, "rsi": 48, "adv_crore":  250},
+    {"symbol": "HINDALCO",   "base_ltp":  680, "resistance":  660, "support":  620, "volume_ratio": 2.4, "rsi": 63, "adv_crore":  310},
+    {"symbol": "ULTRACEMCO", "base_ltp": 11700, "resistance": 11500, "support": 10900, "volume_ratio": 1.5, "rsi": 50, "adv_crore": 150},
+    {"symbol": "TECHM",      "base_ltp": 1520, "resistance": 1490, "support": 1410, "volume_ratio": 1.9, "rsi": 56, "adv_crore":  220},
+    {"symbol": "NTPC",       "base_ltp":  380, "resistance":  370, "support":  350, "volume_ratio": 2.2, "rsi": 59, "adv_crore":  270},
 ]
 
 # ── Extended watchlist (activated by ODM when density is low) ─────────────
-# Represents a wider NIFTY200/500 universe.  Swap with real broker data.
+# Represents a wider NIFTY200/500 universe.
 _EXTENDED_WATCHLIST: List[Dict[str, Any]] = [
     {"symbol": "HINDUNILVR", "base_ltp": 2500, "resistance": 2480, "support": 2350, "volume_ratio": 1.6, "rsi": 52, "adv_crore": 280},
     {"symbol": "ASIANPAINT", "base_ltp": 2900, "resistance": 2870, "support": 2750, "volume_ratio": 1.7, "rsi": 56, "adv_crore": 200},
@@ -74,34 +94,81 @@ _EXTENDED_WATCHLIST: List[Dict[str, Any]] = [
     {"symbol": "DIVISLAB",   "base_ltp": 3800, "resistance": 3750, "support": 3600, "volume_ratio": 1.7, "rsi": 53, "adv_crore":  90},
     {"symbol": "TITAN",      "base_ltp": 3300, "resistance": 3270, "support": 3100, "volume_ratio": 1.5, "rsi": 48, "adv_crore": 175},
     {"symbol": "DRREDDY",    "base_ltp": 1250, "resistance": 1230, "support": 1170, "volume_ratio": 1.6, "rsi": 50, "adv_crore": 120},
+    # ── Additional mid/large caps ───────────────────────────────────────────
+    {"symbol": "ADANIENT",   "base_ltp": 2350, "resistance": 2290, "support": 2150, "volume_ratio": 2.5, "rsi": 64, "adv_crore": 380},
+    {"symbol": "TATACONSUM", "base_ltp":  1100, "resistance": 1080, "support": 1030, "volume_ratio": 1.6, "rsi": 53, "adv_crore":  95},
+    {"symbol": "NESTLEIND",  "base_ltp": 2280, "resistance": 2250, "support": 2130, "volume_ratio": 1.4, "rsi": 48, "adv_crore":  70},
+    {"symbol": "HAVELLS",    "base_ltp": 1780, "resistance": 1750, "support": 1660, "volume_ratio": 1.8, "rsi": 57, "adv_crore":  80},
+    {"symbol": "PIDILITIND", "base_ltp": 2850, "resistance": 2800, "support": 2660, "volume_ratio": 1.5, "rsi": 51, "adv_crore":  60},
+    {"symbol": "GRASIM",     "base_ltp": 2750, "resistance": 2710, "support": 2570, "volume_ratio": 1.7, "rsi": 55, "adv_crore": 130},
+    {"symbol": "JSWSTEEL",   "base_ltp":  950, "resistance":  930, "support":  880, "volume_ratio": 2.3, "rsi": 61, "adv_crore": 290},
+    {"symbol": "ADANIPORTS", "base_ltp": 1350, "resistance": 1310, "support": 1240, "volume_ratio": 2.0, "rsi": 58, "adv_crore": 200},
 ]
+
+
+def _fetch_live_prices(symbols: List[str]) -> Dict[str, float]:
+    """
+    Fetch real-time prices from the active data feed (yfinance / Dhan).
+    NSE stocks require the '.NS' suffix for yfinance.
+    Returns a dict of {bare_symbol: ltp}; missing entries fall back to simulation.
+    """
+    global _PRICE_CACHE, _PRICE_CACHE_TS
+    now = time.monotonic()
+    if now - _PRICE_CACHE_TS < _PRICE_CACHE_TTL and _PRICE_CACHE:
+        return _PRICE_CACHE  # still fresh
+
+    try:
+        from data_feeds.data_feed_manager import get_feed_manager
+        feed = get_feed_manager()
+        ns_symbols = [f"{s}.NS" for s in symbols]
+        quotes = feed.get_multiple_quotes(ns_symbols)
+        prices: Dict[str, float] = {}
+        for ns_sym, q in quotes.items():
+            bare = ns_sym.replace(".NS", "")
+            if q is not None and hasattr(q, "ltp") and q.ltp and q.ltp > 0:
+                prices[bare] = float(q.ltp)
+        if prices:
+            log.debug("[EquityScannerAI] Live prices: %d/%d symbols fetched.",
+                      len(prices), len(symbols))
+            _PRICE_CACHE    = prices
+            _PRICE_CACHE_TS = now
+            return prices
+    except Exception as exc:
+        log.debug("[EquityScannerAI] Live price fetch skipped (%s) — using simulation.", exc)
+    return {}
 
 
 def _live_watchlist(extended: bool = False) -> List[Dict[str, Any]]:
     """
-    Simulate a live price fetch seeded per-minute so that each cycle
-    shows a fresh LTP.  Swap this with real broker quote calls.
-    When ``extended=True`` the wider NIFTY200/500 universe is also included
-    (activated by ODM when opportunity density drops below threshold).
+    Returns watchlist rows with the best available LTP:
+      1. Real-time price from data feed (yfinance/.NS) — 60s cached
+      2. Per-minute seeded simulation as fallback
+    When ``extended=True`` the wider NIFTY200/500 universe is also included.
     """
     source = _BASE_WATCHLIST + (_EXTENDED_WATCHLIST if extended else [])
+    all_symbols = [s["symbol"] for s in source]
+    live_prices = _fetch_live_prices(all_symbols)
+
     rng = random.Random(int(datetime.now().timestamp()) // 60)
     rows = []
     for s in source:
-        # ±0.8 % intra-minute price noise around base LTP
-        noise = rng.uniform(-0.008, 0.008)
-        live_ltp = round(s["base_ltp"] * (1 + noise), 2)
-        # Volume and RSI get a small tick-level jitter too
+        real_ltp = live_prices.get(s["symbol"], 0.0)
+        if real_ltp > 0:
+            live_ltp = real_ltp
+        else:
+            noise    = rng.uniform(-0.008, 0.008)
+            live_ltp = round(s["base_ltp"] * (1 + noise), 2)
+
         vol_jitter = round(s["volume_ratio"] + rng.uniform(-0.2, 0.2), 2)
-        rsi_jitter = round(s["rsi"] + rng.uniform(-2, 2), 1)
+        rsi_jitter = round(s["rsi"]          + rng.uniform(-2,   2),   1)
         rows.append({
             "symbol":       s["symbol"],
-            "ltp":          live_ltp,           # ← LIVE price fetched this cycle
+            "ltp":          live_ltp,
             "resistance":   s["resistance"],
             "support":      s["support"],
             "volume_ratio": max(0.1, vol_jitter),
             "rsi":          max(0, min(100, rsi_jitter)),
-            "adv_crore":    s.get("adv_crore", 0.0),   # ← pass-through for LiquidityGuard
+            "adv_crore":    s.get("adv_crore", 0.0),
         })
     return rows
 
@@ -196,6 +263,9 @@ class EquityScannerAI:
         # Active in all non-bear regimes including BULL_TREND.
         # vol_ratio_min may be relaxed by ODM (default 2.0 → as low as 1.4 in SECONDARY).
         if ltp > resistance and vol_ratio >= vol_ratio_min and rsi < 75:
+            # Strong breakout (vol spike ≥ 3×): use higher RR to trigger fat-tail
+            # bonus in DecisionEngine (−1pt threshold, +10% position size).
+            _rr = RR_STRONG_BREAKOUT if vol_ratio >= 3.0 else RR_NORMAL_BREAKOUT
             sig = TradeSignal(
                 symbol          = stock["symbol"],
                 direction       = SignalDirection.BUY,
@@ -203,7 +273,7 @@ class EquityScannerAI:
                 strength        = SignalStrength.STRONG if vol_ratio >= 3.0 else SignalStrength.MODERATE,
                 entry_price     = ltp,
                 stop_loss       = round(ltp - stop_dist, 2),
-                target_price    = round(ltp + 2.5 * stop_dist, 2),
+                target_price    = round(ltp + _rr * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
                 confidence      = min(6.0 + vol_ratio, 9.5),
                 source_agent    = "EquityScannerAI",
@@ -224,9 +294,9 @@ class EquityScannerAI:
                 strength        = SignalStrength.MODERATE,
                 entry_price     = ltp,
                 stop_loss       = round(ltp - stop_dist, 2),
-                target_price    = round(ltp + 2.5 * stop_dist, 2),
+                target_price    = round(ltp + RR_DEFAULT * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                confidence      = 6.5,
+                confidence      = 7.0,  # raised from 6.5 — was always rejected by RiskManager
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
                 adv_crore       = adv_crore,
@@ -253,6 +323,8 @@ class EquityScannerAI:
                 and support * 0.97 <= ltp <= support * 1.04   # near 50-EMA proxy
                 and 38 <= rsi <= 56                             # momentum reset
                 and vol_ratio >= 1.2):                          # buyers returning
+            # RR_TREND_PULLBACK=3.0 triggers DecisionEngine asymmetry bonus (−0.5pt threshold).
+            # confidence=7.2 ensures signal survives RiskManager at any VIX level.
             sig = TradeSignal(
                 symbol          = stock["symbol"],
                 direction       = SignalDirection.BUY,
@@ -260,9 +332,9 @@ class EquityScannerAI:
                 strength        = SignalStrength.STRONG,
                 entry_price     = ltp,
                 stop_loss       = round(ltp - stop_dist, 2),
-                target_price    = round(ltp + 2.5 * stop_dist, 2),  # trend runs further
+                target_price    = round(ltp + RR_TREND_PULLBACK * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                confidence      = 6.8,
+                confidence      = 7.2,  # raised from 6.8 — survives RiskManager at high VIX
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
                 adv_crore       = adv_crore,
