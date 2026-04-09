@@ -181,9 +181,13 @@ def fetch_service_status() -> Dict[str, Any]:
     ts_str = rows[0]["ts"]
     last_event = rows[0]["event_type"]
     try:
-        # strip microseconds if present
         ts = datetime.fromisoformat(ts_str[:19])
-        age = (datetime.now() - ts).total_seconds() / 60
+        now = datetime.now()
+        age = (now - ts).total_seconds() / 60
+        # Guard against TZ mismatch (naive timestamps from different zones)
+        if age < -5:          # ts is ahead of now → TZ offset issue, treat as fresh
+            age = abs(age) % (24 * 60)   # wrap to positive
+        age = abs(age)        # always positive
     except Exception:
         return {"status": "UNKNOWN", "last_ts": ts_str, "last_event": last_event, "age_min": None}
     if age < 10:
@@ -626,7 +630,7 @@ def run_dashboard() -> None:
         with col_sched:
             if HAS_PANDAS:
                 df_sch = pd.DataFrame(s_cycles)
-                st.dataframe(df_sch, hide_index=True, use_container_width=True,
+                st.dataframe(df_sch, hide_index=True, width='stretch',
                              height=min(60 + 35 * len(df_sch), 380))
             else:
                 for c in s_cycles:

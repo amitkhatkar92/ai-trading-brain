@@ -63,6 +63,9 @@ services:
       - ./data:/app/data:ro
       - ./control_tower:/app/control_tower:ro
 
+    environment:
+      - TZ=Asia/Kolkata   # Match trading brain — all timestamps are IST
+
     
     ports:
       - "8501:8501"  # Streamlit dashboard
