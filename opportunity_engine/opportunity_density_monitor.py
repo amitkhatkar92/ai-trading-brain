@@ -112,10 +112,12 @@ class OpportunityDensityMonitor:
     def __init__(self) -> None:
         # Each entry: (signals_generated, trades_approved)
         self._history: Deque[Tuple[int, int]] = deque(maxlen=ROLLING_WINDOW)
-        self._current_tier: str = "NORMAL"        # Tracks how many consecutive cycles we have been stuck in EXPAND tier.
+        self._current_tier: str = "NORMAL"
+        # Tracks how many consecutive cycles we have been stuck in EXPAND tier.
         # After ODM_STAGNANT_CYCLES consecutive EXPAND cycles we emit a STAGNANT
         # warning so the operator (or learning system) can investigate.
-        self._consecutive_expand: int = 0        self._load_state()
+        self._consecutive_expand: int = 0
+        self._load_state()
         log.info("[ODM] Initialised. Window=%d | tiers: NORMAL>%.0f%% | "
                  "MONITOR>%.0f%% | EXPAND>%.0f%% | SECONDARY≤%.0f%%",
                  ROLLING_WINDOW,
