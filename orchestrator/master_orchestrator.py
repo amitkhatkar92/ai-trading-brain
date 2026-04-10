@@ -1562,7 +1562,7 @@ class MasterOrchestrator:
           • 08:00  — pre-market system initialization + Telegram ping
           • 08:30  — data warm-up (refresh index quotes)
           • 09:05–15:00 — deep-scan slots (via MarketMonitor callbacks)
-          • 09:45 / 10:30 / 13:00 — full analysis cycles
+          • 09:45 / 10:30 / 13:00 / 14:00 — full analysis cycles
           • 15:35  — EOD learning cycle
           • Every 5 min — open-position monitor (market hours only)
 
@@ -1583,7 +1583,7 @@ class MasterOrchestrator:
                 f"Date: {datetime.now().strftime('%d %b %Y, %H:%M IST')}\n"
                 f"Mode: {_mode}\n"
                 f"{_nifty}\n"
-                f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/13:00 cycles → 15:30 close → 15:35 EOD\n"
+                f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/13:00/14:00 cycles → 15:30 close → 15:35 EOD\n"
                 f"Dashboard: http://178.18.252.24:8501",
             )
         except Exception as exc:
@@ -1603,6 +1603,8 @@ class MasterOrchestrator:
         sched_lib.every().day.at(SCHEDULE["mid_morning_scan"]).do(self._guarded_cycle)
         # 13:00  afternoon session
         sched_lib.every().day.at(SCHEDULE["afternoon_scan"]).do(self._guarded_cycle)
+        # 14:00  afternoon momentum window
+        sched_lib.every().day.at(SCHEDULE["early_afternoon_scan"]).do(self._guarded_cycle)
 
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
@@ -1620,7 +1622,7 @@ class MasterOrchestrator:
         log.info("[Orchestrator] Scheduler armed.")
         log.info("  Pre-market : 08:00 init | 08:30 data warm-up")
         log.info("  Deep scans : 09:05 / 09:10 / 09:20 / 10:30 / 13:00 / 15:00  (MarketMonitor)")
-        log.info("  Full cycle : 09:45 / 10:30 / 13:00")
+        log.info("  Full cycle : 09:45 / 10:30 / 13:00 / 14:00")
         log.info("  EOD        : 15:35")
         log.info("  Monitoring : every 5 min  |  Light scan: every 30s")
 
