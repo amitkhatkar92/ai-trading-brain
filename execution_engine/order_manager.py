@@ -208,6 +208,7 @@ class OrderManager:
             os.makedirs(_DATA_DIR, exist_ok=True)
             log.info("[OrderManager] PAPER TRADING mode — no live orders will be sent.")
             log.info("[OrderManager] Trade journal: %s", os.path.abspath(PAPER_TRADE_LOG))
+            self._restore_from_journal()   # re-hydrate open positions after any restart
         else:
             log.info("[OrderManager] Active broker: %s", ACTIVE_BROKER.upper())
 
@@ -1308,3 +1309,78 @@ class OrderManager:
             if rec.symbol == symbol and rec.status == "open":
                 return True
         return False
+
+    def _restore_from_journal(self) -> None:
+        """
+        On startup read the paper trade CSV and restore any positions that
+        were OPEN when the process last stopped (e.g. Docker restart).
+
+        Only today’s rows are considered so stale historical records never
+        block new signals from previous sessions.
+
+        After restore:
+          • _symbol_has_open_position() correctly guards duplicates.
+          • _portfolio.positions is partially hydrated (exposure guard works).
+          • No new journal OPEN row is written for already-open symbols.
+        """
+        if not os.path.exists(PAPER_TRADE_LOG):
+            return
+        today = datetime.now().strftime("%Y-%m-%d")
+        try:
+            open_rows: dict[str, dict] = {}   # order_id → latest OPEN row
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
+                reader = csv.DictReader(fh)
+                for row in reader:
+                    ts = row.get("timestamp", "")
+                    if not ts.startswith(today):
+                        continue   # ignore previous sessions
+                    oid   = row.get("order_id", "").strip()
+                    event = row.get("event", "").strip().upper()
+                    if not oid:
+                        continue
+                    if event in ("OPEN", "REENTRY_OPEN"):
+                        open_rows[oid] = row
+                    elif event in ("CLOSE", "CANCELLED"):
+                        open_rows.pop(oid, None)
+
+            restored = 0
+            for oid, row in open_rows.items():
+                try:
+                    rec = OrderRecord(
+                        order_id    = oid,
+                        symbol      = row["symbol"],
+                        direction   = row["direction"],
+                        quantity    = int(float(row.get("quantity", 1))),
+                        entry_price = float(row.get("entry_price", 0) or 0),
+                        stop_loss   = float(row.get("stop_loss",   0) or 0),
+                        target      = float(row.get("target",      0) or 0),
+                        strategy    = row.get("strategy", ""),
+                        status      = "open",
+                        # Treat restored orders as MARKET so TradeMonitor
+                        # skips the LIMIT fill simulation and goes straight
+                        # to SL/target evaluation.
+                        order_type  = "MARKET",
+                        placed_at   = datetime.now(),
+                    )
+                    self._orders[oid] = rec
+                    qty_signed = rec.quantity if rec.direction == "BUY" else -rec.quantity
+                    pos = Position(
+                        symbol          = rec.symbol,
+                        quantity        = qty_signed,
+                        avg_entry_price = rec.entry_price,
+                        ltp             = rec.entry_price,
+                        stop_loss       = rec.stop_loss,
+                        target_price    = rec.target,
+                        strategy_name   = rec.strategy,
+                    )
+                    self._portfolio.positions[rec.symbol] = pos
+                    restored += 1
+                except Exception as row_exc:
+                    log.debug("[OrderManager] Skipping malformed journal row '%s': %s",
+                              oid, row_exc)
+
+            if restored:
+                log.info("[OrderManager] ✅ Restored %d open position(s) from today's "
+                         "journal (restart guard active).", restored)
+        except Exception as exc:
+            log.warning("[OrderManager] Could not restore from journal: %s", exc)

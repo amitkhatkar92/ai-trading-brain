@@ -12,6 +12,7 @@ Scans for:
 
 from __future__ import annotations
 import random
+import threading as _threading
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -29,11 +30,16 @@ from config import (
 
 log = get_logger(__name__)
 
-# ── Live price cache (60-second TTL) ─────────────────────────────────────────
-# Populated lazily on first scan; avoids repeated network calls each cycle.
+# ── Live price cache ─────────────────────────────────────────────────────────
+# Stale-while-revalidate: cache is returned immediately (even if stale) while
+# a background daemon thread fetches fresh prices for the NEXT cycle.
+# This guarantees _fetch_live_prices() returns in <1 ms — the 5-6 s yfinance
+# call NEVER blocks a trading cycle again.
 _PRICE_CACHE: Dict[str, float] = {}
 _PRICE_CACHE_TS: float = 0.0
-_PRICE_CACHE_TTL: float = 60.0  # seconds
+_PRICE_CACHE_TTL: float = 60.0          # stale threshold (seconds)
+_PRICE_CACHE_LOCK = _threading.Lock()   # guards _PRICE_CACHE / _PRICE_CACHE_TS
+_PRICE_REFRESH_RUNNING = _threading.Event()  # prevents duplicate refresh threads
 
 RR_STRONG_BREAKOUT = 4.0   # vol_ratio ≥ 3.0 → fat-tail bonus in DecisionEngine
 RR_NORMAL_BREAKOUT = 2.5   # vol_ratio < 3.0
@@ -106,17 +112,8 @@ _EXTENDED_WATCHLIST: List[Dict[str, Any]] = [
 ]
 
 
-def _fetch_live_prices(symbols: List[str]) -> Dict[str, float]:
-    """
-    Fetch real-time prices from the active data feed (yfinance / Dhan).
-    NSE stocks require the '.NS' suffix for yfinance.
-    Returns a dict of {bare_symbol: ltp}; missing entries fall back to simulation.
-    """
-    global _PRICE_CACHE, _PRICE_CACHE_TS
-    now = time.monotonic()
-    if now - _PRICE_CACHE_TS < _PRICE_CACHE_TTL and _PRICE_CACHE:
-        return _PRICE_CACHE  # still fresh
-
+def _do_fetch_prices(symbols: List[str]) -> Dict[str, float]:
+    """Blocking call to the live feed. Returns {} on any error."""
     try:
         from data_feeds.data_feed_manager import get_feed_manager
         feed = get_feed_manager()
@@ -128,14 +125,63 @@ def _fetch_live_prices(symbols: List[str]) -> Dict[str, float]:
             if q is not None and hasattr(q, "ltp") and q.ltp and q.ltp > 0:
                 prices[bare] = float(q.ltp)
         if prices:
-            log.debug("[EquityScannerAI] Live prices: %d/%d symbols fetched.",
+            log.debug("[EquityScannerAI] Fetched live prices: %d/%d symbols.",
                       len(prices), len(symbols))
-            _PRICE_CACHE    = prices
-            _PRICE_CACHE_TS = now
-            return prices
+        return prices
     except Exception as exc:
         log.debug("[EquityScannerAI] Live price fetch skipped (%s) — using simulation.", exc)
-    return {}
+        return {}
+
+
+def _background_price_refresh(symbols: List[str]) -> None:
+    """Daemon thread: refresh _PRICE_CACHE without blocking the scan."""
+    global _PRICE_CACHE, _PRICE_CACHE_TS
+    try:
+        prices = _do_fetch_prices(symbols)
+        if prices:
+            with _PRICE_CACHE_LOCK:
+                _PRICE_CACHE    = prices
+                _PRICE_CACHE_TS = time.monotonic()
+            log.debug("[EquityScannerAI] Background price refresh complete (%d symbols).",
+                      len(prices))
+    finally:
+        _PRICE_REFRESH_RUNNING.clear()
+
+
+def _fetch_live_prices(symbols: List[str]) -> Dict[str, float]:
+    """
+    Return the best available price map — always in < 1 ms.
+
+    Strategy (stale-while-revalidate):
+      FRESH cache  → return immediately.
+      STALE cache  → return stale data now; background thread updates for
+                     the next cycle (~60 s later).
+      EMPTY cache  → fire background thread; return {} this cycle so
+                     _live_watchlist() falls back to simulated prices.
+                     (Negligible impact in paper mode; only on cold start)
+    """
+    now = time.monotonic()
+    with _PRICE_CACHE_LOCK:
+        is_fresh = bool(_PRICE_CACHE) and (now - _PRICE_CACHE_TS < _PRICE_CACHE_TTL)
+        snapshot = dict(_PRICE_CACHE)   # local copy under lock
+
+    if is_fresh:
+        return snapshot   # hot path — no blocking ever
+
+    # Cache is stale or empty: trigger background refresh if not already running.
+    if not _PRICE_REFRESH_RUNNING.is_set():
+        _PRICE_REFRESH_RUNNING.set()
+        t = _threading.Thread(
+            target=_background_price_refresh,
+            args=(symbols,),
+            daemon=True,
+            name="PriceRefresh",
+        )
+        t.start()
+        log.debug("[EquityScannerAI] Background price refresh triggered (%d symbols).",
+                  len(symbols))
+
+    return snapshot   # stale or {} — never blocks the cycle
 
 
 def _live_watchlist(extended: bool = False) -> List[Dict[str, Any]]:
