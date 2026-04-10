@@ -51,6 +51,9 @@ TIER_MONITOR_PCT = 3.0    # 3–5% → MONITOR
 TIER_EXPAND_PCT  = 1.0    # 1–3% → EXPAND
                           # <  1% → SECONDARY
 
+# Consecutive EXPAND cycles before STAGNANT warning is emitted
+ODM_STAGNANT_CYCLES = 3
+
 ODM_STATE_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "odm_state.json"
 )
@@ -109,8 +112,10 @@ class OpportunityDensityMonitor:
     def __init__(self) -> None:
         # Each entry: (signals_generated, trades_approved)
         self._history: Deque[Tuple[int, int]] = deque(maxlen=ROLLING_WINDOW)
-        self._current_tier: str = "NORMAL"
-        self._load_state()
+        self._current_tier: str = "NORMAL"        # Tracks how many consecutive cycles we have been stuck in EXPAND tier.
+        # After ODM_STAGNANT_CYCLES consecutive EXPAND cycles we emit a STAGNANT
+        # warning so the operator (or learning system) can investigate.
+        self._consecutive_expand: int = 0        self._load_state()
         log.info("[ODM] Initialised. Window=%d | tiers: NORMAL>%.0f%% | "
                  "MONITOR>%.0f%% | EXPAND>%.0f%% | SECONDARY≤%.0f%%",
                  ROLLING_WINDOW,
@@ -128,6 +133,25 @@ class OpportunityDensityMonitor:
         density = self._rolling_density()
         tier    = self._classify(density)
         self._current_tier = tier
+
+        # Track consecutive EXPAND cycles and emit STAGNANT warning
+        if tier == "EXPAND":
+            self._consecutive_expand += 1
+            if self._consecutive_expand >= ODM_STAGNANT_CYCLES:
+                log.warning(
+                    "[ODM] \u26a0\ufe0f STAGNANT: stuck in EXPAND tier for %d consecutive "
+                    "cycles (density=%.1f%%). Universe is fully expanded but "
+                    "approvals remain low. Consider reviewing strategy thresholds "
+                    "or signal quality.",
+                    self._consecutive_expand, density,
+                )
+        else:
+            if self._consecutive_expand >= ODM_STAGNANT_CYCLES:
+                log.info(
+                    "[ODM] \u2705 STAGNANT cleared — tier recovered to %s after %d EXPAND cycles.",
+                    tier, self._consecutive_expand,
+                )
+            self._consecutive_expand = 0
 
         log.info("[ODM] Cycle recorded: signals=%d  approved=%d  "
                  "rolling_density=%.1f%%  tier=%s",
@@ -159,13 +183,15 @@ class OpportunityDensityMonitor:
         total_s  = sum(s for s, _ in self._history)
         total_a  = sum(a for _, a in self._history)
         return {
-            "tier":             self._current_tier,
-            "density_pct":      round(density, 2),
-            "rolling_window":   ROLLING_WINDOW,
-            "cycles_recorded":  len(self._history),
-            "total_signals":    total_s,
-            "total_approved":   total_a,
-            "last_updated":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+            "tier":               self._current_tier,
+            "density_pct":        round(density, 2),
+            "rolling_window":     ROLLING_WINDOW,
+            "cycles_recorded":    len(self._history),
+            "total_signals":      total_s,
+            "total_approved":     total_a,
+            "consecutive_expand": self._consecutive_expand,
+            "stagnant":           self._consecutive_expand >= ODM_STAGNANT_CYCLES,
+            "last_updated":       datetime.now().strftime("%Y-%m-%d %H:%M"),
         }
 
     def format_report(self) -> str:
@@ -187,6 +213,10 @@ class OpportunityDensityMonitor:
             f"  Density      : {bar}  {s['density_pct']:.1f}%",
             f"  Window       : last {s['cycles_recorded']}/{ROLLING_WINDOW} cycles",
             f"  Signals      : {s['total_signals']}  →  Approved: {s['total_approved']}",
+        ]
+        if s.get("stagnant"):
+            lines.append(f"  ⚠️ STAGNANT  : {s['consecutive_expand']} consecutive EXPAND cycles")
+        lines += [
             "─" * 56,
             "  Active Directive:",
             f"    vol_ratio_min    = {directive.volume_ratio_min}",
@@ -283,9 +313,10 @@ class OpportunityDensityMonitor:
         try:
             os.makedirs(os.path.dirname(ODM_STATE_PATH), exist_ok=True)
             state = {
-                "history":      list(self._history),
-                "current_tier": self._current_tier,
-                "saved_at":     datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "history":            list(self._history),
+                "current_tier":       self._current_tier,
+                "consecutive_expand": self._consecutive_expand,
+                "saved_at":           datetime.now().strftime("%Y-%m-%d %H:%M"),
             }
             with open(ODM_STATE_PATH, "w", encoding="utf-8") as f:
                 json.dump(state, f, indent=2)
@@ -301,8 +332,9 @@ class OpportunityDensityMonitor:
             for entry in state.get("history", []):
                 if isinstance(entry, list) and len(entry) == 2:
                     self._history.append((int(entry[0]), int(entry[1])))
-            self._current_tier = state.get("current_tier", "NORMAL")
-            log.info("[ODM] State restored: %d cycles loaded, tier=%s",
-                     len(self._history), self._current_tier)
+            self._current_tier      = state.get("current_tier", "NORMAL")
+            self._consecutive_expand = int(state.get("consecutive_expand", 0))
+            log.info("[ODM] State restored: %d cycles loaded, tier=%s, consecutive_expand=%d",
+                     len(self._history), self._current_tier, self._consecutive_expand)
         except Exception as exc:
             log.warning("[ODM] Could not load state: %s", exc)

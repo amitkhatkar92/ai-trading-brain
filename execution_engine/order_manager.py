@@ -831,6 +831,21 @@ class OrderManager:
                          slot.symbol)
                 continue   # check again next cycle
 
+            # ── Stale-signal guard ────────────────────────────────────
+            # If price has drifted >1.5% from the original signal entry,
+            # the setup thesis is invalidated — permanently drop the slot.
+            if slot.symbol in current_prices:
+                ltp = current_prices[slot.symbol]
+                drift_pct = abs(ltp - slot.entry_price) / slot.entry_price * 100.0
+                if drift_pct > 1.5:
+                    log.info(
+                        "[OrderManager] ⏭ Re-entry DROPPED — %s price %.2f "
+                        "drifted %.1f%% from signal entry %.2f (stale signal).",
+                        slot.symbol, ltp, drift_pct, slot.entry_price,
+                    )
+                    slots_to_remove.append(slot_key)
+                    continue
+
             # ── Price proximity check (optional) ──────────────────────
             if price_band_pct > 0.0 and slot.symbol in current_prices:
                 ltp = current_prices[slot.symbol]

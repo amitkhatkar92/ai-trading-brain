@@ -72,6 +72,9 @@ class ResilienceScore:
     monte_carlo_worst_r:       float = 0.0   # 5th percentile R (CVaR proxy)
     monte_carlo_best_r:        float = 0.0   # 95th percentile R
 
+    # Regime context (set by evaluate() for use in acceptance rules)
+    regime:                    str   = ""
+
     # Decision
     approved:                  bool  = False
     rejection_reason:          str   = ""
@@ -130,6 +133,7 @@ class StrategyResilienceAI:
         score = ResilienceScore(
             signal=signal,
             scenario_results=scenario_results,
+            regime=regime,
         )
 
         # ── 1. Deterministic scenario metrics ─────────────────────────
@@ -327,12 +331,18 @@ class StrategyResilienceAI:
             )
             return
 
-        # Rule 3: Stability
-        if score.stability_score < THRESHOLD_STABILITY:
+        # Rule 3: Stability (regime-adaptive — range_market oscillation produces
+        # lower profit-factor naturally; volatile regimes demand tighter edge)
+        _stability_thresh = {
+            "range_market": 0.38,
+            "volatile":     0.43,
+        }.get(score.regime, THRESHOLD_STABILITY)
+        if score.stability_score < _stability_thresh:
             score.approved = False
             score.rejection_reason = (
                 f"Stability {score.stability_score:.2f} < "
-                f"threshold {THRESHOLD_STABILITY:.2f} — too inconsistent"
+                f"threshold {_stability_thresh:.2f} ({score.regime or 'default'}) "
+                f"— too inconsistent"
             )
             return
 

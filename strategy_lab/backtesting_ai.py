@@ -280,13 +280,27 @@ class BacktestingAI:
         )
 
         approved_signals = []
+        # Within-cycle cache: avoid recomputing the same strategy score when
+        # multiple signals share an identical strategy (e.g., 22 × Mean_Reversion).
+        # Key: strategy_name → (score, boost, approved: bool)
+        _cycle_cache: Dict[str, tuple] = {}
 
         for signal in signals:
+            # ── Cycle-cache hit ───────────────────────────────────────────────
+            if signal.strategy_name in _cycle_cache:
+                cached_score, cached_boost, cached_approved = _cycle_cache[signal.strategy_name]
+                if cached_approved:
+                    signal.confidence = min(10.0, signal.confidence + cached_boost)
+                    approved_signals.append(signal)
+                # (rejected signals are simply skipped — no log spam)
+                continue
+
             result = self._get_result(signal.strategy_name)
             if result is None:
                 log.warning("[BacktestingAI] No backtest data for '%s' — allowing through.",
                             signal.strategy_name)
                 approved_signals.append(signal)
+                _cycle_cache[signal.strategy_name] = (0, 0.0, True)
                 continue
             
             # ── ADD SAFE DEFAULTS FOR RESULT ATTRIBUTES ───────────────────────────────
@@ -347,9 +361,11 @@ class BacktestingAI:
                 boost = (0.5 * sharpe) / max(overfit, 1.0)
                 signal.confidence = min(10.0, signal.confidence + round(boost, 2))
                 approved_signals.append(signal)
+                _cycle_cache[signal.strategy_name] = (score, round(boost, 2), True)
             else:
                 log.info("[BacktestingAI] %s rejected | score=%d/6 below threshold %.1f",
                          signal.strategy_name, score, _threshold)
+                _cycle_cache[signal.strategy_name] = (score, 0.0, False)
 
         log.info("[BacktestingAI] Signals passed: %d / %d",
                  len(approved_signals), len(signals))
