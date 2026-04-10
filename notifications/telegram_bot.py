@@ -241,6 +241,7 @@ class TelegramCommandBot:
             "/pause":     self._cmd_pause,
             "/resume":    self._cmd_resume,
             "/report":    self._cmd_report,
+            "/eod":       self._cmd_eod,
         }
 
     # ── /start ─────────────────────────────────────────────────────────────
@@ -290,6 +291,8 @@ class TelegramCommandBot:
             "/positions    — Open positions\n"
             "/pnl          — Today's P&amp;L\n"
             "/edges        — Active trading edges\n"
+            "/eod          — Today's operational retrospective\n"
+            "/report       — AI self-evaluation quality report\n"
             "/pause        — Pause signal generation\n"
             "/resume       — Resume signal generation\n"
             "/help         — This message"
@@ -619,6 +622,27 @@ class TelegramCommandBot:
             return f"<b>📊 {fname}</b>\n\n<pre>{_esc(content)}</pre>"
         except Exception as exc:
             return f"⚠️ Could not load report: {_esc(str(exc))}"
+
+    # ── /eod ──────────────────────────────────────────────────────────────
+
+    def _cmd_eod(self, msg: dict) -> str:
+        """Return today's operational retrospective (cycle health, pipeline, flags)."""
+        import os, glob
+        try:
+            # Try today's saved retrospective first
+            from datetime import datetime as _dt
+            today = _dt.now().strftime("%Y-%m-%d")
+            pattern = os.path.join("data", f"eod_retro_{today}.txt")
+            if os.path.exists(pattern):
+                with open(pattern, "r", encoding="utf-8") as fh:
+                    return f"<pre>{_esc(fh.read(3800))}</pre>"
+
+            # Fall back to generating live
+            from learning_system.eod_retrospective import run_eod_retrospective
+            _, html = run_eod_retrospective()
+            return html
+        except Exception as exc:
+            return f"⚠️ EOD retrospective unavailable: {_esc(str(exc))}"
 
     # ── /pause / /resume ───────────────────────────────────────────────────
 

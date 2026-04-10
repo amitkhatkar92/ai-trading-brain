@@ -1372,6 +1372,17 @@ class MasterOrchestrator:
         except Exception as _eval_exc:
             log.warning("[SelfEval] EOD evaluation failed: %s", _eval_exc)
 
+        # ── Operational Retrospective (cycle health, funnel, ODM, flags) ───
+        log.info("── EOD Operational Retrospective ──")
+        try:
+            from learning_system.eod_retrospective import run_eod_retrospective
+            _retro_plain, _retro_html = run_eod_retrospective()
+            if self.notifier:
+                self.notifier.market_alert("📊 Daily Retrospective", _retro_html)
+            log.info("[EOD-Retro] Operational retrospective sent.")
+        except Exception as _retro_exc:
+            log.warning("[EOD-Retro] Retrospective failed: %s", _retro_exc)
+
         # Print end-of-day diagnostics
         self.bus.print_stats()
         self.task_queue.print_stats()
