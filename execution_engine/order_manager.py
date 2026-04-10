@@ -388,12 +388,25 @@ class OrderManager:
         try:
             from notifications.notifier_manager import get_notifier
             _mode = "paper" if self._paper_mode else "live"
-            get_notifier().trade_opened(
-                symbol=signal.symbol, direction=signal.direction.value,
-                entry=signal.entry_price, stop=signal.stop_loss,
-                target=signal.target_price, strategy=signal.strategy_name,
-                mode=_mode,
-            )
+            # LIMIT orders in paper mode are PENDING — not yet filled.
+            # Only send "Trade Opened" (fill confirmed) when LTP actually
+            # reaches the limit price (simulated in TradeMonitor.check_all).
+            # For live mode the broker confirms fill separately; we still
+            # fire trade_opened so the user knows the order was submitted.
+            if self._paper_mode:
+                get_notifier().limit_order_placed(
+                    symbol=signal.symbol, direction=signal.direction.value,
+                    entry=_final_px, stop=signal.stop_loss,
+                    target=signal.target_price, strategy=signal.strategy_name,
+                    mode=_mode,
+                )
+            else:
+                get_notifier().trade_opened(
+                    symbol=signal.symbol, direction=signal.direction.value,
+                    entry=signal.entry_price, stop=signal.stop_loss,
+                    target=signal.target_price, strategy=signal.strategy_name,
+                    mode=_mode,
+                )
         except Exception:
             pass
         return record

@@ -61,16 +61,60 @@ class TradeMonitor:
         """
         Called every N minutes.
         price_feed: dict of {symbol: ltp} — if None, simulates prices.
+
+        For LIMIT orders in paper mode: only proceed with SL/target evaluation
+        once the market price has actually reached (crossed) the zone_price.
+        Until then, send no noise — a "⏳ Limit Pending" was already sent at placement.
+        When fill is confirmed, send "Trade Opened" and downgrade to MARKET so
+        subsequent cycles evaluate SL/target normally.
         """
         closed_ids = []
         for oid, order in self._open_orders.items():
             ltp = self._get_ltp(order.symbol, price_feed)
             if ltp is None:
                 continue
+
+            # ── Paper LIMIT fill simulation ────────────────────────────
+            # A LIMIT order was placed but is not filled until LTP crosses
+            # the zone_price.  Skip SL/target evaluation until then.
+            if order.order_type == "LIMIT":
+                zone_px = getattr(order, "zone_price", 0.0)
+                if zone_px > 0.0:
+                    is_long = order.direction == "BUY"
+                    filled = (is_long and ltp <= zone_px) or \
+                             (not is_long and ltp >= zone_px)
+                    if not filled:
+                        continue   # price not yet reached — skip this cycle
+
+                    # Price has crossed the limit — confirm fill
+                    order.order_type  = "MARKET"   # mark filled for future cycles
+                    order.entry_price = zone_px    # PnL based on actual fill price
+                    log.info(
+                        "[TradeMonitor] ✅ LIMIT FILL confirmed: %s @ %.2f "
+                        "(LTP=%.2f)",
+                        order.symbol, zone_px, ltp,
+                    )
+                    try:
+                        from notifications.notifier_manager import get_notifier
+                        rr = (abs(order.target - zone_px) / abs(zone_px - order.stop_loss)
+                              if order.stop_loss and order.stop_loss != zone_px else 0)
+                        get_notifier().trade_opened(
+                            symbol=order.symbol,
+                            direction=order.direction,
+                            entry=zone_px,
+                            stop=order.stop_loss,
+                            target=order.target,
+                            strategy=order.strategy,
+                            mode="paper",
+                        )
+                    except Exception:
+                        pass
+                    continue   # evaluate SL/target from next cycle onward
+
             action = self._evaluate(order, ltp)
             if action:
                 self._act(oid, order, ltp, action)
-                if action in ("close_target", "close_emergency", "close_eod"):
+                if action in ("close_target", "close_emergency", "close_eod", "close_sl"):
                     closed_ids.append(oid)
 
         for oid in closed_ids:

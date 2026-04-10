@@ -193,6 +193,24 @@ class NotifierManager:
 
     # ── Typed alert constructors ───────────────────────────────────────────
 
+    def limit_order_placed(
+        self,
+        symbol: str, direction: str,
+        entry: float, stop: float, target: float,
+        strategy: str, mode: str = "paper",
+    ) -> None:
+        """Fire when a LIMIT order is placed but NOT yet filled (paper mode)."""
+        rr    = abs(target - entry) / abs(entry - stop) if entry != stop else 0
+        _nifty = _get_nifty_str()
+        body  = (f"Symbol: `{symbol}`\n"
+                 f"Direction: {direction}\n"
+                 f"Limit: ₹{entry:.2f}  SL: ₹{stop:.2f}  Target: ₹{target:.2f}\n"
+                 f"R:R = {rr:.1f}  Strategy: `{strategy}`\n"
+                 f"Mode: {'🧪 PAPER' if mode == 'paper' else '💵 LIVE'}\n"
+                 f"⚠️ Pending fill — waiting for price to reach limit"
+                 f"{_nifty}")
+        self._dispatch(Alert(AlertType.TRADE_OPENED, f"⏳ Limit Pending: {symbol}", body))
+
     def trade_opened(
         self,
         symbol: str, direction: str,
