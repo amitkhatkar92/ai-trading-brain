@@ -127,15 +127,46 @@ class EODRetrospective:
         trades     = self._read_trades()
         odm_state  = self._read_odm_state()
         daily_json = self._read_daily_json()
+        trend      = self._compute_trend()
 
         plain, html = self._build_report(
             cycles, bt_rejects, mc_rejects, decisions, odm_cycles,
-            re_drops, stagnant_n, regime, vix, trades, odm_state, daily_json,
+            re_drops, stagnant_n, regime, vix, trades, odm_state,
+            daily_json, trend,
         )
 
         self._save(plain)
-        log.info("[EOD-Retro] Report saved → data/eod_%s.txt", self._today)
+
+        # ── Auto-populate improvement backlog from detected flags ─────
+        try:
+            from learning_system.improvement_backlog import populate_from_flags
+            _flags_section = self._extract_flags_from_plain(plain)
+            new_ids = populate_from_flags(_flags_section)
+            if new_ids:
+                log.info("[EOD-Retro] %d new item(s) added to backlog: %s",
+                         len(new_ids), new_ids)
+        except Exception as _bl_exc:
+            log.debug("[EOD-Retro] Backlog update skipped: %s", _bl_exc)
+
+        log.info("[EOD-Retro] Report saved → data/eod_retro_%s.txt", self._today)
         return plain, html
+
+    @staticmethod
+    def _extract_flags_from_plain(plain: str) -> List[str]:
+        """Extract the numbered flag lines from the plain-text report."""
+        flags = []
+        in_flags = False
+        for line in plain.splitlines():
+            if "AUTO-DETECTED FLAGS" in line:
+                in_flags = True
+                continue
+            if in_flags:
+                stripped = line.strip()
+                if stripped and stripped[0].isdigit() and ". " in stripped:
+                    flags.append(stripped.split(". ", 1)[1])
+                elif stripped.startswith("═") or stripped.startswith("─"):
+                    break
+        return flags
 
     # ─────────────────────────────────────────────────────────────────
     # Log parsing
@@ -314,6 +345,70 @@ class EODRetrospective:
             return {}
 
     # ─────────────────────────────────────────────────────────────────
+    # Week-over-week trend
+    # ─────────────────────────────────────────────────────────────────
+
+    def _compute_trend(self) -> dict:
+        """
+        Read the last 5 saved daily JSON files and compute direction
+        for key profitability metrics.
+
+        Returns dict with keys:
+          days_available, pnl_trend, approval_rate_trend,
+          healthy_rate_trend, rows (last 5 rows for table)
+        """
+        import glob as _glob
+        pattern = os.path.join(_DATA_DIR, "eod_retro_*.txt")
+        files = sorted(_glob.glob(pattern))[-5:]   # last 5 plain reports
+
+        # We can't parse our own plain text reliably — use paper_trading_daily.json
+        # history if available, otherwise use daily_json snapshots.
+        # Simpler approach: read the daily_json for each day by scanning the data dir.
+        daily_pattern = os.path.join(_DATA_DIR, "paper_trading_daily_*.json")
+        daily_files = sorted(_glob.glob(daily_pattern))
+
+        # Also accept the single rolling file (paper_trading_daily.json) as day 0 reference
+        rows = []
+        for fp in daily_files[-5:]:
+            try:
+                with open(fp, "r", encoding="utf-8") as f:
+                    d = json.load(f)
+                rows.append({
+                    "date":     d.get("date", "?"),
+                    "pnl":      d.get("today", {}).get("net_pnl", 0.0),
+                    "trades":   d.get("today", {}).get("trades", 0),
+                    "wins":     d.get("today", {}).get("wins", 0),
+                })
+            except Exception:
+                pass
+
+        if len(rows) < 2:
+            return {"days_available": len(rows), "rows": rows,
+                    "pnl_trend": "insufficient data"}
+
+        pnls = [r["pnl"] for r in rows]
+        recent_avg  = sum(pnls[-2:]) / 2
+        earlier_avg = sum(pnls[:-2]) / max(len(pnls) - 2, 1)
+        if recent_avg > earlier_avg + 500:
+            pnl_dir = "📈 improving"
+        elif recent_avg < earlier_avg - 500:
+            pnl_dir = "📉 declining"
+        else:
+            pnl_dir = "➡️ stable"
+
+        total_trades = sum(r["trades"] for r in rows)
+        total_wins   = sum(r["wins"]   for r in rows)
+        week_wr = (total_wins / total_trades * 100) if total_trades else 0
+
+        return {
+            "days_available": len(rows),
+            "rows":           rows,
+            "pnl_trend":      pnl_dir,
+            "week_win_rate":  round(week_wr, 1),
+            "week_total_pnl": round(sum(pnls), 2),
+        }
+
+    # ─────────────────────────────────────────────────────────────────
     # Report builder
     # ─────────────────────────────────────────────────────────────────
 
@@ -331,6 +426,7 @@ class EODRetrospective:
         trades:     List[dict],
         odm_state:  dict,
         daily_json: dict,
+        trend:      dict,
     ) -> Tuple[str, str]:
 
         today_label = datetime.now().strftime("%d %b %Y")
@@ -530,9 +626,7 @@ class EODRetrospective:
         lines_plain.append("🔭 TOMORROW WATCH")
         for item in watch:
             lines_plain.append(f"  • {item}")
-        lines_plain += [sep2, "  Share this report for deeper AI analysis", sep2]
-
-        plain = "\n".join(lines_plain)
+        lines_plain += [sep2, "  Ask Copilot: 'what did we learn today?' for analysis", sep2]
 
         # ── Assemble Telegram HTML ─────────────────────────────────────
         def _h(t: str) -> str:
@@ -591,12 +685,43 @@ class EODRetrospective:
         html_lines.append("<b>🔭 Tomorrow Watch</b>")
         for item in watch:
             html_lines.append(f"  • {_h(item)}")
+
+        # ── Week-over-week trend (HTML) ────────────────────────────────
+        if trend.get("days_available", 0) >= 2:
+            html_lines += [
+                "",
+                "<b>📈 Weekly Trend</b>",
+                f"  P&amp;L direction : {_h(trend.get('pnl_trend', '—'))}",
+                f"  5-day win rate : {trend.get('week_win_rate', 0):.1f}%",
+                f"  5-day net P&amp;L : ₹{trend.get('week_total_pnl', 0):+,.0f}",
+            ]
+            for r in trend.get("rows", []):
+                wr_str = (f"{r['wins']}/{r['trades']}" if r['trades'] else "—")
+                html_lines.append(
+                    f"  <code>{r['date']}  ₹{r['pnl']:+7,.0f}  W/L:{wr_str}</code>"
+                )
+
         html_lines += [
             "",
-            "<i>💬 Share this report with Copilot for deeper analysis</i>",
+            "<i>💬 Ask Copilot: \"what did we learn today?\" to get improvement suggestions</i>",
         ]
 
         html = "\n".join(html_lines)
+
+        # ── Week-over-week trend (plain text) ─────────────────────────
+        if trend.get("days_available", 0) >= 2:
+            lines_plain += [
+                "📈 WEEKLY TREND",
+                f"  P&L direction  : {trend.get('pnl_trend', '—')}",
+                f"  5-day win rate : {trend.get('week_win_rate', 0):.1f}%",
+                f"  5-day net P&L  : ₹{trend.get('week_total_pnl', 0):+,.0f}",
+            ]
+            for r in trend.get("rows", []):
+                wr_str = (f"{r['wins']}/{r['trades']}" if r['trades'] else "—")
+                lines_plain.append(f"  {r['date']}  ₹{r['pnl']:+7,.0f}  W/L:{wr_str}")
+            lines_plain.append(sep2)
+
+        plain = "\n".join(lines_plain)
 
         return plain, html
 

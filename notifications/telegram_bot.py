@@ -242,6 +242,7 @@ class TelegramCommandBot:
             "/resume":    self._cmd_resume,
             "/report":    self._cmd_report,
             "/eod":       self._cmd_eod,
+            "/backlog":   self._cmd_backlog,
         }
 
     # ── /start ─────────────────────────────────────────────────────────────
@@ -293,6 +294,7 @@ class TelegramCommandBot:
             "/edges        — Active trading edges\n"
             "/eod          — Today's operational retrospective\n"
             "/report       — AI self-evaluation quality report\n"
+            "/backlog      — Open improvement items (auto-tracked)\n"
             "/pause        — Pause signal generation\n"
             "/resume       — Resume signal generation\n"
             "/help         — This message"
@@ -622,6 +624,16 @@ class TelegramCommandBot:
             return f"<b>📊 {fname}</b>\n\n<pre>{_esc(content)}</pre>"
         except Exception as exc:
             return f"⚠️ Could not load report: {_esc(str(exc))}"
+
+    # ── /backlog ───────────────────────────────────────────────────────────
+
+    def _cmd_backlog(self, msg: dict) -> str:
+        """Show open improvement items auto-tracked from daily retrospectives."""
+        try:
+            from learning_system.improvement_backlog import get_backlog
+            return get_backlog().format_telegram()
+        except Exception as exc:
+            return f"⚠️ Backlog unavailable: {_esc(str(exc))}"
 
     # ── /eod ──────────────────────────────────────────────────────────────
 
