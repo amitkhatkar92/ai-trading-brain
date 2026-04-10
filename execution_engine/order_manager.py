@@ -388,18 +388,39 @@ class OrderManager:
         try:
             from notifications.notifier_manager import get_notifier
             _mode = "paper" if self._paper_mode else "live"
-            # LIMIT orders in paper mode are PENDING — not yet filled.
-            # Only send "Trade Opened" (fill confirmed) when LTP actually
-            # reaches the limit price (simulated in TradeMonitor.check_all).
-            # For live mode the broker confirms fill separately; we still
-            # fire trade_opened so the user knows the order was submitted.
             if self._paper_mode:
-                get_notifier().limit_order_placed(
-                    symbol=signal.symbol, direction=signal.direction.value,
-                    entry=_final_px, stop=signal.stop_loss,
-                    target=signal.target_price, strategy=signal.strategy_name,
-                    mode=_mode,
+                # In paper mode, check if LTP (signal.entry_price = scanner LTP
+                # at scan time) already satisfies the LIMIT fill condition.
+                # BUY LIMIT fills when LTP <= zone_price.
+                # SELL LIMIT fills when LTP >= zone_price.
+                _ltp_now = signal.entry_price
+                _is_long = signal.direction == SignalDirection.BUY
+                _already_fillable = (
+                    (_is_long  and _ltp_now <= _final_px) or
+                    (not _is_long and _ltp_now >= _final_px)
                 )
+                if _already_fillable:
+                    # Price already satisfies the limit — confirm fill immediately.
+                    record.order_type = "MARKET"   # downgrade so monitor skips fill check
+                    log.info(
+                        "[OrderManager] ⚡ Immediate fill: %s LTP=%.2f already "
+                        "satisfies limit=%.2f",
+                        signal.symbol, _ltp_now, _final_px,
+                    )
+                    get_notifier().trade_opened(
+                        symbol=signal.symbol, direction=signal.direction.value,
+                        entry=_final_px, stop=signal.stop_loss,
+                        target=signal.target_price, strategy=signal.strategy_name,
+                        mode=_mode,
+                    )
+                else:
+                    # Price not yet at limit — send pending notification.
+                    get_notifier().limit_order_placed(
+                        symbol=signal.symbol, direction=signal.direction.value,
+                        entry=_final_px, stop=signal.stop_loss,
+                        target=signal.target_price, strategy=signal.strategy_name,
+                        mode=_mode,
+                    )
             else:
                 get_notifier().trade_opened(
                     symbol=signal.symbol, direction=signal.direction.value,
