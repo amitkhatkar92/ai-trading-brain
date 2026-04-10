@@ -1073,7 +1073,11 @@ class MasterOrchestrator:
                     },
                 ))
                 # Notify — Telegram + DB log
-                if self.notifier:
+                # order_manager already sent the correct notification:
+                #   paper LIMIT → limit_order_placed() (pending fill)
+                #   live        → trade_opened() (submitted to broker)
+                # Do NOT fire a second trade_opened() here to avoid duplicates.
+                if False and self.notifier:  # disabled — notification handled by order_manager
                     direction = getattr(signal, "direction", "")
                     self.notifier.trade_opened(
                         signal.symbol,
