@@ -32,7 +32,7 @@ ACTIVE_BROKER = os.getenv("ACTIVE_BROKER", "zerodha")   # zerodha | dhan | angel
 # ─────────────────────────────────────────────
 # RISK PARAMETERS
 # ─────────────────────────────────────────────
-TOTAL_CAPITAL            = float(os.getenv("TOTAL_CAPITAL", 1_000_000))   # INR
+TOTAL_CAPITAL            = float(os.getenv("TOTAL_CAPITAL", 10_000_000))  # INR — ₹1Cr paper trading (increased from ₹10L for strategy validation coverage)
 MAX_RISK_PER_TRADE_PCT   = 0.01      # 1% of capital per trade
 MAX_PORTFOLIO_RISK_PCT   = 0.08      # 8% total portfolio risk (INCREASED 5→8 to unlock execution)
 MAX_DRAWDOWN_PCT         = 0.10      # 10% drawdown → halt trading
@@ -96,9 +96,10 @@ SCHEDULE = {
     "trade_decision":         "09:45",   # first trade window (09:45 IST = 30 min after open)
     # ── Intraday deep scans ────────────────────────────────────────────────
     "mid_morning_scan":       "10:30",   # re-check regime + new setups    (10:30 IST)
+    "mid_session_scan":        "11:30",   # post-circuit / momentum phase    (11:30 IST)
     "afternoon_scan":         "13:00",   # post-lunch session               (13:00 IST)
     "early_afternoon_scan":   "14:00",   # afternoon momentum window        (14:00 IST)
-    "closing_analysis":       "14:55",   # pre-expiry / closing trades      (14:55 IST)
+    "closing_analysis":       "15:00",   # pre-expiry / closing trades      (15:00 IST — matches MarketMonitor)
     # ── EOD ────────────────────────────────────────────────────────────────
     "eod_learning":           "15:35",   # performance learning cycle       (15:35 IST = post market close)
     # ── Legacy aliases (kept for backward compatibility) ───────────────────
@@ -109,6 +110,42 @@ SCHEDULE = {
 
 # Continuous monitoring (Q2 — light scan interval)
 CONTINUOUS_SCAN_INTERVAL = 30   # seconds between price/volume/breakout checks
+
+# ─────────────────────────────────────────────
+# ADAPTIVE EXIT ENGINE  (Phase 1)
+# Master toggle — set False to revert to pure rule-based exits instantly.
+# ─────────────────────────────────────────────
+ENABLE_ADAPTIVE_EXIT        = True
+
+# Time-stale exit: exit if trade open this many minutes AND price barely moved
+ADAPTIVE_TIME_STALE_MINUTES = 180        # 3 hours intraday lock-up limit
+ADAPTIVE_STALE_MAX_R        = 0.30       # ≤ 0.3R movement = "no progress"
+
+# Early loss control: exit early when approaching full SL
+# Regime-aware: trending market gives more room, sideways/bear tightens
+ADAPTIVE_EARLY_LOSS_R           = -0.60  # default: exit at -0.6R
+ADAPTIVE_EARLY_LOSS_TRENDING_R  = -0.70  # bull_trend: wider — momentum needs breathing room
+ADAPTIVE_EARLY_LOSS_SIDEWAYS_R  = -0.50  # range_market / bear_market: tighter — cuts dead weight faster
+
+# Guardrails: never fire adaptive exits in these situations
+ADAPTIVE_MIN_R_TO_GUARD     = 2.50      # do NOT apply time-exit if already ≥2.5R profit
+ADAPTIVE_NEAR_TARGET_R      = 2.00      # do NOT apply early-loss if trade was ≥2R at any point
+
+# ─────────────────────────────────────────────
+# ADAPTIVE PROFIT EXTENSION  (Phase 2)
+# When a trade nears its fixed target and conditions are strong,
+# instead of exiting, tighten SL and let trailing take over.
+# NEVER modifies order.target — only tightens order.stop_loss.
+# ─────────────────────────────────────────────
+ENABLE_ADAPTIVE_EXTENSION       = True
+ADAPTIVE_EXTENSION_TRIGGER_R    = 2.80   # activate when trade reaches this R (near 3R target)
+ADAPTIVE_EXTENSION_LOCK_R       = 2.50   # tighten SL to lock this much profit (moderate move)
+ADAPTIVE_EXTENSION_LOCK_STRONG_R = 2.70  # tighter lock when move is very strong (3.1R+)
+ADAPTIVE_EXTENSION_STRONG_R     = 3.10   # R threshold that defines a "very strong" move
+ADAPTIVE_EXTENSION_MAX_VIX      = 20.0   # do NOT extend if VIX above this (volatile market)
+ADAPTIVE_EXTENSION_TARGET_PCT   = 0.10   # only extend if within last 10% of target distance
+ADAPTIVE_EXTENSION_TIME_CAP_MIN = 90     # extended trade still going after this many minutes
+                                          # → tighten SL to 0.5R step (force trailing close)
 
 # ─────────────────────────────────────────────
 # LOGGING

@@ -395,7 +395,17 @@ class MasterOrchestrator:
                 )
             elif scan_name == "closing_analysis":
                 log.info("[Orchestrator] Closing analysis — checking positions.")
+                self.bus.publish(SystemEvent(
+                    event_type=EventType.CYCLE_STARTED,
+                    source_agent="MasterOrchestrator",
+                    payload={"ts": datetime.now().isoformat(), "label": "closing_analysis"},
+                ))
                 self.trade_monitor.check_open_positions()
+                self.bus.publish(SystemEvent(
+                    event_type=EventType.CYCLE_COMPLETE,
+                    source_agent="MasterOrchestrator",
+                    payload={"label": "closing_analysis"},
+                ))
         except Exception as exc:
             log.warning("[Orchestrator] Deep scan error (%s): %s", scan_name, exc)
 
@@ -785,7 +795,7 @@ class MasterOrchestrator:
         self.system_monitor.print_cycle_table(cycle_report)
         self._last_snapshot = snapshot    # cache for EOD EDE cycle
         # Inform ODM of outcome so it can tune density tier next cycle
-        self.odm.record_cycle(signals_generated=len(signals), approved_trades=len(executed))
+        self.odm.record_cycle(signals_generated=len(signals), approved_trades=len(sim_result.approved_trades))
         if executed:
             self._print_cycle_summary(executed, snapshot)
         else:
@@ -1161,6 +1171,14 @@ class MasterOrchestrator:
 
     def _do_monitor(self):
         """Internal — runs inside the TradeMonitor worker thread."""
+        # Pass latest market context so adaptive exit thresholds are regime-aware
+        if self._last_snapshot:
+            _regime_str = (
+                self._last_snapshot.regime.value
+                if hasattr(self._last_snapshot.regime, "value")
+                else str(self._last_snapshot.regime)
+            )
+            self.trade_monitor.update_market_context(_regime_str, self._last_snapshot.vix)
         self.trade_monitor.check_all()
         portfolio: Portfolio = self.order_manager.get_portfolio()
 
@@ -1189,6 +1207,11 @@ class MasterOrchestrator:
         if is_nse_holiday():
             log.info("[Orchestrator] 🏖️  NSE HOLIDAY — EOD learning skipped.")
             return
+        self.bus.publish(SystemEvent(
+            event_type=EventType.CYCLE_STARTED,
+            source_agent="MasterOrchestrator",
+            payload={"ts": datetime.now().isoformat(), "label": "eod_learning"},
+        ))
         self.task_queue.submit_to(
             "LearningEngine",
             fn=self._do_eod_learning,
@@ -1251,7 +1274,7 @@ class MasterOrchestrator:
             self.validation_engine.validate(
                 strategy_name="Portfolio",
                 pnl_series=all_pnls,
-                capital=1_000_000,
+                capital=TOTAL_CAPITAL,
                 print_report=True,
             )
         else:
@@ -1285,7 +1308,7 @@ class MasterOrchestrator:
         win_rate_pct = round(wins / len(trades) * 100, 1) if trades else 0.0
         if self.notifier:
             self.notifier.eod_summary(
-                len(trades), wins, losses, total_pnl, 1_000_000
+                len(trades), wins, losses, total_pnl, TOTAL_CAPITAL
             )
         if self.db:
             self.db.log_event(
@@ -1382,6 +1405,23 @@ class MasterOrchestrator:
             log.info("[EOD-Retro] Operational retrospective sent.")
         except Exception as _retro_exc:
             log.warning("[EOD-Retro] Retrospective failed: %s", _retro_exc)
+
+        # ── Performance Analytics Layer ────────────────────────────────────
+        log.info("── EOD Performance Analytics ──")
+        try:
+            analytics = self.trade_monitor.get_analytics()
+            if analytics.trade_count() > 0:
+                _perf_plain = analytics.daily_report()
+                _perf_tg    = analytics.telegram_report()
+                log.info("\n%s", _perf_plain)
+                if self.notifier:
+                    self.notifier.market_alert("📊 AI Performance Report", _perf_tg)
+                log.info("[TradeAnalytics] Performance report sent (%d trades).",
+                         analytics.trade_count())
+            else:
+                log.info("[TradeAnalytics] No trades today — report suppressed.")
+        except Exception as _pa_exc:
+            log.warning("[TradeAnalytics] EOD report failed: %s", _pa_exc)
 
         # Print end-of-day diagnostics
         self.bus.print_stats()
@@ -1513,12 +1553,53 @@ class MasterOrchestrator:
             log.debug("Telegram market-open notify failed: %s", exc)
 
     def _market_close_notify(self) -> None:
-        """Send Telegram notification when NSE market closes at 15:30."""
+        """
+        Called at 15:30 IST when NSE market closes.
+
+        EOD RISK MANAGEMENT (not a force-flush):
+        - This system is NOT purely intraday.  Positions with strong momentum
+          or overnight thesis should be allowed to carry.
+        - Action is risk-aware: only log position state for next-session awareness.
+        - AdaptiveExitEngine (time/loss gates) handles intraday stale positions
+          during the day.  Nothing is force-closed here.
+
+        Sends Telegram market-close notification.
+        """
         from config import is_nse_holiday
         if is_nse_holiday():
             log.info("[Orchestrator] 🏖️  NSE HOLIDAY — market-close notify skipped.")
             return
         log.info("[Orchestrator] 🔔 Market CLOSE — 15:30 notification")
+
+        # ── EOD risk summary (no forced close) ────────────────────────────
+        # Log the state of every open position so the next session starts
+        # with full awareness.  The AdaptiveExitEngine already cleared
+        # genuinely stale/stopped positions during the day.
+        try:
+            open_orders = self.order_manager.get_open_orders()
+            if open_orders:
+                log.info("[Orchestrator] EOD state — %d position(s) carrying to next session:",
+                         len(open_orders))
+                for rec in open_orders:
+                    try:
+                        from data_feeds import get_feed_manager as _gfm
+                        q = _gfm().get_quote(rec.symbol)
+                        ltp = q.ltp if (q and q.ltp and q.ltp > 0) else rec.entry_price
+                    except Exception:
+                        ltp = rec.entry_price
+                    risk   = abs(rec.entry_price - rec.stop_loss) if rec.stop_loss else 0
+                    r_mult = (ltp - rec.entry_price) / risk if (risk > 0 and rec.direction == "BUY") \
+                              else (rec.entry_price - ltp) / risk if risk > 0 else 0
+                    log.info(
+                        "[Orchestrator]   CARRY  %s %s  entry=%.2f  ltp=%.2f  "
+                        "sl=%.2f  r_mult=%.2fR  strategy=%s",
+                        rec.symbol, rec.direction, rec.entry_price, ltp,
+                        rec.stop_loss or 0, r_mult, rec.strategy,
+                    )
+            else:
+                log.info("[Orchestrator] EOD — no open positions. Clean session end.")
+        except Exception as eod_exc:
+            log.warning("[Orchestrator] EOD position state read failed: %s", eod_exc)
         try:
             from notifications import get_notifier
             import config as _cfg
