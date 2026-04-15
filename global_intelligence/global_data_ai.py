@@ -154,6 +154,7 @@ class GlobalDataAI:
 
     def _warm(self) -> None:
         """Background pre-warm: fetch immediately so cache is hot before first cycle."""
+        import time as _time
         try:
             snap = self._fetch_live_data()
             with self._lock:
@@ -161,7 +162,16 @@ class GlobalDataAI:
                 self._last_fetch_ts = time.monotonic()
             log.info("[GlobalDataAI] Cache pre-warmed ✓ %s", snap.summary())
         except Exception as exc:
-            log.debug("[GlobalDataAI] Pre-warm failed: %s", exc)
+            log.warning("[GlobalDataAI] Pre-warm failed: %s — retrying in 10s", exc)
+            _time.sleep(10)
+            try:
+                snap = self._fetch_live_data()
+                with self._lock:
+                    self._last_snap = snap
+                    self._last_fetch_ts = time.monotonic()
+                log.info("[GlobalDataAI] Cache pre-warmed on retry ✓ %s", snap.summary())
+            except Exception as exc2:
+                log.warning("[GlobalDataAI] Pre-warm retry also failed: %s — first cycle will fetch live", exc2)
         finally:
             self._ready.set()   # unblock any waiting fetch() call
 

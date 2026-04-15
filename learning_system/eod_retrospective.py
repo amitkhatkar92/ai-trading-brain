@@ -516,10 +516,10 @@ class EODRetrospective:
             )
 
         if re_drops:
+            _drop_parts = [f"{d['symbol']} {d['drift_pct']:.1f}%" for d in re_drops[:3]]
             flags.append(
                 f"↩️  {len(re_drops)} stale re-entry slot(s) dropped "
-                f"(price drifted >1.5%): "
-                f"{', '.join(d['symbol'] + f\" {d['drift_pct']:.1f}%\" for d in re_drops[:3])}"
+                f"(price drifted >1.5%): {', '.join(_drop_parts)}"
             )
 
         if today_pnl < -5000:

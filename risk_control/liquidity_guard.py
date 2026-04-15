@@ -48,6 +48,15 @@ _CRORE = 1_00_00_000.0
 # This keeps the guard active even without real broker ADV data.
 _FALLBACK_SHARES_PER_DAY = 200_000
 
+# Index and broad-market ETF symbols are exempt from the minimum ADV check.
+# They are not individual stocks — their ADV is computed differently, and
+# their underlying liquidity (futures/options on NIFTY/BANKNIFTY) is vast.
+_INDEX_EXEMPT: frozenset = frozenset({
+    "NIFTY", "BANKNIFTY", "NIFTYBEES", "BANKBEES",
+    "NIFTY50", "NIFTY100", "NIFTYIT", "NIFTYBANK",
+    "^NSEI", "^NSEBANK", "^INDIAVIX",
+})
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Data structures
@@ -181,6 +190,22 @@ class LiquidityGuard:
     # ── Private ─────────────────────────────────────────────────────────────
 
     def _check(self, sig: TradeSignal) -> LiquidityCheckResult:
+        # Index / broad-market ETF symbols bypass ADV minimum check entirely.
+        # Their underlying (futures, options) liquidity is orders of magnitude
+        # above any threshold we would set for individual stocks.
+        if sig.symbol.upper() in _INDEX_EXEMPT:
+            log.debug("[LiquidityGuard] ✅ EXEMPT %s — index/ETF symbol, skipping ADV check",
+                      sig.symbol)
+            return LiquidityCheckResult(
+                symbol           = sig.symbol,
+                original_qty     = sig.quantity,
+                approved_qty     = sig.quantity,
+                adv_crore        = 999.0,
+                max_pos_inr      = 999.0 * _CRORE * MAX_ADV_PCT,
+                cap_applied      = False,
+                rejection_reason = "",
+            )
+
         adv = sig.adv_crore if sig.adv_crore > 0 else self._fallback_adv_crore(sig)
         original_qty = sig.quantity
 

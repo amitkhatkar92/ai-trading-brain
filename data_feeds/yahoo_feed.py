@@ -139,6 +139,21 @@ class YahooFeed(BaseFeed):
                 q = self._parse_batch_row(sym, tkr, data)
                 if q:
                     results[sym] = q
+
+            # Retry any symbol that failed in the batch — fetch individually
+            failed = [s for s in symbols if s not in results]
+            if failed:
+                log.info("[YahooFeed] %d symbol(s) missing from batch — retrying individually: %s",
+                         len(failed), failed)
+                for sym in failed:
+                    tkr = GLOBAL_SYMBOL_MAP.get(sym, sym)
+                    q = self._live_quote(tkr, sym)
+                    if q:
+                        results[sym] = q
+                    else:
+                        log.warning("[YahooFeed] %s unavailable after retry — using SIM", sym)
+                        results[sym] = self._sim_quote(sym)
+
             return results
         except Exception as exc:
             log.warning("[YahooFeed] Batch download failed: %s — falling back", exc)
