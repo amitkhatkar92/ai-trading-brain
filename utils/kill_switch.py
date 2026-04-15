@@ -39,7 +39,7 @@ def _read_kill_switch_file() -> Tuple[bool, str, Optional[str]]:
         return True, "default", None
     
     try:
-        with open(CONFIG_PATH, "r") as f:
+        with open(CONFIG_PATH, "r", encoding="utf-8-sig") as f:
             data = json.load(f)
         return (
             data.get("trading_enabled", True),

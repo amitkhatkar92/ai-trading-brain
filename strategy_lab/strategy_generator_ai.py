@@ -232,9 +232,26 @@ class StrategyGeneratorAI:
 
         elif regime == RegimeLabel.RANGE_MARKET:
             if signal.signal_type == SignalType.EQUITY:
-                evolved = self._best_evolved_variant("Mean_Reversion", active,
-                                                      min_signal_rr=rr)
-                return evolved or _choose(["Mean_Reversion"])
+                # Diversify range-market equity strategy by signal characteristics
+                # (fix for backlog #12 — Mean_Reversion was dominating all signals).
+                if (signal.direction == SignalDirection.BUY
+                        and signal.strength.value == "strong"):
+                    # Strong-volume breakout near top of range → Breakout_Volume
+                    evolved = self._best_evolved_variant("Breakout_Volume", active,
+                                                          min_signal_rr=rr)
+                    return evolved or _choose(["Breakout_Volume", "Mean_Reversion"])
+                elif (signal.direction == SignalDirection.BUY
+                        and signal.confidence >= 7.0):
+                    # Moderate-confidence BUY at range boundary → Momentum_Retest
+                    evolved = self._best_evolved_variant("Momentum_Retest", active,
+                                                          min_signal_rr=rr)
+                    return evolved or _choose(["Momentum_Retest", "Trend_Pullback",
+                                               "Mean_Reversion"])
+                else:
+                    # Default: pure mean-reversion (oversold bounce / short fade)
+                    evolved = self._best_evolved_variant("Mean_Reversion", active,
+                                                          min_signal_rr=rr)
+                    return evolved or _choose(["Mean_Reversion"])
             elif signal.signal_type in (SignalType.OPTIONS, SignalType.SPREAD):
                 return _choose(["Iron_Condor_Range"])
             elif signal.signal_type == SignalType.FUTURES:

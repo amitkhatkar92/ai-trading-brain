@@ -242,6 +242,7 @@ class TelegramCommandBot:
             "/resume":    self._cmd_resume,
             "/report":    self._cmd_report,
             "/eod":       self._cmd_eod,
+            "/analytics": self._cmd_analytics,
             "/backlog":   self._cmd_backlog,
         }
 
@@ -294,6 +295,7 @@ class TelegramCommandBot:
             "/edges        — Active trading edges\n"
             "/eod          — Today's operational retrospective\n"
             "/report       — AI self-evaluation quality report\n"
+            "/analytics    — Today's trade performance analytics\n"
             "/backlog      — Open improvement items (auto-tracked)\n"
             "/pause        — Pause signal generation\n"
             "/resume       — Resume signal generation\n"
@@ -585,7 +587,18 @@ class TelegramCommandBot:
             return tracker.get_table() or "No performance data yet — run some trades first."
         except Exception as exc:
             return f"⚠️ Performance data unavailable: {_esc(str(exc))}"
+    # ── /analytics ──────────────────────────────────────────────
 
+    def _cmd_analytics(self, msg: dict) -> str:
+        """Today's trade performance analytics report — Block 1–4."""
+        try:
+            from trade_monitoring.trade_analytics import TradeAnalytics
+            ana = TradeAnalytics()            # loads today's persisted data
+            if ana.trade_count() == 0:
+                return "No trades recorded today yet."
+            return ana.telegram_report()
+        except Exception as exc:
+            return f"⚠️ Analytics unavailable: {_esc(str(exc))}"
     # ── /learn ─────────────────────────────────────────────────────────
 
     def _cmd_learn(self, msg: dict) -> str:

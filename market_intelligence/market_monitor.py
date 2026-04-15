@@ -46,6 +46,7 @@ DEEP_SCAN_SCHEDULE: List[str] = [
     "09:10",   # first opportunity scan
     "09:20",   # strategy evaluation
     "10:30",   # mid-morning scan
+    "11:30",   # mid-session scan (post-circuit recovery / momentum phase)
     "13:00",   # afternoon scan
     "14:00",   # early afternoon momentum scan
     "15:00",   # closing analysis
@@ -252,6 +253,7 @@ class MarketMonitor:
             "09:10": "first_opportunity_scan",
             "09:20": "strategy_evaluation",
             "10:30": "mid_morning_scan",
+            "11:30": "mid_session_scan",
             "13:00": "afternoon_scan",
             "14:00": "early_afternoon_scan",
             "15:00": "closing_analysis",

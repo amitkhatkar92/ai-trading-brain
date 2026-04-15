@@ -23,20 +23,23 @@ from utils import get_logger
 log = get_logger(__name__)
 
 # ── Static economic calendar (extend with live API feed) ─────────────────────
+# resolve_hour_ist: IST hour (24h) after which the event is considered resolved
+#   on event day. None = post-market event (US events after 21:00 IST) —
+#   stays active all Indian market hours, expires naturally next day.
 KNOWN_EVENTS: Dict[str, Dict[str, Any]] = {
-    # format: "YYYY-MM-DD": {"name": ..., "impact": "HIGH|MEDIUM|LOW", "sectors": [...]}
-    "2026-03-15": {"name": "RBI Monetary Policy",       "impact": "HIGH",   "sectors": ["Banking"]},
-    "2026-03-20": {"name": "US Fed FOMC Meeting",        "impact": "HIGH",   "sectors": ["All"]},
-    "2026-04-01": {"name": "Q4 Results Season Start",    "impact": "MEDIUM", "sectors": ["All"]},
-    "2026-04-15": {"name": "US CPI Release",             "impact": "HIGH",   "sectors": ["All"]},
-    "2026-02-01": {"name": "Union Budget",               "impact": "HIGH",   "sectors": ["All"]},
+    # format: "YYYY-MM-DD": {"name": ..., "impact": ..., "sectors": [...], "resolve_hour_ist": int|None}
+    "2026-03-15": {"name": "RBI Monetary Policy",       "impact": "HIGH",   "sectors": ["Banking"], "resolve_hour_ist": 11},
+    "2026-03-20": {"name": "US Fed FOMC Meeting",        "impact": "HIGH",   "sectors": ["All"],     "resolve_hour_ist": None},
+    "2026-04-01": {"name": "Q4 Results Season Start",    "impact": "MEDIUM", "sectors": ["All"],     "resolve_hour_ist": 12},
+    "2026-04-15": {"name": "US CPI Release",             "impact": "HIGH",   "sectors": ["All"],     "resolve_hour_ist": None},
+    "2026-02-01": {"name": "Union Budget",               "impact": "HIGH",   "sectors": ["All"],     "resolve_hour_ist": 13},
 }
 
 
 class EventDetectionAI:
     """Scans economic calendar and live news for market-moving events."""
 
-    LOOKAHEAD_DAYS = 3    # Flag events within the next N days
+    LOOKAHEAD_DAYS = 2    # Flag events within the next N days (reduced 3→2: less pre-event noise)
 
     def __init__(self):
         log.info("[EventDetectionAI] Initialised with %d calendar events.", len(KNOWN_EVENTS))
@@ -71,13 +74,21 @@ class EventDetectionAI:
         )
 
     def _check_calendar(self, today: date) -> List[Dict[str, Any]]:
-        from datetime import timedelta
         upcoming: List[Dict[str, Any]] = []
+        now_hour = datetime.now().hour  # IST hour (server runs IST)
         for date_str, info in KNOWN_EVENTS.items():
             event_date = datetime.strptime(date_str, "%Y-%m-%d").date()
             days_away  = (event_date - today).days
-            if 0 <= days_away <= self.LOOKAHEAD_DAYS:
-                upcoming.append({**info, "date": date_str, "days_away": days_away})
+            if not (0 <= days_away <= self.LOOKAHEAD_DAYS):
+                continue
+            # On event day: check if the event has already been resolved
+            if days_away == 0:
+                resolve_hour = info.get("resolve_hour_ist")
+                if resolve_hour is not None and now_hour >= resolve_hour + 1:
+                    log.info("[EventDetectionAI] ✅ Event resolved: %s (past %02d:00 IST)",
+                             info["name"], resolve_hour + 1)
+                    continue  # event announced — uncertainty cleared
+            upcoming.append({**info, "date": date_str, "days_away": days_away})
         return upcoming
 
     def _assess_risk(self, events: List[Dict[str, Any]]) -> str:

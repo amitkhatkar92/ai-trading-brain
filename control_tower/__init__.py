@@ -31,6 +31,7 @@ from .event_stream_monitor import EventStreamMonitor
 from .agent_status_monitor import AgentStatusMonitor
 from .signal_visualizer    import SignalVisualizer
 from .decision_trace       import DecisionTrace
+from .cycle_health_monitor import CycleHealthMonitor
 
 log = get_logger(__name__)
 
@@ -61,6 +62,7 @@ class ControlTower:
         self.agent_status = AgentStatusMonitor(bus)
         self.funnel       = SignalVisualizer(bus)
         self.trace        = DecisionTrace(bus)
+        self.health       = CycleHealthMonitor(bus)
         log.info("[ControlTower] ✓ All sub-systems active. "
                  "Dashboard: streamlit run control_tower/dashboard_app.py")
 

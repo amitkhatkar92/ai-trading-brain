@@ -76,9 +76,17 @@ class RiskManagerAI:
             return f"Confidence {sig.confidence:.1f} < {MIN_CONFIDENCE_SCORE}"
 
         # 2) R:R ratio — asymmetric payoff gate
-        if sig.risk_reward_ratio > 0 and sig.risk_reward_ratio < MIN_RR_RATIO:
+        # OPTIONS and SPREAD signals (iron condors, straddles, spreads) are
+        # premium-selling strategies evaluated on probability of expiry, not R:R.
+        # They structurally produce R:R < 1.0 (premium received vs max loss).
+        # Skip the directional R:R check for these types (fix for backlog #11).
+        _is_premium_strategy = sig.signal_type in (
+            SignalType.OPTIONS, SignalType.SPREAD
+        )
+        _min_rr = 0.5 if _is_premium_strategy else MIN_RR_RATIO
+        if sig.risk_reward_ratio > 0 and sig.risk_reward_ratio < _min_rr:
             bkv = ExpectancyCalculator.breakeven_win_rate(sig.risk_reward_ratio)
-            return (f"R:R {sig.risk_reward_ratio:.2f} < {MIN_RR_RATIO} "
+            return (f"R:R {sig.risk_reward_ratio:.2f} < {_min_rr:.1f} "
                     f"(would need {bkv:.0%} WR to break even — too high)") 
         # Log breakeven info for approved R:R
         if sig.risk_reward_ratio >= MIN_RR_RATIO:

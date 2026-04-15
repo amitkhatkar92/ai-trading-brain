@@ -44,7 +44,7 @@ from .stress_test_engine import ScenarioTestResult, StressTestEngine, TradeOutco
 THRESHOLD_SURVIVAL_RATE   = 0.45   # probability-weighted scenario survival
 THRESHOLD_WORST_LOSS_R    = -2.0   # never lose more than 2R in any scenario
 THRESHOLD_STABILITY       = 0.40   # profit-factor-based stability floor
-THRESHOLD_MC_PROFIT_PROB  = 0.42   # Monte Carlo profit probability floor
+THRESHOLD_MC_PROFIT_PROB  = 0.39   # Monte Carlo profit probability floor (was 0.42 — fix backlog #13)
 
 
 @dataclass
@@ -332,10 +332,13 @@ class StrategyResilienceAI:
             return
 
         # Rule 3: Stability (regime-adaptive — range_market oscillation produces
-        # lower profit-factor naturally; volatile regimes demand tighter edge)
+        # lower profit-factor naturally; volatile/bear regimes demand tighter edge).
+        # Thresholds lowered for range/bear regimes (fix for backlog #13 — valid
+        # signals scoring 0.37-0.39 were rejected at the old 0.38 floor).
         _stability_thresh = {
-            "range_market": 0.38,
-            "volatile":     0.43,
+            "range_market": 0.35,   # was 0.38 — borderline signals 0.35-0.39 now pass
+            "bear_market":  0.33,   # defensive strategies tolerate lower stability
+            "volatile":     0.43,   # keep tight in volatile — edge quality matters most
         }.get(score.regime, THRESHOLD_STABILITY)
         if score.stability_score < _stability_thresh:
             score.approved = False
