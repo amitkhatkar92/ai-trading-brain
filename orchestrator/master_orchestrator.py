@@ -714,6 +714,7 @@ class MasterOrchestrator:
                 event_type=EventType.RISK_CHECK_PASSED,
                 source_agent="CorrelationEngine",
                 payload={
+                    "approved": len(decorrelated_signals),
                     "before_correlation": len(guardian_decision.approved_signals),
                     "after_correlation": len(decorrelated_signals),
                     "sector_breakdown": sector_summary,
@@ -1179,7 +1180,21 @@ class MasterOrchestrator:
                 else str(self._last_snapshot.regime)
             )
             self.trade_monitor.update_market_context(_regime_str, self._last_snapshot.vix)
-        self.trade_monitor.check_all()
+        # Pass live prices so check_all() evaluates real target/SL hits
+        try:
+            from data_feeds.data_feed_manager import get_feed_manager
+            _feed = get_feed_manager()
+            _open_syms = list({o.symbol for o in self.trade_monitor.get_open_trades()})
+            _live_pf: dict = {}
+            if _open_syms:
+                _quotes = _feed.get_multiple_quotes([f"{s}.NS" for s in _open_syms])
+                for _ns_sym, _q in _quotes.items():
+                    _bare = _ns_sym.replace(".NS", "")
+                    if _q and getattr(_q, "ltp", 0) > 0:
+                        _live_pf[_bare] = float(_q.ltp)
+        except Exception:
+            _live_pf = {}
+        self.trade_monitor.check_all(price_feed=_live_pf if _live_pf else None)
         portfolio: Portfolio = self.order_manager.get_portfolio()
 
         self.bus.publish(RiskEvent(

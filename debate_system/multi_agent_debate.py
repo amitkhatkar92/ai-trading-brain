@@ -204,7 +204,7 @@ class MultiAgentDebate:
         regime_strategy_matrix = {
             RegimeLabel.BULL_TREND:   ["Breakout_Volume", "Momentum_Retest",
                                        "Bull_Call_Spread"],
-            RegimeLabel.RANGE_MARKET: ["Mean_Reversion", "Iron_Condor_Range"],
+            RegimeLabel.RANGE_MARKET: ["Mean_Reversion", "Iron_Condor_Range", "Momentum_Retest"],
             RegimeLabel.BEAR_MARKET:  ["Hedging_Model", "Short_Straddle_IV_Spike"],
             RegimeLabel.VOLATILE:     ["Hedging_Model", "Iron_Condor_Range"],
         }

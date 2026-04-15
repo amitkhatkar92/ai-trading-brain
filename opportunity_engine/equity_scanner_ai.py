@@ -342,7 +342,7 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + RR_DEFAULT * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                confidence      = 7.0,  # raised from 6.5 — was always rejected by RiskManager
+                confidence      = round(min(5.5 + vol_ratio * 0.4 + (rsi - 50) / 25.0, 9.0), 2),
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
                 adv_crore       = adv_crore,
@@ -380,7 +380,7 @@ class EquityScannerAI:
                 stop_loss       = round(ltp - stop_dist, 2),
                 target_price    = round(ltp + RR_TREND_PULLBACK * stop_dist, 2),
                 quantity        = 1,   # placeholder — Risk Engine will overwrite
-                confidence      = 7.2,  # raised from 6.8 — survives RiskManager at high VIX
+                confidence      = round(min(5.8 + vol_ratio * 0.3 + (56 - rsi) / 20.0, 9.0), 2),
                 source_agent    = "EquityScannerAI",
                 atr             = atr,
                 adv_crore       = adv_crore,
@@ -416,7 +416,9 @@ class EquityScannerAI:
                 return sig
 
         # ── Setup 5: Mean Reversion — oversold bounce ─────────────────
-        if rsi <= 38 and ltp <= support * 1.02:
+        # RSI threshold widened from 38→45 to capture stocks pulling back
+        # to support within the normal distribution (fix for backlog #10).
+        if rsi <= 45 and ltp <= support * 1.02:
             sig = TradeSignal(
                 symbol          = stock["symbol"],
                 direction       = SignalDirection.BUY,
