@@ -18,6 +18,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy entire project
 COPY . .
 
+# Generate build manifest — records git commit + file hashes into the image.
+# deploy.sh runs scripts/generate_build_manifest.py BEFORE docker compose build
+# so build_manifest.json is already present in the COPY above.
+# This step only warns if it is missing (manual builds without deploy.sh).
+RUN python -c "\
+import sys, pathlib; \
+m = pathlib.Path('build_manifest.json'); \
+sys.exit(0) if m.exists() else print('WARNING: build_manifest.json missing — run scripts/generate_build_manifest.py before building', file=sys.stderr) \
+"
+
 # Create data directories if they don't exist
 RUN mkdir -p /app/data/logs /app/data/live /app/data/historical
 

@@ -238,8 +238,8 @@ class PaperTradeLogger:
             self._closed_today  += 1
             self._daily_pnl     += rec.pnl
             self._cumulative_pnl += rec.pnl
-            log.info("[PaperTradeLogger] Logged CLOSED %-12s  PnL=₹%+,.0f",
-                     rec.symbol, rec.pnl)
+            log.info("[PaperTradeLogger] Logged CLOSED %-12s  PnL=₹%s",
+                     rec.symbol, f"{rec.pnl:+,.0f}")
             # ── Telegram EXIT alert ───────────────────────────────────
             win     = rec.pnl >= 0
             icon    = "\u2705" if win else "\u274c"

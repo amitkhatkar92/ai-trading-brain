@@ -1,6 +1,18 @@
 """
 Centralised logger factory.
 Every agent uses get_logger(__name__) to get a pre-configured logger.
+
+FILE DESCRIPTOR SAFETY
+----------------------
+With ~62 agents each calling get_logger(__name__), naive per-logger
+FileHandler creation produces 62 × 2 = 124 open FDs pointing at the same
+two log files.  At scale this exhausts the process FD budget (errno 24),
+causing silent write failures and data corruption.
+
+Fix: both FileHandlers live ONLY on the root logger, created exactly once
+via _setup_root_file_handlers().  Child loggers add only a StreamHandler
+(one FD = stdout, shared) and propagate records upward to the root's
+file handlers.  Total file FDs = 2 regardless of how many agents exist.
 """
 
 import logging
@@ -14,8 +26,8 @@ from config import LOG_DIR, LOG_LEVEL
 _PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DAILY_LOG_DIR = os.path.join(_PROJECT_ROOT, "logs")
 
-_daily_setup_done = False
-_daily_setup_lock = threading.Lock()
+_root_file_setup_done = False
+_root_file_setup_lock = threading.Lock()
 
 
 class _DailyFileHandler(logging.FileHandler):
@@ -47,58 +59,72 @@ class _DailyFileHandler(logging.FileHandler):
         super().emit(record)
 
 
-def _setup_daily_log(fmt: logging.Formatter) -> None:
-    """Attach a date-keyed file handler to the root logger exactly once."""
-    global _daily_setup_done
-    with _daily_setup_lock:
-        if _daily_setup_done:
+def _setup_root_file_handlers(fmt: logging.Formatter) -> None:
+    """Attach BOTH file handlers to the root logger exactly once.
+
+    Called by every get_logger() invocation; the lock + flag ensure the
+    handlers are only ever added once, keeping total open file FDs at 2
+    (one rotating + one daily) for the entire process lifetime.
+    """
+    global _root_file_setup_done
+    with _root_file_setup_lock:
+        if _root_file_setup_done:
             return
+
+        os.makedirs(LOG_DIR, exist_ok=True)
         os.makedirs(_DAILY_LOG_DIR, exist_ok=True)
+
         root = logging.getLogger()
+
+        # Rotating file handler (10 MB × 5 backups)
+        fh = RotatingFileHandler(
+            os.path.join(LOG_DIR, "ai_trading_brain.log"),
+            maxBytes=10 * 1024 * 1024,
+            backupCount=5,
+            encoding="utf-8",
+        )
+        fh.setFormatter(fmt)
+        root.addHandler(fh)
+
+        # Daily file handler — logs/YYYY-MM-DD.log
         root.addHandler(_DailyFileHandler(_DAILY_LOG_DIR, fmt))
-        # Root level must be ≤ child level so propagated records reach the handler
+
+        # Root level must be ≤ child level so propagated records reach handlers
         if root.level == logging.NOTSET:
             root.setLevel(logging.DEBUG)
-        _daily_setup_done = True
+
+        _root_file_setup_done = True
 
 
 def get_logger(name: str) -> logging.Logger:
-    """Return a logger that writes to console + a rotating file + a daily file."""
-    os.makedirs(LOG_DIR, exist_ok=True)
+    """Return a per-module logger.
 
-    logger = logging.getLogger(name)
-    if logger.handlers:          # Avoid duplicate handlers on re-import
-        return logger
-
-    logger.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
-
+    File output is handled by handlers on the ROOT logger (added once).
+    Each child logger adds only a StreamHandler for console output, then
+    propagates records upward.  This keeps total open file FDs at exactly
+    2 no matter how many agents/modules call get_logger().
+    """
     fmt = logging.Formatter(
         "%(asctime)s | %(levelname)-8s | %(name)-35s | %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # Console handler
+    # Ensure both file handlers exist on the root logger (idempotent)
+    _setup_root_file_handlers(fmt)
+
+    logger = logging.getLogger(name)
+    if logger.handlers:          # Avoid duplicate StreamHandler on re-import
+        return logger
+
+    logger.setLevel(getattr(logging, LOG_LEVEL.upper(), logging.INFO))
+
+    # Console handler only — file I/O handled by root via propagation
     ch = logging.StreamHandler()
     ch.setFormatter(fmt)
     logger.addHandler(ch)
 
-    # Rotating file handler (10 MB × 5 backups) — backward-compatible location
-    fh = RotatingFileHandler(
-        os.path.join(LOG_DIR, "ai_trading_brain.log"),
-        maxBytes=10 * 1024 * 1024,
-        backupCount=5,
-        encoding="utf-8",
-    )
-    fh.setFormatter(fmt)
-    logger.addHandler(fh)
-
-    # Daily file handler — logs/YYYY-MM-DD.log (written by this child logger directly)
-    os.makedirs(_DAILY_LOG_DIR, exist_ok=True)
-    logger.addHandler(_DailyFileHandler(_DAILY_LOG_DIR, fmt))
-
-    # Prevent records from propagating to root logger.
-    # Without this, any StreamHandler on the root (added by third-party libs
-    # calling logging.basicConfig()) would print every message a second time.
-    logger.propagate = False
+    # Propagate to root so the root's FileHandlers write the record.
+    # Root has no StreamHandler, so there is no double-printing.
+    logger.propagate = True
 
     return logger

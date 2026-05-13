@@ -51,7 +51,7 @@ from utils import get_logger
 log = get_logger(__name__)
 
 # ── Tuning ────────────────────────────────────────────────────────────────────
-MIN_SAMPLE          = 10      # need at least this many trades to auto-disable
+MIN_SAMPLE          = 10      # need at least this many OFFICIAL trades to auto-disable
 WIN_RATE_FLOOR      = 0.35    # below 35% win rate → disable
 EXPECTANCY_FLOOR    = -0.30   # below -0.3R expectancy → disable
 MAX_CONSEC_LOSSES   = 5       # 5 consecutive losses → disable
@@ -59,6 +59,15 @@ MAX_CONSEC_LOSSES   = 5       # 5 consecutive losses → disable
 PERF_FILE = os.path.join(
     os.path.dirname(__file__), "..", "data", "strategy_performance.json"
 )
+STABILITY_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "data", "stability_ledger.json"
+)
+
+try:
+    from config import BASELINE_CANDIDATE_DATE, STABILITY_REQUIRED_SESSIONS
+except Exception:
+    BASELINE_CANDIDATE_DATE    = "2026-04-27"
+    STABILITY_REQUIRED_SESSIONS = 10
 
 
 @dataclass
@@ -75,6 +84,11 @@ class StrategyStats:
     disabled_reason:  str   = ""
     last_trades:      List[float] = field(default_factory=list)   # last 20 R values
     last_updated:     str   = ""
+    # ── Two-ledger separation ─────────────────────────────────────────────
+    # official_trades: trades recorded ON or AFTER BASELINE_CANDIDATE_DATE.
+    # Only these count toward auto-disable decisions.
+    # total_trades includes all history (including the engineering-era records).
+    official_trades:  int   = 0
 
     @property
     def win_rate(self) -> float:
@@ -123,7 +137,8 @@ class StrategyPerformanceTracker:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def record_trade(self, strategy: str, pnl_r: float) -> StrategyStats:
+    def record_trade(self, strategy: str, pnl_r: float,
+                     order_id: str = "") -> StrategyStats:
         """
         Record a completed trade for a strategy.
 
@@ -131,14 +146,52 @@ class StrategyPerformanceTracker:
         ----------
         strategy : strategy name, e.g. "Breakout_Volume"
         pnl_r    : trade P&L in R multiples (+1.5 = win, -1.0 = loss)
+        order_id : optional order ID for LearningGate integrity check
 
         Returns the updated StrategyStats.
         """
+        # ── LearningGate ────────────────────────────────────────────────────
+        # Only VERIFIED trades influence win rates, expectancy, and auto-disable.
+        # LEGACY_UNVERIFIED / INVALID_MARKET_DATA / EXECUTION_INTEGRITY_FAILURE
+        # trades are excluded to prevent contaminated data from corrupting
+        # governance intelligence.
+        if order_id:
+            try:
+                from data_integrity.trade_classifier import classify_trades, TradeClassification as _TC
+                _cls_map = classify_trades()
+                _cls = _cls_map.get(order_id)
+                if _cls is not None and _cls != _TC.VERIFIED:
+                    log.info(
+                        "[LearningGate] PerfTracker EXCLUDED  "
+                        "trade_id=%s  strategy=%s  classification=%s  "
+                        "pnl_r=%.2fR  included=False",
+                        order_id, strategy, _cls.value, pnl_r,
+                    )
+                    return self._get_or_create(strategy)   # return unchanged stats
+                log.debug(
+                    "[LearningGate] PerfTracker INCLUDED  "
+                    "trade_id=%s  classification=%s  included=True",
+                    order_id, _cls.value if _cls else "UNCLASSIFIED",
+                )
+            except Exception as _gate_exc:
+                log.debug(
+                    "[LearningGate] Classifier unavailable: %s — "
+                    "proceeding without integrity filter.", _gate_exc,
+                )
+        # ────────────────────────────────────────────────────────────────────
         s = self._get_or_create(strategy)
         s.total_trades += 1
         s.total_r      += pnl_r
         s.last_trades   = (s.last_trades + [pnl_r])[-20:]  # keep last 20
         s.last_updated  = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+        # Count toward official ledger if trade date is in the evaluation window
+        try:
+            from datetime import date as _date
+            if _date.today() >= _date.fromisoformat(BASELINE_CANDIDATE_DATE):
+                s.official_trades += 1
+        except Exception:
+            pass
 
         if pnl_r >= 0:
             s.wins      += 1
@@ -187,10 +240,13 @@ class StrategyPerformanceTracker:
           E =  0.00R  →  1.0×  (neutral)
           E = −0.20R  →  0.8×  (weak but not retired)
           No data yet  →  1.0×  (prior = neutral)
+
+        INTEGRITY RULE: Returns neutral (1.0) until MIN_SAMPLE official-window
+        trades exist.  Engineering-era rows (Ledger A) must never tilt capital.
         """
         s = self._stats.get(strategy)
-        if s is None or s.total_trades == 0:
-            return 1.0   # prior: neutral until we have data
+        if s is None or s.official_trades < MIN_SAMPLE:
+            return 1.0   # prior: neutral — not enough official data yet
         return max(0.5, min(2.0, 1.0 + s.expectancy))
 
     def get_table(self) -> str:
@@ -230,8 +286,10 @@ class StrategyPerformanceTracker:
     # ── Auto-disable logic ────────────────────────────────────────────────────
 
     def _check_disable(self, s: StrategyStats) -> None:
-        if s.total_trades < MIN_SAMPLE:
-            return   # not enough data yet
+        # Guard: require MIN_SAMPLE *official-window* trades before auto-disable.
+        # Historical/engineering-era rows (Ledger A) must never disable a strategy.
+        if s.official_trades < MIN_SAMPLE:
+            return   # not enough official-window data yet
 
         reason = ""
         if s.win_rate < WIN_RATE_FLOOR:
@@ -286,3 +344,140 @@ def get_performance_tracker() -> StrategyPerformanceTracker:
     if _TRACKER is None:
         _TRACKER = StrategyPerformanceTracker()
     return _TRACKER
+
+
+# ── Stability Ledger ──────────────────────────────────────────────────────────
+# Tracks consecutive clean sessions to confirm when the evaluation baseline
+# is trustworthy.  A session is "clean" unless flag_session_issue() is called
+# before EOD.  After STABILITY_REQUIRED_SESSIONS consecutive clean sessions the
+# baseline is confirmed and statistical trust is established.
+#
+# Two-ledger rule (enforced here and in _check_disable above):
+#   Ledger A — Apr 15 → Apr 26  (engineering era, archive only, never counted)
+#   Ledger B — Apr 27 onward    (official evaluation window)
+#
+# Stability stages:
+#   Stage 1:  streak <  STABILITY_REQUIRED_SESSIONS  — machine proving it is stable
+#   Stage 2:  streak >= STABILITY_REQUIRED_SESSIONS  — baseline confirmed, evaluate strategy
+#   Stage 3:  30+ official closed trades             — optimisation decisions valid
+
+class StabilityLedger:
+    """
+    Persistent session-stability counter.
+
+    Call flag_session_issue(reason) any time a structural failure is detected
+    during the trading session.  Call close_session() at EOD.
+
+    If no issues were flagged, streak increments.
+    If any issue was flagged, streak resets to 0.
+    """
+
+    def __init__(self) -> None:
+        self.streak:             int  = 0
+        self.candidate_date:     str  = BASELINE_CANDIDATE_DATE
+        self.required:           int  = STABILITY_REQUIRED_SESSIONS
+        self._today_issues:      list = []
+        self._last_session_date: str  = ""
+        self._load()
+
+    # ── Public API ────────────────────────────────────────────────────────────
+
+    def flag_session_issue(self, reason: str) -> None:
+        """Mark the current session as dirty.  May be called multiple times."""
+        log.warning("[StabilityLedger] ⚠️  Session issue flagged: %s", reason)
+        self._today_issues.append(reason)
+
+    def close_session(self) -> dict:
+        """
+        Called once at EOD.  Increments streak if session was clean, resets to 0
+        if any issue was flagged.
+
+        Returns a dict with: clean (bool), streak (int), confirmed (bool).
+        """
+        today     = datetime.now().strftime("%Y-%m-%d")
+        was_clean = len(self._today_issues) == 0
+
+        if was_clean:
+            self.streak += 1
+            log.info(
+                "[StabilityLedger] ✅ Session %s CLEAN — streak=%d/%d%s",
+                today, self.streak, self.required,
+                "  🎯 BASELINE CONFIRMED" if self.is_confirmed() else "",
+            )
+        else:
+            old = self.streak
+            self.streak = 0
+            log.warning(
+                "[StabilityLedger] ❌ Session %s DIRTY (streak reset from %d). Issues: %s",
+                today, old, " | ".join(self._today_issues),
+            )
+
+        self._today_issues      = []
+        self._last_session_date = today
+        self._save()
+
+        return {
+            "clean":     was_clean,
+            "streak":    self.streak,
+            "confirmed": self.is_confirmed(),
+        }
+
+    def is_confirmed(self) -> bool:
+        """True once STABILITY_REQUIRED_SESSIONS consecutive clean sessions achieved."""
+        return self.streak >= self.required
+
+    def status_summary(self) -> str:
+        """One-line status for logs and Telegram."""
+        if self.is_confirmed():
+            return (
+                f"✅ BASELINE CONFIRMED — {self.streak} clean sessions "
+                f"(since {self.candidate_date})"
+            )
+        remaining = self.required - self.streak
+        return (
+            f"🔄 Stability: Day {self.streak} of {self.required} "
+            f"({remaining} more clean sessions needed) — "
+            f"candidate since {self.candidate_date}"
+        )
+
+    # ── Persistence ───────────────────────────────────────────────────────────
+
+    def _save(self) -> None:
+        try:
+            os.makedirs(os.path.dirname(os.path.abspath(STABILITY_FILE)), exist_ok=True)
+            with open(STABILITY_FILE, "w", encoding="utf-8") as f:
+                json.dump({
+                    "streak":             self.streak,
+                    "candidate_date":     self.candidate_date,
+                    "last_session_date":  self._last_session_date,
+                    "required":           self.required,
+                }, f, indent=2)
+        except Exception as exc:
+            log.warning("[StabilityLedger] Save failed: %s", exc)
+
+    def _load(self) -> None:
+        if not os.path.exists(STABILITY_FILE):
+            return
+        try:
+            with open(STABILITY_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            self.streak             = data.get("streak", 0)
+            self.candidate_date     = data.get("candidate_date", BASELINE_CANDIDATE_DATE)
+            self._last_session_date = data.get("last_session_date", "")
+            self.required           = data.get("required", STABILITY_REQUIRED_SESSIONS)
+            log.info(
+                "[StabilityLedger] Loaded — streak=%d/%d  last_session=%s",
+                self.streak, self.required, self._last_session_date,
+            )
+        except Exception as exc:
+            log.warning("[StabilityLedger] Load failed: %s", exc)
+
+
+_STABILITY_LEDGER: Optional[StabilityLedger] = None
+
+
+def get_stability_ledger() -> StabilityLedger:
+    global _STABILITY_LEDGER
+    if _STABILITY_LEDGER is None:
+        _STABILITY_LEDGER = StabilityLedger()
+    return _STABILITY_LEDGER

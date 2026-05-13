@@ -112,6 +112,18 @@ SCHEDULE = {
 CONTINUOUS_SCAN_INTERVAL = 30   # seconds between price/volume/breakout checks
 
 # ─────────────────────────────────────────────
+# EVALUATION BASELINE
+# ─────────────────────────────────────────────
+# Trades BEFORE this date are Ledger A — historical archive (engineering era).
+# Trades ON/AFTER this date are Ledger B — official performance evaluation.
+#
+# The baseline is only *confirmed* after STABILITY_REQUIRED_SESSIONS consecutive
+# clean sessions (no crashes, no false halts, no journaling corruption).
+# Until then BASELINE_CANDIDATE_DATE is Day 1 of the candidate window.
+BASELINE_CANDIDATE_DATE    = "2026-04-27"   # Day 1 of candidate stability window
+STABILITY_REQUIRED_SESSIONS = 10             # consecutive clean sessions → baseline trusted
+
+# ─────────────────────────────────────────────
 # ADAPTIVE EXIT ENGINE  (Phase 1)
 # Master toggle — set False to revert to pure rule-based exits instantly.
 # ─────────────────────────────────────────────
@@ -209,5 +221,8 @@ NSE_HOLIDAYS: frozenset = frozenset({
 
 
 def is_nse_holiday(d: "_dt.date | None" = None) -> bool:
-    """Return True if *d* (default: today) is in the NSE holiday list."""
-    return (d or _dt.date.today()) in NSE_HOLIDAYS
+    """Return True if *d* (default: today) is a weekend or in the NSE holiday list."""
+    _d = d or _dt.date.today()
+    if _d.weekday() >= 5:   # Saturday=5, Sunday=6 — NSE never trades on weekends
+        return True
+    return _d in NSE_HOLIDAYS

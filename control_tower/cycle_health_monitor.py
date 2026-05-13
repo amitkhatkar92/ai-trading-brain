@@ -60,6 +60,11 @@ IST = timezone(timedelta(hours=5, minutes=30))
 # Keep last N cycle reports in memory for the API/dashboard
 HISTORY_SIZE = 50
 
+# Max carry window (days) — matches the highest value in order_manager._CARRY_DAYS_BY_TYPE
+# (swing/trend strategies can carry up to 7 days).  Positions within this window
+# are intentional multi-day carries, NOT stale.  Only flag beyond this limit.
+_CARRY_MAX_DAYS = 7
+
 
 def _now_ist() -> datetime:
     return datetime.now(IST)
@@ -265,10 +270,17 @@ class CycleHealthMonitor:
         issues   = []
         scope    = []
 
-        # Only flag stale positions older than today — today's open trades are legitimate
+        # Separate previous-session positions into legitimate carries vs genuinely stale.
+        # A carry is intentional (age ≤ _CARRY_MAX_DAYS); stale means the system forgot
+        # to close a position beyond the allowed hold window.
         today_str = _now_ist().strftime("%Y-%m-%d")
-        old_stale = [p for p in stale if not p.get("timestamp", "").startswith(today_str)]
-        stale_symbols = [p["symbol"] for p in old_stale]
+        prev_session = [p for p in stale if not p.get("timestamp", "").startswith(today_str)]
+        carry_positions = [p for p in prev_session
+                           if float(p.get("age_days", 0)) <= _CARRY_MAX_DAYS]
+        old_stale      = [p for p in prev_session
+                           if float(p.get("age_days", 0)) > _CARRY_MAX_DAYS]
+        stale_symbols  = [p["symbol"] for p in old_stale]
+        carry_symbols  = [p["symbol"] for p in carry_positions]
 
         if self._dup_guard_blocks > 0 and old_stale:
             issues.append(
@@ -277,8 +289,8 @@ class CycleHealthMonitor:
             )
         if old_stale:
             issues.append(
-                f"STALE_POSITIONS: {len(old_stale)} unclosed from previous sessions — "
-                + ", ".join(f"{p['order_id']}({p['symbol']})" for p in old_stale[:5])
+                f"STALE_POSITIONS: {len(old_stale)} position(s) exceed max carry window — "
+                + ", ".join(f"{p['order_id']}({p['symbol']},{p['age_days']}d)" for p in old_stale[:5])
             )
         if not kill_switch_enabled:
             issues.append(f"KILL_SWITCH: trading DISABLED — {kill_switch_reason}")
@@ -407,10 +419,15 @@ class CycleHealthMonitor:
             },
             "step9_positions": {
                 "open_today":     len([p for p in stale if p.get("timestamp","").startswith(today_str)]),
+                "carry_count":    len(carry_positions),
+                "carry_symbols":  carry_symbols,
                 "stale_count":    len(old_stale),
                 "stale_details":  old_stale,
-                "verdict":        ("CLEAN" if not old_stale
-                                   else f"STALE: {len(old_stale)} old position(s) blocking DUP GUARD"),
+                "verdict":        (
+                    "CLEAN" if not old_stale and not carry_positions else
+                    f"CARRY: {len(carry_positions)} position(s) in allowed hold window" if not old_stale else
+                    f"STALE: {len(old_stale)} position(s) exceed max carry window"
+                ),
             },
             "step10_risk": {
                 "kill_switch_enabled": kill_switch_enabled,
@@ -424,6 +441,8 @@ class CycleHealthMonitor:
                 "verdict":     ("STABLE" if self._db_errors == 0 else
                                 f"DEGRADED — {self._db_errors} DB error(s)"),
             },
+            "restore_integrity": self._build_restore_integrity_section(),
+            "feed_health": self._build_feed_health_section(issues),
             "step12_verdict": {
                 "system_health":    overall,
                 "trading_status":   trading_status,
@@ -432,6 +451,80 @@ class CycleHealthMonitor:
                 "action_required":  _action_for_issues(issues),
             },
         }
+
+    # ── Feed health (MarketDataRouter observability) ───────────────────────
+
+    def _build_restore_integrity_section(self) -> dict:
+        """FIX #6: Pull restore diagnostics from OrderManager for health report."""
+        try:
+            om = getattr(self, "_order_manager", None)
+            if om and hasattr(om, "get_restore_stats"):
+                rs = om.get_restore_stats()
+                return {
+                    "restored_carry":         rs.get("restored_carry", 0),
+                    "orphan_monitored":       rs.get("orphan_monitored_count",
+                                                      rs.get("orphan_watch", 0)),
+                    "expired_at_restore":     rs.get("expired_at_restore", 0),
+                    "reconciled_count":       rs.get("reconciled_count", 0),
+                    "immediate_sl_hits":      rs.get("immediate_sl_hits", 0),
+                    "monitoring_gap_seconds": rs.get("monitoring_gap_seconds", 0),
+                }
+        except Exception:
+            pass
+        return {"verdict": "unavailable"}
+
+    # ── Feed health (MarketDataRouter observability) ───────────────────────
+
+    def _build_feed_health_section(self, issues: list) -> dict:
+        """
+        Pull live stats from MarketDataRouter and format them for the report.
+        Non-fatal: if router is not yet initialised, returns a placeholder.
+        Appends feed-related issues to the shared issues list.
+        """
+        try:
+            from data_feeds.market_data_router import get_market_data_router
+            s = get_market_data_router().get_router_stats()
+            primary_health = (
+                "DHAN_LIVE"     if s["dhan_live"] and s["dhan_success"] > 0 else
+                "DHAN_SIM"      if not s["dhan_live"] else
+                "DHAN_DEGRADED"
+            )
+            fallback_pct = s["yahoo_fallback_pct"]
+            degraded     = s["last_degraded"]
+            if degraded:
+                issues.append(
+                    f"FEED_DEGRADED: {len(degraded)} symbol(s) have no live price "
+                    f"— {degraded}"
+                )
+            if s["divergence_count"] > 0:
+                issues.append(
+                    f"FEED_DIVERGENCE: {s['divergence_count']} Dhan/Yahoo price "
+                    "disagreements detected — check data quality"
+                )
+            return {
+                "primary_feed":         "Dhan",
+                "primary_feed_health":  primary_health,
+                "dhan_success":         s["dhan_success"],
+                "dhan_fail":            s["dhan_fail"],
+                "dhan_success_pct":     s["dhan_success_pct"],
+                "fallback_usage":       f"{fallback_pct}% via Yahoo",
+                "yahoo_success":        s["yahoo_success"],
+                "cache_served":         s["cache_served"],
+                "degraded_symbols":     degraded,
+                "divergence_count":     s["divergence_count"],
+                "source_distribution":  s["last_source_dist"],
+                "verdict": (
+                    f"DEGRADED — {len(degraded)} symbol(s) no live price" if degraded else
+                    "DHAN_LIVE" if s["dhan_live"] and s["dhan_success"] > 0 else
+                    "YAHOO_ONLY — Dhan not configured"
+                ),
+            }
+        except Exception as exc:
+            return {
+                "primary_feed":         "unknown",
+                "primary_feed_health":  "unavailable",
+                "verdict":              f"error: {exc}",
+            }
 
     # ── Disk I/O ───────────────────────────────────────────────────────────
 
@@ -454,7 +547,13 @@ class CycleHealthMonitor:
             s6    = report["step6_signals"]
             s7    = report["step7_decision"]
             s9    = report["step9_positions"]
+            fh    = report.get("feed_health", {})
             issues_str = " | ".join(v["issues"]) if v["issues"] else "none"
+            feed_str   = (
+                f"feed={fh.get('primary_feed_health','?')} "
+                f"src={fh.get('source_distribution',{})} "
+                f"degraded={fh.get('degraded_symbols',[])}"
+            )
 
             line = (
                 f"[{m['timestamp_ist'][:19]}] "
@@ -469,19 +568,34 @@ class CycleHealthMonitor:
                 f"open_today={s9.get('open_today',0)} "
                 f"stale_old={s9['stale_count']} "
                 f"db_errors={report['step11_telemetry']['db_errors']} "
+                f"{feed_str} "
                 f"issues=[{issues_str}]\n"
             )
+            # Restore integrity suffix (non-empty after a restart with carry positions)
+            ri = report.get("restore_integrity", {})
+            if ri and ri.get("verdict") != "unavailable":
+                _gap = ri.get("monitoring_gap_seconds", 0)
+                _ri_str = (
+                    f" | restore: carry={ri.get('restored_carry',0)}"
+                    f" orphan={ri.get('orphan_monitored',0)}"
+                    f" expired={ri.get('expired_at_restore',0)}"
+                    f" imm_sl={ri.get('immediate_sl_hits',0)}"
+                    + (f" gap={_gap}s" if _gap > 0 else "")
+                )
+                line = line.rstrip("\n") + _ri_str + "\n"
             with open(HEALTH_LOG, "a") as lf:
                 lf.write(line)
 
             # Log to trading engine log at INFO level
             status_icon = "✅" if v["system_health"] == "HEALTHY" else "⚠️ " if v["system_health"] == "DEGRADED" else "❌"
+            carry_info = (f" carry={s9.get('carry_count',0)}({','.join(s9.get('carry_symbols',[]))})"
+                          if s9.get('carry_count', 0) > 0 else "")
             log.info(
                 "[CycleHealthMonitor] %s Cycle#%d | %s | "
-                "signals=%d approved=%d orders=%d stale=%d | issues: %s",
+                "signals=%d approved=%d orders=%d stale=%d%s | issues: %s",
                 status_icon, m["cycle_number"], v["system_health"],
                 s6["generated"], s7["approved"], e["orders_placed"],
-                s9["stale_count"],
+                s9["stale_count"], carry_info,
                 issues_str if v["issues"] else "none",
             )
 

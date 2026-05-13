@@ -41,6 +41,12 @@ _PRICE_CACHE_TTL: float = 60.0          # stale threshold (seconds)
 _PRICE_CACHE_LOCK = _threading.Lock()   # guards _PRICE_CACHE / _PRICE_CACHE_TS
 _PRICE_REFRESH_RUNNING = _threading.Event()  # prevents duplicate refresh threads
 
+# ── PriceGuard cold-start constants ─────────────────────────────────────────
+# On cold start the cache is empty; guard waits for background refresh before
+# allowing a scan cycle.  System skips the cycle if prices can't be obtained.
+_PRICE_GUARD_MAX_WAIT_S: float = 10.0   # max seconds to wait for price cache fill
+_PRICE_GUARD_POLL_S:     float = 1.0    # polling interval while waiting
+
 RR_STRONG_BREAKOUT = 4.0   # vol_ratio ≥ 3.0 → fat-tail bonus in DecisionEngine
 RR_NORMAL_BREAKOUT = 2.5   # vol_ratio < 3.0
 RR_TREND_PULLBACK  = 3.0   # confirmed bull-trend → asymmetry bonus in DecisionEngine
@@ -63,52 +69,54 @@ def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
 # resistance / support are real technical levels used to identify setups.
 _BASE_WATCHLIST: List[Dict[str, Any]] = [
     # ── Breakout / momentum candidates ─────────────────────────────────────
-    {"symbol": "RELIANCE",   "base_ltp": 2850, "resistance": 2800, "support": 2700, "volume_ratio": 2.3, "rsi": 62, "adv_crore": 1800},
-    {"symbol": "HDFCBANK",   "base_ltp": 1680, "resistance": 1650, "support": 1600, "volume_ratio": 1.8, "rsi": 58, "adv_crore":  850},
-    {"symbol": "ICICIBANK",  "base_ltp":  920, "resistance":  910, "support":  870, "volume_ratio": 2.7, "rsi": 65, "adv_crore":  700},
-    {"symbol": "TATASTEEL",  "base_ltp":  165, "resistance":  160, "support":  150, "volume_ratio": 3.1, "rsi": 70, "adv_crore":  350},
-    {"symbol": "INFY",       "base_ltp": 1720, "resistance": 1700, "support": 1640, "volume_ratio": 1.5, "rsi": 54, "adv_crore":  480},
-    {"symbol": "BANKBARODA", "base_ltp":  260, "resistance":  252, "support":  238, "volume_ratio": 4.2, "rsi": 68, "adv_crore":  220},
-    {"symbol": "LT",         "base_ltp": 3650, "resistance": 3600, "support": 3450, "volume_ratio": 2.0, "rsi": 61, "adv_crore":  320},
-    {"symbol": "COALINDIA",  "base_ltp":  490, "resistance":  480, "support":  460, "volume_ratio": 1.9, "rsi": 57, "adv_crore":  190},
+    # base_ltp refreshed 2026-04-16 from yfinance live close prices
+    {"symbol": "RELIANCE",   "base_ltp": 1346, "resistance": 1373, "support": 1292, "volume_ratio": 2.3, "rsi": 62, "adv_crore": 1800},
+    {"symbol": "HDFCBANK",   "base_ltp":  794, "resistance":  810, "support":  763, "volume_ratio": 1.8, "rsi": 58, "adv_crore":  850},
+    {"symbol": "ICICIBANK",  "base_ltp": 1346, "resistance": 1373, "support": 1292, "volume_ratio": 2.7, "rsi": 65, "adv_crore":  700},
+    {"symbol": "TATASTEEL",  "base_ltp":  211, "resistance":  215, "support":  203, "volume_ratio": 3.1, "rsi": 70, "adv_crore":  350},
+    {"symbol": "INFY",       "base_ltp": 1317, "resistance": 1343, "support": 1264, "volume_ratio": 1.5, "rsi": 54, "adv_crore":  480},
+    {"symbol": "BANKBARODA", "base_ltp":  279, "resistance":  285, "support":  268, "volume_ratio": 4.2, "rsi": 68, "adv_crore":  220},
+    {"symbol": "LT",         "base_ltp": 4120, "resistance": 4202, "support": 3955, "volume_ratio": 2.0, "rsi": 61, "adv_crore":  320},
+    {"symbol": "COALINDIA",  "base_ltp":  433, "resistance":  442, "support":  416, "volume_ratio": 1.9, "rsi": 57, "adv_crore":  190},
     # ── Trend-pullback candidates ───────────────────────────────────────────
-    {"symbol": "HCLTECH",    "base_ltp": 1495, "resistance": 1550, "support": 1470, "volume_ratio": 1.5, "rsi": 47, "adv_crore":  280},
-    {"symbol": "SBIN",       "base_ltp":  798, "resistance":  830, "support":  780, "volume_ratio": 1.6, "rsi": 44, "adv_crore":  420},
-    {"symbol": "AXISBANK",   "base_ltp": 1090, "resistance": 1130, "support": 1070, "volume_ratio": 1.4, "rsi": 50, "adv_crore":  380},
-    {"symbol": "ONGC",       "base_ltp":  278, "resistance":  292, "support":  272, "volume_ratio": 1.7, "rsi": 45, "adv_crore":  310},
+    {"symbol": "HCLTECH",    "base_ltp": 1442, "resistance": 1471, "support": 1384, "volume_ratio": 1.5, "rsi": 47, "adv_crore":  280},
+    {"symbol": "SBIN",       "base_ltp": 1067, "resistance": 1088, "support": 1024, "volume_ratio": 1.6, "rsi": 44, "adv_crore":  420},
+    {"symbol": "AXISBANK",   "base_ltp": 1348, "resistance": 1375, "support": 1294, "volume_ratio": 1.4, "rsi": 50, "adv_crore":  380},
+    {"symbol": "ONGC",       "base_ltp":  283, "resistance":  289, "support":  272, "volume_ratio": 1.7, "rsi": 45, "adv_crore":  310},
     # ── Additional NIFTY50 large-caps ───────────────────────────────────────
-    {"symbol": "KOTAKBANK",  "base_ltp": 1820, "resistance": 1800, "support": 1720, "volume_ratio": 1.6, "rsi": 52, "adv_crore":  450},
-    {"symbol": "BHARTIARTL", "base_ltp": 1660, "resistance": 1620, "support": 1550, "volume_ratio": 2.1, "rsi": 60, "adv_crore":  380},
-    {"symbol": "ITC",        "base_ltp":  475, "resistance":  465, "support":  440, "volume_ratio": 1.8, "rsi": 55, "adv_crore":  600},
-    {"symbol": "BAJAJFINSV", "base_ltp": 1780, "resistance": 1750, "support": 1660, "volume_ratio": 1.7, "rsi": 48, "adv_crore":  250},
-    {"symbol": "HINDALCO",   "base_ltp":  680, "resistance":  660, "support":  620, "volume_ratio": 2.4, "rsi": 63, "adv_crore":  310},
-    {"symbol": "ULTRACEMCO", "base_ltp": 11700, "resistance": 11500, "support": 10900, "volume_ratio": 1.5, "rsi": 50, "adv_crore": 150},
-    {"symbol": "TECHM",      "base_ltp": 1520, "resistance": 1490, "support": 1410, "volume_ratio": 1.9, "rsi": 56, "adv_crore":  220},
-    {"symbol": "NTPC",       "base_ltp":  380, "resistance":  370, "support":  350, "volume_ratio": 2.2, "rsi": 59, "adv_crore":  270},
+    {"symbol": "KOTAKBANK",  "base_ltp":  379, "resistance":  387, "support":  364, "volume_ratio": 1.6, "rsi": 52, "adv_crore":  450},
+    {"symbol": "BHARTIARTL", "base_ltp": 1836, "resistance": 1873, "support": 1763, "volume_ratio": 2.1, "rsi": 60, "adv_crore":  380},
+    {"symbol": "ITC",        "base_ltp":  304, "resistance":  310, "support":  292, "volume_ratio": 1.8, "rsi": 55, "adv_crore":  600},
+    {"symbol": "BAJAJFINSV", "base_ltp": 1830, "resistance": 1867, "support": 1757, "volume_ratio": 1.7, "rsi": 48, "adv_crore":  250},
+    {"symbol": "HINDALCO",   "base_ltp": 1040, "resistance": 1061, "support":  998, "volume_ratio": 2.4, "rsi": 63, "adv_crore":  310},
+    {"symbol": "ULTRACEMCO", "base_ltp": 11775, "resistance": 12011, "support": 11304, "volume_ratio": 1.5, "rsi": 50, "adv_crore": 150},
+    {"symbol": "TECHM",      "base_ltp": 1491, "resistance": 1521, "support": 1431, "volume_ratio": 1.9, "rsi": 56, "adv_crore":  220},
+    {"symbol": "NTPC",       "base_ltp":  392, "resistance":  400, "support":  377, "volume_ratio": 2.2, "rsi": 59, "adv_crore":  270},
 ]
 
 # ── Extended watchlist (activated by ODM when density is low) ─────────────
 # Represents a wider NIFTY200/500 universe.
 _EXTENDED_WATCHLIST: List[Dict[str, Any]] = [
-    {"symbol": "HINDUNILVR", "base_ltp": 2500, "resistance": 2480, "support": 2350, "volume_ratio": 1.6, "rsi": 52, "adv_crore": 280},
-    {"symbol": "ASIANPAINT", "base_ltp": 2900, "resistance": 2870, "support": 2750, "volume_ratio": 1.7, "rsi": 56, "adv_crore": 200},
-    {"symbol": "BAJFINANCE", "base_ltp": 6800, "resistance": 6750, "support": 6500, "volume_ratio": 2.1, "rsi": 60, "adv_crore": 600},
-    {"symbol": "MARUTI",     "base_ltp": 11200, "resistance": 11000, "support": 10500, "volume_ratio": 1.5, "rsi": 49, "adv_crore": 310},
-    {"symbol": "SUNPHARMA",  "base_ltp": 1820, "resistance": 1800, "support": 1700, "volume_ratio": 1.8, "rsi": 55, "adv_crore": 250},
-    {"symbol": "WIPRO",      "base_ltp": 520,  "resistance":  510, "support":  480, "volume_ratio": 1.6, "rsi": 51, "adv_crore": 320},
-    {"symbol": "POWERGRID",  "base_ltp": 300,  "resistance":  295, "support":  280, "volume_ratio": 1.9, "rsi": 58, "adv_crore": 140},
-    {"symbol": "DIVISLAB",   "base_ltp": 3800, "resistance": 3750, "support": 3600, "volume_ratio": 1.7, "rsi": 53, "adv_crore":  90},
-    {"symbol": "TITAN",      "base_ltp": 3300, "resistance": 3270, "support": 3100, "volume_ratio": 1.5, "rsi": 48, "adv_crore": 175},
-    {"symbol": "DRREDDY",    "base_ltp": 1250, "resistance": 1230, "support": 1170, "volume_ratio": 1.6, "rsi": 50, "adv_crore": 120},
+    # base_ltp refreshed 2026-04-16 from yfinance live close prices
+    {"symbol": "HINDUNILVR", "base_ltp": 2140, "resistance": 2183, "support": 2054, "volume_ratio": 1.6, "rsi": 52, "adv_crore": 280},
+    {"symbol": "ASIANPAINT", "base_ltp": 2440, "resistance": 2489, "support": 2342, "volume_ratio": 1.7, "rsi": 56, "adv_crore": 200},
+    {"symbol": "BAJFINANCE", "base_ltp":  905, "resistance":  923, "support":  869, "volume_ratio": 2.1, "rsi": 60, "adv_crore": 600},
+    {"symbol": "MARUTI",     "base_ltp": 13336, "resistance": 13603, "support": 12803, "volume_ratio": 1.5, "rsi": 49, "adv_crore": 310},
+    {"symbol": "SUNPHARMA",  "base_ltp": 1695, "resistance": 1729, "support": 1627, "volume_ratio": 1.8, "rsi": 55, "adv_crore": 250},
+    {"symbol": "WIPRO",      "base_ltp":  210, "resistance":  214, "support":  202, "volume_ratio": 1.6, "rsi": 51, "adv_crore": 320},
+    {"symbol": "POWERGRID",  "base_ltp":  313, "resistance":  319, "support":  301, "volume_ratio": 1.9, "rsi": 58, "adv_crore": 140},
+    {"symbol": "DIVISLAB",   "base_ltp": 6295, "resistance": 6421, "support": 6043, "volume_ratio": 1.7, "rsi": 53, "adv_crore":  90},
+    {"symbol": "TITAN",      "base_ltp": 4462, "resistance": 4551, "support": 4284, "volume_ratio": 1.5, "rsi": 48, "adv_crore": 175},
+    {"symbol": "DRREDDY",    "base_ltp": 1221, "resistance": 1245, "support": 1172, "volume_ratio": 1.6, "rsi": 50, "adv_crore": 120},
     # ── Additional mid/large caps ───────────────────────────────────────────
-    {"symbol": "ADANIENT",   "base_ltp": 2350, "resistance": 2290, "support": 2150, "volume_ratio": 2.5, "rsi": 64, "adv_crore": 380},
-    {"symbol": "TATACONSUM", "base_ltp":  1100, "resistance": 1080, "support": 1030, "volume_ratio": 1.6, "rsi": 53, "adv_crore":  95},
-    {"symbol": "NESTLEIND",  "base_ltp": 2280, "resistance": 2250, "support": 2130, "volume_ratio": 1.4, "rsi": 48, "adv_crore":  70},
-    {"symbol": "HAVELLS",    "base_ltp": 1780, "resistance": 1750, "support": 1660, "volume_ratio": 1.8, "rsi": 57, "adv_crore":  80},
-    {"symbol": "PIDILITIND", "base_ltp": 2850, "resistance": 2800, "support": 2660, "volume_ratio": 1.5, "rsi": 51, "adv_crore":  60},
-    {"symbol": "GRASIM",     "base_ltp": 2750, "resistance": 2710, "support": 2570, "volume_ratio": 1.7, "rsi": 55, "adv_crore": 130},
-    {"symbol": "JSWSTEEL",   "base_ltp":  950, "resistance":  930, "support":  880, "volume_ratio": 2.3, "rsi": 61, "adv_crore": 290},
-    {"symbol": "ADANIPORTS", "base_ltp": 1350, "resistance": 1310, "support": 1240, "volume_ratio": 2.0, "rsi": 58, "adv_crore": 200},
+    {"symbol": "ADANIENT",   "base_ltp": 2206, "resistance": 2250, "support": 2118, "volume_ratio": 2.5, "rsi": 64, "adv_crore": 380},
+    {"symbol": "TATACONSUM", "base_ltp": 1103, "resistance": 1125, "support": 1059, "volume_ratio": 1.6, "rsi": 53, "adv_crore":  95},
+    {"symbol": "NESTLEIND",  "base_ltp": 1258, "resistance": 1283, "support": 1208, "volume_ratio": 1.4, "rsi": 48, "adv_crore":  70},
+    {"symbol": "HAVELLS",    "base_ltp": 1293, "resistance": 1319, "support": 1241, "volume_ratio": 1.8, "rsi": 57, "adv_crore":  80},
+    {"symbol": "PIDILITIND", "base_ltp": 1332, "resistance": 1359, "support": 1279, "volume_ratio": 1.5, "rsi": 51, "adv_crore":  60},
+    {"symbol": "GRASIM",     "base_ltp": 2717, "resistance": 2771, "support": 2608, "volume_ratio": 1.7, "rsi": 55, "adv_crore": 130},
+    {"symbol": "JSWSTEEL",   "base_ltp": 1215, "resistance": 1239, "support": 1166, "volume_ratio": 2.3, "rsi": 61, "adv_crore": 290},
+    {"symbol": "ADANIPORTS", "base_ltp": 1545, "resistance": 1576, "support": 1483, "volume_ratio": 2.0, "rsi": 58, "adv_crore": 200},
 ]
 
 
@@ -184,16 +192,86 @@ def _fetch_live_prices(symbols: List[str]) -> Dict[str, float]:
     return snapshot   # stale or {} — never blocks the cycle
 
 
+# ── Module-level price pre-warm ─────────────────────────────────────────────
+# Trigger a background price fetch immediately at import time so the first
+# scan cycle (which may fire within seconds of a container restart) never
+# stalls on PriceGuard cold-start wait.
+# The orchestrator imports this module during __init__, typically 30-60 s
+# before the first scan — plenty of time for yfinance to populate the cache.
+_PRICE_REFRESH_RUNNING.set()
+_threading.Thread(
+    target=_background_price_refresh,
+    args=([s["symbol"] for s in _BASE_WATCHLIST + _EXTENDED_WATCHLIST],),
+    daemon=True,
+    name="PricePrewarm",
+).start()
+
+
 def _live_watchlist(extended: bool = False) -> List[Dict[str, Any]]:
     """
     Returns watchlist rows with the best available LTP:
       1. Real-time price from data feed (yfinance/.NS) — 60s cached
-      2. Per-minute seeded simulation as fallback
+      2. Per-minute seeded simulation as fallback (only for warm-cache misses)
+
+    Cold-start guard: if the price cache is empty on the first call after a
+    container restart, waits up to _PRICE_GUARD_MAX_WAIT_S for live data.
+    Returns [] if live prices still cannot be obtained — scan() will return no
+    signals, preventing trades on stale base_ltp fallback values.
     When ``extended=True`` the wider NIFTY200/500 universe is also included.
     """
+    global _PRICE_CACHE, _PRICE_CACHE_TS
+
     source = _BASE_WATCHLIST + (_EXTENDED_WATCHLIST if extended else [])
     all_symbols = [s["symbol"] for s in source]
     live_prices = _fetch_live_prices(all_symbols)
+
+    # ── PriceGuard: cold-start protection ───────────────────────────────────
+    # _fetch_live_prices() returns {} on cold start (cache empty) and fires a
+    # background thread.  Guard waits for that thread, then falls back to a
+    # direct blocking fetch.  If both fail, the cycle is skipped entirely.
+    if not live_prices:
+        # Re-check immediately — background thread may have just finished
+        with _PRICE_CACHE_LOCK:
+            live_prices = dict(_PRICE_CACHE)
+
+        if not live_prices:
+            log.info(
+                "[PriceGuard] Cache empty on cold start — waiting up to %.0fs for live prices...",
+                _PRICE_GUARD_MAX_WAIT_S,
+            )
+            waited = 0.0
+            while waited < _PRICE_GUARD_MAX_WAIT_S:
+                time.sleep(_PRICE_GUARD_POLL_S)
+                waited += _PRICE_GUARD_POLL_S
+                with _PRICE_CACHE_LOCK:
+                    live_prices = dict(_PRICE_CACHE)
+                if live_prices:
+                    log.info(
+                        "[PriceGuard] Cache populated after %.1fs wait (%d symbols).",
+                        waited, len(live_prices),
+                    )
+                    break
+
+            # Background thread returned no data (yfinance down?) —
+            # attempt one direct blocking fetch as last resort
+            if not live_prices:
+                log.info(
+                    "[PriceGuard] Background refresh yielded no data — trying direct fetch..."
+                )
+                live_prices = _do_fetch_prices(all_symbols)
+                if live_prices:
+                    with _PRICE_CACHE_LOCK:
+                        _PRICE_CACHE    = live_prices
+                        _PRICE_CACHE_TS = time.monotonic()
+                    log.info(
+                        "[PriceGuard] Direct fetch succeeded (%d symbols).", len(live_prices)
+                    )
+                else:
+                    log.warning(
+                        "[PriceGuard] Skipping cycle — no live price data after %.0fs wait.",
+                        _PRICE_GUARD_MAX_WAIT_S,
+                    )
+                    return []
 
     rng = random.Random(int(datetime.now().timestamp()) // 60)
     rows = []

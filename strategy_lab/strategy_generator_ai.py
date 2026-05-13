@@ -16,7 +16,7 @@ Strategy catalogue:
 from __future__ import annotations
 import json
 import os
-from typing import List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 
 from models.market_data  import MarketSnapshot, RegimeLabel, VolatilityLevel
 from models.trade_signal import TradeSignal, SignalDirection, SignalType
@@ -104,16 +104,22 @@ class StrategyGeneratorAI:
             log.warning("[StrategyGeneratorAI] Could not load evolved strategies: %s", exc)
 
     def assign_strategy(self, signals: List[TradeSignal],
-                        snapshot: MarketSnapshot) -> List[TradeSignal]:
+                        snapshot: MarketSnapshot,
+                        excluded_strategies: Optional[Set[str]] = None,
+                        shm_ref=None) -> List[TradeSignal]:
         """
         Validates and/or overrides each signal's strategy_name based on regime.
         Re-calculates minimum required confidence.
+        excluded_strategies: set of strategy names hard-blocked by SHM/PerfTracker.
+        shm_ref: optional StrategyHealthMonitor instance for rich audit logging.
         """
         # Ask MetaStrategyController which strategies are live this cycle
         passing = set(STRATEGY_PARAMS.keys())   # default: all
+        if excluded_strategies:
+            passing -= excluded_strategies
         active: Set[str] | None = None
         if self._meta is not None:
-            # passing = all known strategy names (gate filtering happens in BacktestingAI)
+            # passing = surviving strategies after exclusions
             active = self._meta.get_active_strategies(snapshot, passing)
             log.info("[StrategyGeneratorAI] MetaController active set (%d): %s",
                      len(active), ", ".join(sorted(active)))
@@ -122,6 +128,24 @@ class StrategyGeneratorAI:
         for signal in signals:
             assigned = self._assign(signal, snapshot, active)
             if assigned:
+                # Final hard gate: drop any signal assigned to an excluded strategy
+                # (catches fallback paths inside _assign that bypass the active set)
+                if excluded_strategies and assigned.strategy_name in excluded_strategies:
+                    # Emit a rich [StrategyBlocked] audit log for every rejection
+                    meta: Dict[str, Any] = {}
+                    if shm_ref is not None:
+                        meta = shm_ref.get_disable_metadata(assigned.strategy_name)
+                    log.info(
+                        "[StrategyBlocked] %s  strategy=%s  reason=%s  wr=%.0f%%"
+                        "  trades=%s  total_r=%s",
+                        assigned.symbol,
+                        assigned.strategy_name,
+                        meta.get("reason", "SHM_EXCLUDED"),
+                        (meta.get("wr") or 0) * 100,
+                        meta.get("at_trades", "?"),
+                        f"{meta.get('total_r') or 0:.2f}",
+                    )
+                    continue
                 enriched.append(assigned)
 
         log.info("[StrategyGeneratorAI] %d/%d signals assigned strategies.",

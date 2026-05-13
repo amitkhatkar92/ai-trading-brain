@@ -13,10 +13,13 @@ Supports:
 
 from __future__ import annotations
 import csv
+import json
 import os
+import tempfile
+import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -88,12 +91,61 @@ _JOURNAL_HEADER  = [
     "timestamp", "order_id", "symbol", "direction", "quantity",
     "entry_price", "stop_loss", "target", "strategy",
     "confidence", "rr", "event",
+    "exit_price", "pnl", "reason",
 ]
+
+# Closed-order registry: one order_id per line, new file each calendar day.
+# Used by _restore_from_journal to filter ghost OPEN rows whose CLOSE event
+# was written but the CSV write failed (e.g. process killed mid-write).
+def _closed_registry_path() -> str:
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(_DATA_DIR, f"closed_orders_{today}.txt")
+
+# Sidecar that persists carry-expiry retry counts across restarts.
+# Prevents a bad disk/permission issue from silently resetting the retry clock.
+_EXPIRY_RETRIES_PATH = os.path.join(_DATA_DIR, "expiry_retries.json")
+
+# ── Strategy-aware max carry days ────────────────────────────────────────
+# Controls how many calendar days a position is allowed to carry before it
+# is treated as a genuine orphan and given a SESSION_EXPIRED close.
+# Matching is prefix-based and case/underscore-insensitive (same as StaleCarry).
+_CARRY_DAYS_BY_TYPE: dict = {
+    # Mean-reversion: short-duration thesis — max 3 days
+    "meanreversion": 3, "reversion": 3, "range": 3, "hedging": 3,
+    # Momentum / breakout: medium duration — max 5 days
+    "momentum": 5, "breakout": 5, "edgmoment": 5,
+    # Trend / swing: long-duration thesis — max 7 days
+    "trend": 7, "pullback": 7, "swing": 7, "bullcall": 7, "bearput": 7,
+}
+_CARRY_DAYS_DEFAULT = 5   # fallback for unclassified strategies
+
+
+def _carry_days_for(strategy: str) -> int:
+    """Return the max carry days for a given strategy name."""
+    key = strategy.lower().replace("_", "").replace("-", "").replace(" ", "")
+    for prefix, days in _CARRY_DAYS_BY_TYPE.items():
+        if key.startswith(prefix):
+            return days
+    return _CARRY_DAYS_DEFAULT
+
+# ── Duplicate-guard LTP freshness thresholds ─────────────────────────────
+_DUP_GUARD_STALE_AFTER_S    = 120  # LTP age (s) above which we mark stale
+_DUP_GUARD_FRESH_COOLDOWN_S =  30  # after going stale, wait this long before fresh again
+_DUP_GUARD_LTP_CONF_TICKS   =   2  # minimum consecutive fresh ticks for full R confidence
 
 # ── Risk Guards (prevent trade volume explosion & duplicates) ──────────────
 MAX_OPEN_POSITIONS = 15       # maximum concurrent positions (INCREASED 5→15 for capital deployment)
 MAX_CAPITAL_PER_TRADE_PCT = 25.0  # max % of capital per single trade (pilot: ₹20k → ₹5k)
 MAX_TOTAL_OPEN_EXPOSURE_PCT = 85.0  # max % of total capital in open positions (INCREASED 65→85)
+
+# ── Late-Day Entry Control (institutional time-based rules) ────────────────
+# Before 13:30          → normal (min score 6.5 enforced by DecisionEngine)
+# 13:30 – 14:30         → higher-conviction required (min score 7.0)
+# After  14:30          → no fresh entries — monitoring / exits only
+# Exempt: same-symbol swap replacements (position management, not fresh entry)
+_LATE_ENTRY_CUTOFF_H, _LATE_ENTRY_CUTOFF_M   = 14, 30   # hard cutoff
+_LATE_ENTRY_ELEVATED_H, _LATE_ENTRY_ELEVATED_M = 13, 30  # elevated-threshold window starts
+_LATE_ENTRY_MIN_SCORE = 7.0                               # score floor in elevated window
 
 
 @dataclass
@@ -121,6 +173,22 @@ class OrderRecord:
     signal_regime:     str   = ""    # market regime at signal creation
     signal_vix:        float = 0.0   # India VIX at signal creation
     signal_distortion: bool  = False # was a distortion event active?
+    confidence_score:  float = 0.0   # DecisionEngine score at entry (for smart-swap ranking)
+    # Carry-expiry retry counter — incremented each time check_and_expire_carries
+    # attempts but fails to write the CLOSE row.  Capped at _CARRY_EXPIRY_MAX_RETRIES
+    # to prevent a persistently-broken symbol from silently blocking expiry forever.
+    _expiry_retry_count: int = 0
+    # Timestamp of last failed expiry attempt — used for 5-min backoff so a
+    # transient file issue does not spam the write path every monitoring cycle.
+    _last_retry_ts:      Optional[datetime] = None
+    # Governance state — explicit lifecycle visibility for risk oversight.
+    # Guarantees every position can report its supervision status at any time.
+    # ACTIVE           : fresh execution, first-day position
+    # ACTIVE_CARRY     : restored multi-day carry, fully governed
+    # ORPHAN_WATCH     : past carry_limit; all risk controls active, execution restricted
+    # EXPIRED_PENDING  : SESSION_EXPIRED written to CSV, pending deregister
+    governance_state:    str  = "ACTIVE"   # see constants above
+    orphan_watch:        bool = False       # True when past carry_limit (ORPHAN_WATCH state)
 
 
 @dataclass
@@ -204,17 +272,103 @@ class OrderManager:
         self._orders: Dict[str, OrderRecord] = {}
         self._reentry_slots: Dict[str, ReentrySlot] = {}
         self._aet_pending: Dict[str, AetPendingSlot] = {}
+        # Per-symbol timestamp of when LTP was last demoted to stale state.
+        # Used for hysteresis: symbol stays stale for at least
+        # _DUP_GUARD_FRESH_COOLDOWN_S before cache is re-read.
+        self._ltp_stale_at: Dict[str, datetime] = {}
+        # Thread lock for all journal file operations.
+        self._journal_lock = threading.Lock()
+        # Serialises all reads + writes to expiry_retries.json so concurrent
+        # monitoring threads can never interleave or produce a torn write.
+        self._expiry_sidecar_lock = threading.Lock()
+        # Daily telemetry counters for dup-guard decisions.
+        self._dup_guard_stats: Dict[str, Any] = {
+            "overrides_by_profit":          0,
+            "overrides_by_age":             0,
+            "blocks_by_loss":               0,
+            "blocks_by_age":                0,
+            "ltp_unavailable_fallbacks":    0,
+            "ltp_stale_fallbacks":          0,
+            "ltp_lowconf_fallbacks":        0,
+            "missed_opportunity_recovered": 0,
+        }
+        # Decision latency samples (seconds from restore → first confident R decision).
+        self._decision_latency_samples: List[float] = []
+        # Symbols recently blocked by an LTP issue; used for missed-opportunity detection.
+        self._ltp_blocked_symbols: Dict[str, datetime] = {}
+        # Optional TradeMonitor reference: set via inject_trade_monitor() after init.
+        # Used to deregister positions that are closed by smart-swap so they are
+        # not phantom-monitored and do not produce spurious SL/analytics events.
+        self._trade_monitor = None
+        # Set of order_ids whose profit extension SL-lock was restored from the
+        # journal. TradeMonitor reads this in register() to skip _can_extend().
+        self._restored_extended_oids: set = set()
+        # Belt-and-suspenders dedupe for carry-expiry: tracks order_ids that have
+        # been SESSION_EXPIRED today so a second call can never re-close them.
+        # Reset each calendar day at the top of check_and_expire_carries().
+        self._closed_ids_today: set = set()
+        self._closed_ids_today_date: Optional[str] = None
+        # Restore diagnostics: populated by _restore_from_journal() at each startup.
+        # Exposed via get_restore_stats() so orchestrator and health monitors can
+        # report restore integrity in startup Telegram pings and cycle reports.
+        self._restore_stats: Dict[str, Any] = {
+            "restored_today":          0,
+            "restored_carry":          0,
+            "expired_at_restore":      0,   # SESSION_EXPIRED written during _restore_from_journal
+            "orphan_monitored_count":  0,   # positions past carry_limit kept under governance
+            "monitoring_gap_seconds":  0,   # gap detected by post-restore governance pass
+            "reconciled_count":        0,   # positions checked in post-restore governance pass
+            "immediate_sl_hits":       0,   # SLs triggered in post-restore pass
+            "immediate_expiries":      0,   # SESSION_EXPIREDs in post-restore pass
+        }
         if self._paper_mode:
             os.makedirs(_DATA_DIR, exist_ok=True)
+            # Clean up any orphaned expiry_retry_*.tmp files left by a crash
+            # before os.replace() could complete. Scoped prefix avoids touching
+            # unrelated .tmp files in the data directory.
+            for _fn in os.listdir(_DATA_DIR):
+                if _fn.startswith("expiry_retry_") and _fn.endswith(".tmp"):
+                    try:
+                        os.remove(os.path.join(_DATA_DIR, _fn))
+                        log.debug("[OrderManager] Removed orphan temp file: %s", _fn)
+                    except Exception:
+                        pass
             log.info("[OrderManager] PAPER TRADING mode — no live orders will be sent.")
             log.info("[OrderManager] Trade journal: %s", os.path.abspath(PAPER_TRADE_LOG))
             self._restore_from_journal()   # re-hydrate open positions after any restart
+            # Apply persisted expiry retry counts to restored orders so the
+            # retry limit survives container restarts.
+            try:
+                if os.path.exists(_EXPIRY_RETRIES_PATH):
+                    with open(_EXPIRY_RETRIES_PATH, encoding="utf-8") as _rf:
+                        try:
+                            _persisted_retries: dict = json.load(_rf)
+                        except Exception:
+                            log.warning(
+                                "[ExpiryRetriesCorrupt] expiry_retries.json is malformed — "
+                                "resetting sidecar. Retry counts will restart from 0."
+                            )
+                            _persisted_retries = {}
+                    for _oid, _cnt in _persisted_retries.items():
+                        if _oid in self._orders:
+                            self._orders[_oid]._expiry_retry_count = int(_cnt)
+                            log.debug(
+                                "[OrderManager] Restored expiry_retry_count=%d for %s.",
+                                _cnt, _oid,
+                            )
+            except Exception as _re_exc:
+                log.debug("[OrderManager] Could not load expiry_retries.json: %s", _re_exc)
+            self._prefetch_restored_ltps() # immediately resolve LTP for restored positions
         else:
             log.info("[OrderManager] Active broker: %s", ACTIVE_BROKER.upper())
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC
     # ─────────────────────────────────────────────────────────────────
+
+    def inject_trade_monitor(self, trade_monitor) -> None:
+        """Wire in the TradeMonitor so smart-swap can deregister replaced positions."""
+        self._trade_monitor = trade_monitor
 
     def execute(self, signal: TradeSignal,
                 decision: DecisionResult,
@@ -234,23 +388,140 @@ class OrderManager:
           distortion – bool any distortion event active
         """
         # ── FIX 1: Guard against duplicate trades on same symbol ──────
+        _new_score = float(getattr(decision, "confidence_score", 5.0))
+        _is_same_symbol_swap = False  # True when we replace the *same* symbol (exempt from late-entry guard)
         if self._symbol_has_open_position(signal.symbol):
-            log.warning(
-                "[OrderManager] ❌ DUP GUARD: %s already has open position. "
-                "Rejecting new entry to prevent duplicate trades.",
-                signal.symbol
-            )
-            return None
+            if not self._dup_guard_reentry_check(
+                signal.symbol,
+                decision_score=_new_score,
+                new_entry_price=signal.entry_price,
+            ):
+                # Smart swap: close weakest position if new signal is clearly better
+                _swap = self._smart_swap_check(
+                    signal.symbol, _new_score,
+                    new_entry=signal.entry_price,
+                    new_stop=signal.stop_loss,
+                    new_target=signal.target_price,
+                )
+                if _swap:
+                    _swap_oid, _swap_sym, _weak_score = _swap
+                    # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
+                    # If the weakest position belongs to a DIFFERENT symbol than
+                    # the incoming signal, evicting it will NOT reduce the open
+                    # count for signal.symbol.  DupGuard would still block the
+                    # new trade, so the eviction achieves nothing but a realized
+                    # loss.  Abort before touching any position.
+                    if _swap_sym != signal.symbol and self._symbol_has_open_position(signal.symbol):
+                        log.warning(
+                            "[SmartSwap] Pre-eviction DupGuard check failed — closing %s "
+                            "would NOT unblock %s (still has open position). "
+                            "Skipping swap to avoid unnecessary loss.",
+                            _swap_sym, signal.symbol,
+                        )
+                        return None
+                    if _swap_sym == signal.symbol:
+                        _is_same_symbol_swap = True  # same-symbol replacement — exempt from late-entry guard
+                    _swap_rec = self._orders[_swap_oid]
+                    _swap_pos = self._portfolio.positions.get(_swap_sym)
+                    _exit_px = (
+                        _swap_pos.ltp
+                        if _swap_pos and _swap_pos.has_live_ltp and _swap_pos.ltp > 0
+                        else _swap_rec.entry_price
+                    )
+                    self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                    log.info(
+                        "[Replace] Closed %s (score=%.1f) → new %s stronger (score=%.1f).",
+                        _swap_sym, _weak_score, signal.symbol, _new_score,
+                    )
+                    # Remove closed symbol from portfolio so exposure guard is accurate
+                    if not self._symbol_has_open_position(_swap_sym):
+                        self._portfolio.positions.pop(_swap_sym, None)
+                    # Fall through to execute the new trade
+                else:
+                    return None
 
         # ── FIX 2: Guard against position explosion ────────────────────
         open_count = len(self.get_open_orders())
         if open_count >= MAX_OPEN_POSITIONS:
-            log.warning(
-                "[OrderManager] ❌ MAX GUARD: %d open positions already active "
-                "(limit: %d). Rejecting %s to prevent position explosion.",
-                open_count, MAX_OPEN_POSITIONS, signal.symbol
+            # Smart swap: close weakest position if new signal is clearly better
+            _swap = self._smart_swap_check(
+                signal.symbol, _new_score,
+                new_entry=signal.entry_price,
+                new_stop=signal.stop_loss,
+                new_target=signal.target_price,
             )
-            return None
+            if _swap:
+                _swap_oid, _swap_sym, _weak_score = _swap
+                # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
+                # Max-positions guard: evicting a different symbol frees a
+                # portfolio slot, but if signal.symbol already has an open
+                # position that DupGuard would hard-block (>= 2 open), the
+                # new trade still can't proceed.  Check before evicting.
+                if _swap_sym != signal.symbol and self._symbol_has_open_position(signal.symbol):
+                    open_same = sum(
+                        1 for r in self._orders.values()
+                        if r.symbol == signal.symbol and r.status == "open"
+                    )
+                    if open_same >= 2:
+                        log.warning(
+                            "[SmartSwap] Pre-eviction DupGuard check failed (MAX GUARD) — "
+                            "closing %s would NOT unblock %s (%d open, max 2). "
+                            "Skipping swap to avoid unnecessary loss.",
+                            _swap_sym, signal.symbol, open_same,
+                        )
+                        return None
+                if _swap_sym == signal.symbol:
+                    _is_same_symbol_swap = True  # same-symbol replacement — exempt from late-entry guard
+                _swap_rec = self._orders[_swap_oid]
+                _swap_pos = self._portfolio.positions.get(_swap_sym)
+                _exit_px = (
+                    _swap_pos.ltp
+                    if _swap_pos and _swap_pos.has_live_ltp and _swap_pos.ltp > 0
+                    else _swap_rec.entry_price
+                )
+                self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                log.info(
+                    "[Replace] Closed %s (score=%.1f) → new %s stronger (score=%.1f).",
+                    _swap_sym, _weak_score, signal.symbol, _new_score,
+                )
+                if not self._symbol_has_open_position(_swap_sym):
+                    self._portfolio.positions.pop(_swap_sym, None)
+                # Fall through to execute the new trade
+            else:
+                log.warning(
+                    "[OrderManager] ❌ MAX GUARD: %d open positions already active "
+                    "(limit: %d). Rejecting %s to prevent position explosion.",
+                    open_count, MAX_OPEN_POSITIONS, signal.symbol
+                )
+                return None
+
+        # ── Late-day entry control (institutional rule) ───────────────────────
+        # Before 13:30         → normal (6.5 floor enforced by DecisionEngine)
+        # 13:30 – 14:30        → minimum score 7.0 required (higher conviction)
+        # After  14:30         → no fresh entries; monitoring / exits only
+        # Exempt: same-symbol swap replacements (position management, not fresh entry)
+        if not _is_same_symbol_swap:
+            _now = datetime.now()
+            _cutoff  = _now.replace(hour=_LATE_ENTRY_CUTOFF_H,   minute=_LATE_ENTRY_CUTOFF_M,   second=0, microsecond=0)
+            _elevated = _now.replace(hour=_LATE_ENTRY_ELEVATED_H, minute=_LATE_ENTRY_ELEVATED_M, second=0, microsecond=0)
+            if _now >= _cutoff:
+                log.info(
+                    "[LateEntryBlock] %s rejected — no fresh entries after %02d:%02d "
+                    "(current: %s, monitoring-only window).",
+                    signal.symbol,
+                    _LATE_ENTRY_CUTOFF_H, _LATE_ENTRY_CUTOFF_M,
+                    _now.strftime("%H:%M"),
+                )
+                return None
+            if _now >= _elevated and _new_score < _LATE_ENTRY_MIN_SCORE:
+                log.info(
+                    "[LateEntryBlock] %s rejected — score %.2f < %.1f required after "
+                    "%02d:%02d (elevated-conviction window, 13:30–14:30).",
+                    signal.symbol, _new_score, _LATE_ENTRY_MIN_SCORE,
+                    _LATE_ENTRY_ELEVATED_H, _LATE_ENTRY_ELEVATED_M,
+                )
+                return None
+        # ─────────────────────────────────────────────────────────────────────
 
         qty = int(signal.quantity * decision.position_size_modifier)
         if qty <= 0:
@@ -376,6 +647,7 @@ class OrderManager:
             signal_regime     = str(_ctx.get("regime", "")),
             signal_vix        = float(_ctx.get("vix", 0.0)),
             signal_distortion = bool(_ctx.get("distortion", False)),
+            confidence_score  = float(getattr(decision, "confidence_score", 5.0)),
         )
         self._orders[order_id] = record
         self._update_portfolio(signal, qty)
@@ -454,10 +726,30 @@ class OrderManager:
         rec.closed_at = datetime.now()
         self._portfolio.realised_pnl += pnl
 
-        log.info("[OrderManager] Position closed: %s | PnL=₹%+,.0f | Reason=%s",
+        log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)
+        # Deregister from TradeMonitor when this close is driven by smart-swap
+        # (REPLACEMENT).  Without this, TradeMonitor keeps the order in its
+        # _open_orders dict and produces phantom SL/target hits on dead positions,
+        # polluting analytics with impossible R values (e.g. -25R).
+        if reason == "REPLACEMENT" and self._trade_monitor is not None:
+            try:
+                self._trade_monitor.deregister(order_id)
+            except Exception as _tm_exc:
+                log.debug("[OrderManager] TradeMonitor deregister failed: %s", _tm_exc)
         if self._paper_mode:
             self._journal_write_close(rec, exit_price, reason)
+            # Belt-and-suspenders: append to closed-order registry so that
+            # _restore_from_journal can filter out ghost OPEN rows even if
+            # the main CSV write was interrupted.
+            try:
+                with self._journal_lock:
+                    with open(_closed_registry_path(), "a", encoding="utf-8") as rf:
+                        rf.write(rec.order_id + "\n")
+                        rf.flush()
+                        os.fsync(rf.fileno())
+            except Exception as rf_exc:
+                log.debug("[OrderManager] Closed-registry write failed: %s", rf_exc)
         try:
             from notifications.notifier_manager import get_notifier
             _r_risk = abs(rec.entry_price - rec.stop_loss)
@@ -475,13 +767,61 @@ class OrderManager:
         log.warning("[OrderManager] ⚠ Closing ALL positions.")
         for oid, rec in list(self._orders.items()):
             if rec.status == "open":
-                self.close_position(oid, rec.entry_price, reason="emergency_close")
+                # Exit price hierarchy (safest first):
+                #   Priority 1 — LTPGuard-validated LTP from portfolio sync
+                #                (has_live_ltp=True only after LTPGuard accepted it)
+                #   Priority 2 — equity-scanner cache (independent of feed pipeline)
+                #   Priority 3 — entry price (₹0 P&L fallback — never a corrupt price)
+                _pos      = self._portfolio.positions.get(rec.symbol)
+                _exit_px  = rec.entry_price  # Priority 3 fallback
+
+                if _pos is not None and getattr(_pos, "has_live_ltp", False) and _pos.ltp > 0:
+                    # Priority 1: portfolio LTP (already validated by LTPGuard in _do_monitor)
+                    _exit_px = _pos.ltp
+                    log.debug("[OrderManager] emergency_close %s: using validated LTP %.2f",
+                              rec.symbol, _exit_px)
+                else:
+                    # Priority 2: equity-scanner cache as independent source
+                    try:
+                        from trade_monitoring.trade_monitor import TradeMonitor as _TM
+                        _cache = _TM._fetch_from_scanner_cache(rec.symbol)
+                        if _cache and _cache > 0:
+                            _exit_px = _cache
+                            log.debug("[OrderManager] emergency_close %s: using scanner cache %.2f",
+                                      rec.symbol, _exit_px)
+                        else:
+                            log.debug("[OrderManager] emergency_close %s: no validated LTP — "
+                                      "using entry %.2f", rec.symbol, _exit_px)
+                    except Exception:
+                        log.debug("[OrderManager] emergency_close %s: no validated LTP — "
+                                  "using entry %.2f", rec.symbol, _exit_px)
+
+                self.close_position(oid, _exit_px, reason="emergency_close")
 
     def get_portfolio(self) -> Portfolio:
         return self._portfolio
 
     def get_open_orders(self) -> List[OrderRecord]:
         return [r for r in self._orders.values() if r.status == "open"]
+
+    def get_open_order_ids(self) -> frozenset:
+        """Return frozenset of all open order_ids currently tracked in memory.
+        Used by CycleHealthMonitor to distinguish carries from CSV orphans."""
+        return frozenset(
+            oid for oid, rec in self._orders.items() if rec.status == "open"
+        )
+
+    def get_restore_stats(self) -> Dict[str, Any]:
+        """Return restore diagnostics captured at startup by _restore_from_journal().
+        Fields: restored_today, restored_carry, expired_at_restore,
+                orphan_monitored_count, monitoring_gap_seconds,
+                reconciled_count, immediate_sl_hits, immediate_expiries.
+        Values are 0 before first restore completes or when PAPER_TRADING is False."""
+        return dict(self._restore_stats)
+
+    def update_restore_stats(self, **kwargs) -> None:
+        """Allow orchestrator to populate post-restore governance fields."""
+        self._restore_stats.update(kwargs)
 
     def attempt_aet_confirmations(
         self,
@@ -1133,30 +1473,68 @@ class OrderManager:
                              exit_price: float, reason: str) -> None:
         """Append a CLOSE entry (with PnL) to the paper trade CSV journal."""
         try:
-            write_header = not os.path.exists(PAPER_TRADE_LOG)
-            with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
-                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER + ["exit_price", "pnl", "reason"])
-                if write_header:
-                    w.writeheader()
-                w.writerow({
-                    "timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "order_id":    rec.order_id,
-                    "symbol":      rec.symbol,
-                    "direction":   rec.direction,
-                    "quantity":    rec.quantity,
-                    "entry_price": round(rec.entry_price, 2),
-                    "stop_loss":   round(rec.stop_loss, 2),
-                    "target":      round(rec.target, 2),
-                    "strategy":    rec.strategy,
-                    "confidence":  "",
-                    "rr":          "",
-                    "event":       "CLOSE",
-                    "exit_price":  round(exit_price, 2),
-                    "pnl":         rec.pnl,
-                    "reason":      reason,
-                })
+            with self._journal_lock:
+                write_header = not os.path.exists(PAPER_TRADE_LOG)
+                with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
+                    w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
+                    if write_header:
+                        w.writeheader()
+                    w.writerow({
+                        "timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "order_id":    rec.order_id,
+                        "symbol":      rec.symbol,
+                        "direction":   rec.direction,
+                        "quantity":    rec.quantity,
+                        "entry_price": round(rec.entry_price, 2),
+                        "stop_loss":   round(rec.stop_loss, 2),
+                        "target":      round(rec.target, 2),
+                        "strategy":    rec.strategy,
+                        "confidence":  "",
+                        "rr":          "",
+                        "event":       "CLOSE",
+                        "exit_price":  round(exit_price, 2),
+                        "pnl":         rec.pnl,
+                        "reason":      reason,
+                    })
+                    fh.flush()
+                    os.fsync(fh.fileno())
         except Exception as exc:
             log.warning("[OrderManager] Could not write paper trade journal (close): %s", exc)
+
+    def journal_write_extend(self, order_id: str, locked_sl: float) -> None:
+        """Append an EXTEND event to the paper trade journal.
+
+        Persists the locked stop-loss so _restore_from_journal can restore the
+        correct SL (and set the extended flag) after a container restart.
+        Called by TradeMonitor immediately when adaptive profit extension fires.
+        """
+        if not self._paper_mode:
+            return
+        try:
+            rec = self._orders.get(order_id)
+            if not rec:
+                return
+            with self._journal_lock:
+                with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
+                    w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
+                    w.writerow({
+                        "timestamp":   datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                        "order_id":    rec.order_id,
+                        "symbol":      rec.symbol,
+                        "direction":   rec.direction,
+                        "quantity":    rec.quantity,
+                        "entry_price": round(rec.entry_price, 2),
+                        "stop_loss":   round(locked_sl, 2),  # KEY: the extension-locked SL
+                        "target":      round(rec.target, 2) if rec.target else "",
+                        "strategy":    rec.strategy,
+                        "confidence":  "",
+                        "rr":          "",
+                        "event":       "EXTEND",
+                    })
+                    fh.flush()
+                    os.fsync(fh.fileno())
+        except Exception as exc:
+            log.debug("[OrderManager] Could not write EXTEND journal event: %s", exc)
 
     def _journal_write_reentry(self, rec: "OrderRecord",
                                slot: "ReentrySlot") -> None:
@@ -1164,8 +1542,7 @@ class OrderManager:
         try:
             write_header = not os.path.exists(PAPER_TRADE_LOG)
             with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
-                extra = ["exit_price", "pnl", "reason", "retry_attempt"]
-                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER + extra)
+                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER + ["retry_attempt"])
                 if write_header:
                     w.writeheader()
                 w.writerow({
@@ -1195,7 +1572,7 @@ class OrderManager:
         try:
             write_header = not os.path.exists(PAPER_TRADE_LOG)
             with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
-                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER + ["exit_price", "pnl", "reason"])
+                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
                 if write_header:
                     w.writeheader()
                 w.writerow({
@@ -1299,7 +1676,9 @@ class OrderManager:
         if not self._broker:
             log.info("[OrderManager] [SIM-%s] %s %s qty=%d @ %.2f",
                      order_type, direction, symbol, qty, price)
-            return f"SIM_{symbol}_{direction}_{qty}"
+            import time as _t
+            _ms = _t.time_ns() // 1_000_000   # ms timestamp — guarantees uniqueness
+            return f"SIM_{symbol}_{direction}_{qty}_{_ms}"
         return self._broker.place_order(
             symbol=symbol, exchange="NSE",
             transaction_type=direction, quantity=qty, price=price,
@@ -1318,65 +1697,1091 @@ class OrderManager:
         )
         self._portfolio.positions[sig.symbol] = pos
 
+    def _prefetch_restored_ltps(self) -> None:
+        """
+        After _restore_from_journal, batch-fetch current LTP for every restored
+        position so the duplicate guard can use live R immediately rather than
+        waiting for the background equity-scanner cycle.
+
+        IMPORTANT: Index/options symbols (NIFTY, BANKNIFTY, FINNIFTY) are
+        intentionally skipped.  Their positions are priced in *options premium*
+        units (e.g. entry=864.91 for a NIFTY SELL), not in spot-price units
+        (~24,000).  Passing spot price through the GLOBAL_SYMBOL_MAP would set
+        ltp=24,403 on a premium-priced position and produce a spurious unrealised
+        loss of ~₹1,012,138, which falsely trips the MAX_DRAWDOWN_PCT halt on
+        the very first cycle after restart.  The monitoring worker (_do_monitor)
+        correctly resolves options premiums via Black-Scholes and will update the
+        portfolio LTP on the first tick.
+        """
+        # Symbols whose ltp must be options premium, NOT underlying spot.
+        # Fetching these via yfinance returns spot → completely wrong for P&L.
+        _SKIP_OPT_INDICES = {"NIFTY", "BANKNIFTY", "FINNIFTY"}
+
+        symbols = [
+            sym for sym, pos in self._portfolio.positions.items()
+            if not pos.has_live_ltp and sym not in _SKIP_OPT_INDICES
+        ]
+        # Add ".NS" suffix for Indian equity symbols so yfinance can find them.
+        # Without this, raw names like "ICICIBANK" fail and fall back to a SIM
+        # price of ~1000, which would corrupt the portfolio drawdown calculation.
+        _INDEX_YF_MAP = {"NIFTY": "^NSEI", "BANKNIFTY": "^NSEBANK", "INDIAVIX": "^INDIAVIX"}
+        _INDEX_SYMS   = set(_INDEX_YF_MAP.keys())
+        _fetch_syms  = [_INDEX_YF_MAP.get(s, f"{s}.NS") if s not in _INDEX_SYMS else _INDEX_YF_MAP[s]
+                        for s in symbols]
+        _sym_back    = {_INDEX_YF_MAP.get(s, f"{s}.NS") if s not in _INDEX_SYMS else _INDEX_YF_MAP[s]: s
+                        for s in symbols}
+        if not symbols:
+            return
+        try:
+            from data_feeds import get_feed_manager
+            quotes = get_feed_manager().get_multiple_quotes(_fetch_syms)
+            fetched = 0
+            now_dt = datetime.now()
+            for fetch_sym, quote in (quotes or {}).items():
+                sym = _sym_back.get(fetch_sym, fetch_sym.replace(".NS", ""))
+                pos = self._portfolio.positions.get(sym)
+                if pos is None:
+                    continue
+                if not (quote and quote.ltp and quote.ltp > 0):
+                    continue
+                # Sanity guard: reject obviously wrong prices.
+                # SIM fallback returns ~1000 for unknown symbols; equities
+                # should be within a realistic range relative to entry price.
+                _entry = pos.avg_entry_price
+                if _entry > 0 and (quote.ltp < _entry * 0.2 or quote.ltp > _entry * 5):
+                    log.debug(
+                        "[OrderManager] Pre-fetch: rejecting implausible LTP for %s: "
+                        "%.2f vs entry %.2f — keeping entry price.",
+                        sym, quote.ltp, _entry,
+                    )
+                    continue
+                pos.ltp           = quote.ltp
+                # NOTE: intentionally do NOT set has_live_ltp = True here.
+                # has_live_ltp = True is only set by the monitoring cycle
+                # (_do_monitor) after a proper market-data fetch.  Portfolio
+                # drawdown_pct only counts has_live_ltp = True positions, so
+                # keeping this False prevents a wrong pre-fetch price (e.g.
+                # an outdated or SIM value) from falsely triggering a halt.
+                pos.ltp_timestamp = now_dt
+                fetched += 1
+            if fetched:
+                log.info(
+                    "[OrderManager] Pre-fetched LTP for %d restored position(s).",
+                    fetched,
+                )
+        except Exception as exc:
+            log.debug(
+                "[OrderManager] LTP pre-fetch failed (will resolve next cycle): %s", exc
+            )
+
+    def _flush_dup_guard_stats(self) -> None:
+        """
+        Persist intra-day dup-guard decision counters to
+        data/trade_analytics_YYYY-MM-DD.json.
+
+        Called at every decision point in _dup_guard_reentry_check so the
+        file is always up-to-date; the JSON write is a small atomic overwrite.
+        The file is shared with other analytics writers — we write only the
+        ``dup_guard`` key, merging with any existing content.
+        """
+        try:
+            import json
+            today = datetime.now().strftime("%Y-%m-%d")
+            path  = os.path.join(_DATA_DIR, f"trade_analytics_{today}.json")
+            existing: dict = {}
+            if os.path.exists(path):
+                with open(path, "r", encoding="utf-8") as fh:
+                    loaded = json.load(fh)
+                    if isinstance(loaded, dict):
+                        existing = loaded
+                    # else: stale list-format file — start fresh dict
+            payload = dict(self._dup_guard_stats)
+            if self._decision_latency_samples:
+                payload["avg_decision_latency_sec"] = round(
+                    sum(self._decision_latency_samples) / len(self._decision_latency_samples), 1
+                )
+                payload["max_decision_latency_sec"] = round(
+                    max(self._decision_latency_samples), 1
+                )
+            existing["dup_guard"]  = payload
+            existing["updated_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            with open(path, "w", encoding="utf-8") as fh:
+                json.dump(existing, fh, indent=2)
+        except Exception as exc:
+            log.debug("[DupGuard] Telemetry flush failed: %s", exc)
+
     def _symbol_has_open_position(self, symbol: str) -> bool:
-        """Check if the symbol already has an open position (symbol deduplication)."""
+        """Check if the symbol has any financially-live position.
+
+        Counts positions with status != 'closed'/'cancelled', which includes
+        'open' AND 'closing' (EXPIRED_PENDING) states.  This ensures that a
+        position being expire-written to CSV still blocks new entries until
+        the CLOSE confirmation is fully committed.
+        """
         for rec in self._orders.values():
-            if rec.symbol == symbol and rec.status == "open":
+            if rec.symbol == symbol and rec.status not in ("closed", "cancelled"):
+                log.debug(
+                    "[ExposureIntegrity] %s counted  status=%s  gstate=%s  oid=%s",
+                    symbol, rec.status, rec.governance_state, rec.order_id,
+                )
                 return True
         return False
 
+    def _update_expiry_retry_sidecar(self, oid: str, count: int) -> None:
+        """
+        Persist carry-expiry retry counts to expiry_retries.json so the
+        retry limit survives container restarts.
+
+        Pass count=0 (or negative) to prune the entry on success.
+        Uses atomic os.replace() so a mid-write crash never truncates the file.
+        Serialised via _expiry_sidecar_lock for thread safety.
+        Failure is silent — this is an observability aid, not a control path.
+        """
+        with self._expiry_sidecar_lock:
+            try:
+                existing: dict = {}
+                if os.path.exists(_EXPIRY_RETRIES_PATH):
+                    with open(_EXPIRY_RETRIES_PATH, encoding="utf-8") as _f:
+                        try:
+                            existing = json.load(_f)
+                        except Exception:
+                            existing = {}   # corrupt sidecar — start fresh
+                if count > 0:
+                    existing[oid] = count
+                else:
+                    existing.pop(oid, None)
+                # Write to a temp file in the same directory, then atomically
+                # replace the target so a crash mid-write never corrupts it.
+                _dir = os.path.dirname(_EXPIRY_RETRIES_PATH)
+                with tempfile.NamedTemporaryFile(
+                    "w", dir=_dir, delete=False, prefix="expiry_retry_", suffix=".tmp", encoding="utf-8"
+                ) as _tf:
+                    json.dump(existing, _tf)
+                    _tf.flush()
+                    os.fsync(_tf.fileno())
+                    _tmp = _tf.name
+                os.replace(_tmp, _EXPIRY_RETRIES_PATH)  # atomic on POSIX and Windows
+            except Exception as _e:
+                log.debug("[OrderManager] expiry_retries.json update failed: %s", _e)
+
+    def check_and_expire_carries(self, live_prices: Optional[Dict[str, float]] = None) -> int:
+        """
+        Deterministic carry-expiry check — runs every monitoring cycle.
+
+        Iterates live in-memory open positions (not the CSV), closes any whose
+        age exceeds the strategy carry limit, and appends SESSION_EXPIRED CLOSE
+        rows to paper_trades.csv.
+
+        Design intent: carry expiry must be *time-bound* (deterministic) not
+        *restart-bound* (operational).  This method is called by the monitoring
+        cycle so positions exit at real market prices during trading hours rather
+        than at whatever price happens to be available at the next container
+        restart.
+
+        Args:
+            live_prices: dict of {symbol: ltp} from the monitoring price fetch.
+                         Used as exit price; falls back to feed query, then entry.
+
+        Returns number of positions expired this call.
+        """
+        now = datetime.now()
+        expired = 0
+        to_expire = []
+
+        # Daily reset of the order_id dedupe set.
+        _today_str = now.strftime("%Y-%m-%d")
+        if self._closed_ids_today_date != _today_str:
+            self._closed_ids_today.clear()
+            self._closed_ids_today_date = _today_str
+
+        for oid, rec in list(self._orders.items()):
+            # Guard 1: status must be "open".
+            # "closing" means a previous cycle's write failed mid-way and
+            # rolled back — treat it as "open" so it is retried this cycle.
+            # Any other non-open status ("closed", "cancelled") is skipped.
+            if rec.status == "closing":
+                log.info(
+                    "[CarryExpiry] %s %s found in 'closing' state — "
+                    "previous write likely failed. Retrying this cycle.",
+                    rec.symbol, oid,
+                )
+                rec.status = "open"   # explicit reset for retry
+            if rec.status != "open":
+                continue
+            # Retry-limit guard: a symbol that has failed >10 consecutive expiry
+            # attempts (e.g. persistent file-lock or disk-full) is aborted to
+            # prevent it from silently blocking expiry of other positions.
+            _MAX_EXPIRY_RETRIES = 10
+            if rec._expiry_retry_count > _MAX_EXPIRY_RETRIES:
+                log.error(
+                    "[CarryExpiryAbort] %s %s exceeded retry limit (%d). "
+                    "Manual intervention required — position not expired.",
+                    rec.symbol, oid, _MAX_EXPIRY_RETRIES,
+                )
+                continue
+            # Backoff guard: if the last attempt failed < 5 min ago, skip this
+            # cycle to avoid hammering the filesystem on transient errors.
+            if rec._last_retry_ts is not None:
+                if (now - rec._last_retry_ts) < timedelta(minutes=5):
+                    log.debug(
+                        "[CarryExpiry] %s %s backoff active (last_fail=%s) — "
+                        "skipping until 5-min window clears.",
+                        rec.symbol, oid,
+                        rec._last_retry_ts.strftime("%H:%M:%S"),
+                    )
+                    continue
+            age_days  = (now - rec.placed_at).days
+            max_carry = _carry_days_for(rec.strategy)
+            if age_days < max_carry:
+                continue
+            # Guard 2: require a validated live price from LTPGuard (set by check_all
+            # earlier in _do_monitor).  has_live_ltp lives on PortfolioPosition.
+            # If the price for this symbol was rejected by LTPGuard this cycle
+            # (e.g. >20% deviation), don't use it as an exit — defer to next cycle.
+            # Exception: if the position is 2× past max_carry, close regardless
+            # to prevent infinite deferral when a symbol drops off the feed.
+            _pos = self._portfolio.positions.get(rec.symbol)
+            _has_valid_ltp = _pos is None or getattr(_pos, "has_live_ltp", True)
+            if not _has_valid_ltp and age_days < max_carry * 2:
+                log.info(
+                    "[CarryExpiryDeferred] %s age=%dd no_valid_ltp this cycle "
+                    "(max_carry=%dd) — will retry next monitoring cycle.",
+                    rec.symbol, age_days, max_carry,
+                )
+                continue
+            to_expire.append((oid, rec, age_days, max_carry))
+
+        if not to_expire:
+            return 0
+
+        # Batch-fetch live prices for expiring symbols not already in live_prices
+        _ltp_map: Dict[str, float] = dict(live_prices or {})
+        missing_syms = [rec.symbol for _, rec, _, _ in to_expire
+                        if rec.symbol not in _ltp_map]
+        if missing_syms:
+            try:
+                from data_feeds.data_feed_manager import get_feed_manager as _gfm
+                _ns_syms = [s + ".NS" for s in missing_syms]
+                _q_map   = _gfm().get_multiple_quotes(_ns_syms)
+                for _ns, _q in _q_map.items():
+                    _bare = _ns.replace(".NS", "")
+                    _ltp  = (getattr(_q, "ltp", None) or getattr(_q, "last_price", None))
+                    if _ltp and float(_ltp) > 0:
+                        _ltp_map[_bare] = round(float(_ltp), 2)
+            except Exception as _e:
+                log.debug("[CarryExpiry] LTP fetch failed: %s", _e)
+
+        with self._journal_lock:
+            try:
+                fh = open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8")
+            except Exception as exc:
+                log.error("[CarryExpiry] Cannot open journal for writing: %s", exc)
+                return 0
+
+            try:
+                w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
+                for oid, rec, age_days, max_carry in to_expire:
+                    # Guard B: order_id dedupe set — belt-and-suspenders
+                    if oid in self._closed_ids_today:
+                        log.debug(
+                            "[CarryExpiry] Skipping %s %s — already in "
+                            "_closed_ids_today. Duplicate expiry attempt.",
+                            rec.symbol, oid,
+                        )
+                        continue
+
+                    # Guard A: atomic intent marker (open → closing → closed).
+                    # Flip status *before* the CSV write so any concurrent
+                    # call that re-enters this loop sees a non-open record.
+                    if rec.status != "open":
+                        log.debug(
+                            "[CarryExpiry] Skipping %s %s — status=%s "
+                            "(not open). Concurrent expiry?",
+                            rec.symbol, oid, rec.status,
+                        )
+                        continue
+                    rec.status = "closing"          # atomic intent: open → closing
+                    rec.governance_state = "EXPIRED_PENDING"  # remains exposure-active
+                    log.info(
+                        "[ExposureIntegrity] %s %s → EXPIRED_PENDING  "
+                        "still counts toward DupGuard/cap until CLOSE committed.",
+                        rec.symbol, oid,
+                    )
+
+                    exit_price = _ltp_map.get(rec.symbol, rec.entry_price)
+                    if rec.direction == "BUY":
+                        pnl = round((exit_price - rec.entry_price) * rec.quantity, 2)
+                    else:
+                        pnl = round((rec.entry_price - exit_price) * rec.quantity, 2)
+
+                    # Per-position try/except: a write failure for one position
+                    # rolls back to "open" so it retries cleanly next cycle rather
+                    # than becoming a ghost stuck in "closing".
+                    try:
+                        w.writerow({
+                            "timestamp":   now.strftime("%Y-%m-%d %H:%M:%S"),
+                            "order_id":    oid,
+                            "symbol":      rec.symbol,
+                            "direction":   rec.direction,
+                            "quantity":    rec.quantity,
+                            "entry_price": rec.entry_price,
+                            "stop_loss":   rec.stop_loss,
+                            "target":      rec.target,
+                            "strategy":    rec.strategy,
+                            "confidence":  "",
+                            "rr":          "",
+                            "event":       "CLOSE",
+                            "exit_price":  exit_price,
+                            "pnl":         pnl,
+                            "reason":      "SESSION_EXPIRED",
+                        })
+                        log.warning(
+                            "[CarryExpiry] SESSION_EXPIRED %s %s  "
+                            "age=%dd >= max_carry=%dd  exit=%.2f  pnl=+%.0f",
+                            rec.symbol, oid, age_days, max_carry, exit_price, pnl,
+                        )
+
+                        # Complete lifecycle: EXPIRED_PENDING → CLOSED
+                        rec.status = "closed"
+                        rec.governance_state = "CLOSED"  # no longer exposure-active
+                        rec._last_retry_ts = None   # clear backoff on success
+                        self._closed_ids_today.add(oid)
+                        self._portfolio.positions.pop(rec.symbol, None)
+                        # Prune from the persistence sidecar — position is done.
+                        self._update_expiry_retry_sidecar(oid, 0)
+                        expired += 1
+
+                    except Exception as row_exc:
+                        # Rollback: position stays exposure-active, retry next cycle
+                        rec.status = "open"
+                        rec.governance_state = "ACTIVE_CARRY"  # restore to governed state
+                        rec._expiry_retry_count += 1
+                        rec._last_retry_ts = now
+                        # Persist so the retry count survives a restart.
+                        self._update_expiry_retry_sidecar(oid, rec._expiry_retry_count)
+                        log.error(
+                            "[CarryExpiryError] CSV write failed for %s %s — "
+                            "rolled back to open, retry=%d. Error: %s",
+                            rec.symbol, oid, rec._expiry_retry_count, row_exc,
+                        )
+
+                try:
+                    fh.flush()
+                    os.fsync(fh.fileno())
+                except Exception as flush_exc:
+                    log.warning("[CarryExpiry] Journal flush/fsync failed: %s", flush_exc)
+            finally:
+                fh.close()
+
+        return expired
+
+    # ── Smart-Swap constants ───────────────────────────────────────────────
+    _SWAP_MIN_AGE_MIN           = 20.0   # never evict a position younger than this
+    _SWAP_SAFE_R                = 1.5    # never evict a position running at +1.5R or better
+    _SWAP_SCORE_DELTA           = 0.5    # new signal must beat weakest entry score by this margin
+    _SWAP_MIN_NEW_RR            = 1.5    # new signal must have target/risk >= this (expected R)
+    _SWAP_MIN_PRICE_IMPROVE_PCT = 0.5    # same-symbol swap: new entry must be ≥0.5% better
+    _SAME_ZONE_PCT              = 0.02   # DupGuard: entries within 2% → same thesis, not new opportunity
+
+    def _smart_swap_check(
+        self, new_symbol: str, new_signal_score: float,
+        new_entry: float = 0.0, new_stop: float = 0.0, new_target: float = 0.0,
+    ):
+        """
+        When the position cap is full, scan all open positions and identify
+        the weakest one.  If the incoming signal is significantly stronger,
+        return the order_id, symbol, and entry-score of the weakest position
+        so the caller can close it and open the new trade.
+
+        Returns (order_id, symbol, entry_score) or None.
+
+        Safety gates (position is *never* evicted if):
+          • Trade age < _SWAP_MIN_AGE_MIN   (20 min)  – too fresh
+          • Current R >= _SWAP_SAFE_R       (+1.5R)   – strong winner
+          • new_signal_score < weakest_entry_score + _SWAP_SCORE_DELTA
+          • new signal expected R (target/risk) < _SWAP_MIN_NEW_RR (1.5R)
+
+        Weakest selection priority (refinement 1 — loss-aware):
+          1. R ascending   (most negative / lowest R first)
+          2. confidence_score ascending (lowest entry quality)
+          3. age descending (oldest dead-weight)
+        """
+        now = datetime.now()
+        _NEG_INF = float("-inf")
+
+        # ── Refinement 2: minimum expected R on the incoming signal ──────
+        # Compute reward-to-risk ratio: |target - entry| / |entry - stop|.
+        # Block the swap entirely if the new trade doesn't project ≥ 1.5R.
+        if new_entry > 0 and new_stop > 0 and new_target > 0:
+            _new_risk   = abs(new_entry - new_stop)
+            _new_reward = abs(new_target - new_entry)
+            _new_rr     = (_new_reward / _new_risk) if _new_risk > 0 else 0.0
+            if _new_rr < self._SWAP_MIN_NEW_RR:
+                log.info(
+                    "[SwapBlocked] %s insufficient RR for replacement (RR=%.2f < %.1f).",
+                    new_symbol, _new_rr, self._SWAP_MIN_NEW_RR,
+                )
+                return None
+
+        # ── Build candidate list (all evictable open positions) ───────────
+        candidates = []   # list of (r_mult_or_None, age_min, rec)
+
+        for rec in self._orders.values():
+            if rec.status != "open":
+                continue
+
+            # Safety: never touch fresh trades
+            age_min = (
+                (now - rec.placed_at).total_seconds() / 60.0
+                if rec.placed_at else 0.0
+            )
+            if age_min < self._SWAP_MIN_AGE_MIN:
+                continue
+
+            # Compute current R from live LTP when available
+            risk = (
+                abs(rec.entry_price - rec.stop_loss)
+                if rec.stop_loss and rec.stop_loss != rec.entry_price
+                else 0.0
+            )
+            pos    = self._portfolio.positions.get(rec.symbol)
+            r_mult = None
+            if pos and pos.has_live_ltp and risk > 0:
+                if rec.direction == "BUY":
+                    r_mult = (pos.ltp - rec.entry_price) / risk
+                else:
+                    r_mult = (rec.entry_price - pos.ltp) / risk
+
+            # Safety: never evict a strong winner
+            if r_mult is not None and r_mult >= self._SWAP_SAFE_R:
+                continue
+
+            candidates.append((r_mult, age_min, rec))
+
+        if not candidates:
+            log.debug(
+                "[SmartSwap] No evictable position found for %s (all fresh/winning).",
+                new_symbol,
+            )
+            return None
+
+        # ── Refinement 1: loss-aware sort ─────────────────────────────────
+        # Sort key: (r_key ASC, score ASC, age DESC)
+        # r_key: use actual R when available; treat missing as 0.0 (neutral)
+        # so that confirmed losers always rank before unknowns.
+        def _sort_key(item):
+            r, age, rec = item
+            r_key = r if r is not None else 0.0
+            return (r_key, rec.confidence_score, -age)   # lower = weaker
+
+        candidates.sort(key=_sort_key)
+        _r_weakest, _age_weakest, weakest_rec = candidates[0]
+
+        weakest_oid   = weakest_rec.order_id
+        weakest_sym   = weakest_rec.symbol
+        weakest_entry = weakest_rec.confidence_score
+        weakest_r_str = f"{_r_weakest:.2f}" if _r_weakest is not None else "n/a"
+
+        # ── Price-improvement gate (same-symbol replacements only) ──────────
+        # Replacing RELIANCE with RELIANCE at virtually the same price is churn.
+        # For BUY: new entry must be ≥ effective_threshold % BELOW old entry.
+        # For SELL: new entry must be ≥ effective_threshold % ABOVE old entry.
+        # Cross-symbol swaps skip this check (price comparison is meaningless).
+        #
+        # Volatility-aware threshold: max(fixed_min, 0.1 × R%)
+        # Low-vol names (ITC): risk~3.5% → 0.1R~0.35% → fixed 0.5% wins.
+        # High-vol names (MARUTI): risk~2.5%@16k = ~0.15% but range wider —
+        # 0.1R keeps it proportional so we don’t need hand-tuned per-stock values.
+        if new_symbol == weakest_sym and new_entry > 0 and weakest_rec.entry_price > 0:
+            _old_entry  = weakest_rec.entry_price
+            _old_risk   = abs(weakest_rec.entry_price - weakest_rec.stop_loss) \
+                          if weakest_rec.stop_loss else 0.0
+            _r_pct      = (_old_risk / _old_entry * 100.0) if _old_entry > 0 else 0.0
+            _vol_thresh = 0.1 * _r_pct          # 0.1×R as a percentage of price
+            _eff_thresh = max(self._SWAP_MIN_PRICE_IMPROVE_PCT, _vol_thresh)
+            _threshold  = _eff_thresh / 100.0
+            if weakest_rec.direction == "BUY":
+                _price_ok = new_entry <= _old_entry * (1.0 - _threshold)
+            else:
+                _price_ok = new_entry >= _old_entry * (1.0 + _threshold)
+            if not _price_ok:
+                _improvement_pct = abs(new_entry - _old_entry) / _old_entry * 100
+                log.info(
+                    "[SwapBlocked] Same-symbol replacement for %s blocked: "
+                    "price improvement insufficient (new=%.2f vs old=%.2f, "
+                    "improvement=%.2f%% < %.2f%% required [vol-aware: 0.1R=%.2f%%]).",
+                    new_symbol, new_entry, _old_entry,
+                    _improvement_pct, _eff_thresh, _vol_thresh,
+                )
+                return None
+
+        # ── Score-delta gate ──────────────────────────────────────────────
+        if new_signal_score >= weakest_entry + self._SWAP_SCORE_DELTA:
+            log.info(
+                "[SmartSwap] %s (score=%.1f) qualifies to replace %s "
+                "(entry_score=%.1f, R=%s, age=%.0fmin).",
+                new_symbol, new_signal_score,
+                weakest_sym, weakest_entry, weakest_r_str, _age_weakest,
+            )
+            return (weakest_oid, weakest_sym, weakest_entry)
+
+        log.debug(
+            "[SmartSwap] %s (score=%.1f) not strong enough to replace %s "
+            "(entry_score=%.1f, delta=%.1f required).",
+            new_symbol, new_signal_score,
+            weakest_sym, weakest_entry, self._SWAP_SCORE_DELTA,
+        )
+        return None
+
+    def _dup_guard_reentry_check(self, symbol: str,
+                                   decision_score: float = 0.0,
+                                   new_entry_price: float = 0.0) -> bool:
+        """
+        Re-entry unlock logic for the duplicate guard.
+
+        Returns True  → allow the new trade (logs DupGuardOverride)
+        Returns False → block the new trade (logs DupGuardBlock)
+
+        Rules
+        -----
+        Block unconditionally if:
+          • Already 2+ open positions for this symbol (hard cap)
+          • The existing trade is < 15 minutes old
+          • The existing trade R < -0.25 (already in significant loss)
+          • Same-zone re-entry: new_entry_price within _SAME_ZONE_PCT (2%) of
+            existing entry AND existing trade is flat or losing (R ≤ 0) —
+            in the LTP-live path.
+          • Same-zone re-entry: new_entry_price within _SAME_ZONE_PCT (2%) of
+            existing entry — in the age-only (LTP unavailable) path, where
+            we cannot compute R but proximity alone signals the same thesis.
+
+        Allow if ANY of:
+          • Condition A: existing trade R >= +1.0 (running well — stock has
+            meaningfully moved, so same-zone concern is moot)
+          • Condition B: trade age >= 90 minutes AND not same-zone
+        """
+        now = datetime.now()
+
+        # Expire missed-opportunity records older than 30 minutes.
+        _expired = [
+            s for s, ts in self._ltp_blocked_symbols.items()
+            if (now - ts).total_seconds() > 1800
+        ]
+        for s in _expired:
+            self._ltp_blocked_symbols.pop(s, None)
+
+        # Include financially-live positions (open + closing/EXPIRED_PENDING).
+        # A position being expire-written still holds its portfolio slot until
+        # the CSV CLOSE row is fully committed.
+        open_recs = [
+            rec for rec in self._orders.values()
+            if rec.symbol == symbol and rec.status not in ("closed", "cancelled")
+        ]
+        log.debug(
+            "[ExposureIntegrity] DupGuard %s  financially_live=%d  statuses=%s",
+            symbol, len(open_recs),
+            [r.status for r in open_recs],
+        )
+
+        # Hard cap: max 2 open per symbol
+        if len(open_recs) >= 2:
+            log.warning(
+                "[DupGuardBlock] %s blocked → already %d open position(s) (max 2).",
+                symbol, len(open_recs),
+            )
+            return False
+
+        rec = open_recs[0]  # exactly one open trade exists
+
+        # Trade age in minutes
+        placed   = rec.placed_at or now
+        age_min  = (now - placed).total_seconds() / 60.0
+
+        # Safety: too fresh — never add within 15 minutes
+        if age_min < 15:
+            log.warning(
+                "[DupGuardBlock] %s blocked → trade age %.0fmin < 15min minimum.",
+                symbol, age_min,
+            )
+            return False
+
+        # ── LTP freshness + confidence pipeline ──────────────────────────
+        # Step 1: Freshness guard with hysteresis.
+        #   If the cached LTP is older than _DUP_GUARD_STALE_AFTER_S, demote
+        #   it to stale and record the transition time.  Once stale, the
+        #   symbol must wait _DUP_GUARD_FRESH_COOLDOWN_S before a cache read
+        #   can restore it — this prevents rapid flip-flopping at the boundary.
+        # Step 2: Cache pull (only when cooldown elapsed).
+        #   A new tick also increments ltp_tick_count.
+        # Step 3: Confidence gate.
+        #   Fewer than _DUP_GUARD_LTP_CONF_TICKS consecutive fresh ticks →
+        #   treat as low-confidence and fall through to age-only path.
+        # ─────────────────────────────────────────────────────────────────
+        risk = (
+            abs(rec.entry_price - rec.stop_loss)
+            if rec.stop_loss and rec.stop_loss != rec.entry_price
+            else 0.0
+        )
+        pos    = self._portfolio.positions.get(symbol)
+        now_dt = datetime.now()
+
+        # Step 1 — Freshness check (must come before cache pull)
+        if pos is not None and pos.has_live_ltp:
+            ltp_age_s = (
+                (now_dt - pos.ltp_timestamp).total_seconds()
+                if pos.ltp_timestamp is not None else float("inf")
+            )
+            if ltp_age_s > _DUP_GUARD_STALE_AFTER_S:
+                log.info(
+                    "[DupGuard] %s LTP stale (%.0fs old) → fallback to age-only.",
+                    symbol, ltp_age_s,
+                )
+                pos.has_live_ltp   = False
+                pos.ltp_timestamp  = None
+                pos.ltp_tick_count = 0
+                self._ltp_stale_at[symbol] = now_dt
+                self._dup_guard_stats["ltp_stale_fallbacks"] += 1
+
+        # Step 2 — Cache pull (with cooldown hysteresis)
+        if pos is not None and not pos.has_live_ltp:
+            stale_since = self._ltp_stale_at.get(symbol)
+            cooldown_ok = (
+                stale_since is None
+                or (now_dt - stale_since).total_seconds() >= _DUP_GUARD_FRESH_COOLDOWN_S
+            )
+            if cooldown_ok:
+                try:
+                    from opportunity_engine.equity_scanner_ai import _PRICE_CACHE, _PRICE_CACHE_LOCK
+                    with _PRICE_CACHE_LOCK:
+                        cached_price = _PRICE_CACHE.get(symbol, 0.0)
+                    if cached_price > 0:
+                        was_stale           = symbol in self._ltp_stale_at
+                        pos.ltp             = cached_price
+                        pos.has_live_ltp    = True
+                        pos.ltp_timestamp   = now_dt
+                        pos.ltp_tick_count += 1
+                        if was_stale:
+                            self._ltp_stale_at.pop(symbol, None)
+                            log.info(
+                                "[DupGuard] %s LTP stale→fresh transition (tick=%d).",
+                                symbol, pos.ltp_tick_count,
+                            )
+                        # Decision latency: log when confidence threshold is first met.
+                        if (
+                            pos.ltp_tick_count == _DUP_GUARD_LTP_CONF_TICKS
+                            and pos.confidence_achieved_at is None
+                            and pos.restore_time is not None
+                        ):
+                            pos.confidence_achieved_at = now_dt
+                            latency_s = (now_dt - pos.restore_time).total_seconds()
+                            self._decision_latency_samples.append(latency_s)
+                            log.info(
+                                "[DupGuard] %s Confidence achieved in %.0f sec (tick=%d).",
+                                symbol, latency_s, pos.ltp_tick_count,
+                            )
+                except Exception:
+                    pass  # cache not yet populated — flag stays False
+
+        ltp_live = pos is not None and pos.has_live_ltp
+
+        # ── Pre-flight loss guard (runs before score-bypass logic) ────────
+        # Compute R now if LTP is available.  If the existing trade is already
+        # at or below -0.25R, refuse the re-entry unconditionally — no signal
+        # score is strong enough to justify scaling into a losing position.
+        if ltp_live and pos is not None and risk > 0:
+            _ltp_preflight = pos.ltp
+            _r_preflight = (
+                (_ltp_preflight - rec.entry_price) / risk
+                if rec.direction == "BUY"
+                else (rec.entry_price - _ltp_preflight) / risk
+            )
+            if _r_preflight < -0.25:
+                log.warning(
+                    "[DupGuardBlock] %s blocked → loss guard (R=%.2f).",
+                    symbol, _r_preflight,
+                )
+                self._dup_guard_stats["blocks_by_loss"] += 1
+                self._flush_dup_guard_stats()
+                return False
+
+        # Step 3 — Confidence gate: require at least 2 consecutive fresh ticks.
+        # Exception: if the decision score is ≥ 7.5 (very strong signal) allow
+        # even with only 1 tick — price is unlikely to be stale noise at that
+        # score level and waiting for a second tick risks missing the entry.
+        high_confidence_signal = decision_score >= 7.5
+        if ltp_live and pos is not None and pos.ltp_tick_count < _DUP_GUARD_LTP_CONF_TICKS:
+            if high_confidence_signal:
+                log.info(
+                    "[DupGuard] %s low-confidence LTP bypassed — strong signal score=%.1f (tick=%d/%d).",
+                    symbol, decision_score, pos.ltp_tick_count, _DUP_GUARD_LTP_CONF_TICKS,
+                )
+            else:
+                log.info(
+                    "[DupGuard] %s low-confidence LTP (tick=%d/%d) → using age-only.",
+                    symbol, pos.ltp_tick_count, _DUP_GUARD_LTP_CONF_TICKS,
+                )
+                ltp_live = False
+                self._dup_guard_stats["ltp_lowconf_fallbacks"] += 1
+
+        if not ltp_live:
+            # Feed not yet available — skip R checks, use age only.
+            log.info(
+                "[DupGuard] %s LTP unavailable → using age-only evaluation (age=%.0fmin).",
+                symbol, age_min,
+            )
+            self._dup_guard_stats["ltp_unavailable_fallbacks"] += 1
+
+            # Same-zone guard (age-only path): if the new entry is within 2% of
+            # the existing entry, the stock hasn't moved enough to constitute a
+            # fresh setup — block to prevent re-committing to the same unresolved thesis.
+            if (
+                new_entry_price > 0
+                and rec.entry_price > 0
+                and abs(new_entry_price - rec.entry_price) / rec.entry_price <= self._SAME_ZONE_PCT
+            ):
+                log.warning(
+                    "[DupGuardBlock] %s blocked → same-zone re-entry with LTP unavailable "
+                    "(new=%.2f vs existing=%.2f, Δ=%.2f%%) — same thesis, not a new opportunity.",
+                    symbol, new_entry_price, rec.entry_price,
+                    abs(new_entry_price - rec.entry_price) / rec.entry_price * 100,
+                )
+                self._dup_guard_stats["blocks_by_loss"] += 1
+                self._flush_dup_guard_stats()
+                return False
+
+            if age_min >= 90:
+                log.info(
+                    "[DupGuardOverride] %s allowed → age=%.0fmin (LTP pending).",
+                    symbol, age_min,
+                )
+                self._dup_guard_stats["overrides_by_age"] += 1
+                self._flush_dup_guard_stats()
+                return True
+            log.warning(
+                "[DupGuardBlock] %s blocked → age=%.0fmin < 180min and LTP pending.",
+                symbol, age_min,
+            )
+            self._dup_guard_stats["blocks_by_age"] += 1
+            self._ltp_blocked_symbols[symbol] = now_dt  # track for missed-opportunity recovery
+            self._flush_dup_guard_stats()
+            return False
+
+        # LTP is live — compute R and apply full rule set.
+        ltp = pos.ltp
+        if risk > 0:
+            r_mult = (
+                (ltp - rec.entry_price) / risk
+                if rec.direction == "BUY"
+                else (rec.entry_price - ltp) / risk
+            )
+        else:
+            r_mult = 0.0
+
+        # Safety: existing trade already in loss — do not add (tightened -0.5 → -0.25)
+        if r_mult < -0.25:
+            log.warning(
+                "[DupGuardBlock] %s blocked → loss guard (R=%.2f).",
+                symbol, r_mult,
+            )
+            self._dup_guard_stats["blocks_by_loss"] += 1
+            self._flush_dup_guard_stats()
+            return False
+
+        # Condition A: trade running well at +1R or better
+        if r_mult >= 1.0:
+            log.info(
+                "[DupGuardOverride] %s allowed → R=%.1f age=%.0fmin",
+                symbol, r_mult, age_min,
+            )
+            self._dup_guard_stats["overrides_by_profit"] += 1
+            if symbol in self._ltp_blocked_symbols:
+                prev_ts = self._ltp_blocked_symbols.pop(symbol)
+                self._dup_guard_stats["missed_opportunity_recovered"] += 1
+                log.info(
+                    "[DupGuard] %s missed opportunity recovered (blocked %.0fs ago, R=%.2f).",
+                    symbol, (now_dt - prev_ts).total_seconds(), r_mult,
+                )
+            self._flush_dup_guard_stats()
+            return True
+
+        # Condition B: position is stale / has been open 90+ minutes.
+        # Same-zone guard applies here too: if the new entry is within 2% of the
+        # existing entry AND the trade is flat or losing, it is the same unresolved
+        # thesis — age alone is not enough justification to double into it.
+        if (
+            r_mult <= 0.0
+            and new_entry_price > 0
+            and rec.entry_price > 0
+            and abs(new_entry_price - rec.entry_price) / rec.entry_price <= self._SAME_ZONE_PCT
+        ):
+            log.warning(
+                "[DupGuardBlock] %s blocked → same-zone re-entry on flat/losing position "
+                "(new=%.2f vs existing=%.2f, Δ=%.2f%%, R=%.2f) — age bypass denied.",
+                symbol, new_entry_price, rec.entry_price,
+                abs(new_entry_price - rec.entry_price) / rec.entry_price * 100,
+                r_mult,
+            )
+            self._dup_guard_stats["blocks_by_loss"] += 1
+            self._flush_dup_guard_stats()
+            return False
+
+        if age_min >= 90:
+            log.info(
+                "[DupGuardOverride] %s allowed → R=%.1f age=%.0fmin",
+                symbol, r_mult, age_min,
+            )
+            self._dup_guard_stats["overrides_by_age"] += 1
+            if symbol in self._ltp_blocked_symbols:
+                prev_ts = self._ltp_blocked_symbols.pop(symbol)
+                self._dup_guard_stats["missed_opportunity_recovered"] += 1
+                log.info(
+                    "[DupGuard] %s missed opportunity recovered (blocked %.0fs ago, age=%.0fmin).",
+                    symbol, (now_dt - prev_ts).total_seconds(), age_min,
+                )
+            self._flush_dup_guard_stats()
+            return True
+
+        log.warning(
+            "[DupGuardBlock] %s blocked → insufficient conditions (R=%.2f age=%.0fmin).",
+            symbol, r_mult, age_min,
+        )
+        self._dup_guard_stats["blocks_by_age"] += 1
+        self._flush_dup_guard_stats()
+        return False
+
     def _restore_from_journal(self) -> None:
-        """
-        On startup read the paper trade CSV and restore any positions that
-        were OPEN when the process last stopped (e.g. Docker restart).
-
-        Only today’s rows are considered so stale historical records never
-        block new signals from previous sessions.
-
-        After restore:
-          • _symbol_has_open_position() correctly guards duplicates.
-          • _portfolio.positions is partially hydrated (exposure guard works).
-          • No new journal OPEN row is written for already-open symbols.
-        """
+        # On startup, read the paper trade CSV and:
+        #
+        # PART A - Restore: re-hydrate any position where:
+        #   - event=OPEN with no matching CLOSE, AND
+        #   - age <= strategy-specific max carry days.
+        #   Makes restarts safe for legitimate overnight / multi-day carries.
+        #
+        # PART B - Expire: append SESSION_EXPIRED CLOSE for any position where:
+        #   - event=OPEN with no matching CLOSE, AND
+        #   - age > strategy-specific max carry days.
+        #   Append-only, idempotent — never modifies historical rows.
+        #
+        # Strategy-aware carry limits (from _carry_days_for):
+        #   Mean_Reversion / Range / Hedging : 3 days
+        #   Momentum / Breakout / EDG_MOMENT : 5 days
+        #   Trend / Swing / BullCall          : 7 days
+        #   Everything else (default)         : 5 days
         if not os.path.exists(PAPER_TRADE_LOG):
             return
-        today = datetime.now().strftime("%Y-%m-%d")
-        try:
-            open_rows: dict[str, dict] = {}   # order_id → latest OPEN row
-            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
-                reader = csv.DictReader(fh)
-                for row in reader:
-                    ts = row.get("timestamp", "")
-                    if not ts.startswith(today):
-                        continue   # ignore previous sessions
-                    oid   = row.get("order_id", "").strip()
-                    event = row.get("event", "").strip().upper()
-                    if not oid:
-                        continue
-                    if event in ("OPEN", "REENTRY_OPEN"):
-                        open_rows[oid] = row
-                    elif event in ("CLOSE", "CANCELLED"):
-                        open_rows.pop(oid, None)
 
-            restored = 0
+        # Max lookback = largest strategy carry limit (Trend = 7 days).
+        # Rows older than this window can never be valid carries.
+        _MAX_LOOKBACK_DAYS = 7
+        now       = datetime.now()
+        cutoff_dt = now - timedelta(days=_MAX_LOOKBACK_DAYS)
+
+        # Load closed-order registries for the past _MAX_LOOKBACK_DAYS days.
+        # Any order_id listed here was explicitly closed even if the CSV CLOSE
+        # row was lost due to a crash mid-write.
+        closed_registry: set = set()
+        try:
+            for _d in range(_MAX_LOOKBACK_DAYS + 1):
+                _reg_date = (now - timedelta(days=_d)).strftime("%Y-%m-%d")
+                _reg_path = os.path.join(_DATA_DIR, f"closed_orders_{_reg_date}.txt")
+                if os.path.exists(_reg_path):
+                    with open(_reg_path, encoding="utf-8") as rf:
+                        for line in rf:
+                            oid_r = line.strip()
+                            if oid_r:
+                                closed_registry.add(oid_r)
+        except Exception as reg_exc:
+            log.debug("[OrderManager] Could not read closed registry: %s", reg_exc)
+
+        try:
+            # Pass 1: Build set of all order_ids with a CLOSE in the CSV.
+            # Full scan (no date limit) so we never restore an order that was
+            # closed in an older session whose CLOSE row is already in the CSV.
+            closed_in_csv: set = set()
+            _corrupt_pass1 = 0
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
+                dr = csv.DictReader(fh)
+                for row in dr:
+                    try:
+                        event = row.get("event", "").strip().upper()
+                        if event in ("CLOSE", "CANCELLED"):
+                            oid = row.get("order_id", "").strip()
+                            if oid:
+                                closed_in_csv.add(oid)
+                    except Exception as _row_exc:
+                        _corrupt_pass1 += 1
+                        log.warning(
+                            "[JournalCorruptRowSkipped] pass=1 line=%d: %s",
+                            dr.reader.line_num, _row_exc,
+                        )
+                        continue
+
+            # Pass 1.5: Collect locked SL from EXTEND events.
+            # An EXTEND row is written by TradeMonitor when adaptive profit
+            # extension fires (locks the SL above entry).  We restore the
+            # locked SL so the position doesn't revert to the original SL
+            # and isn't double-extended or prematurely closed at original target.
+            #
+            # We also store when the extension fired.  The 7-day extended carry
+            # window is counted from that timestamp — NOT from the trade open date.
+            # This prevents a weakened trade from getting indefinite protection
+            # just because it was once a winner: e.g. if extension fired on day 2
+            # and 10 days have passed since then, the window is exhausted even
+            # though the position itself might still have days left in max_carry.
+            _EXT_WINDOW_DAYS = 7   # calendar days of carry granted after extension fires
+            extended_map: dict[str, tuple] = {}   # oid -> (locked_sl, extend_ts)
+            _corrupt_pass15 = 0
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
+                dr = csv.DictReader(fh)
+                for row in dr:
+                    try:
+                        oid   = row.get("order_id", "").strip()
+                        event = row.get("event", "").strip().upper()
+                        if event == "EXTEND" and oid and oid not in closed_in_csv:
+                            try:
+                                ext_sl = float(row.get("stop_loss", 0) or 0)
+                                ext_ts = datetime.strptime(
+                                    row.get("timestamp", "")[:19], "%Y-%m-%d %H:%M:%S"
+                                )
+                                extended_map[oid] = (ext_sl, ext_ts)
+                            except (ValueError, TypeError):
+                                pass
+                    except Exception as _row_exc:
+                        _corrupt_pass15 += 1
+                        log.warning(
+                            "[JournalCorruptRowSkipped] pass=1.5 line=%d: %s",
+                            dr.reader.line_num, _row_exc,
+                        )
+                        continue
+
+            # Pass 2: Find OPEN rows within the lookback window.
+            open_rows: dict[str, dict] = {}   # order_id -> latest OPEN row
+            _corrupt_pass2 = 0
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
+                dr = csv.DictReader(fh)
+                for row in dr:
+                    try:
+                        ts_str = row.get("timestamp", "")
+                        try:
+                            row_dt = datetime.strptime(ts_str[:19], "%Y-%m-%d %H:%M:%S")
+                        except (ValueError, TypeError):
+                            continue
+                        if row_dt < cutoff_dt:
+                            continue   # too old to be a valid carry
+                        oid   = row.get("order_id", "").strip()
+                        event = row.get("event", "").strip().upper()
+                        if not oid:
+                            continue
+                        if event in ("OPEN", "REENTRY_OPEN"):
+                            open_rows[oid] = row
+                        elif event in ("CLOSE", "CANCELLED"):
+                            open_rows.pop(oid, None)
+                    except Exception as _row_exc:
+                        _corrupt_pass2 += 1
+                        log.warning(
+                            "[JournalCorruptRowSkipped] pass=2 line=%d: %s",
+                            dr.reader.line_num, _row_exc,
+                        )
+                        continue
+
+            _total_corrupt = _corrupt_pass1 + _corrupt_pass15 + _corrupt_pass2
+            if _total_corrupt:
+                log.warning(
+                    "[JournalScanSummary] corrupt_rows=%d "
+                    "(pass1=%d, pass1.5=%d, pass2=%d) — rows skipped during restore.",
+                    _total_corrupt, _corrupt_pass1, _corrupt_pass15, _corrupt_pass2,
+                )
+            else:
+                log.debug("[JournalScanSummary] corrupt_rows=0 — journal clean.")
+
+            # Remove anything confirmed closed (CSV or crash-safe registry).
+            ghost_count = 0
+            for oid_c in list(open_rows.keys()):
+                if oid_c in closed_in_csv or oid_c in closed_registry:
+                    open_rows.pop(oid_c)
+                    ghost_count += 1
+            if ghost_count:
+                log.info(
+                    "[OrderManager] Filtered %d ghost OPEN row(s) (CLOSE found in CSV/registry).",
+                    ghost_count,
+                )
+
+            # Part A: Restore  |  Part B: Expire
+            restored    = 0
+            expired     = 0
+            expire_rows = []   # collect first, write after read loop
+
             for oid, row in open_rows.items():
                 try:
+                    ts_str = row.get("timestamp", "")
+                    try:
+                        original_placed_at = datetime.strptime(ts_str[:19], "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        original_placed_at = now
+
+                    age_days  = (now - original_placed_at).days
+                    strategy  = row.get("strategy", "")
+                    max_carry = _carry_days_for(strategy)
+
+                    if age_days > max_carry:
+                        # PART B: too old for this strategy.
+                        # For extended winners: grant up to _EXT_WINDOW_DAYS from when
+                        # extension FIRED (not from trade open).  This prevents a trade
+                        # that was once at +2.8R but has since weakened from getting
+                        # indefinite protection — the window shrinks based on elapsed
+                        # time since the extension event.
+                        if oid in extended_map:
+                            _ext_sl, _ext_ts = extended_map[oid]
+                            _extend_age_days  = (now - _ext_ts).days
+                            if _extend_age_days <= _EXT_WINDOW_DAYS:
+                                pass  # extension window still open → restore (Part A below)
+                            else:
+                                # Window exhausted: expire at locked_sl price (not entry)
+                                # so P&L reflects the protection the SL provided.
+                                expire_rows.append(
+                                    (oid, row, original_placed_at, age_days, max_carry, _ext_sl)
+                                )
+                                continue
+                        else:
+                            expire_rows.append(
+                                (oid, row, original_placed_at, age_days, max_carry, None)
+                            )
+                            continue
+
+                    # PART A: within carry window (or active extension window) — restore
+                    _ext_entry = extended_map.get(oid)   # (locked_sl, ext_ts) or None
+                    effective_sl = _ext_entry[0] if _ext_entry else float(row.get("stop_loss", 0) or 0)
                     rec = OrderRecord(
                         order_id    = oid,
                         symbol      = row["symbol"],
                         direction   = row["direction"],
                         quantity    = int(float(row.get("quantity", 1))),
                         entry_price = float(row.get("entry_price", 0) or 0),
-                        stop_loss   = float(row.get("stop_loss",   0) or 0),
+                        stop_loss   = effective_sl,
                         target      = float(row.get("target",      0) or 0),
-                        strategy    = row.get("strategy", ""),
+                        strategy    = strategy,
                         status      = "open",
                         # Treat restored orders as MARKET so TradeMonitor
                         # skips the LIMIT fill simulation and goes straight
                         # to SL/target evaluation.
                         order_type  = "MARKET",
-                        placed_at   = datetime.now(),
+                        placed_at   = original_placed_at,
+                        # Restore stored confidence score so smart-swap cannot
+                        # immediately evict a restored position just because 0.0 < 0.5+delta.
+                        confidence_score = float(row.get("confidence", 0) or 0),
+                        # Explicit governance state so any observer can see lifecycle phase.
+                        governance_state = "ACTIVE_CARRY",
                     )
+                    if _ext_entry:
+                        # Tell TradeMonitor (via register()) not to re-fire extension.
+                        self._restored_extended_oids.add(oid)
+                        _ext_age = (now - _ext_entry[1]).days
+                        log.info(
+                            "[OrderManager] Extended winner carry restored: %s %s  "
+                            "locked_sl=%.2f  trade_age=%dd  extend_age=%dd/%dd.",
+                            row.get("symbol", ""), oid, effective_sl,
+                            age_days, _ext_age, _EXT_WINDOW_DAYS,
+                        )
                     self._orders[oid] = rec
                     qty_signed = rec.quantity if rec.direction == "BUY" else -rec.quantity
                     pos = Position(
@@ -1387,15 +2792,148 @@ class OrderManager:
                         stop_loss       = rec.stop_loss,
                         target_price    = rec.target,
                         strategy_name   = rec.strategy,
+                        has_live_ltp    = False,
+                        restore_time    = now,
                     )
                     self._portfolio.positions[rec.symbol] = pos
+                    age_min = int((now - original_placed_at).total_seconds() / 60)
+                    log.info(
+                        "[OrderManager] Restored carry position: %s %s  "
+                        "age=%dd %dmin  strategy=%s  (max_carry=%dd)",
+                        rec.symbol, oid, age_days, age_min, strategy, max_carry,
+                    )
                     restored += 1
+
                 except Exception as row_exc:
                     log.debug("[OrderManager] Skipping malformed journal row '%s': %s",
                               oid, row_exc)
 
+            # PART B: Write SESSION_EXPIRED CLOSE rows for orphaned positions.
+            # Append-only. Idempotent: next restart finds CLOSE in closed_in_csv.
+            if expire_rows:
+                # Batch-fetch live LTPs for all expiring symbols BEFORE writing.
+                # Eliminates ₹0 PnL on SESSION_EXPIRED when real moves occurred.
+                # Exit price priority: locked_SL > live_LTP > entry_price_fallback
+                _expire_ltp: dict = {}
+                _exp_syms = list({r.get("symbol", "") for _, r, *_ in expire_rows
+                                  if r.get("symbol")})
+                if _exp_syms:
+                    try:
+                        from data_feeds.data_feed_manager import get_feed_manager as _gfm
+                        _ns_syms = [s + ".NS" for s in _exp_syms]
+                        _q_map   = _gfm().get_multiple_quotes(_ns_syms)
+                        for _ns, _q in _q_map.items():
+                            _bare = _ns.replace(".NS", "")
+                            _ltp  = (getattr(_q, "ltp", None)
+                                     or getattr(_q, "last_price", None))
+                            if _ltp and float(_ltp) > 0:
+                                _expire_ltp[_bare] = round(float(_ltp), 2)
+                        if _expire_ltp:
+                            log.info(
+                                "[OrderManager] SESSION_EXPIRED: live LTP fetched for "
+                                "%d/%d symbol(s): %s",
+                                len(_expire_ltp), len(_exp_syms), _expire_ltp,
+                            )
+                    except Exception as _ltp_err:
+                        log.debug(
+                            "[OrderManager] SESSION_EXPIRED: LTP fetch failed (%s) — "
+                            "entry_price fallback for all", _ltp_err,
+                        )
+                try:
+                    with self._journal_lock:
+                        with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
+                            w = csv.DictWriter(
+                                fh,
+                                fieldnames=_JOURNAL_HEADER,
+                            )
+                            for oid, row, placed_at, age_days, max_carry, locked_sl in expire_rows:
+                                entry_price = float(row.get("entry_price", 0) or 0)
+                                _symbol     = row.get("symbol", "")
+                                _direction  = row.get("direction", "BUY")
+                                _qty        = int(float(row.get("quantity", 1) or 1))
+                                # Priority 1: locked SL (trailing stop already at B/E+)
+                                # Priority 2: live LTP — real market exit price
+                                # Priority 3: entry_price fallback (₹0 PnL only if no data)
+                                if locked_sl and locked_sl != entry_price:
+                                    _exit_price = round(locked_sl, 2)
+                                    _pnl        = round(
+                                        (locked_sl - entry_price) * _qty
+                                        if _direction == "BUY"
+                                        else (entry_price - locked_sl) * _qty,
+                                        2,
+                                    )
+                                    _reason = "SESSION_EXPIRED_EXTENDED"
+                                elif _symbol in _expire_ltp:
+                                    _exit_price = _expire_ltp[_symbol]
+                                    _pnl        = round(
+                                        (_exit_price - entry_price) * _qty
+                                        if _direction == "BUY"
+                                        else (entry_price - _exit_price) * _qty,
+                                        2,
+                                    )
+                                    _reason = "SESSION_EXPIRED"
+                                else:
+                                    _exit_price = entry_price
+                                    _pnl        = 0.0
+                                    _reason     = "SESSION_EXPIRED"
+                                w.writerow({
+                                    "timestamp":   now.strftime("%Y-%m-%d %H:%M:%S"),
+                                    "order_id":    oid,
+                                    "symbol":      row.get("symbol", ""),
+                                    "direction":   row.get("direction", ""),
+                                    "quantity":    row.get("quantity", 0),
+                                    "entry_price": entry_price,
+                                    "stop_loss":   row.get("stop_loss", ""),
+                                    "target":      row.get("target", ""),
+                                    "strategy":    row.get("strategy", ""),
+                                    "confidence":  "",
+                                    "rr":          "",
+                                    "event":       "CLOSE",
+                                    "exit_price":  _exit_price,
+                                    "pnl":         _pnl,
+                                    "reason":      _reason,
+                                })
+                                log.info(
+                                    "[OrderManager] %s -> %s %s  "
+                                    "age=%dd > max_carry=%dd (strategy=%s)  "
+                                    "exit=%.2f  pnl=₹%+.0f. CLOSE appended.",
+                                    _reason, row.get("symbol", ""), oid,
+                                    age_days, max_carry, row.get("strategy", ""),
+                                    _exit_price, _pnl,
+                                )
+                                expired += 1
+                            fh.flush()
+                            os.fsync(fh.fileno())
+                except Exception as exp_exc:
+                    log.warning("[OrderManager] SESSION_EXPIRED write failed: %s", exp_exc)
+
             if restored:
-                log.info("[OrderManager] ✅ Restored %d open position(s) from today's "
-                         "journal (restart guard active).", restored)
+                log.info(
+                    "[OrderManager] \u2705 Restored %d carry position(s) "
+                    "(strategy-aware cross-day restore active).  "
+                    "governance_state=ACTIVE_CARRY  SL/adaptive/heat: ACTIVE.",
+                    restored,
+                )
+            if expired:
+                log.info(
+                    "[OrderManager] \U0001f9f9 Expired %d orphaned OPEN row(s) -> SESSION_EXPIRED. "
+                    "CSV is now clean.", expired,
+                )
+
+            # Persist restore diagnostics for orchestrator + health monitors.
+            # monitoring_gap_seconds and post-restore reconciliation fields are
+            # populated later by orchestrator._post_restore_governance_pass().
+            self._restore_stats.update({
+                "restored_today":          0,
+                "restored_carry":          restored,
+                "expired_at_restore":      expired,
+                "orphan_monitored_count":  0,
+                "monitoring_gap_seconds":  0,
+                "reconciled_count":        0,
+                "immediate_sl_hits":       0,
+                "immediate_expiries":      expired,
+            })
+
         except Exception as exc:
             log.warning("[OrderManager] Could not restore from journal: %s", exc)
+

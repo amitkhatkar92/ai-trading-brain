@@ -24,6 +24,7 @@ EDA (Event-Driven Architecture) layer:
 """
 
 from __future__ import annotations
+import os
 import sched
 import time
 import threading
@@ -63,8 +64,13 @@ from risk_control.correlation_engine        import CorrelationEngine
 
 from debate_system.multi_agent_debate       import MultiAgentDebate
 from decision_ai.decision_engine            import DecisionEngine
-from execution_engine.order_manager         import OrderManager
-from trade_monitoring.trade_monitor         import TradeMonitor
+from execution_engine.order_manager             import OrderManager
+from execution_engine.options_order_manager     import OptionsOrderManager, get_options_order_manager
+from risk_control.options_risk_engine           import get_options_risk_engine
+from learning_system.options_performance_tracker import get_options_performance_tracker
+from models.trade_signal                        import SignalType as _SigType
+from models.agent_output                        import DecisionResult as _DecisionResult
+from trade_monitoring.trade_monitor             import TradeMonitor
 from trade_monitoring.strategy_health_monitor import StrategyHealthMonitor
 from learning_system.learning_engine        import LearningEngine
 from learning_system.strategy_performance_tracker import StrategyPerformanceTracker
@@ -225,8 +231,23 @@ class MasterOrchestrator:
         # ── Layer 8: Execution ─────────────────────────────────────────
         self.order_manager       = OrderManager()
 
+        # ── Layer 8b: Options Execution (dedicated, lot-aware) ─────────
+        self.options_order_manager = get_options_order_manager()
+        self.options_risk_engine   = get_options_risk_engine()
+        # Pre-warm the learning tracker so it loads persisted weights
+        get_options_performance_tracker()
+
         # ── Layer 9: Trade Monitoring ──────────────────────────────────
         self.trade_monitor       = TradeMonitor()
+        # Cross-wire: both directions so each can call the other's close/deregister methods.
+        self.order_manager.inject_trade_monitor(self.trade_monitor)
+        self.trade_monitor.inject_order_manager(self.order_manager)
+        # Re-register any positions restored from the journal so TradeMonitor
+        # monitors their SL/target and can fire adaptive profit extension on them.
+        for _carry in self.order_manager.get_open_orders():
+            self.trade_monitor.register(_carry)
+            log.debug("[Orchestrator] TradeMonitor registered carry: %s %s",
+                      _carry.symbol, _carry.order_id)
 
         # ── Meta-Control: Strategy Health Monitor (between Monitoring & Learning)
         self.strategy_health     = StrategyHealthMonitor()
@@ -263,6 +284,11 @@ class MasterOrchestrator:
         self.edge_discovery = EdgeDiscoveryEngine()
         # Cache last snapshot so the EOD learning cycle can run EDE
         self._last_snapshot: Optional[MarketSnapshot] = None
+        # Feed-degraded escalation counter (symbol → consecutive degraded cycles)
+        self._feed_degraded_counts: dict = {}
+        # Monitoring continuity: tracks last successful _do_monitor execution.
+        # Used by FIX #3 blackout detection to emit [MonitoringGap] warnings.
+        self._last_monitor_ts: Optional[datetime] = None
 
         # ── Persistence + Notifications ───────────────────────────────
         try:
@@ -321,6 +347,13 @@ class MasterOrchestrator:
                      event.source_agent)
         self._halt = True
         self.order_manager.close_all_positions()
+        # Mark session dirty — streak must reset at EOD
+        try:
+            from learning_system.strategy_performance_tracker import get_stability_ledger
+            get_stability_ledger().flag_session_issue(
+                f"SYSTEM_HALT from {event.source_agent}")
+        except Exception:
+            pass
 
     def _on_drawdown_alert(self, event):
         pct = event.payload.get("drawdown_pct", 0) * 100
@@ -328,6 +361,13 @@ class MasterOrchestrator:
         if pct >= MAX_DRAWDOWN_PCT * 100:
             self._halt = True
             self.order_manager.close_all_positions()
+            # Mark session dirty — a real drawdown halt is a structural event
+            try:
+                from learning_system.strategy_performance_tracker import get_stability_ledger
+                get_stability_ledger().flag_session_issue(
+                    f"DRAWDOWN_HALT {pct:.1f}%")
+            except Exception:
+                pass
 
     # ── Continuous Monitoring callbacks (Q2) ──────────────────────────────────
 
@@ -369,9 +409,18 @@ class MasterOrchestrator:
         """
         Called by MarketMonitor when a scheduled deep-scan time fires.
         Triggers the appropriate analysis layer.
+        scan_name may carry a correlation ID: "{name}#{id}" — strip before use.
         """
-        log.info("[Orchestrator] 🕐 Scheduled deep scan: %s", scan_name)
+        # Parse optional correlation ID embedded by MarketMonitor
+        if "#" in scan_name:
+            actual_name, scan_id = scan_name.split("#", 1)
+        else:
+            actual_name, scan_id = scan_name, scan_name
+
+        log.info("[Orchestrator] [ScanStart] id=%s scan=%s", scan_id, actual_name)
+        _t0 = time.monotonic()
         if self._halt:
+            log.info("[Orchestrator] [ScanDone]  id=%s scan=%s result=HALTED duration=0ms", scan_id, actual_name)
             return
         try:
             # Force-expire the GlobalDataAI cache so the next cycle fetches fresh data
@@ -380,20 +429,21 @@ class MasterOrchestrator:
             except Exception:
                 pass
 
-            if scan_name == "market_open_regime":
+            if actual_name == "market_open_regime":
                 # Re-run regime classification with fresh data
                 raw = self.market_data_ai.fetch()
                 self.market_regime_ai.classify(raw)
-            elif scan_name in ("first_opportunity_scan", "mid_morning_scan",
+            elif actual_name in ("first_opportunity_scan", "strategy_evaluation",
+                               "mid_morning_scan", "mid_session_scan",
                                "afternoon_scan", "early_afternoon_scan"):
                 # Lightweight opportunity re-scan (non-blocking)
                 self.task_queue.submit_to(
                     "MasterOrchestrator",
                     self.run_full_cycle,
                     priority=Priority.HIGH,
-                    description=f"deep_scan:{scan_name}",
+                    description=f"deep_scan:{actual_name}:{scan_id}",
                 )
-            elif scan_name == "closing_analysis":
+            elif actual_name == "closing_analysis":
                 log.info("[Orchestrator] Closing analysis — checking positions.")
                 self.bus.publish(SystemEvent(
                     event_type=EventType.CYCLE_STARTED,
@@ -401,13 +451,24 @@ class MasterOrchestrator:
                     payload={"ts": datetime.now().isoformat(), "label": "closing_analysis"},
                 ))
                 self.trade_monitor.check_open_positions()
+                # Also evaluate options exit conditions
+                try:
+                    _closed = self.options_order_manager.check_exits()
+                    if _closed:
+                        log.info("[Orchestrator] Options check_exits: %d position(s) closed.", _closed)
+                except Exception as _oe:
+                    log.debug("[Orchestrator] options check_exits error: %s", _oe)
                 self.bus.publish(SystemEvent(
                     event_type=EventType.CYCLE_COMPLETE,
                     source_agent="MasterOrchestrator",
                     payload={"label": "closing_analysis"},
                 ))
+            _dur = int((time.monotonic() - _t0) * 1000)
+            log.info("[Orchestrator] [ScanDone]  id=%s scan=%s result=OK duration=%dms", scan_id, actual_name, _dur)
         except Exception as exc:
-            log.warning("[Orchestrator] Deep scan error (%s): %s", scan_name, exc)
+            _dur = int((time.monotonic() - _t0) * 1000)
+            log.warning("[Orchestrator] [ScanDone]  id=%s scan=%s result=ERROR duration=%dms: %s",
+                        scan_id, actual_name, _dur, exc)
 
     # ──────────────────────────────────────────────────────────────────
     # PRIMARY CYCLE
@@ -641,6 +702,22 @@ class MasterOrchestrator:
         with self.system_monitor.time_layer("RiskControl"):
             approved_signals = self._run_risk_control(cre_signals, snapshot)
         if self._abort_if_timed_out("RiskControl"): return
+
+        # ── STEP 4b: Options Fast-Path ────────────────────────────────
+        # Options/spread signals must NOT pass through the equity-oriented
+        # gates below (MarketSimulation stability, Debate R:R scoring,
+        # SmartExecution, DecisionEngine 6.8 threshold).  Route them directly
+        # to OptionsRiskEngine → OptionsOrderManager here, then continue with
+        # equity signals only for the remaining steps.
+        _options_signals = [s for s in approved_signals
+                            if s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD)]
+        approved_signals = [s for s in approved_signals
+                            if s.signal_type not in (_SigType.OPTIONS, _SigType.SPREAD)]
+
+        if _options_signals:
+            log.info("── Options Fast-Path: %d signal(s) ──", len(_options_signals))
+            self._run_options_fast_path(_options_signals, snapshot)
+
         # ── STEP 4.5: Market Simulation ────────────────────────────────
         with self.system_monitor.time_layer("MarketSimulation"):
             sim_result: SimulationResult = self.simulation_engine.run(
@@ -923,10 +1000,22 @@ class MasterOrchestrator:
 
     def _run_opportunity_engine(self, snapshot: MarketSnapshot,
                                 odm_directive=None) -> List[TradeSignal]:
+        import time as _t
         log.info("── Layer 3: Opportunity Engine ──")
+
+        _t0 = _t.monotonic()
         equity_signals  = self.equity_scanner.scan(snapshot, odm_directive=odm_directive)
+        _t1 = _t.monotonic()
+
         options_signals = self.options_opportunity.scan(snapshot)
+        _t2 = _t.monotonic()
+
         arb_signals     = self.arbitrage_ai.scan(snapshot)
+        _t3 = _t.monotonic()
+
+        log.info("[OE-timing] equity=%.0fms  options=%.0fms  arb=%.0fms",
+                 (_t1 - _t0) * 1000, (_t2 - _t1) * 1000, (_t3 - _t2) * 1000)
+
         all_signals     = (equity_signals + options_signals + arb_signals)
         log.info("  Found %d raw opportunities", len(all_signals))
 
@@ -975,7 +1064,11 @@ class MasterOrchestrator:
         self.strategy_health.print_health_report()
         self.meta_strategy.print_activation_report(snapshot, passing_set, all_strategies)
 
-        matched = self.strategy_generator.assign_strategy(signals, snapshot)
+        matched = self.strategy_generator.assign_strategy(
+            signals, snapshot,
+            excluded_strategies=shm_disabled | perf_disabled,
+            shm_ref=self.strategy_health,
+        )
         evolved = self.strategy_evolution.apply_evolved_params(matched)
         tested  = self.backtesting_ai.filter_by_backtest(
             evolved, vix=snapshot.vix, regime=snapshot.regime
@@ -993,10 +1086,333 @@ class MasterOrchestrator:
         ))
         return tested
 
+    # ── Options-specific constants ──────────────────────────────────────────
+    # Minimum confidence to enter an options trade.  Higher than equity
+    # (6.0) because options skip the 5-agent debate that normally validates
+    # signal quality — we compensate with stricter chain quality gates.
+    _OPTIONS_MIN_CONFIDENCE   = 6.5
+
+    # IVR must be ≥ this to sell premium (IC / short spreads)
+    _IVR_SELL_MIN             = 20.0
+
+    # IVR must be ≤ this to buy volatility (Straddle / debit spreads)
+    _IVR_BUY_MAX              = 55.0
+
+    # DTE window: don't enter outside this range (gamma / theta trade-off).
+    # VIX-adaptive: high VIX compresses the window to shorter expiries where
+    # the position reaches its profit target faster and carries less event risk.
+    _DTE_MIN                  = 10
+    _DTE_MAX                  = 60
+    # VIX thresholds used to adapt the DTE window at runtime
+    _VIX_HIGH_DTE_MAX         = 30    # DTE_MAX when VIX ≥ 25  (high vol — shorter)
+    _VIX_LOW_DTE_MIN          = 20    # DTE_MIN when VIX < 15  (low vol — longer)
+
+    # Chain quality score minimum (0.0–1.0, see OptionsFeed.chain_quality_score)
+    _CHAIN_QUALITY_MIN        = 0.5
+
+    def _run_options_fast_path(self, signals: List[TradeSignal],
+                               snapshot: MarketSnapshot) -> None:
+        """
+        Proper multi-layer execution path for OPTIONS and SPREAD signals.
+
+        Equity pipeline gates that are bypassed (wrong calibration):
+          ✗  RiskManagerAI    — 2.0 R:R threshold doesn't apply to credit spreads
+          ✗  MarketSimulation — stability threshold calibrated for equities
+          ✗  CorrelationEngine — sector-based; index options are uncorrelated
+          ✗  SmartExecution   — equity-specific position filtering
+          ✗  MultiAgentDebate — R:R scoring penalises credit strategies
+          ✗  DecisionEngine   — 6.8 threshold built for directional equity
+
+        Options-specific gates applied (4 independent layers):
+          Layer A: Universal kill-switch  — VIX > 45, trading disabled
+          Layer B: Signal quality gate    — live data, confidence, DTE, IVR-strategy fit
+          Layer C: OptionsRiskEngine      — capital %, per-trade loss, VIX sell limit, lot sizing
+          Layer D: OptionsOrderManager    — execution, position limit, duplicate check
+        """
+        log.info("── Options Fast-Path: %d signal(s) entering 4-layer validation ──",
+                 len(signals))
+
+        # ── LAYER A: Universal Kill-Switch ─────────────────────────────
+        # These thresholds match RiskGuardian's hard-coded limits exactly.
+        # Options must never trade when the entire system is halted.
+        if not is_trading_enabled():
+            log.warning("[OptionsFastPath] ⛔ Kill switch active — all options blocked.")
+            return
+
+        if snapshot.vix > 45.0:
+            log.warning(
+                "[OptionsFastPath] ⛔ VIX=%.1f > 45 — extreme market stress, "
+                "options blocked (all strategies).", snapshot.vix
+            )
+            return
+
+        # ── LAYER B: Signal Quality Gate ────────────────────────────────
+        qualified = self._options_quality_gate(signals, snapshot)
+        if not qualified:
+            return
+
+        # ── LAYERS C + D: Risk sizing + Execution ───────────────────────
+        _sig_ctx = {
+            "regime": (
+                snapshot.regime.value
+                if hasattr(snapshot.regime, "value")
+                else str(snapshot.regime)
+            ),
+            "vix": snapshot.vix,
+        }
+        for signal in qualified:
+            # Layer C: OptionsRiskEngine
+            approved = self.options_risk_engine.approve_and_size(
+                signal, snapshot,
+                open_exposure_rs=self.options_order_manager.get_total_options_exposure_rs(),
+            )
+            if not approved:
+                log.info(
+                    "[OptionsFastPath] ❌ [LayerC] Risk engine rejected %s %s.",
+                    signal.symbol, signal.strategy_name,
+                )
+                continue
+
+            # Layer D: OptionsOrderManager
+            order = self.options_order_manager.execute(signal, _DecisionResult(
+                approved=True,
+                confidence_score=signal.confidence,
+                position_size_modifier=1.0,
+                reasoning="options_quality_gate_approved",
+            ), signal_context=_sig_ctx)
+
+            if order:
+                log.info(
+                    "[OptionsFastPath] ✅ PLACED %s  %s  lots=%d  "
+                    "max_loss=₹%.0f  DTE=%d  chain_quality=%.2f",
+                    order.order_id, order.strategy, order.lots,
+                    order.max_loss_rs, order.dte_at_entry,
+                    signal._meta_quality if hasattr(signal, "_meta_quality") else 1.0,
+                )
+
+                # ── Correlation visibility check ───────────────────────
+                # Index options (NIFTY / BANKNIFTY) share directional exposure
+                # with any open equity position.  This is a WARNING only —
+                # the trade has already been placed.  Visibility so the user
+                # can make informed decisions about total index exposure.
+                _INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY"}
+                if signal.symbol in _INDEX_SYMBOLS:
+                    try:
+                        _eq_open = self.order_manager.get_open_orders()
+                        if _eq_open:
+                            _eq_syms = [o.symbol for o in _eq_open]
+                            log.warning(
+                                "[CorrelationWarning] Index options + equity exposure overlap detected. "
+                                "Options: %s %s  |  Open equity positions: %s  "
+                                "— combined index exposure not independently diversified.",
+                                signal.symbol, signal.strategy_name or "",
+                                ", ".join(_eq_syms),
+                            )
+                    except Exception:
+                        pass   # visibility only — never block execution
+
+                self.bus.publish(ExecutionEvent(
+                    event_type=EventType.ORDER_PLACED,
+                    source_agent="OptionsOrderManager",
+                    payload={
+                        "symbol":      signal.symbol,
+                        "order_id":    order.order_id,
+                        "entry_price": signal.entry_price,
+                        "strategy":    signal.strategy_name or "",
+                        "lots":        order.lots,
+                        "lot_size":    order.lot_size,
+                        "max_loss_rs": order.max_loss_rs,
+                        "expiry":      order.expiry_date.isoformat(),
+                        "dte":         order.dte_at_entry,
+                    },
+                ))
+
+        # Run exit checks each cycle to close positions that hit SL/TP/DTE
+        self.options_order_manager.check_exits()
+
+    def _options_quality_gate(
+        self,
+        signals:  List[TradeSignal],
+        snapshot: MarketSnapshot,
+    ) -> List[TradeSignal]:
+        """
+        Options-specific multi-check quality filter.
+
+        Replaces the equity Debate + DecisionEngine for options signals.
+        Each check is independent — all must pass.
+
+        Check 1: Live data only — synthetic B-S chain rejected
+        Check 2: Minimum confidence threshold (OPTIONS_MIN_CONFIDENCE = 6.5)
+        Check 3: Chain quality score ≥ 0.5 (from OptionsFeed.chain_quality_score)
+        Check 4: DTE window (VIX-adaptive):
+                   VIX ≥ 25 → DTE 10–30 (shorter expiry during high vol)
+                   VIX < 15 → DTE 20–60 (longer expiry during low vol)
+                   else     → DTE 10–60 (normal window)
+        Check 5: IVR–strategy alignment
+          • Iron Condor / short spread: IVR ≥ 20 (enough premium to collect)
+          • Long Straddle / debit buy:  IVR ≤ 55 (don't overpay for vol)
+        Check 6: Correlation de-duplication
+          • If two index signals share the same directional bias (both BUY or
+            both SELL), only the higher-confidence one is kept.  Neutral
+            strategies (Iron Condor / Straddle) are exempt.
+        """
+        import json as _json
+        passed: List[TradeSignal] = []
+
+        # ── Compute VIX-adaptive DTE bounds for this cycle ─────────────
+        vix = snapshot.vix
+        if vix >= 25.0:
+            dte_min = self._DTE_MIN                  # 10
+            dte_max = self._VIX_HIGH_DTE_MAX         # 30 — shorter expiry during stress
+            _dte_note = f"[VIX={vix:.1f}≥25 → DTE cap={dte_max}]"
+        elif vix < 15.0:
+            dte_min = self._VIX_LOW_DTE_MIN          # 20 — avoid theta waste on shorts
+            dte_max = self._DTE_MAX                  # 60
+            _dte_note = f"[VIX={vix:.1f}<15 → DTE floor={dte_min}]"
+        else:
+            dte_min = self._DTE_MIN                  # 10
+            dte_max = self._DTE_MAX                  # 60
+            _dte_note = f"[VIX={vix:.1f} normal window]"
+
+        log.debug("[OptionsQuality] DTE window: %d–%d %s", dte_min, dte_max, _dte_note)
+
+        for sig in signals:
+            sym = sig.symbol
+            strat = sig.strategy_name or ""
+
+            # Parse signal metadata
+            meta: dict = {}
+            try:
+                meta = _json.loads(sig.notes or "{}")
+            except Exception:
+                pass
+
+            is_live      = meta.get("is_live", False)
+            chain_qual   = meta.get("chain_quality", 0.0)
+            dte          = meta.get("dte", 0)
+            iv_rank      = meta.get("iv_rank", 50.0)
+            chain_issues = meta.get("chain_issues", [])
+
+            # Check 1: Live data gate
+            if not is_live:
+                log.info(
+                    "[OptionsQuality] ❌ [C1] %s %s — synthetic data, not permitted.",
+                    sym, strat,
+                )
+                continue
+
+            # Check 2: Confidence threshold
+            if sig.confidence < self._OPTIONS_MIN_CONFIDENCE:
+                log.info(
+                    "[OptionsQuality] ❌ [C2] %s %s — confidence %.1f < %.1f.",
+                    sym, strat, sig.confidence, self._OPTIONS_MIN_CONFIDENCE,
+                )
+                continue
+
+            # Check 3: Chain quality score
+            if chain_qual < self._CHAIN_QUALITY_MIN:
+                log.warning(
+                    "[OptionsQuality] ❌ [C3] %s %s — chain_quality=%.2f < %.2f. "
+                    "Issues: %s",
+                    sym, strat, chain_qual, self._CHAIN_QUALITY_MIN,
+                    "; ".join(chain_issues) if chain_issues else "unknown",
+                )
+                continue
+
+            # Check 4: VIX-adaptive DTE window
+            if dte < dte_min:
+                log.info(
+                    "[OptionsQuality] ❌ [C4] %s %s — DTE=%d < %d %s.",
+                    sym, strat, dte, dte_min, _dte_note,
+                )
+                continue
+            if dte > dte_max:
+                log.info(
+                    "[OptionsQuality] ❌ [C4] %s %s — DTE=%d > %d %s.",
+                    sym, strat, dte, dte_max, _dte_note,
+                )
+                continue
+
+            # Check 5: IVR–strategy alignment
+            is_credit_strat = any(k in strat for k in ["Iron_Condor", "Bear_Put_Spread",
+                                                         "Bull_Call_Spread"])
+            is_buy_vol_strat = "Straddle" in strat or "Strangle" in strat
+
+            if is_credit_strat and iv_rank < self._IVR_SELL_MIN:
+                log.info(
+                    "[OptionsQuality] ❌ [C5] %s %s — IVR=%.0f < %.0f, "
+                    "insufficient premium to sell.",
+                    sym, strat, iv_rank, self._IVR_SELL_MIN,
+                )
+                continue
+
+            if is_buy_vol_strat and iv_rank > self._IVR_BUY_MAX:
+                log.info(
+                    "[OptionsQuality] ❌ [C5] %s %s — IVR=%.0f > %.0f, "
+                    "vol too expensive to buy.",
+                    sym, strat, iv_rank, self._IVR_BUY_MAX,
+                )
+                continue
+
+            sig._meta_quality = chain_qual  # attach for logging in fast-path
+            passed.append(sig)
+            log.info(
+                "[OptionsQuality] ✅ %s %s passed C1–C5  "
+                "confidence=%.1f  DTE=%d  IVR=%.0f  chain_quality=%.2f",
+                sym, strat, sig.confidence, dte, iv_rank, chain_qual,
+            )
+
+        # ── Check 6: Correlation de-duplication ────────────────────────
+        # Both NIFTY and BANKNIFTY are driven by the same broad market.
+        # Two directional signals in the same direction double the index
+        # exposure without adding independent edge.  Keep the higher-confidence
+        # one.  Neutral strategies (Iron Condor, Long Straddle) are exempt
+        # because they profit from range / vol, not a specific direction.
+        _NEUTRAL = {"Iron_Condor_Range", "Long_Straddle"}
+        directional = [s for s in passed
+                       if (s.strategy_name or "") not in _NEUTRAL]
+        neutral     = [s for s in passed
+                       if (s.strategy_name or "") in _NEUTRAL]
+
+        # Group directional signals by bias (BUY / SELL)
+        from models.trade_signal import SignalDirection as _SD
+        buys  = [s for s in directional if s.direction == _SD.BUY]
+        sells = [s for s in directional if s.direction == _SD.SELL]
+
+        def _deduplicate(group: List[TradeSignal]) -> List[TradeSignal]:
+            """If >1 signal in same direction, keep highest confidence only."""
+            if len(group) <= 1:
+                return group
+            best = max(group, key=lambda s: s.confidence)
+            dropped = [s.symbol for s in group if s is not best]
+            log.info(
+                "[OptionsQuality] [C6] Correlation control: keeping %s %s "
+                "(confidence=%.1f); dropping same-direction duplicate(s): %s",
+                best.symbol, best.strategy_name, best.confidence, dropped,
+            )
+            return [best]
+
+        passed = _deduplicate(buys) + _deduplicate(sells) + neutral
+
+        log.info(
+            "[OptionsQuality] %d/%d signal(s) passed all 6 checks (C1–C6).",
+            len(passed), len(signals),
+        )
+        return passed
+
+
+
     def _run_risk_control(self, signals: List[TradeSignal],
                           snapshot: MarketSnapshot) -> List[TradeSignal]:
         log.info("── Layer 5: Risk Control ──")
-        checked    = self.risk_manager.filter(signals)
+        # NOTE: options/spread signals are removed from `signals` before this
+        # function is called (see STEP 4b options fast-path above).
+        # This function only handles equity and futures signals.
+
+        # Use heat-split filter so we can hand heat-blocked elite signals to
+        # the institutional rotation engine (SmartSwap 2.0).
+        checked, heat_blocked = self.risk_manager.filter_with_heat_split(signals)
+
         sized      = self.portfolio_allocator.size_positions(checked, snapshot)
         stressed   = self.stress_test_ai.validate(sized, snapshot)
         log.info("  %d signals passed risk control", len(stressed))
@@ -1015,7 +1431,189 @@ class MasterOrchestrator:
                 payload={"approved": len(stressed)},
             ))
 
+        # ── SmartSwap 2.0: Institutional Rotation Engine ──────────────
+        # Only heat-blocked signals that are independently valid enter here.
+        # This is an upgrade path, never a rescue mechanism.
+        if heat_blocked:
+            log.info(
+                "[RotationEngine] %d heat-blocked candidate(s) entering rotation eval.",
+                len(heat_blocked),
+            )
+            portfolio = self.order_manager.get_portfolio()
+            self._institutional_rotation_engine(heat_blocked, snapshot, portfolio)
+
         return stressed
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # INSTITUTIONAL ROTATION ENGINE — SmartSwap 2.0
+    # Portfolio-level upgrade path.  Only elite signals blocked by heat enter.
+    # Never a rescue mechanism — only an upgrade mechanism.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _institutional_rotation_engine(
+        self,
+        heat_blocked: List[TradeSignal],
+        snapshot: "MarketSnapshot",
+        portfolio: "Portfolio",
+    ) -> None:
+        """
+        Institutional SmartSwap 2.0.
+
+        Called with signals that passed all risk checks EXCEPT portfolio heat.
+        Each candidate is evaluated through 7 strict institutional gates.
+        If all gates pass, the single weakest position is closed and the
+        incoming elite trade is opened.  Max 1 rotation per calendar day.
+
+        Gate summary
+        ─────────────
+        1. Incoming score ≥ 8.0  (elite only — enforced upstream by heat-split,
+           but double-checked here for defensive correctness)
+        2. A weak existing position exists (R ≤ 0.25 OR stale > 3 days)
+        3. Score edge: new_score ≥ weakest_score + 1.0
+        4. No same-thesis duplication (same symbol OR same strategy_name)
+        5. Daily rotation cap: max 1 forced rotation per calendar day
+        6. No late-day rotations after 13:30 IST
+        7. Forced-close loss cap: do not rotate if position is down > -0.50 R
+        """
+        today = datetime.now().date()
+
+        for sig in heat_blocked:
+            sig.notes += " [reason=HEAT_BLOCK_ROTATION_CANDIDATE]"
+            log.info(
+                "[RotationEval] %s %s score=%.2f reason=HEAT_BLOCK_ROTATION_CANDIDATE",
+                sig.symbol, sig.direction, sig.confidence,
+            )
+
+            # ── Gate 1: Elite incoming signal ─────────────────────────────────
+            if sig.confidence < 8.0:
+                log.info(
+                    "[RotationReject] %s score=%.2f < 8.0 — not elite",
+                    sig.symbol, sig.confidence,
+                )
+                continue
+
+            # ── Gate 5: Daily rotation cap ────────────────────────────────────
+            last_date = getattr(self, "_last_rotation_date", None)
+            if last_date == today:
+                log.info(
+                    "[RotationReject] %s — daily rotation cap reached (1/day). "
+                    "Next eligible: tomorrow.",
+                    sig.symbol,
+                )
+                continue
+
+            # ── Gate 6: No late-day rotations ─────────────────────────────────
+            now = datetime.now()
+            cutoff = now.replace(hour=13, minute=30, second=0, microsecond=0)
+            if now >= cutoff:
+                log.info(
+                    "[RotationReject] %s — after 13:30 IST cutoff (%s). "
+                    "Too late to rotate safely.",
+                    sig.symbol, now.strftime("%H:%M"),
+                )
+                continue
+
+            # ── Gate 2: Find weakest eligible existing position ───────────────
+            # Deterministic: rank by (r_multiple ASC, days_open DESC).
+            weakest: Optional["Position"] = None
+            weakest_r: float = float("inf")
+            weakest_days: int = 0
+
+            for pos in portfolio.positions.values():
+                r = pos.r_multiple
+                days_open = (now - pos.entry_time).days
+
+                # Eligible for replacement: weak R or stale
+                if r <= 0.25 or days_open > 3:
+                    # Choose the weakest (lowest R); break ties by oldest
+                    if (weakest is None
+                            or r < weakest_r
+                            or (r == weakest_r and days_open > weakest_days)):
+                        weakest = pos
+                        weakest_r = r
+                        weakest_days = days_open
+
+            if weakest is None:
+                log.info(
+                    "[RotationReject] %s — no weak/stale position eligible for rotation "
+                    "(all positions healthy R > 0.25 and age ≤ 3 days).",
+                    sig.symbol,
+                )
+                continue
+
+            log.info(
+                "[RotationEval] Weakest position: %s R=%.2f days=%d",
+                weakest.symbol, weakest_r, weakest_days,
+            )
+
+            # ── Gate 3: Score edge — new must outperform by ≥ 1.0 ────────────
+            weakest_confidence = getattr(weakest, "confidence", 0.0)
+            score_edge = sig.confidence - weakest_confidence
+            if score_edge < 1.0:
+                log.info(
+                    "[RotationReject] %s score_edge=%.2f < 1.0 "
+                    "(new=%.1f old=%.1f). Not enough improvement.",
+                    sig.symbol, score_edge, sig.confidence, weakest_confidence,
+                )
+                continue
+
+            # ── Gate 4: No same-thesis duplication ───────────────────────────
+            if (sig.symbol == weakest.symbol
+                    or sig.strategy_name == weakest.strategy_name):
+                log.info(
+                    "[RotationReject] %s — same thesis as target position %s "
+                    "(symbol=%s strategy=%s). Rotation would not diversify.",
+                    sig.symbol, weakest.symbol,
+                    sig.symbol == weakest.symbol,
+                    sig.strategy_name == weakest.strategy_name,
+                )
+                continue
+
+            # ── Gate 7: Forced-close loss cap (-0.50 R) ───────────────────────
+            if weakest_r < -0.50:
+                log.info(
+                    "[RotationReject] %s — target position %s is down %.2f R "
+                    "(limit -0.50 R). Closing a deep loser is a stop-loss, "
+                    "not a rotation. Use normal SL management.",
+                    sig.symbol, weakest.symbol, weakest_r,
+                )
+                continue
+
+            # ── ALL GATES PASSED ──────────────────────────────────────────────
+            log.warning(
+                "[RotationApproved] ROTATION APPROVED: close %s (R=%.2f, %dd) "
+                "→ open %s (score=%.1f, edge=+%.1f). Executing.",
+                weakest.symbol, weakest_r, weakest_days,
+                sig.symbol, sig.confidence, score_edge,
+            )
+
+            # Close the weakest position via order manager
+            try:
+                self.order_manager.close_position(
+                    weakest.symbol,
+                    reason=f"SMARTSWAP_ROTATION: replaced by {sig.symbol}",
+                )
+            except Exception as exc:
+                log.error(
+                    "[RotationError] Failed to close %s for rotation: %s",
+                    weakest.symbol, exc,
+                )
+                continue
+
+            # Mark daily cap consumed — only 1 rotation per day
+            self._last_rotation_date = today
+
+            # Route the incoming signal through the full debate + decision path
+            try:
+                self._run_debate_and_decide(sig, snapshot)
+            except Exception as exc:
+                log.error(
+                    "[RotationError] Failed to open %s after rotation close: %s",
+                    sig.symbol, exc,
+                )
+
+            # Process at most one rotation per cycle regardless of candidate count
+            break
 
     def _run_debate_and_decide(self, signal: TradeSignal,
                                 snapshot: MarketSnapshot) -> dict | None:
@@ -1037,6 +1635,10 @@ class MasterOrchestrator:
                     "votes":    {v.agent_name: v.score for v in votes},
                 },
             ))
+
+            # ── Equity / Futures path (original logic) ─────────────────
+            # NOTE: OPTIONS/SPREAD signals are handled in _run_options_fast_path()
+            # BEFORE the debate loop.  They will never appear here.
             order = self.order_manager.execute(
                 signal,
                 decision,
@@ -1160,6 +1762,174 @@ class MasterOrchestrator:
     # MONITORING & LEARNING
     # ──────────────────────────────────────────────────────────────────
 
+    def _post_restore_governance_pass(self) -> None:
+        """
+        FIX #2 — Restart Recovery Safety Pass.
+
+        Immediately after _restore_from_journal() restores carry positions,
+        run a full governance reconciliation BEFORE the normal scheduler resumes.
+        This ensures no restored position waits up to 5 minutes for its first
+        SL/adaptive/carry-expiry check after a restart or crash window.
+
+        Evaluates in order:
+          1. Fetch fresh LTP via MarketDataRouter
+          2. Update market context (regime + VIX from last snapshot)
+          3. call check_all() — fires SL/adaptive/carry-expiry immediately
+          4. Record reconciliation stats via order_manager.update_restore_stats()
+          5. Telegram alert if market is open and any immediate actions fired
+        """
+        restored = self.order_manager.get_open_orders()
+        if not restored:
+            log.info("[PostRestoreGovernance] No carry positions — pass complete (clean start).")
+            return
+
+        log.info(
+            "[PostRestoreGovernance] ▶ Running immediate governance pass for "
+            "%d restored position(s) — evaluating SL/adaptive/carry-expiry now.",
+            len(restored),
+        )
+
+        # Measure monitoring gap: time since last successful _do_monitor call.
+        _gap_sec = 0
+        if self._last_monitor_ts is not None:
+            _gap_sec = int((datetime.now() - self._last_monitor_ts).total_seconds())
+            if _gap_sec > 60:
+                log.warning(
+                    "[PostRestoreGovernance] Monitoring gap detected: %d sec "
+                    "(%d min) — positions unmonitored during restart window.",
+                    _gap_sec, _gap_sec // 60,
+                )
+
+        # Fetch live prices
+        _live_pf: dict = {}
+        _degraded_syms: set = set()
+        try:
+            from data_feeds.market_data_router import get_market_data_router
+            _router  = get_market_data_router()
+            _syms    = list({o.symbol for o in restored})
+            _quotes  = _router.get_live_prices(_syms)
+            _degraded_syms = _router.get_degraded_symbols()
+            for sym, q in _quotes.items():
+                if q and getattr(q, "ltp", 0) > 0:
+                    _live_pf[sym] = float(q.ltp)
+            log.info(
+                "[PostRestoreGovernance] LTP fetch: %d/%d symbols live  degraded=%s",
+                len(_live_pf), len(_syms), sorted(_degraded_syms) or "none",
+            )
+        except Exception as _exc:
+            log.warning("[PostRestoreGovernance] LTP fetch failed: %s", _exc)
+
+        # Update market context
+        if self._last_snapshot:
+            try:
+                _regime_str = (
+                    self._last_snapshot.regime.value
+                    if hasattr(self._last_snapshot.regime, "value")
+                    else str(self._last_snapshot.regime)
+                )
+                self.trade_monitor.update_market_context(_regime_str, self._last_snapshot.vix)
+            except Exception:
+                pass
+
+        # ── Migration-era plausibility validation ─────────────────────────
+        # Compare stored entry_price against current live LTP.
+        # A large deviation (>50%) indicates a possible instrument mapping
+        # change, corporate action (demerger/split/bonus), or stale CSV data
+        # from a pre-migration session.  These are flagged as
+        # RECONCILIATION_SUSPECT so they can be investigated before SL fires.
+        _PLAUSIBILITY_THRESHOLD = 0.50   # 50% max acceptable deviation
+        _reconciliation_suspects: list = []
+        for _rec in restored:
+            _entry = getattr(_rec, "entry_price", 0)
+            _ltp   = _live_pf.get(_rec.symbol)
+            if _ltp and _entry > 0:
+                _deviation = abs(_ltp - _entry) / _entry
+                if _deviation > _PLAUSIBILITY_THRESHOLD:
+                    _reconciliation_suspects.append(_rec.symbol)
+                    log.warning(
+                        "[PostRestoreGovernance] RECONCILIATION_SUSPECT %s "
+                        "entry=%.2f  ltp=%.2f  deviation=%.0f%% — "
+                        "possible instrument mapping change (demerger/split?) "
+                        "or stale pre-migration position.  "
+                        "SL governance remains active; manual review advised.",
+                        _rec.symbol, _entry, _ltp, _deviation * 100,
+                    )
+        if _reconciliation_suspects:
+            try:
+                from notifications.notifier_manager import get_notifier
+                get_notifier().send_alert(
+                    f"⚠️ RECONCILIATION_SUSPECT on restore: "
+                    f"{_reconciliation_suspects}\n"
+                    f"Entry prices deviate >50% from current LTP. "
+                    f"Check for demerger/corporate action or stale CSV data."
+                )
+            except Exception:
+                pass
+        # ── End plausibility check ─────────────────────────────────────────
+
+        # Immediate governance check
+        _open_before = len(self.trade_monitor.get_open_trades())
+        if _live_pf:
+            try:
+                self.trade_monitor.check_all(_live_pf, degraded_symbols=_degraded_syms)
+                log.info("[PostRestoreGovernance] check_all complete.")
+            except Exception as _ca_exc:
+                log.warning("[PostRestoreGovernance] check_all error: %s", _ca_exc)
+        else:
+            log.warning(
+                "[PostRestoreGovernance] No live prices available — "
+                "SL check deferred to first scheduler monitor cycle."
+            )
+
+        # Also run carry-expiry check with live prices
+        try:
+            _n_expired = self.order_manager.check_and_expire_carries(_live_pf)
+            if _n_expired:
+                log.info(
+                    "[PostRestoreGovernance] CarryExpiry: %d position(s) "
+                    "expired immediately at restart.", _n_expired,
+                )
+        except Exception as _ce_exc:
+            log.warning("[PostRestoreGovernance] CarryExpiry check failed: %s", _ce_exc)
+
+        _open_after = len(self.trade_monitor.get_open_trades())
+        _immediate_actions = _open_before - _open_after
+
+        # Record stats
+        try:
+            self.order_manager.update_restore_stats(
+                monitoring_gap_seconds = _gap_sec,
+                reconciled_count       = len(restored),
+                immediate_sl_hits      = max(0, _immediate_actions),
+            )
+        except Exception:
+            pass
+
+        # Telegram alert (market hours only)
+        if self._is_market_session():
+            try:
+                from notifications.notifier_manager import get_notifier
+                _lines = [
+                    f"Restart governance pass: {len(restored)} position(s) checked",
+                    f"Gap: {_gap_sec // 60} min  Live prices: {len(_live_pf)}/{len(restored)}",
+                ]
+                if _immediate_actions:
+                    _lines.append(
+                        f"⚠️ {_immediate_actions} position(s) acted on immediately "
+                        f"(SL/expiry breach during restart window)"
+                    )
+                if _degraded_syms:
+                    _lines.append(f"Feed degraded: {sorted(_degraded_syms)}")
+                get_notifier().send_alert("\n".join(_lines))
+            except Exception:
+                pass
+
+        log.info(
+            "[PostRestoreGovernance] ✅ Complete — reconciled=%d  "
+            "immediate_actions=%d  gap=%ds",
+            len(restored), _immediate_actions, _gap_sec,
+        )
+
     def monitor_open_positions(self) -> None:
         """Called on a tick / every few minutes for live management."""
         # Submit as a background task so it never blocks a trading cycle
@@ -1172,6 +1942,37 @@ class MasterOrchestrator:
 
     def _do_monitor(self):
         """Internal — runs inside the TradeMonitor worker thread."""
+        # ── FIX #3: Monitoring blackout detection ─────────────────────────
+        _now_ts = datetime.now()
+        _MONITOR_INTERVAL_SEC = 5 * 60   # expected 5-min cycle
+        if self._last_monitor_ts is not None:
+            _gap_sec = (_now_ts - self._last_monitor_ts).total_seconds()
+            if _gap_sec > _MONITOR_INTERVAL_SEC * 2:   # > 10 min = blackout
+                _open_count = len(self.trade_monitor.get_open_trades())
+                log.warning(
+                    "[MonitoringGap] %.0f sec gap detected (expected ≤%d sec)  "
+                    "affected_positions=%d  last_monitor=%s",
+                    _gap_sec, _MONITOR_INTERVAL_SEC, _open_count,
+                    self._last_monitor_ts.strftime("%H:%M:%S"),
+                )
+                if _open_count > 0 and self._is_market_session():
+                    try:
+                        from notifications.notifier_manager import get_notifier
+                        get_notifier().send_alert(
+                            f"[MonitoringGap] {_gap_sec/60:.0f} min monitoring blackout "
+                            f"during market hours. {_open_count} position(s) unmonitored.\n"
+                            f"Last monitor: {self._last_monitor_ts.strftime('%H:%M:%S IST')}"
+                        )
+                    except Exception:
+                        pass
+                try:
+                    self.order_manager.update_restore_stats(
+                        monitoring_gap_seconds=int(_gap_sec)
+                    )
+                except Exception:
+                    pass
+        # ── End FIX #3 ────────────────────────────────────────────────────
+
         # Pass latest market context so adaptive exit thresholds are regime-aware
         if self._last_snapshot:
             _regime_str = (
@@ -1180,22 +1981,217 @@ class MasterOrchestrator:
                 else str(self._last_snapshot.regime)
             )
             self.trade_monitor.update_market_context(_regime_str, self._last_snapshot.vix)
-        # Pass live prices so check_all() evaluates real target/SL hits
+        # Pass live prices so check_all() evaluates real target/SL hits.
+        # MarketDataRouter: Dhan-primary, Yahoo-fallback, cache-safety-net.
+        # Accepts bare symbols; returns bare-keyed dict with feed_source set.
         try:
-            from data_feeds.data_feed_manager import get_feed_manager
-            _feed = get_feed_manager()
+            from data_feeds.market_data_router import get_market_data_router
+            _router   = get_market_data_router()
             _open_syms = list({o.symbol for o in self.trade_monitor.get_open_trades()})
             _live_pf: dict = {}
+            _degraded_syms: set = set()
+
             if _open_syms:
-                _quotes = _feed.get_multiple_quotes([f"{s}.NS" for s in _open_syms])
-                for _ns_sym, _q in _quotes.items():
-                    _bare = _ns_sym.replace(".NS", "")
+                _quotes = _router.get_live_prices(_open_syms)
+                _degraded_syms = _router.get_degraded_symbols()
+
+                _INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY", "INDIAVIX"}
+                for _bare, _q in _quotes.items():
                     if _q and getattr(_q, "ltp", 0) > 0:
                         _live_pf[_bare] = float(_q.ltp)
-        except Exception:
+
+                # ── Feed source summary ───────────────────────────────────
+                _stats = _router.get_router_stats()
+                if _stats["last_source_dist"] or _degraded_syms:
+                    log.info(
+                        "[Monitor] Feed: %s  degraded=%s",
+                        _stats["last_source_dist"],
+                        sorted(_degraded_syms),
+                    )
+
+                # ── Batch sanity check ────────────────────────────────────
+                # Dhan typically returns correct prices; this guard catches
+                # edge-cases where a feed returns garbage for ALL symbols
+                # simultaneously (e.g. yfinance errno 24 / full-batch failure).
+                _INDEX_SPOT_MIN = 10_000
+                _bad = 0
+                for _sym, _px in list(_live_pf.items()):
+                    if _sym in _INDEX_SYMBOLS:
+                        if _px < _INDEX_SPOT_MIN:
+                            _bad += 1
+                    else:
+                        if not (5.0 < _px < 50_000):
+                            _bad += 1
+                if _bad > 0 and _live_pf and (_bad / len(_live_pf)) > 0.5:
+                    log.warning(
+                        "[Monitor] Batch price sanity FAILED (%d/%d symbols invalid) "
+                        "— discarding entire tick to prevent false SL/target exits.",
+                        _bad, len(_live_pf),
+                    )
+                    _live_pf = {}
+                elif _bad > 0:
+                    for _sym in [s for s, p in list(_live_pf.items())
+                                 if (s in _INDEX_SYMBOLS and p < _INDEX_SPOT_MIN)
+                                 or (s not in _INDEX_SYMBOLS and not (5.0 < p < 50_000))]:
+                        log.warning(
+                            "[Monitor] Dropping corrupt price for %s: %.2f",
+                            _sym, _live_pf.pop(_sym),
+                        )
+
+                # ── Feed-degraded escalation (Telegram alert at 6 cycles ≈ 30 min) ─
+                _FEED_DEGRADED_ALERT_CYCLES = 6
+                for _sym in list(self._feed_degraded_counts.keys()):
+                    if _sym not in _degraded_syms:
+                        self._feed_degraded_counts.pop(_sym, None)
+                for _sym in _degraded_syms:
+                    cnt = self._feed_degraded_counts.get(_sym, 0) + 1
+                    self._feed_degraded_counts[_sym] = cnt
+                    if cnt == _FEED_DEGRADED_ALERT_CYCLES:
+                        log.warning(
+                            "[Orchestrator] FEED_DEGRADED_ESCALATION %s "
+                            "-- %d consecutive cycles with no live price",
+                            _sym, cnt,
+                        )
+                        try:
+                            from notifications.notifier_manager import get_notifier
+                            get_notifier().send_alert(
+                                f"[FEED_DEGRADED] {_sym} has had no live price "
+                                f"for {cnt} consecutive monitoring cycles (~30 min). "
+                                "SL monitoring suppressed. Manual review recommended."
+                            )
+                        except Exception:
+                            pass
+
+        except Exception as _mon_exc:
+            log.warning("[Monitor] Price fetch failed: %s", _mon_exc, exc_info=True)
             _live_pf = {}
-        self.trade_monitor.check_all(price_feed=_live_pf if _live_pf else None)
+            _degraded_syms = set()
+
+        # ── Fix options positions: replace raw spot with synthetic premium ──
+        # NIFTY SELL (Bull_Call_Spread) is priced in option premium units, not
+        # spot units.  Passing spot (24535) against an SL of 1729 would cause
+        # an immediate false SL trigger.  Instead, compute a Black-Scholes
+        # synthetic premium using live spot + India VIX as the IV proxy.
+        _OPTIONS_STRATEGIES = {
+            "bull_call_spread", "bear_put_spread", "iron_condor",
+            "long_straddle", "short_straddle", "covered_call",
+            "bull_put_spread", "bear_call_spread",
+        }
+        _OPT_INDICES = {"NIFTY", "BANKNIFTY", "FINNIFTY"}
+        _options_fixed: dict = {}
+        for _order in self.trade_monitor.get_open_trades():
+            _strat_lo = (_order.strategy or "").lower().replace("_", "").replace("-", "").replace(" ", "")
+            _is_opt   = any(s.replace("_", "") in _strat_lo for s in _OPTIONS_STRATEGIES)
+            if _is_opt and _order.symbol in _OPT_INDICES and _order.symbol in _live_pf:
+                try:
+                    from data_feeds.options_feed import get_options_feed, bs_greeks as _bs_greeks
+                    _spot = _live_pf[_order.symbol]   # live spot from Dhan (Yahoo fallback)
+                    # Guard: NIFTY/BANKNIFTY spot below 10,000 is corrupt data
+                    # (they trade ~20,000–30,000).  Skip this tick rather than
+                    # computing a nonsensical premium that could trigger false exits.
+                    _min_idx_spot = {"NIFTY": 10_000, "BANKNIFTY": 20_000, "FINNIFTY": 10_000}
+                    if _spot < _min_idx_spot.get(_order.symbol, 10_000):
+                        log.warning(
+                            "[Monitor] Skipping options pricing for %s — "
+                            "spot %.0f looks corrupt (min expected %.0f)",
+                            _order.symbol, _spot,
+                            _min_idx_spot.get(_order.symbol, 10_000),
+                        )
+                        continue
+                    _chain = get_options_feed().get_chain(_order.symbol, dte_target=30)
+                    if _chain and _chain.atm_call():
+                        # The chain may be up to 5 min old (cache TTL).
+                        # Recompute the ATM premium with the LIVE spot so that
+                        # the premium tracks the market tick-to-tick.
+                        _ivl   = {"NIFTY": 50.0, "BANKNIFTY": 100.0, "FINNIFTY": 50.0}.get(
+                                     _order.symbol, 50.0)
+                        _atm_k = round(_spot / _ivl) * _ivl
+                        _dte_v = max(_chain.dte, 1)
+                        _iv_v  = _chain.atm_iv if _chain.atm_iv > 0 else 0.16
+                        _bs    = _bs_greeks(_spot, _atm_k, _dte_v / 365.0, 0.065, _iv_v, True)
+                        _syn_premium = max(_bs["price"], 0.01)
+                        _options_fixed[_order.symbol] = _syn_premium
+                        # Slide LTPGuard baseline BEFORE check_all so the
+                        # 20%-deviation guard compares tick-to-tick movement
+                        # (not entry-to-now).  Without this, options positions
+                        # that move 40-60% from entry trigger the guard forever,
+                        # making P&L and exit logic invisible.
+                        self.trade_monitor.seed_ltp(_order.order_id, _syn_premium)
+                        log.info(
+                            "[Monitor] Options synthetic premium %s: %.2f "
+                            "(BS live-recalc, spot=%.0f, atm_k=%.0f, iv=%.1f%%, dte=%d)",
+                            _order.symbol, _syn_premium, _spot, _atm_k,
+                            _iv_v * 100, _dte_v,
+                        )
+                except Exception as _opt_exc:
+                    log.debug("[Monitor] Options pricing error for %s: %s",
+                              _order.symbol, _opt_exc)
+        # Merge — options synthetic prices override raw spot prices
+        _live_pf.update(_options_fixed)
+
+        # ── Pass live prices to trade monitor so SL/target use real prices ──
+        if _live_pf:
+            log.debug("[Monitor] Passing %d live prices to check_all: %s",
+                      len(_live_pf),
+                      {s: round(p, 2) for s, p in _live_pf.items()})
+            _check_all_ok = False
+            try:
+                self.trade_monitor.check_all(_live_pf, degraded_symbols=_degraded_syms)
+                _check_all_ok = True
+            except Exception as _ca_exc:
+                log.warning("[Monitor] check_all error: %s", _ca_exc, exc_info=True)
+
+            # ── Deterministic carry-expiry check ──────────────────────────────
+            # Carry expiry must be time-bound (every cycle) not restart-bound.
+            # Passes the validated live prices so exits use real market prices.
+            try:
+                _n_expired = self.order_manager.check_and_expire_carries(_live_pf)
+                if _n_expired:
+                    log.info("[Monitor] CarryExpiry: closed %d position(s) at live LTP.", _n_expired)
+            except Exception as _ce_exc:
+                log.warning("[Monitor] CarryExpiry check failed: %s", _ce_exc)
+
+            # ── Sync portfolio position LTPs from LTPGuard-validated prices ──────
+            # CRITICAL: use get_resolved_prices() NOT raw _live_pf.
+            # Raw feed values can be garbage at market close (e.g. all NSE stocks
+            # at ~₹1000 when yfinance retries fail).  They pass the coarse batch
+            # sanity check (5 < px < 50,000) but are correctly corrected by
+            # LTPGuard inside check_all().  Using the validated prices here
+            # prevents corrupt values from reaching portfolio.drawdown_pct and
+            # triggering a false emergency_close halt.
+            _validated_pf  = self.trade_monitor.get_resolved_prices() if _check_all_ok else {}
+            _portfolio_obj = self.order_manager.get_portfolio()
+            for _sym, _px in _validated_pf.items():
+                _pos = _portfolio_obj.positions.get(_sym)
+                if _pos is not None:
+                    _pos.ltp = _px
+                    _pos.has_live_ltp = True
+
         portfolio: Portfolio = self.order_manager.get_portfolio()
+
+        # ── P0.5: Freeze drawdown halt-decision on corrupted batch ───────────
+        # If LTPGuard corrected more than 50% of symbols this cycle, the entire
+        # batch is suspect.  The corrected prices are already in portfolio
+        # positions (updated above), so the next clean cycle starts from a good
+        # state.  But we skip the halt-decision here because even the corrected
+        # values may not reflect the true market accurately when a majority of
+        # the feed is broken.  This prevents a false emergency_close from firing.
+        _guard_corr  = self.trade_monitor.get_guard_correction_count()
+        _syms_count  = len(self.trade_monitor.get_resolved_prices())
+        if _guard_corr > 0 and _syms_count > 0 and (_guard_corr / _syms_count) > 0.5:
+            log.warning(
+                "[Monitor] ⚠ BATCH CORRUPTION FREEZE: %d/%d symbols corrected by LTPGuard "
+                "— skipping drawdown halt-check this cycle to prevent false emergency_close.",
+                _guard_corr, _syms_count,
+            )
+            self.bus.publish(RiskEvent(
+                event_type=EventType.PORTFOLIO_UPDATED,
+                source_agent="TradeMonitor",
+                payload={"drawdown_pct": portfolio.drawdown_pct,
+                         "open_positions": len(portfolio.positions),
+                         "data_quality": "CORRUPTED_BATCH_FROZEN"},
+            ))
+            return
 
         self.bus.publish(RiskEvent(
             event_type=EventType.PORTFOLIO_UPDATED,
@@ -1215,6 +2211,9 @@ class MasterOrchestrator:
                 payload={"reason": "max_drawdown_breached",
                          "drawdown_pct": portfolio.drawdown_pct},
             ))
+
+        # ── FIX #3: Record successful monitor timestamp ────────────────
+        self._last_monitor_ts = _now_ts
 
     def run_eod_learning(self) -> None:
         """End-of-day: feed outcomes back into the Learning Engine via TaskQueue."""
@@ -1237,7 +2236,137 @@ class MasterOrchestrator:
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
         log.info("── Layer 10: EOD Learning ──")
-        trades = self.trade_monitor.get_closed_trades()
+        trades = list(self.trade_monitor.get_closed_trades())
+
+        # Recover any trades closed before a mid-day restart (not in in-memory
+        # list because TradeMonitor._closed_orders is cleared on each startup).
+        # Read today's CLOSE rows from the paper trade CSV and merge them in.
+        _seen_oids = {t.order_id for t in trades}
+        # ── LEARNING CLASSIFICATION INVARIANT ─────────────────────────────────
+        # Every exit reason that exists in this system MUST be classified before
+        # it is allowed to enter (or be blocked from) the learning pipeline.
+        #
+        # Classification rule — ask these three questions for every new reason:
+        #
+        #   (A) Strategy decision?    → INCLUDE  (real price, real outcome)
+        #   (B) System intervention?  → EXCLUDE  (not a strategy outcome)
+        #   (C) Data repair?          → EXCLUDE  (corrupted or synthetic data)
+        #
+        # WHY: Silent misclassification → AI learns wrong behaviour → all
+        # downstream metrics degrade without any visible error. There is no
+        # safety net below this filter.
+        #
+        # Current classification:
+        #
+        #   INCLUDE (A — strategy decisions at real market price):
+        #     close_target    — target hit
+        #     close_sl        — stop-loss hit
+        #     adaptive_exit   — EARLY_LOSS / TIME_STALE / TIME_CAP exits
+        #
+        #   EXCLUDE (B — system intervention, price may be synthetic):
+        #     emergency_close     — system halt; exit recorded @ entry_price (pnl=0)
+        #     close_emergency     — TradeMonitor MAE guard; risk-engine intervened
+        #     SESSION_EXPIRED     — broker auto-squared MIS position at EOD
+        #     SESSION_EXPIRED_EXTENDED — same, for extended carry positions
+        #     REPLACEMENT         — smart-swap leg; not a standalone trade decision
+        #
+        #   EXCLUDE (C — data repair):
+        #     SYSTEM_CLEANUP      — cleanup_stale_opens.py manual repair
+        #
+        #   PENDING CLASSIFICATION (wired up = reclassify):
+        #     close_eod  — currently dead code (nothing dispatches it).
+        #                  If wired as strategy max-hold at real LTP → (A) INCLUDE
+        #                  If wired as forced 15:30 system flatten     → (B) EXCLUDE
+        # ──────────────────────────────────────────────────────────────────────
+        _skip_reasons = {
+            # (B) system interventions — synthetic or broker-forced exits
+            # NOTE: SESSION_EXPIRED / SESSION_EXPIRED_EXTENDED are excluded here
+            # because they have two sub-cases handled below:
+            #   pnl == 0  → no real LTP obtained → skip (synthetic exit, no signal)
+            #   pnl != 0  → real LTP fetched     → INCLUDE (genuine carry-limit outcome)
+            "REPLACEMENT",
+            "emergency_close",         # system halt → exit @ entry_price (synthetic pnl)
+            "close_emergency",         # TradeMonitor MAE — risk-engine intervention
+            # (C) data repair
+            "SYSTEM_CLEANUP",
+        }
+        _session_expired_reasons = {"SESSION_EXPIRED", "SESSION_EXPIRED_EXTENDED"}
+        try:
+            import csv as _csv
+            from execution_engine.order_manager import PAPER_TRADE_LOG
+            _today = datetime.now().strftime("%Y-%m-%d")
+            if os.path.exists(PAPER_TRADE_LOG):
+                with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as _fh:
+                    for _row in _csv.DictReader(_fh):
+                        if not _row.get("timestamp", "").startswith(_today):
+                            continue
+                        if _row.get("event", "").upper() != "CLOSE":
+                            continue
+                        _oid = _row.get("order_id", "").strip()
+                        if not _oid or _oid in _seen_oids:
+                            continue
+                        _reason = _row.get("reason", "")
+                        if _reason in _skip_reasons:
+                            continue
+                        # SESSION_EXPIRED with real LTP → include in learning.
+                        # SESSION_EXPIRED with pnl=0    → skip (no real price data).
+                        if _reason in _session_expired_reasons:
+                            try:
+                                _se_pnl = float(_row.get("pnl", 0) or 0)
+                            except (ValueError, TypeError):
+                                _se_pnl = 0.0
+                            if _se_pnl == 0.0:
+                                log.info(
+                                    "[LearningSkip] SESSION_EXPIRED skipped (zero pnl): "
+                                    "%s %s strategy=%s",
+                                    _row.get("symbol", ""), _oid, _row.get("strategy", ""),
+                                )
+                                continue  # synthetic ₹0 exit — no signal value
+                            log.info(
+                                "[LearningInclude] SESSION_EXPIRED accepted (real pnl): "
+                                "%s %s strategy=%s pnl=₹%+.0f",
+                                _row.get("symbol", ""), _oid, _row.get("strategy", ""), _se_pnl,
+                            )
+                        try:
+                            _entry = float(_row.get("entry_price", 0) or 0)
+                            _exit  = float(_row.get("exit_price",  0) or 0)
+                            _qty   = int(float(_row.get("quantity",  1) or 1))
+                            _pnl   = float(_row.get("pnl", 0) or 0)
+                            _sl    = float(_row.get("stop_loss", 0) or 0)
+                            _r_risk = abs(_entry - _sl) if _sl else 1.0
+                            _r_mult = _pnl / (_r_risk * _qty) if _r_risk * _qty else 0.0
+                            from execution_engine.order_manager import OrderRecord
+                            _rec = OrderRecord(
+                                order_id    = _oid,
+                                symbol      = _row.get("symbol", ""),
+                                direction   = _row.get("direction", "BUY"),
+                                quantity    = _qty,
+                                entry_price = _entry,
+                                stop_loss   = _sl,
+                                target      = float(_row.get("target", 0) or 0),
+                                strategy    = _row.get("strategy", ""),
+                                status      = "closed",
+                                order_type  = "MARKET",
+                                placed_at   = datetime.now(),
+                            )
+                            _rec.pnl        = _pnl
+                            _rec.r_multiple = _r_mult
+                            _seen_oids.add(_oid)
+                            trades.append(_rec)
+                            log.info(
+                                "[EOD-Learn] Recovered CSV-closed trade: %s %s pnl=₹%s",
+                                _oid, _row.get("symbol", ""), f"{_pnl:+,.0f}",
+                            )
+                        except Exception as _row_exc:
+                            log.debug("[EOD-Learn] Skipping malformed close row %s: %s",
+                                      _oid, _row_exc)
+        except Exception as _csv_exc:
+            log.warning("[EOD-Learn] Could not recover CSV trades: %s", _csv_exc)
+
+        if not trades:
+            log.info("[EOD-Learn] No closed trades today — learning skipped.")
+        else:
+            log.info("[EOD-Learn] Processing %d closed trade(s) (in-memory + CSV).", len(trades))
         self.learning_engine.learn(trades)
 
         self.bus.publish(LearningEvent(
@@ -1249,8 +2378,9 @@ class MasterOrchestrator:
         # ── Performance Evaluation ──────────────────────────────────
         log.info("── Layer 11: Performance Evaluation ──")
         for trade in trades:
-            strategy   = getattr(trade, "strategy_name", "unknown")
-            regime     = getattr(trade, "regime",        "unknown")
+            # OrderRecord uses .strategy; fall back to .strategy_name for compat
+            strategy   = getattr(trade, "strategy", None) or getattr(trade, "strategy_name", "unknown")
+            regime     = getattr(trade, "signal_regime", None) or getattr(trade, "regime", "unknown")
             pnl        = getattr(trade, "pnl",           0.0)
             r_multiple = getattr(trade, "r_multiple",    0.0)
             won        = pnl > 0
@@ -1259,7 +2389,9 @@ class MasterOrchestrator:
                 pnl=pnl, r_multiple=r_multiple, won=won,
             )
             # ── Q3: Strategy Performance Tracker (win rate, auto-disable) ──
-            self.perf_tracker.record_trade(strategy, pnl_r=r_multiple)
+            # Pass order_id so LearningGate can filter LEGACY_UNVERIFIED trades.
+            _oid = getattr(trade, "order_id", "")
+            self.perf_tracker.record_trade(strategy, pnl_r=r_multiple, order_id=_oid)
             # ── Q3: Regime → Strategy best-fit map ─────────────────────
             if regime and regime != "unknown":
                 self.regime_strategy_map.record(regime, strategy, pnl_r=r_multiple)
@@ -1274,7 +2406,7 @@ class MasterOrchestrator:
         log.info("── Layer 13: Meta-Learning Feedback ──")
         for trade in trades:
             self.meta_learning.record_result(
-                strategy   = getattr(trade, "strategy_name", "unknown"),
+                strategy   = getattr(trade, "strategy", None) or getattr(trade, "strategy_name", "unknown"),
                 snapshot   = None,    # uses cached last_snapshot
                 r_multiple = getattr(trade, "r_multiple",    0.0),
                 return_pct = getattr(trade, "pnl",           0.0) / 1_000_000 * 100,
@@ -1283,9 +2415,14 @@ class MasterOrchestrator:
         self.meta_learning.retrain_if_due()
 
         # ── Validation Engine (runs when enough trade history exists) ──
+        # INTEGRITY RULE: gate on cumulative *official* trades, not session count.
+        # A single day with 30+ intraday trades must not unlock optimisation.
         log.info("── Layer 12: Strategy Validation ──")
         all_pnls = [getattr(t, "pnl", 0.0) for t in trades]
-        if len(all_pnls) >= 30:
+        _total_official = sum(
+            s.official_trades for s in self.perf_tracker.get_all_stats().values()
+        )
+        if _total_official >= 30:
             self.validation_engine.validate(
                 strategy_name="Portfolio",
                 pnl_series=all_pnls,
@@ -1293,8 +2430,8 @@ class MasterOrchestrator:
                 print_report=True,
             )
         else:
-            log.info("[ValidationEngine] Only %d trades — need 30+ to validate.",
-                     len(all_pnls))
+            log.info("[ValidationEngine] Only %d official trades — need 30+ to validate.",
+                     _total_official)
 
         # ── Edge Discovery (runs after learning so outcomes can seed the DB) ───
         log.info("── Edge Discovery Engine ──")
@@ -1321,9 +2458,31 @@ class MasterOrchestrator:
         wins         = sum(1 for t in trades if getattr(t, "pnl", 0.0) > 0) if trades else 0
         losses       = len(trades) - wins if trades else 0
         win_rate_pct = round(wins / len(trades) * 100, 1) if trades else 0.0
+        # Pre-fetch stability + official-trade counts for the EOD header
+        _stab_streak   = 0
+        _stab_required = 10
+        _off_trades    = 0
+        _off_target    = 30
+        try:
+            from learning_system.strategy_performance_tracker import (
+                get_stability_ledger as _get_sl,
+                get_performance_tracker as _get_pt,
+            )
+            _sl = _get_sl()
+            _stab_streak   = _sl.streak
+            _stab_required = _sl.required
+            _off_trades    = sum(
+                s.official_trades for s in _get_pt().get_all_stats().values()
+            )
+        except Exception:
+            pass
         if self.notifier:
             self.notifier.eod_summary(
-                len(trades), wins, losses, total_pnl, TOTAL_CAPITAL
+                len(trades), wins, losses, total_pnl, TOTAL_CAPITAL,
+                stability_streak=_stab_streak,
+                stability_required=_stab_required,
+                official_trades=_off_trades,
+                official_target=_off_target,
             )
         if self.db:
             self.db.log_event(
@@ -1438,6 +2597,27 @@ class MasterOrchestrator:
         except Exception as _pa_exc:
             log.warning("[TradeAnalytics] EOD report failed: %s", _pa_exc)
 
+        # ── Stability Ledger (two-ledger baseline confirmation) ────────────
+        try:
+            from learning_system.strategy_performance_tracker import get_stability_ledger
+            _stability = get_stability_ledger()
+            _sess_result = _stability.close_session()
+            log.info("[EOD] %s", _stability.status_summary())
+            if self.notifier:
+                self.notifier.market_alert(
+                    "📊 Stability Check",
+                    _stability.status_summary(),
+                )
+        except Exception as _stab_exc:
+            log.warning("[EOD] Stability ledger update failed: %s", _stab_exc)
+
+        # ── SHM Cooldown Tick — advance disabled-strategy session counter ──
+        try:
+            self.strategy_health.tick_session()
+            log.info("[EOD] SHM session tick complete.")
+        except Exception as _shm_tick_exc:
+            log.warning("[EOD] SHM tick_session failed: %s", _shm_tick_exc)
+
         # Print end-of-day diagnostics
         self.bus.print_stats()
         self.task_queue.print_stats()
@@ -1508,7 +2688,7 @@ class MasterOrchestrator:
                 f"Date: {now_str}\n"
                 f"Mode: {_mode} | Capital: ₹{getattr(_cfg, 'TOTAL_CAPITAL', 1_000_000):,.0f}\n"
                 f"{_nifty}\n"
-                f"First scan: 09:05 | Full cycles: 09:45 / 10:30 / 13:00\n"
+                f"First scan: 09:05 | Full cycles: 09:45 / 10:30 / 11:30 / 13:00 / 14:00 / 15:00\n"
                 f"EOD report will be sent at 15:35.\n"
                 f"Ready for market open at 09:15."
             )
@@ -1598,7 +2778,9 @@ class MasterOrchestrator:
                 for rec in open_orders:
                     try:
                         from data_feeds import get_feed_manager as _gfm
-                        q = _gfm().get_quote(rec.symbol)
+                        _IDX = {"NIFTY", "BANKNIFTY", "INDIAVIX"}
+                        _sym = rec.symbol if rec.symbol in _IDX else f"{rec.symbol}.NS"
+                        q = _gfm().get_quote(_sym)
                         ltp = q.ltp if (q and q.ltp and q.ltp > 0) else rec.entry_price
                     except Exception:
                         ltp = rec.entry_price
@@ -1658,7 +2840,7 @@ class MasterOrchestrator:
           • 08:00  — pre-market system initialization + Telegram ping
           • 08:30  — data warm-up (refresh index quotes)
           • 09:05–15:00 — deep-scan slots (via MarketMonitor callbacks)
-          • 09:45 / 10:30 / 13:00 / 14:00 — full analysis cycles
+          • 09:45 / 10:30 / 11:30 / 13:00 / 14:00 / 15:00 — full analysis cycles
           • 15:35  — EOD learning cycle
           • Every 5 min — open-position monitor (market hours only)
 
@@ -1673,13 +2855,27 @@ class MasterOrchestrator:
             import config as _cfg
             _mode = "🧪 Paper" if getattr(_cfg, "PAPER_TRADING", False) else "💵 Live"
             _nifty = self._get_nifty_str()
+            # Restore integrity snapshot for startup ping
+            _rs_ping = ""
+            try:
+                rs = self.order_manager.get_restore_stats()
+                total_r = rs.get("restored_carry", 0)
+                orphan  = rs.get("orphan_monitored_count", 0)
+                expired = rs.get("expired_at_restore", 0)
+                if total_r or orphan or expired:
+                    _rs_ping = (
+                        f"\nRestore: carry={total_r} orphan_watch={orphan} "
+                        f"session_expired={expired}"
+                    )
+            except Exception:
+                pass
             get_notifier().market_alert(
                 "🚀 AI Trading Brain Started",
                 f"System is ONLINE on cloud server\n"
                 f"Date: {datetime.now().strftime('%d %b %Y, %H:%M IST')}\n"
                 f"Mode: {_mode}\n"
-                f"{_nifty}\n"
-                f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/13:00/14:00 cycles → 15:30 close → 15:35 EOD\n"
+                f"{_nifty}{_rs_ping}\n"
+                f"Schedule: 08:00 pre-market → 09:15 open → 09:45/10:30/11:30/13:00/14:00/15:00 cycles → 15:30 close → 15:35 EOD\n"
                 f"Dashboard: http://178.18.252.24:8501",
             )
         except Exception as exc:
@@ -1687,6 +2883,13 @@ class MasterOrchestrator:
 
         # ── Start continuous monitoring thread (30s light scan) ────────
         self._start_monitor()
+
+        # ── Post-restore governance pass ────────────────────────────────
+        # Immediately evaluate SL/adaptive/carry-expiry for all restored
+        # positions BEFORE the normal scheduler begins.  Any SL breach or
+        # carry limit that occurred during the restart window is caught here
+        # rather than waiting up to 5 minutes for the first monitor cycle.
+        self._post_restore_governance_pass()
 
         # ── Pre-market ─────────────────────────────────────────────────
         sched_lib.every().day.at("08:00").do(self._premarket_init)
@@ -1697,10 +2900,14 @@ class MasterOrchestrator:
         sched_lib.every().day.at(SCHEDULE["trade_decision"]).do(self._guarded_cycle)
         # 10:30  mid-morning re-scan
         sched_lib.every().day.at(SCHEDULE["mid_morning_scan"]).do(self._guarded_cycle)
+        # 11:30  post-circuit / momentum phase
+        sched_lib.every().day.at(SCHEDULE["mid_session_scan"]).do(self._guarded_cycle)
         # 13:00  afternoon session
         sched_lib.every().day.at(SCHEDULE["afternoon_scan"]).do(self._guarded_cycle)
         # 14:00  afternoon momentum window
         sched_lib.every().day.at(SCHEDULE["early_afternoon_scan"]).do(self._guarded_cycle)
+        # 15:00  pre-expiry / closing trades
+        sched_lib.every().day.at(SCHEDULE["closing_analysis"]).do(self._guarded_cycle)
 
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
@@ -1717,8 +2924,8 @@ class MasterOrchestrator:
 
         log.info("[Orchestrator] Scheduler armed.")
         log.info("  Pre-market : 08:00 init | 08:30 data warm-up")
-        log.info("  Deep scans : 09:05 / 09:10 / 09:20 / 10:30 / 13:00 / 15:00  (MarketMonitor)")
-        log.info("  Full cycle : 09:45 / 10:30 / 13:00 / 14:00")
+        log.info("  Deep scans : 09:05 / 09:10 / 09:20  (MarketMonitor — opening window only)")
+        log.info("  Full cycle : 09:45 / 10:30 / 11:30 / 13:00 / 14:00 / 15:00")
         log.info("  EOD        : 15:35")
         log.info("  Monitoring : every 5 min  |  Light scan: every 30s")
 

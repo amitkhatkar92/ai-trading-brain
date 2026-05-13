@@ -271,6 +271,16 @@ class DailyAISelfEvaluator:
         )
         overall = round(min(10.0, max(0.0, overall)), 2)
 
+        # ── Outcome cap: decision quality cannot mask a losing day ─────
+        # A day with negative avg R cannot score above 6.0 (B-) because
+        # good process on a losing day is still a losing day.
+        # Keep thresholds simple and conservative.
+        if avg_r < -0.30:
+            overall = min(overall, 4.0)   # C — clearly losing
+        elif avg_r < 0.0:
+            overall = min(overall, 6.0)   # B- — marginally losing
+        overall = round(overall, 2)
+
         # ── Generic learning notes from overall ────────────────────────
         if overall >= 8.5:
             learning_notes.append("✅ Excellent decision quality — maintain current rules.")

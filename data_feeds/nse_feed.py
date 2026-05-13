@@ -191,9 +191,10 @@ class NSEFeed(BaseFeed):
                 spot_price=spot, timestamp=datetime.now(),
                 contracts=contracts, pcr=round(pcr, 3),
                 total_oi=total_call_oi + total_put_oi,
+                is_live=True,
             )
         except Exception as exc:
-            log.debug("[NSEFeed] options_chain %s: %s — using sim", symbol, exc)
+            log.warning("[NSEFeed] options_chain %s API failed: %s — using sim fallback", symbol, exc)
             return self._sim_options_chain(symbol, expiry)
 
     # ── YFinance implementations ───────────────────────────────────────────

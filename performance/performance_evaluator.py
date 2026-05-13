@@ -165,8 +165,10 @@ class PerformanceEvaluator:
             sortino = (mu / down_dev) * math.sqrt(252) if down_dev > 0 else 0.0
 
         # Expectancy
-        avg_win  = statistics.mean([p for p in pnls if p > 0]) if wins   else 0.0
-        avg_loss = statistics.mean([p for p in pnls if p < 0]) if losses else 0.0
+        _win_pnls  = [p for p in pnls if p > 0]
+        _loss_pnls = [p for p in pnls if p < 0]
+        avg_win  = statistics.mean(_win_pnls)  if _win_pnls  else 0.0
+        avg_loss = statistics.mean(_loss_pnls) if _loss_pnls else 0.0
         expectancy = (wins/n * avg_win) - (losses/n * abs(avg_loss))
 
         # Drawdown
@@ -210,11 +212,11 @@ class PerformanceEvaluator:
                  report.timestamp.strftime("%Y-%m-%d %H:%M"))
         log.info("─" * 70)
         log.info("  Total Trades      : %d", report.total_trades)
-        log.info("  Total P&L         : ₹%+,.0f", report.total_pnl)
+        log.info("  Total P&L         : ₹%s", f"{report.total_pnl:+,.0f}")
         log.info("  Total Return      : %+.2f%%",  report.total_return_pct)
         log.info("  Win Rate          : %.1f%%",   report.win_rate_pct)
         log.info("  Profit Factor     : %.2f",     report.profit_factor)
-        log.info("  Expectancy/Trade  : ₹%+,.0f",  report.expectancy)
+        log.info("  Expectancy/Trade  : ₹%s", f"{report.expectancy:+,.0f}")
         # Expectancy profile in R-multiples (the true profitability measure)
         wins_r  = [r.r_multiple for r in self._records if r.won  and r.r_multiple > 0]
         loss_r  = [r.r_multiple for r in self._records if not r.won]

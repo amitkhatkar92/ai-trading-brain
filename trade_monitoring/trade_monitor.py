@@ -14,7 +14,7 @@ Actions:
 
 from __future__ import annotations
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Set
 
 from execution_engine.order_manager import OrderRecord
 from utils import get_logger
@@ -90,6 +90,25 @@ class TradeMonitor:
         # Performance analytics: records every trade close for daily report
         self._analytics: TradeAnalytics       = TradeAnalytics()
         self._r_at_extension: Dict[str, float] = {}  # oid → R when extension fired
+        # LTPGuard: last known-good price per order to detect bad API values
+        self._last_good_ltp: Dict[str, float]  = {}  # order_id → last valid LTP
+        # StaleCarry alert: track last date alerted per order to fire once per day
+        self._stale_alerted: Dict[str, str]    = {}  # order_id → last alerted date (YYYY-MM-DD)
+        # DataGuard: unchanged-price stale detection across monitoring cycles
+        # Tracks consecutive cycles where the resolved LTP was identical to the
+        # previous cycle.  After _DATAGAURD_STALE_CYCLES identical values a
+        # [DataGuard] warning is logged.  Counter resets on any price change.
+        self._dg_last_price: Dict[str, float]  = {}  # order_id → last resolved LTP
+        self._dg_stale_count: Dict[str, int]   = {}  # order_id → consecutive unchanged cycles
+        # LTP resolution — per-cycle state exposed to master_orchestrator.
+        # Populated by _get_ltp during each check_all call so the orchestrator
+        # can sync portfolio position LTPs with LTPGuard-validated values instead
+        # of the raw feed values (which may be garbage at market close).
+        self._resolved_prices: Dict[str, float] = {}  # symbol → validated LTP this cycle
+        self._corrected_symbols: set            = set()  # symbols corrected by LTPGuard
+        # Feed-degraded tracking: count consecutive cycles a symbol has no live feed.
+        # SL monitoring and adaptive exits are suppressed while degraded.
+        self._feed_degraded_cycles: Dict[str, int] = {}   # order_id → cycle count
         log.info("[TradeMonitor] Initialised.")
 
     # ─────────────────────────────────────────────────────────────────
@@ -101,12 +120,58 @@ class TradeMonitor:
         self._open_orders[order.order_id] = order
         self._peak_r[order.order_id]   = 0.0   # initialise peak tracker
         self._ltp_history[order.order_id] = [order.entry_price]  # seed momentum history
+        self._last_good_ltp[order.order_id] = order.entry_price  # seed LTPGuard baseline
+        # Restore extended flag for cross-day carry positions that had extension
+        # fire before a container restart.  OrderManager.journal_write_extend()
+        # writes EXTEND events; _restore_from_journal() collects the oids into
+        # _restored_extended_oids so we can re-arm the flag here without
+        # re-running _can_extend() logic that may not match stale conditions.
+        if (self._order_manager is not None
+                and hasattr(self._order_manager, "_restored_extended_oids")
+                and order.order_id in self._order_manager._restored_extended_oids):
+            self._extended[order.order_id]    = True
+            self._extended_at[order.order_id] = datetime.now()
+            log.info("[TradeMonitor] Restored extended state for %s %s  (SL=%.2f locked)",
+                     order.symbol, order.order_id, order.stop_loss)
         log.info("[TradeMonitor] Registered: %s %s qty=%d entry=%.2f",
                  order.symbol, order.direction, order.quantity, order.entry_price)
+
+    def deregister(self, order_id: str) -> None:
+        """Remove a position from monitoring — called when smart-swap closes it.
+        Prevents phantom SL/target monitoring on already-replaced positions."""
+        if order_id in self._open_orders:
+            rec = self._open_orders.pop(order_id)
+            self._peak_r.pop(order_id, None)
+            self._ltp_history.pop(order_id, None)
+            self._r_at_extension.pop(order_id, None)
+            self._extended.pop(order_id, None)
+            self._extended_at.pop(order_id, None)
+            self._adaptive_reasons.pop(order_id, None)
+            self._last_good_ltp.pop(order_id, None)
+            self._dg_last_price.pop(order_id, None)
+            self._dg_stale_count.pop(order_id, None)
+            self._stale_alerted.pop(order_id, None)
+            log.info("[TradeMonitor] Deregistered (swap-replaced): %s %s",
+                     rec.symbol, order_id)
 
     def inject_order_manager(self, order_manager):
         """Inject OrderManager so monitor can close positions."""
         self._order_manager = order_manager
+
+    def seed_ltp(self, order_id: str, price: float) -> None:
+        """Slide the LTPGuard baseline to *price* for *order_id*.
+
+        Call this before check_all() whenever a trusted model price (e.g. a
+        Black-Scholes synthetic premium or a freshly-fetched live premium) is
+        available.  Without this, LTPGuard compares every incoming price to the
+        original *entry* price — for options positions that legitimately move
+        40-60 % from entry, LTPGuard would permanently reject correct data.
+
+        This does NOT bypass LTPGuard; it simply advances the baseline so the
+        deviation check measures tick-to-tick movement rather than entry-to-now.
+        """
+        if price > 0 and order_id in self._open_orders:
+            self._last_good_ltp[order_id] = price
 
     def update_market_context(self, regime: str, vix: float) -> None:
         """Called by orchestrator before each monitoring cycle with current regime/VIX."""
@@ -117,10 +182,18 @@ class TradeMonitor:
     # MONITORING CYCLE
     # ─────────────────────────────────────────────────────────────────
 
-    def check_all(self, price_feed: Optional[Dict[str, float]] = None):
+    def check_all(
+        self,
+        price_feed: Optional[Dict[str, float]] = None,
+        degraded_symbols: Optional[Set[str]] = None,
+    ):
         """
         Called every N minutes.
         price_feed: dict of {symbol: ltp} — if None, simulates prices.
+        degraded_symbols: bare symbol names that have no live feed this cycle
+          (excluded from price_feed by MarketDataRouter).  SL evaluation and
+          adaptive exits are suppressed for these symbols to prevent false
+          triggers from stale/synthetic prices.
 
         For LIMIT orders in paper mode: only proceed with SL/target evaluation
         once the market price has actually reached (crossed) the zone_price.
@@ -128,11 +201,66 @@ class TradeMonitor:
         When fill is confirmed, send "Trade Opened" and downgrade to MARKET so
         subsequent cycles evaluate SL/target normally.
         """
+        # Reset per-cycle resolution state so get_resolved_prices() and
+        # get_guard_correction_count() always reflect the CURRENT cycle only.
+        self._resolved_prices    = {}
+        self._corrected_symbols  = set()
+        _degraded = degraded_symbols or set()
+
         closed_ids = []
         for oid, order in self._open_orders.items():
+            # ── FEED_DEGRADED guard ────────────────────────────────────────
+            # When MarketDataRouter has no live or cached price for this symbol,
+            # suppress SL and adaptive-exit evaluation entirely.  A degraded
+            # price is stale/synthetic — acting on it risks false SL hits or
+            # premature adaptive exits.
+            _sym_degraded = order.symbol in _degraded
+            if _sym_degraded:
+                _dcycles = self._feed_degraded_cycles.get(oid, 0) + 1
+                self._feed_degraded_cycles[oid] = _dcycles
+                log.warning(
+                    "[TradeMonitor] FEED_DEGRADED %s -- cycle=%d  "
+                    "SL/adaptive SUPPRESSED this cycle",
+                    order.symbol, _dcycles,
+                )
+                continue   # skip all evaluation for this order this cycle
+            else:
+                # Symbol has live feed — reset degraded counter
+                if oid in self._feed_degraded_cycles:
+                    self._feed_degraded_cycles.pop(oid)
+
             ltp = self._get_ltp(order.symbol, price_feed)
             if ltp is None:
                 continue
+
+            # ── SL Integrity Gate ──────────────────────────────────────
+            # Before acting on any price for SL/target/adaptive-exit:
+            # validate it against the sanity band, cross-source agreement,
+            # and intra-cycle plausibility.  A failure suppresses execution
+            # for this cycle and fires a Telegram alert.
+            _prev_ltp_for_gate = self._last_good_ltp.get(oid)
+            try:
+                from data_integrity.price_integrity_validator import get_price_validator
+                _gate_result = get_price_validator().validate(
+                    symbol=order.symbol,
+                    candidate_price=ltp,
+                    yahoo_price=None,       # cross-source check done at router level
+                    feed_degraded=False,    # already handled by FEED_DEGRADED guard above
+                    previous_ltp=_prev_ltp_for_gate,
+                )
+                if not _gate_result.ok:
+                    log.warning(
+                        "[ExecutionIntegrity] SL_SUPPRESSED  symbol=%s  "
+                        "classification=%s  ltp=%.2f  prev=%.2f  reason=%s",
+                        order.symbol, _gate_result.classification, ltp,
+                        _prev_ltp_for_gate or 0.0, _gate_result.reason,
+                    )
+                    continue   # do NOT fire SL/target/adaptive exit this cycle
+            except Exception as _gate_exc:
+                log.debug("[ExecutionIntegrity] gate check error %s: %s",
+                          order.symbol, _gate_exc)
+            # Gate passed — update confirmed-LTP baseline
+            self._last_good_ltp[oid] = ltp
 
             # ── Paper LIMIT fill simulation ────────────────────────────
             # A LIMIT order was placed but is not filled until LTP crosses
@@ -172,7 +300,7 @@ class TradeMonitor:
                     continue   # evaluate SL/target from next cycle onward
 
             action = self._evaluate(order, ltp)
-            if not action and _AE_ENABLED:
+            if not action and _AE_ENABLED and not _sym_degraded:
                 action = self._adaptive_check(oid, order, ltp)
             if action:
                 self._act(oid, order, ltp, action)
@@ -188,6 +316,8 @@ class TradeMonitor:
             self._extended_at.pop(oid, None)       # clean up extension timestamp
             self._ltp_history.pop(oid, None)        # clean up momentum history
             self._r_at_extension.pop(oid, None)    # clean up extension baseline
+            self._dg_last_price.pop(oid, None)    # clean up DataGuard state
+            self._dg_stale_count.pop(oid, None)   # clean up DataGuard state
         # Append current LTP to rolling history for all still-open orders.
         # Keep only the last 3 entries (enough for 2-step direction check).
         for oid, order in self._open_orders.items():
@@ -197,6 +327,84 @@ class TradeMonitor:
                 hist.append(_cur)
                 if len(hist) > 3:
                     del hist[0]
+
+        # ── StaleCarry check: alert on positions open too long with minimal movement.
+        # Fires once per calendar day per order. Does NOT auto-close. Alert only.
+        #
+        # Strategy-aware thresholds:
+        #   Mean-reversion strategies are time-sensitive — alpha decays quickly.
+        #   Trend strategies expect multi-day drift — more patience is correct.
+        _STALE_BY_TYPE: Dict[str, int] = {
+            # Mean-reversion: short-duration thesis — alert after 2 days
+            "mean_reversion": 2,
+            "meanreversion":  2,
+            "reversion":      2,
+            "range":          2,
+            "hedging":        2,
+            # Trend / momentum: longer-duration thesis — alert after 5 days
+            "trend":          5,
+            "momentum":       5,
+            "breakout":       5,
+            "edg_moment":     5,
+            # Default for any unclassified strategy
+        }
+        _STALE_DEFAULT  = 3     # fallback for unclassified strategies
+        _STALE_BAND_R   = 0.3   # flag if position hasn't moved beyond ±0.3R
+        _today_str      = datetime.now().strftime("%Y-%m-%d")
+        for oid, order in self._open_orders.items():
+            if not order.placed_at:
+                continue
+            age_days = (datetime.now() - order.placed_at).days
+            # Determine strategy-aware session threshold
+            _strat_key = (order.strategy or "").lower().replace("_", "").replace("-", "")
+            _stale_days = _STALE_DEFAULT
+            for _prefix, _days in _STALE_BY_TYPE.items():
+                if _strat_key.startswith(_prefix.replace("_", "")):
+                    _stale_days = _days
+                    break
+            if age_days < _stale_days:
+                continue
+            # Already alerted today?
+            if self._stale_alerted.get(oid) == _today_str:
+                continue
+            # Check movement band
+            risk = abs(order.entry_price - order.stop_loss) if order.stop_loss else 0.0
+            if risk <= 0:
+                continue
+            _cur_ltp = self._get_ltp(order.symbol, price_feed)
+            if _cur_ltp is None:
+                continue
+            if order.direction == "BUY":
+                r_now = (_cur_ltp - order.entry_price) / risk
+            else:
+                r_now = (order.entry_price - _cur_ltp) / risk
+            if abs(r_now) <= _STALE_BAND_R:
+                self._stale_alerted[oid] = _today_str
+                log.warning(
+                    "[StaleCarry] ⚠️ %s %s open for %d day(s), minimal movement "
+                    "(current_r=%.2fR, entry=%.2f, sl=%.2f, strategy=%s, threshold=%dd). "
+                    "Review manually — NO auto-close.",
+                    order.symbol, oid, age_days, r_now,
+                    order.entry_price, order.stop_loss,
+                    order.strategy, _stale_days,
+                )
+                try:
+                    from notifications.notifier_manager import get_notifier
+                    # Wrap strategy in backticks so underscores (e.g. Mean_Reversion)
+                    # are not mis-parsed as Markdown italic delimiters by Telegram.
+                    get_notifier().market_alert(
+                        "⚠️ Stale Carry Alert",
+                        f"{order.symbol} ({order.direction}) has been open "
+                        f"{age_days} day(s) with minimal movement "
+                        f"(R={r_now:+.2f}).\n"
+                        f"Entry: ₹{order.entry_price:.2f}  "
+                        f"SL: ₹{order.stop_loss:.2f}  "
+                        f"Target: ₹{order.target:.2f}\n"
+                        f"Strategy: `{order.strategy}` (threshold: {_stale_days}d)\n"
+                        f"Manual review recommended. No auto-close.",
+                    )
+                except Exception:
+                    pass
 
     # ─────────────────────────────────────────────────────────────────
     # PRIVATE
@@ -231,6 +439,11 @@ class TradeMonitor:
                 self._extended_at[oid]     = datetime.now()
                 self._r_at_extension[oid]  = r_multiple   # baseline for impact calc
                 self._analytics.mark_extension(oid, r_multiple)
+                # Persist locked SL to journal so it survives container restarts.
+                # _restore_from_journal reads EXTEND rows to restore locked_sl
+                # and suppress double-extension via _restored_extended_oids.
+                if self._order_manager is not None:
+                    self._order_manager.journal_write_extend(oid, locked_sl)
                 log.info(
                     "[AdaptiveExtension] HOLD → near target  %s  "
                     "r=%.2fR  sl_locked=%.2f (%.1fR)  regime=%s  vix=%.1f",
@@ -453,14 +666,107 @@ class TradeMonitor:
         if self._order_manager:
             self._order_manager.close_position(oid, ltp, reason=action)
 
+    # ── LTPGuard threshold ────────────────────────────────────────────
+    _LTP_GUARD_MAX_DEVIATION   = 0.20  # flag prices that deviate >20% from last known
+    # ── DataGuard stale-price detection ──────────────────────────────
+    _DATAGAURD_STALE_CYCLES    = 6     # consecutive identical prices before warning
+    _DATAGAURD_REPEAT_CYCLES   = 12    # repeat the warning every N more identical cycles
+
+    def _dg_update_stale(self, order_id: str, symbol: str, resolved: float) -> None:
+        """DataGuard: track consecutive identical prices and log stale warnings."""
+        last = self._dg_last_price.get(order_id)
+        if last is not None and resolved == last:
+            count = self._dg_stale_count.get(order_id, 0) + 1
+            self._dg_stale_count[order_id] = count
+            # Log at first threshold, then every _DATAGAURD_REPEAT_CYCLES more
+            if count == self._DATAGAURD_STALE_CYCLES or (
+                count > self._DATAGAURD_STALE_CYCLES
+                and (count - self._DATAGAURD_STALE_CYCLES) % self._DATAGAURD_REPEAT_CYCLES == 0
+            ):
+                log.warning(
+                    "[DataGuard] Stale price detected for %s — "
+                    "price unchanged at %.2f for %d consecutive monitoring cycles.",
+                    symbol, resolved, count,
+                )
+        else:
+            # Price changed — reset counter
+            self._dg_stale_count[order_id] = 0
+        self._dg_last_price[order_id] = resolved
+
+    @staticmethod
+    def _fetch_from_scanner_cache(symbol: str) -> Optional[float]:
+        """Pull symbol price from the equity-scanner cache (no network call)."""
+        try:
+            from opportunity_engine.equity_scanner_ai import (
+                _PRICE_CACHE, _PRICE_CACHE_LOCK,
+            )
+            with _PRICE_CACHE_LOCK:
+                return _PRICE_CACHE.get(symbol)
+        except Exception:
+            return None
+
     def _get_ltp(self, symbol: str,
                   price_feed: Optional[Dict[str, float]]) -> Optional[float]:
-        if price_feed and symbol in price_feed:
-            return price_feed[symbol]
-        # Simulation fallback
-        import random
         order = next((o for o in self._open_orders.values()
                       if o.symbol == symbol), None)
+
+        if price_feed and symbol in price_feed:
+            candidate = price_feed[symbol]
+            # ── LTPGuard: two-step validation ──────────────────────────
+            if order:
+                baseline = self._last_good_ltp.get(order.order_id, order.entry_price)
+                if baseline > 0:
+                    deviation = abs(candidate - baseline) / baseline
+                    if deviation > self._LTP_GUARD_MAX_DEVIATION:
+                        # Step 1 — try equity-scanner cache as independent source
+                        cached = self._fetch_from_scanner_cache(symbol)
+                        if cached and cached > 0:
+                            cached_dev = abs(cached - baseline) / baseline
+                            if cached_dev <= self._LTP_GUARD_MAX_DEVIATION:
+                                # Cache confirms a genuine move — accept cached price
+                                log.info(
+                                    "[LTPGuard] %s feed=%.2f flagged (%.0f%% vs baseline=%.2f) "
+                                    "— cache confirms %.2f as genuine move.",
+                                    symbol, candidate, deviation * 100, baseline, cached,
+                                )
+                                self._last_good_ltp[order.order_id] = cached
+                                # Record validated price for portfolio sync
+                                self._resolved_prices[symbol] = cached
+                                self._corrected_symbols.add(symbol)
+                                return cached
+                        # Step 2 — no independent confirmation; freeze at last good
+                        log.warning(
+                            "[LTPGuard] Corrected abnormal price for %s: "
+                            "feed=%.2f vs last_known=%.2f (%.0f%% deviation) "
+                            "— using last known good.",
+                            symbol, candidate, baseline, deviation * 100,
+                        )
+                        log.warning(
+                            "[DataGuard] Using fallback price for %s — live data unavailable "
+                            "(feed=%.2f flagged; fallback=%.2f).",
+                            symbol, candidate, baseline,
+                        )
+                        self._dg_update_stale(order.order_id, symbol, baseline)
+                        # Record validated (frozen) price for portfolio sync
+                        self._resolved_prices[symbol] = baseline
+                        self._corrected_symbols.add(symbol)
+                        return baseline
+                # Price is sane — update the last-known-good baseline
+                self._last_good_ltp[order.order_id] = candidate
+            self._dg_update_stale(order.order_id if order else "__anon__", symbol, candidate)
+            # Record sane feed price for portfolio sync (don't overwrite a correction
+            # that was already recorded for this symbol in an earlier call this cycle).
+            if symbol not in self._corrected_symbols:
+                self._resolved_prices[symbol] = candidate
+            return candidate
+
+        # Simulation fallback ONLY when no price_feed at all (dev/no-feed mode).
+        # When price_feed is provided but symbol is absent, the feed was attempted
+        # but excluded (no live data, no cache).  Return None so this cycle is
+        # skipped; MarketDataRouter already put the symbol in degraded_symbols.
+        if price_feed is not None:
+            return None
+        import random
         if order:
             return round(order.entry_price * (1 + random.uniform(-0.03, 0.03)), 2)
         return None
@@ -482,6 +788,24 @@ class TradeMonitor:
     def check_open_positions(self):
         """Alias for check_all() — used by MasterOrchestrator."""
         return self.check_all()
+
+    def get_resolved_prices(self) -> Dict[str, float]:
+        """Return {symbol: validated_ltp} from the last check_all cycle.
+
+        Prices have been through LTPGuard — corrupt feed values are replaced
+        with cached or last-known-good values.  Use this for portfolio sync
+        instead of the raw price feed to prevent false drawdown calculations.
+        Only populated after check_all() has run; returns {} before first call.
+        """
+        return dict(self._resolved_prices)
+
+    def get_guard_correction_count(self) -> int:
+        """Number of distinct symbols that had LTPGuard corrections in the last cycle.
+
+        Used by the orchestrator's P0.5 batch-corruption freeze: if this count
+        exceeds 50% of the total symbols, the drawdown halt-check is skipped.
+        """
+        return len(self._corrected_symbols)
 
     def summary(self) -> str:
         open_ct   = len(self._open_orders)

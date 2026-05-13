@@ -115,14 +115,25 @@ class TelegramNotifier:
         self._running  = False
         self._thread:  Optional[threading.Thread] = None
         self._requests = None
+        self._session  = None   # persistent Session — prevents FD exhaustion on burst sends
         self._available= False
         self._try_import()
 
     def _try_import(self) -> None:
         try:
             import requests
+            import requests.adapters as _req_adapters
             self._requests = requests
             self._available = True
+            # Persistent session reuses the underlying TCP connection so that a
+            # burst of notifications (e.g. emergency_close closing 9 positions)
+            # does not open 9 separate SSL sockets, which can exhaust OS FD limits.
+            _sess = requests.Session()
+            _adapter = _req_adapters.HTTPAdapter(
+                pool_connections=1, pool_maxsize=1, max_retries=1
+            )
+            _sess.mount("https://", _adapter)
+            self._session = _sess
         except ImportError:
             log.warning("[TelegramNotifier] requests not installed — "
                         "Telegram alerts disabled. pip install requests")
@@ -148,17 +159,49 @@ class TelegramNotifier:
             try:
                 alert = self._queue.get(timeout=2)
                 msg   = alert.to_telegram_message()
-                resp  = self._requests.post(url, json={
-                    "chat_id":    self._chat_id,
-                    "text":       msg,
-                    "parse_mode": "Markdown",
-                }, timeout=10)
-                if not resp.ok:
-                    log.warning("[TelegramNotifier] Send failed: %s", resp.text[:100])
+                # Attempt 1: send with Markdown formatting.
+                # Attempt 2: if Markdown parse fails (e.g. unmatched _ from
+                # dynamic content like RECONCILIATION_SUSPECT or Bull_Call_Spread),
+                # retry without parse_mode so the alert is never silently dropped.
+                _sent = False
+                for _parse_mode in ("Markdown", None):
+                    _payload = {"chat_id": self._chat_id, "text": msg}
+                    if _parse_mode:
+                        _payload["parse_mode"] = _parse_mode
+                    try:
+                        if self._session is not None:
+                            resp = self._session.post(url, json=_payload, timeout=10)
+                        elif self._requests is not None:
+                            resp = self._requests.post(url, json=_payload, timeout=10)
+                        else:
+                            break
+                        if resp.ok:
+                            _sent = True
+                            break
+                        # 400 = parse error → retry without parse_mode
+                        if resp.status_code == 400 and _parse_mode:
+                            log.debug(
+                                "[TelegramMarkdownFallback] Markdown parse failed "
+                                "(likely unescaped _ or *) — retrying as plain text. "
+                                "Error: %s", resp.text[:80],
+                            )
+                            continue   # try again without parse_mode
+                        # Other error — log and stop
+                        log.warning("[TelegramNotifier] Send failed: %s", resp.text[:120])
+                        break
+                    except Exception as _send_exc:
+                        log.error("[TelegramNotifier] Error: %s", _send_exc)
+                        time.sleep(5)
+                        break
+                if not _sent:
+                    log.warning(
+                        "[TelegramAlertFailed] Alert dropped after all retries. "
+                        "First 120 chars: %s", msg[:120],
+                    )
             except queue.Empty:
                 continue
             except Exception as exc:
-                log.error("[TelegramNotifier] Error: %s", exc)
+                log.error("[TelegramNotifier] Worker error: %s", exc)
                 time.sleep(5)
 
 
@@ -274,10 +317,28 @@ class NotifierManager:
     def eod_summary(
         self, total_trades: int, wins: int, losses: int,
         net_pnl: float, capital: float,
+        stability_streak: int = 0,
+        stability_required: int = 10,
+        official_trades: int = 0,
+        official_target: int = 30,
     ) -> None:
         wr   = wins / total_trades * 100 if total_trades else 0
         ret  = net_pnl / capital * 100 if capital else 0
-        body = (f"Trades: {total_trades} ({wins}W / {losses}L)\n"
+        # ── Stability progress header (most important daily metric) ──────────
+        streak_bar   = "▓" * stability_streak + "░" * max(0, stability_required - stability_streak)
+        official_bar = "▓" * min(official_trades, official_target) + "░" * max(0, official_target - official_trades)
+        if stability_streak >= stability_required:
+            streak_line = f"✅ Stability Streak: {stability_streak}/{stability_required}  BASELINE CONFIRMED"
+        else:
+            streak_line = f"🔄 Stability Streak: {stability_streak}/{stability_required}  [{streak_bar}]"
+        if official_trades >= official_target:
+            trades_line = f"✅ Official Trades:  {official_trades}/{official_target}  OPTIMISE NOW"
+        else:
+            trades_line = f"📈 Official Trades:  {official_trades}/{official_target}  [{official_bar}]"
+        body = (f"{streak_line}\n"
+                f"{trades_line}\n"
+                f"────────────────────────\n"
+                f"Trades: {total_trades} ({wins}W / {losses}L)\n"
                 f"Win Rate: {wr:.0f}%\n"
                 f"Net P&L: ₹{net_pnl:+,.0f} ({ret:+.2f}%)")
         self._dispatch(Alert(AlertType.EOD_SUMMARY, "📋 EOD Summary", body))

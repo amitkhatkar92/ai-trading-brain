@@ -11,6 +11,7 @@ scipy>=1.11.0
 
 # ── Market Data Feeds ─────────────────────────────────────────────────
 yfinance>=0.2.40           # Yahoo Finance — global + NSE quotes (live)
+nsepython>=1.0             # NSE India scraper — options chain (if not IP-blocked)
 # nsepython>=2.0.0         # NSE live data (optional, uncomment if needed)
 
 # ── Machine Learning (Strategy Evolution) ─────────────────────────────

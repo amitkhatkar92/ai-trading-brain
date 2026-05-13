@@ -21,6 +21,11 @@ class Position:
     strategy_name: str = ""
     entry_time: datetime = field(default_factory=datetime.now)
     segment: str = "equity"            # equity | futures | options
+    has_live_ltp: bool = False          # True once a real market price has been fetched
+    ltp_timestamp: Optional[datetime] = None  # Wall-clock time of last LTP update
+    ltp_tick_count: int = 0             # Consecutive fresh ticks; resets to 0 when stale
+    restore_time: Optional[datetime] = None          # Wall-clock time of last journal restore
+    confidence_achieved_at: Optional[datetime] = None  # First time tick_count reached threshold
 
     @property
     def unrealised_pnl(self) -> float:
@@ -65,6 +70,18 @@ class Portfolio:
         return sum(p.unrealised_pnl for p in self.positions.values())
 
     @property
+    def _confirmed_unrealised_pnl(self) -> float:
+        """Unrealised P&L from positions with a confirmed live LTP only.
+
+        Used for drawdown_pct to avoid false halts caused by startup-prefetch
+        prices (e.g. raw NIFTY spot stored on an options premium position, or
+        SIM ~1000 stored for an equity that failed the yfinance batch).
+        Positions without has_live_ltp=True contribute 0 until the monitoring
+        cycle provides a real market price.
+        """
+        return sum(p.unrealised_pnl for p in self.positions.values() if p.has_live_ltp)
+
+    @property
     def net_value(self) -> float:
         return self.capital + self.total_unrealised_pnl + self.realised_pnl
 
@@ -72,7 +89,8 @@ class Portfolio:
     def drawdown_pct(self) -> float:
         if self.peak_capital == 0:
             return 0.0
-        return (self.peak_capital - self.net_value) / self.peak_capital
+        confirmed_net = self.capital + self._confirmed_unrealised_pnl + self.realised_pnl
+        return max(0.0, (self.peak_capital - confirmed_net) / self.peak_capital)
 
     @property
     def num_positions(self) -> int:

@@ -343,7 +343,7 @@ class PaperTradingController:
         log.info("  Drawdown:      %.1f%%", snap["drawdown_pct"])
         log.info("  Closed Trades: %d (%d wins / %d losses)",
                  closed, wins, closed - wins)
-        log.info("  Net P&L:       ₹%+,.0f", total_net)
+        log.info("  Net P&L:       ₹%s", f"{total_net:+,.0f}")
         log.info(border)
         for sym, pos in self._positions.items():
             unr = pos.unrealised_pnl

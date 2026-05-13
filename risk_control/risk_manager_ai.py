@@ -64,6 +64,50 @@ class RiskManagerAI:
         """Called by OrderManager after each fill to update live risk state."""
         self._current_portfolio_heat = heat
 
+    def filter_with_heat_split(
+        self, signals: List[TradeSignal]
+    ) -> tuple[List[TradeSignal], List[TradeSignal]]:
+        """Like filter(), but also returns signals blocked ONLY by portfolio heat.
+
+        A signal is a heat-block rotation candidate if and only if:
+          • It fails the portfolio-heat check (reason contains "Portfolio heat"), AND
+          • It would pass every other check if heat were zero.
+
+        Returns: (approved, heat_blocked)
+        """
+        approved: List[TradeSignal] = []
+        heat_blocked: List[TradeSignal] = []
+        seen_symbols: set = set()
+
+        for sig in signals:
+            reason = self._check(sig, seen_symbols)
+            if reason is None:
+                approved.append(sig)
+                seen_symbols.add(sig.symbol)
+            elif "Portfolio heat" in reason:
+                # Verify the signal passes all *other* checks before tagging it
+                # as a rotation candidate — never allow a weak signal to sneak in.
+                saved_heat = self._current_portfolio_heat
+                self._current_portfolio_heat = 0.0
+                other_reason = self._check(sig, seen_symbols)
+                self._current_portfolio_heat = saved_heat
+                if other_reason is None:
+                    heat_blocked.append(sig)
+                    log.info(
+                        "[RiskManagerAI] HEAT_BLOCK candidate: %s score=%.1f",
+                        sig.symbol, sig.confidence,
+                    )
+                else:
+                    log.info(
+                        "[RiskManagerAI] ❌ REJECTED %s — %s (heat + %s)",
+                        sig.symbol, reason, other_reason,
+                    )
+            else:
+                log.info("[RiskManagerAI] ❌ REJECTED %s — %s", sig.symbol, reason)
+
+        approved = self.liquidity_guard.filter(approved)
+        return approved, heat_blocked
+
     # ─────────────────────────────────────────────────────────────────
     # PRIVATE
     # ─────────────────────────────────────────────────────────────────

@@ -50,6 +50,11 @@ class TickerQuote:
     ask:            float    = 0.0
     oi:             float    = 0.0    # open interest (derivatives)
     iv:             float    = 0.0    # implied volatility
+    # ── Feed provenance metadata ──────────────────────────────────────
+    feed_source:         str   = ""    # "DHAN" | "YAHOO" | "CACHE" | "SIM" | ""
+    feed_degraded:       bool  = False # True when no live data; cached LTP served
+    fallback_active:     bool  = False # True when Dhan failed and Yahoo/cache used
+    consecutive_failures: int  = 0    # consecutive live-fetch failures for this symbol
 
 
 @dataclass
@@ -87,6 +92,7 @@ class OptionsChain:
     pcr:            float = 0.0    # total chain put-call ratio
     max_pain:       float = 0.0    # max pain strike
     total_oi:       float = 0.0
+    is_live:        bool  = False  # True only when fetched from a real exchange API
 
     def calls(self) -> List[OptionsContract]:
         return [c for c in self.contracts if c.is_call]

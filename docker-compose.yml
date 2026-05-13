@@ -19,8 +19,8 @@ services:
       # Trade records, logs, databases
       - ./data:/app/data
       
-      # Optional: mount .env for secrets (never commit to git)
-      - .env:/app/.env:ro
+      # Mount .env read-write so Telegram /token command can persist the token
+      - .env:/app/.env:rw
     
     # Environment variables
     environment:
@@ -31,6 +31,14 @@ services:
     # Resource limits
     mem_limit: 2g
     cpus: '1.0'
+
+    # File descriptor limit — default ulimit of 1024 is exhausted by yfinance's
+    # SQLite timezone-cache leaking handles over long uptime.  65536 gives ~18hrs
+    # of headroom while the root-cause fix (yfinance FD cleanup) is deployed.
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
     
     # Health check
     healthcheck:

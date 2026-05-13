@@ -337,6 +337,23 @@ def main():
             log.info("System will initialize at 08:00 and follow the intraday schedule.")
             log.info("Press Ctrl+C or send SIGTERM to stop.")
 
+            # Verify runtime files match the build manifest (drift detection)
+            try:
+                from deployment.runtime_verifier import verify as _verify_runtime
+                _verify_runtime()
+            except Exception as _ve:
+                log.warning("[Main] Runtime verification failed: %s", _ve)
+
+            # Start Telegram command bot polling (daemon thread)
+            # This enables /token, /status, /perf etc. in --schedule mode.
+            try:
+                from notifications.telegram_bot import get_telegram_bot
+                _cmd_bot = get_telegram_bot()
+                _cmd_bot.start()
+                log.info("[Main] Telegram command bot started (polling for /token, /status, etc.)")
+            except Exception as _e:
+                log.warning("[Main] Telegram command bot failed to start: %s", _e)
+
             brain.start_scheduler()
 
             # Register clean shutdown on SIGTERM (sent by Windows Task Scheduler

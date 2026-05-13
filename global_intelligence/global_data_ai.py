@@ -148,32 +148,39 @@ class GlobalDataAI:
         self._lock = threading.Lock()
         self._ready = threading.Event()   # set when first fetch completes
         log.info("[GlobalDataAI] Initialised. Tracking 16 global instruments.")
-        # Pre-warm cache in background so first orchestrator cycle sees zero latency
+        # Continuous background refresh — keeps cache always warm so every
+        # orchestrator cycle hits the cache and never blocks on a live fetch.
         t = threading.Thread(target=self._warm, daemon=True, name="GlobalDataAI-warm")
         t.start()
 
     def _warm(self) -> None:
-        """Background pre-warm: fetch immediately so cache is hot before first cycle."""
+        """
+        Continuous background refresh loop.
+        - Fetches immediately at startup (pre-warm).
+        - Then sleeps for (_CACHE_TTL - 30)s and refreshes again, indefinitely.
+        This keeps the cache always < 30s stale so fetch() never hits yfinance
+        on the critical cycle path — even after a 45-minute gap between cycles.
+        """
         import time as _time
-        try:
-            snap = self._fetch_live_data()
-            with self._lock:
-                self._last_snap = snap
-                self._last_fetch_ts = time.monotonic()
-            log.info("[GlobalDataAI] Cache pre-warmed ✓ %s", snap.summary())
-        except Exception as exc:
-            log.warning("[GlobalDataAI] Pre-warm failed: %s — retrying in 10s", exc)
-            _time.sleep(10)
+        first = True
+        while True:
             try:
                 snap = self._fetch_live_data()
                 with self._lock:
                     self._last_snap = snap
                     self._last_fetch_ts = time.monotonic()
-                log.info("[GlobalDataAI] Cache pre-warmed on retry ✓ %s", snap.summary())
-            except Exception as exc2:
-                log.warning("[GlobalDataAI] Pre-warm retry also failed: %s — first cycle will fetch live", exc2)
-        finally:
-            self._ready.set()   # unblock any waiting fetch() call
+                if first:
+                    log.info("[GlobalDataAI] Cache pre-warmed ✓ %s", snap.summary())
+                else:
+                    log.debug("[GlobalDataAI] Background refresh ✓ %s", snap.summary())
+            except Exception as exc:
+                log.warning("[GlobalDataAI] Background refresh failed: %s — keeping previous snapshot", exc)
+            finally:
+                if first:
+                    self._ready.set()   # unblock any waiting fetch() call
+                    first = False
+            # Sleep until just before TTL expires so next cycle always hits cache
+            _time.sleep(max(60, self._CACHE_TTL - 30))
 
     # ──────────────────────────────────────────────────────────────────
     # PUBLIC API

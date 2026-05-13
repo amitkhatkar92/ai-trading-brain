@@ -127,6 +127,7 @@ Full cycle:          172ms  ✅  HEALTHY
 | `strategy_lab/strategy_generator_ai.py` | Bug fix: `_best_evolved_variant` now filters by `min_signal_rr`; `_load_evolved_strategies` now honours explicit `min_rr` from JSON | No |
 | `execution_engine/order_manager.py` | Explicit `PAPER_TRADING` check; persistent CSV journal at `data/paper_trades.csv` | No |
 | `main.py` | Dynamic date (was hardcoded); removed shadowing `_dt` local import | No |
+| `orchestrator/master_orchestrator.py` | `_do_monitor`: index symbols (NIFTY/BANKNIFTY) exempt from `.NS` suffix — use bare names so `GLOBAL_SYMBOL_MAP` routes to `^NSEI`/`^NSEBANK`; `_do_eod_learning`: recovers CSV-closed trades from today to handle post-restart zero-count; strategy attribute lookup fixed (`strategy` over `strategy_name`) | No |
 
 ---
 

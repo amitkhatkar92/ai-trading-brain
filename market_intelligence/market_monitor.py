@@ -41,15 +41,13 @@ BREAKOUT_PCT        = 0.3       # price > 0.3% beyond session high/low → break
 CIRCUIT_DROP_PCT    = -2.0      # NIFTY drop > 2% in one tick → circuit alert
 
 # Deep analysis schedule (24h HH:MM)
+# MarketMonitor owns ONLY the opening-window deep scans (09:05–09:20).
+# All subsequent full cycles (10:30 onward) are owned exclusively by
+# the sched_lib scheduler in master_orchestrator.py to prevent double-firing.
 DEEP_SCAN_SCHEDULE: List[str] = [
     "09:05",   # market open — regime detection
     "09:10",   # first opportunity scan
     "09:20",   # strategy evaluation
-    "10:30",   # mid-morning scan
-    "11:30",   # mid-session scan (post-circuit recovery / momentum phase)
-    "13:00",   # afternoon scan
-    "14:00",   # early afternoon momentum scan
-    "15:00",   # closing analysis
 ]
 
 # Symbols watched in continuous mode
@@ -87,6 +85,9 @@ class MarketMonitor:
 
         # Track which deep scans have already fired today
         self._scans_fired: Dict[str, date] = {}
+        # Retry tracking — how many times each scan slot was retried today
+        self._scan_retry_count: Dict[str, int] = {}
+        self._scan_retry_date: Optional[date] = None
 
         # Cooldown tracking — suppress duplicate signal alerts
         self._last_alert_ts: Dict[str, float] = {}
@@ -225,26 +226,59 @@ class MarketMonitor:
 
     # ── Deep analysis schedule ────────────────────────────────────────────────
 
+    # Maximum retries per scan slot per day before giving up
+    _MAX_SCAN_RETRIES: int = 3
+
     def _check_deep_schedule(self) -> None:
         now    = datetime.now()
         hhmm   = now.strftime("%H:%M")
         today  = now.date()
 
+        # Reset retry counters on a new trading day
+        if self._scan_retry_date != today:
+            self._scan_retry_count.clear()
+            self._scan_retry_date = today
+
         for scan_time in DEEP_SCAN_SCHEDULE:
-            # Fire only once per day per slot
             key = scan_time
+            # Already completed today → skip
             if self._scans_fired.get(key) == today:
                 continue
             if hhmm >= scan_time:
-                self._scans_fired[key] = today
+                retries   = self._scan_retry_count.get(key, 0)
                 scan_name = self._scan_name(scan_time)
-                log.info("[MarketMonitor] 🕐 Deep scan triggered: %s @ %s",
-                         scan_name, scan_time)
+
+                if retries == 0:
+                    log.info("[MarketMonitor] Deep scan triggered: %s @ %s",
+                             scan_name, scan_time)
+                else:
+                    log.warning("[MarketMonitor] [ScanRetry] attempt=%d/%d scan=%s slot=%s",
+                                retries + 1, self._MAX_SCAN_RETRIES, scan_name, scan_time)
+
                 if self._on_deep_scan:
+                    # Embed a correlation ID so submission → execution can be paired in logs.
+                    # Format: "{scan_name}#{scan_name}_{HHMMSS}" — orchestrator strips after '#'.
+                    scan_id  = f"{scan_name}_{now.strftime('%H%M%S')}"
+                    payload  = f"{scan_name}#{scan_id}"
+                    log.info("[MarketMonitor] [ScanSubmit] id=%s slot=%s retry=%d",
+                             scan_id, scan_time, retries)
                     try:
-                        self._on_deep_scan(scan_name)
+                        self._on_deep_scan(payload)
+                        # Mark complete only after successful submission
+                        self._scans_fired[key] = today
                     except Exception as exc:
-                        log.warning("[MarketMonitor] Deep scan callback error: %s", exc)
+                        self._scan_retry_count[key] = retries + 1
+                        if retries + 1 >= self._MAX_SCAN_RETRIES:
+                            log.error(
+                                "[MarketMonitor] Scan %s failed after %d retries — skipping.",
+                                scan_name, self._MAX_SCAN_RETRIES)
+                            self._scans_fired[key] = today   # give up, don't loop forever
+                        else:
+                            log.warning(
+                                "[MarketMonitor] Scan %s callback error (retry in ~%ds): %s",
+                                scan_name, TICK_INTERVAL, exc)
+                else:
+                    self._scans_fired[key] = today
 
     @staticmethod
     def _scan_name(hhmm: str) -> str:

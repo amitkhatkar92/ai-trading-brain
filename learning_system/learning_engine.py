@@ -67,6 +67,46 @@ class LearningEngine:
 
         log.info("[LearningEngine] Processing %d closed trades…", len(closed_trades))
 
+        # ── Learning Gate: only VERIFIED trades may feed learning ─────────────────
+        # Trades opened before the security-ID fix deployment (2026-05-13 16:05),
+        # or with prices outside sanity bands, are excluded to prevent poisoning
+        # win-rate, expectancy, and strategy health statistics with corrupt data.
+        try:
+            from data_integrity.trade_classifier import classify_trades, TradeClassification as _TC
+            _classifications = classify_trades()
+        except Exception as _cls_exc:
+            log.debug("[LearningGate] Classifier unavailable: %s — proceeding without filter", _cls_exc)
+            _classifications = {}
+            _TC = None  # type: ignore
+
+        _excluded_count = 0
+        _verified_trades: List[OrderRecord] = []
+        for _t in closed_trades:
+            _cls = _classifications.get(getattr(_t, "order_id", ""))
+            if _classifications and _TC is not None and _cls is not None and _cls != _TC.VERIFIED:
+                log.info(
+                    "[LearningGate] EXCLUDED  trade_id=%s  symbol=%s  "
+                    "classification=%s  pnl=₹%.0f",
+                    getattr(_t, "order_id", "?"), getattr(_t, "symbol", "?"),
+                    _cls.value, getattr(_t, "pnl", 0),
+                )
+                _excluded_count += 1
+            else:
+                _verified_trades.append(_t)
+
+        if _excluded_count:
+            log.warning(
+                "[LearningGate] %d/%d trades excluded from learning "
+                "(LEGACY_UNVERIFIED/INVALID_MARKET_DATA/EXECUTION_INTEGRITY_FAILURE). "
+                "Only %d VERIFIED trades will update strategy stats.",
+                _excluded_count, len(closed_trades), len(_verified_trades),
+            )
+        closed_trades = _verified_trades
+        if not closed_trades:
+            log.info("[LearningGate] All trades excluded — no learning update this cycle.")
+            return
+        # ── End Learning Gate ─────────────────────────────────────────────────────
+
         strategy_buckets: Dict[str, List[float]] = defaultdict(list)
         for trade in closed_trades:
             pnl_pct = (

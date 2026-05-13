@@ -130,8 +130,8 @@ class StrategyAttributionEngine:
         total_system_pnl = sum(s.total_pnl for s in self._stats.values())
         border = "═" * 80
         log.info(border)
-        log.info("  STRATEGY ATTRIBUTION REPORT  |  Total System PnL: ₹%+,.0f",
-                 total_system_pnl)
+        log.info("  STRATEGY ATTRIBUTION REPORT  |  Total System PnL: ₹%s",
+                 f"{total_system_pnl:+,.0f}")
         log.info("─" * 80)
         log.info("  %-28s %7s %7s %10s %8s %8s %8s",
                  "Strategy", "Trades", "WinRt%",
@@ -143,8 +143,8 @@ class StrategyAttributionEngine:
         for s in sorted_stats:
             contrib = (s.total_pnl / total_system_pnl * 100
                        if total_system_pnl != 0 else 0.0)
-            log.info("  %-28s %7d %7.1f %+10,.0f %8.2f %7.1f%% %+7.1f%%",
-                     s.name, s.trades, s.win_rate, s.total_pnl,
+            log.info("  %-28s %7d %7.1f %10s %8.2f %7.1f%% %+7.1f%%",
+                     s.name, s.trades, s.win_rate, f"{s.total_pnl:+,.0f}",
                      s.profit_factor, s.kelly_fraction * 100, contrib)
         log.info("  " + "─" * 76)
         top   = self.top_strategy()

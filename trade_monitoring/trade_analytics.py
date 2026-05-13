@@ -618,8 +618,23 @@ class TradeAnalytics:
     def _save(self) -> None:
         os.makedirs(_DATA_DIR, exist_ok=True)
         try:
-            with open(self._filepath(), "w", encoding="utf-8") as f:
-                json.dump([asdict(t) for t in self._trades], f, indent=2)
+            fp = self._filepath()
+            # Merge with existing file — OrderManager also writes dup_guard stats
+            # to the same file.  We preserve any existing keys and only update
+            # the "trades" key so neither writer clobbers the other.
+            existing: dict = {}
+            if os.path.exists(fp):
+                try:
+                    with open(fp, "r", encoding="utf-8") as fh:
+                        loaded = json.load(fh)
+                        if isinstance(loaded, dict):
+                            existing = loaded
+                        # list format (old files) — no existing keys to preserve
+                except Exception:
+                    pass
+            existing["trades"] = [asdict(t) for t in self._trades]
+            with open(fp, "w", encoding="utf-8") as f:
+                json.dump(existing, f, indent=2)
         except Exception as exc:
             log.warning("[TradeAnalytics] Save failed: %s", exc)
 
@@ -629,8 +644,18 @@ class TradeAnalytics:
             return
         try:
             with open(fp, "r", encoding="utf-8") as f:
-                rows = json.load(f)
-            self._trades = [ClosedTradeRecord(**r) for r in rows]
+                data = json.load(f)
+            # New format: shared dict file — trades live under "trades" key.
+            # Old format: bare list of ClosedTradeRecord dicts.
+            if isinstance(data, dict):
+                rows = data.get("trades", [])
+            elif isinstance(data, list):
+                rows = data
+            else:
+                rows = []
+            self._trades = [
+                ClosedTradeRecord(**r) for r in rows if isinstance(r, dict)
+            ]
         except Exception as exc:
             log.warning("[TradeAnalytics] Load failed: %s", exc)
             self._trades = []

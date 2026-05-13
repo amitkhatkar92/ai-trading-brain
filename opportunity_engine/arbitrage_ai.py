@@ -25,6 +25,12 @@ FUTURES_DATA: List[Dict[str, Any]] = [
     {"symbol": "BANKNIFTY", "spot": 48000, "futures": 48200, "fair_value": 48120, "lot": 15},
 ]
 
+# ── Futures trading disabled flag ──────────────────────────────────────────
+# FUTURES_DATA above is entirely hardcoded and never refreshed.
+# Until a live futures data feed is integrated, futures signals must not
+# reach the execution pipeline.  Flip to False only once live data is wired.
+_FUTURES_DISABLED: bool = True
+
 ETF_DATA: List[Dict[str, Any]] = [
     {"symbol": "NIFTYBEES", "etf_price": 224.8, "nav": 225.3, "lot": 1},
     {"symbol": "BANKBEES",  "etf_price": 481.5, "nav": 480.0, "lot": 1},
@@ -51,6 +57,13 @@ class ArbitrageAI:
     # ─────────────────────────────────────────────
 
     def _futures_basis_arb(self) -> List[TradeSignal]:
+        if _FUTURES_DISABLED:
+            log.info(
+                "[Futures] Disabled — awaiting live data integration. "
+                "FUTURES_DATA is hardcoded and stale; no futures signals emitted."
+            )
+            return []
+
         results = []
         for item in FUTURES_DATA:
             basis     = item["futures"] - item["fair_value"]

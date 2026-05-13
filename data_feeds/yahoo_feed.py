@@ -20,11 +20,15 @@ Symbol reference for Indian markets:
 from __future__ import annotations
 
 import random
+import concurrent.futures
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
 from .base_feed import BaseFeed, PriceBar, TickerQuote
 from utils import get_logger
+
+# Maximum seconds to wait for a single-symbol individual retry before giving up
+_INDIVIDUAL_RETRY_TIMEOUT: float = 6.0
 
 log = get_logger(__name__)
 
@@ -43,6 +47,10 @@ GLOBAL_SYMBOL_MAP: Dict[str, str] = {
     "NIFTY":       "^NSEI",
     "BANKNIFTY":   "^NSEBANK",
     "INDIAVIX":    "^INDIAVIX",
+    # Defensive .NS-variant aliases — routes NIFTY.NS/BANKNIFTY.NS correctly
+    # if any code path passes the wrong suffix for index symbols
+    "NIFTY.NS":    "^NSEI",
+    "BANKNIFTY.NS":"^NSEBANK",
     # Currencies
     "USDINR":      "USDINR=X",
     "DXY":         "DX-Y.NYB",
@@ -88,6 +96,28 @@ class YahooFeed(BaseFeed):
             log.warning("[YahooFeed] yfinance not installed — using simulation. "
                         "Run: pip install yfinance")
 
+    @staticmethod
+    def _yf_close_caches() -> None:
+        """
+        Close yfinance's thread-local peewee SQLite connections.
+
+        yfinance uses peewee to cache timezone/cookie data in SQLite.  Peewee
+        opens one connection per thread and keeps it open indefinitely.  Over
+        a long run with many threads (MarketMonitor ticks, TaskWorker cycles,
+        ThreadPoolExecutor retries) these accumulate and exhaust the OS 1024-FD
+        limit.  Calling .close() after each yfinance operation releases the FD
+        immediately without affecting correctness (peewee reconnects on demand).
+        """
+        try:
+            import yfinance.cache as _yfc
+            for _proxy in (_yfc.tz_db_proxy, _yfc.isin_db_proxy, _yfc.Cookie_db_proxy):
+                try:
+                    _proxy.close()
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
     @property
     def name(self) -> str:
         return "YahooFinance"
@@ -131,7 +161,7 @@ class YahooFeed(BaseFeed):
                 group_by="ticker",
                 auto_adjust=True,
                 progress=False,
-                threads=True,
+                threads=False,  # prevents per-symbol thread spawn → no SQLite FD leak
                 timeout=8,
             )
             results: Dict[str, TickerQuote] = {}
@@ -140,24 +170,69 @@ class YahooFeed(BaseFeed):
                 if q:
                     results[sym] = q
 
-            # Retry any symbol that failed in the batch — fetch individually
+            # Retry any symbol that failed in the batch — fetch individually.
+            # Exception: if ALL symbols failed simultaneously, this is a complete
+            # batch failure (likely a network issue or yfinance outage at market
+            # close).  Individual retries in that case create N new HTTPS
+            # connections that (a) also fail and (b) may exhaust OS FDs, AND they
+            # sometimes return garbage values (~₹1000 for every NSE stock) that
+            # bypass coarse batch sanity checks.  Skip retries and return only
+            # the partial results — _do_monitor handles missing symbols gracefully
+            # by keeping the last LTPGuard-validated portfolio price.
             failed = [s for s in symbols if s not in results]
             if failed:
-                log.info("[YahooFeed] %d symbol(s) missing from batch — retrying individually: %s",
-                         len(failed), failed)
-                for sym in failed:
-                    tkr = GLOBAL_SYMBOL_MAP.get(sym, sym)
-                    q = self._live_quote(tkr, sym)
-                    if q:
-                        results[sym] = q
-                    else:
-                        log.warning("[YahooFeed] %s unavailable after retry — using SIM", sym)
-                        results[sym] = self._sim_quote(sym)
+                if len(failed) == len(symbols):
+                    log.warning(
+                        "[YahooFeed] Batch COMPLETELY failed (%d/%d symbols) — "
+                        "skipping individual retries to prevent FD exhaustion and "
+                        "garbage-data injection. Portfolio will keep last-validated prices.",
+                        len(failed), len(symbols),
+                    )
+                    # Do NOT add SIM quotes — empty results causes _do_monitor to
+                    # skip the portfolio sync, preserving the last clean LTP state.
+                else:
+                    log.info("[YahooFeed] %d symbol(s) missing from batch — retrying individually: %s",
+                             len(failed), failed)
+                    with concurrent.futures.ThreadPoolExecutor(max_workers=len(failed)) as pool:
+                        futures = {
+                            pool.submit(self._live_quote, GLOBAL_SYMBOL_MAP.get(sym, sym), sym): sym
+                            for sym in failed
+                        }
+                        for fut in concurrent.futures.as_completed(futures, timeout=_INDIVIDUAL_RETRY_TIMEOUT):
+                            sym = futures[fut]
+                            try:
+                                q = fut.result(timeout=0)
+                                if q and not getattr(q, 'feed_degraded', False):
+                                    results[sym] = q
+                                else:
+                                    # No result or degraded — exclude from results.
+                                    # MarketDataRouter will serve cached LTP or mark degraded.
+                                    log.warning(
+                                        "[YahooFeed] FEED_DEGRADED %s -- retry returned no data "
+                                        "-- symbol excluded from price_feed",
+                                        sym,
+                                    )
+                            except Exception as exc:
+                                log.warning(
+                                    "[YahooFeed] FEED_DEGRADED %s -- retry error: %s "
+                                    "-- symbol excluded from price_feed",
+                                    sym, exc,
+                                )
+                        # Any futures that timed out are excluded (not sim-injected)
+                        for fut, sym in futures.items():
+                            if sym not in results:
+                                log.warning(
+                                    "[YahooFeed] FEED_DEGRADED %s -- retry timed out "
+                                    "(>%.0fs) -- symbol excluded from price_feed",
+                                    sym, _INDIVIDUAL_RETRY_TIMEOUT,
+                                )
 
             return results
         except Exception as exc:
             log.warning("[YahooFeed] Batch download failed: %s — falling back", exc)
             return super().get_multiple_quotes(symbols)
+        finally:
+            self._yf_close_caches()
 
     # ── Live helpers ───────────────────────────────────────────────────────
 
@@ -167,7 +242,7 @@ class YahooFeed(BaseFeed):
             info = t.fast_info
             hist = t.history(period="2d", interval="1d", auto_adjust=True)
             if hist.empty:
-                return self._sim_quote(alias)
+                return None   # caller (router or retry pool) handles absence
             row     = hist.iloc[-1]
             prev    = hist.iloc[-2]["Close"] if len(hist) > 1 else row["Open"]
             ltp     = float(row["Close"])
@@ -185,8 +260,10 @@ class YahooFeed(BaseFeed):
                 volume     = float(row.get("Volume", 0)),
             )
         except Exception as exc:
-            log.debug("[YahooFeed] live_quote %s failed: %s — using sim", ticker, exc)
-            return self._sim_quote(alias)
+            log.debug("[YahooFeed] live_quote %s failed: %s", ticker, exc)
+            return None   # caller handles absence; do NOT inject sim here
+        finally:
+            self._yf_close_caches()
 
     def _live_history(
         self, ticker: str, alias: str, days: int, interval: str
@@ -196,7 +273,7 @@ class YahooFeed(BaseFeed):
             period = f"{days}d" if days <= 60 else f"{days // 30}mo"
             df = yf.download(
                 ticker, period=period, interval=interval,
-                auto_adjust=True, progress=False
+                auto_adjust=True, progress=False, threads=False,
             )
             if df.empty:
                 return self._sim_history(alias, days)
@@ -216,6 +293,8 @@ class YahooFeed(BaseFeed):
         except Exception as exc:
             log.debug("[YahooFeed] history %s failed: %s — using sim", ticker, exc)
             return self._sim_history(alias, days)
+        finally:
+            self._yf_close_caches()
 
     def _parse_batch_row(self, alias, ticker, data) -> Optional[TickerQuote]:
         try:

@@ -461,8 +461,24 @@ class EODRetrospective:
                 pass
 
         # ── Trades ────────────────────────────────────────────────────
-        open_trades   = [t for t in trades if t.get("event", "").upper() != "CLOSED"]
-        closed_trades = [t for t in trades if t.get("event", "").upper() == "CLOSED"]
+        # Build open/closed from today's rows.
+        # order_manager writes event="CLOSE" (not "CLOSED"), so we accept both.
+        # Deduplicate open positions by order_id: keep only the latest OPEN row
+        # per order (guards against duplicate journal writes after restart).
+        _CLOSE_EVENTS = {"CLOSE", "CLOSED", "CANCELLED"}
+        _OPEN_EVENTS  = {"OPEN", "REENTRY_OPEN"}
+        _open_by_oid: Dict[str, dict] = {}
+        _closed_oids: set = set()
+        for _t in trades:
+            _oid = _t.get("order_id", "").strip()
+            _ev  = _t.get("event", "").strip().upper()
+            if _ev in _CLOSE_EVENTS:
+                _closed_oids.add(_oid)
+                _open_by_oid.pop(_oid, None)
+            elif _ev in _OPEN_EVENTS and _oid not in _closed_oids:
+                _open_by_oid[_oid] = _t
+        open_trades   = list(_open_by_oid.values())
+        closed_trades = [t for t in trades if t.get("event", "").strip().upper() in _CLOSE_EVENTS]
         today_pnl = daily_json.get("today", {}).get("net_pnl", 0.0)
         today_wins = daily_json.get("today", {}).get("wins", 0)
         today_losses = daily_json.get("today", {}).get("losses", 0)

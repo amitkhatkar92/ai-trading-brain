@@ -114,6 +114,8 @@ class TelegramCommandBot:
         self._thread  = threading.Thread(target=self._poll_loop, daemon=True,
                                          name="TelegramBot")
         self._thread.start()
+        threading.Thread(target=self._reminder_loop, daemon=True,
+                         name="TelegramTokenReminder").start()
         log.info("[TelegramBot] Started polling. Bot: @Amitkhatkarbot")
         if not self._chat_id:
             log.info("[TelegramBot] No TELEGRAM_CHAT_ID set yet. "
@@ -133,6 +135,108 @@ class TelegramCommandBot:
             self._send(self._chat_id, text, parse_mode)
         except Exception as exc:
             log.warning("[TelegramBot] Push failed: %s", exc)
+
+    # ── Token reminder loop ────────────────────────────────────────────────
+
+    def _reminder_loop(self) -> None:
+        """
+        Every weekday morning, send a reminder to paste the fresh Dhan token.
+
+        Schedule (IST = UTC+5:30):
+          Startup    → immediate ping if Dhan feed is not live (also useful for testing)
+          07:30 IST  → daily reminder if Dhan feed is not live
+          09:15 IST  → second nudge if still not live and market open approaching
+
+        The loop wakes every 60 s to check the clock, so it adds no real overhead.
+        """
+        _reminded_730: str = ""     # date string of last 07:30 reminder sent
+        _reminded_915: str = ""     # date string of last 09:15 reminder sent
+        _startup_done: bool = False  # one-time startup ping
+
+        while self._running:
+            try:
+                time.sleep(10 if not _startup_done else 60)
+                if not self._chat_id:
+                    continue
+
+                now_utc = datetime.utcnow()
+                # IST = UTC + 5h30m
+                import datetime as _dt_mod
+                now_ist = now_utc + _dt_mod.timedelta(hours=5, minutes=30)
+                today   = now_ist.strftime("%Y-%m-%d")
+                weekday = now_ist.weekday()          # 0=Mon … 4=Fri
+                h, m    = now_ist.hour, now_ist.minute
+
+                # Check live status
+                dhan_live = False
+                try:
+                    from data_feeds import get_feed_manager
+                    dhan_live = get_feed_manager().dhan.is_live
+                except Exception:
+                    pass
+
+                # ── Startup ping (once, immediately after bot starts) ──────
+                if not _startup_done:
+                    _startup_done = True
+                    if not dhan_live:
+                        self.push(
+                            "🔑 <b>AI Trading Brain is online!</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━\n"
+                            "Dhan API is in <b>simulation mode</b> — live market data is unavailable.\n\n"
+                            "Please paste your fresh Dhan access token:\n\n"
+                            "<code>/token YOUR_ACCESS_TOKEN</code>\n\n"
+                            "Get it from: <code>developer.dhan.co</code>\n"
+                            "My Profile → API → Access Token"
+                        )
+                        log.info("[TelegramBot] Startup Dhan token prompt sent.")
+                    else:
+                        self.push(
+                            "✅ <b>AI Trading Brain is online!</b>\n"
+                            "Dhan feed is <b>LIVE</b> — live data active. 📈"
+                        )
+                        log.info("[TelegramBot] Startup ping sent (Dhan already live).")
+                    continue
+
+                if weekday >= 5:                     # skip Sat/Sun for scheduled reminders
+                    continue
+
+                # ── 07:30 reminder ────────────────────────────────────────
+                if h == 7 and 30 <= m < 45 and today != _reminded_730:
+                    _reminded_730 = today
+                    if not dhan_live:
+                        self.push(
+                            "🔑 <b>Good morning! Dhan token required.</b>\n"
+                            "━━━━━━━━━━━━━━━━━━━━━\n"
+                            "Dhan API is in <b>simulation mode</b> — live market data is unavailable.\n\n"
+                            "Get your fresh token:\n"
+                            "  1. Open <code>developer.dhan.co</code>\n"
+                            "  2. My Profile → API → Access Token\n"
+                            "  3. Copy the token and reply here:\n\n"
+                            "<code>/token YOUR_ACCESS_TOKEN</code>\n\n"
+                            "Market opens at <b>09:15 IST</b>. 🕘"
+                        )
+                        log.info("[TelegramBot] 07:30 Dhan token reminder sent.")
+                    else:
+                        self.push(
+                            "✅ <b>Good morning!</b> Dhan feed is <b>LIVE</b> — no action needed.\n"
+                            "Market opens at 09:15 IST. Have a great trading day! 📈"
+                        )
+                        log.info("[TelegramBot] 07:30 morning greeting sent (Dhan already live).")
+
+                # ── 09:15 reminder (second nudge if still offline) ────────
+                elif h == 9 and 15 <= m < 25 and today != _reminded_915:
+                    _reminded_915 = today
+                    if not dhan_live:
+                        self.push(
+                            "⚠️ <b>Market is NOW OPEN — Dhan still in simulation mode!</b>\n"
+                            "Send your token immediately to switch to live data:\n\n"
+                            "<code>/token YOUR_ACCESS_TOKEN</code>"
+                        )
+                        log.warning("[TelegramBot] 09:15 Dhan token nudge sent — feed still offline.")
+
+            except Exception as exc:
+                if self._running:
+                    log.warning("[TelegramBot] Reminder loop error: %s", exc, exc_info=True)
 
     # ── Polling loop ───────────────────────────────────────────────────────
 
@@ -238,12 +342,14 @@ class TelegramCommandBot:
             "/edges":     self._cmd_edges,
             "/perf":      self._cmd_perf,
             "/learn":     self._cmd_learn,
+            "/token":     self._cmd_token,
             "/pause":     self._cmd_pause,
             "/resume":    self._cmd_resume,
             "/report":    self._cmd_report,
             "/eod":       self._cmd_eod,
             "/analytics": self._cmd_analytics,
             "/backlog":   self._cmd_backlog,
+            "/build":     self._cmd_build,
         }
 
     # ── /start ─────────────────────────────────────────────────────────────
@@ -297,6 +403,8 @@ class TelegramCommandBot:
             "/report       — AI self-evaluation quality report\n"
             "/analytics    — Today's trade performance analytics\n"
             "/backlog      — Open improvement items (auto-tracked)\n"
+            "/token        — Update Dhan API token (hot-reload, no restart)\n"
+            "/build        — Deployment manifest, git commit, drift status\n"
             "/pause        — Pause signal generation\n"
             "/resume       — Resume signal generation\n"
             "/help         — This message"
@@ -669,7 +777,105 @@ class TelegramCommandBot:
         except Exception as exc:
             return f"⚠️ EOD retrospective unavailable: {_esc(str(exc))}"
 
+    # ── /token ─────────────────────────────────────────────────────────────
+
+    def _cmd_token(self, msg: dict) -> str:
+        """Accept a fresh Dhan access token and hot-reload the feed — no restart needed."""
+        text  = msg.get("text", "").strip()
+        parts = text.split(None, 1)        # ["/token", "<the_token>"]
+        if len(parts) < 2 or not parts[1].strip():
+            return (
+                "⚠️ <b>Usage:</b> <code>/token YOUR_DHAN_ACCESS_TOKEN</code>\n"
+                "Get your token at <code>developer.dhan.co</code>\n"
+                "→ My Profile → API → Create App → Get Access Token"
+            )
+        new_token = parts[1].strip()
+        if len(new_token) < 20:
+            return (
+                "⚠️ Token looks too short.\n"
+                "Please paste the <b>full</b> access token from developer.dhan.co"
+            )
+        try:
+            from data_feeds import get_feed_manager
+            fm      = get_feed_manager()
+            success = fm.dhan.reload_token(new_token)
+            if success:
+                log.info("[TelegramBot] Dhan access token hot-swapped — feed is LIVE.")
+                return (
+                    "✅ <b>Dhan token updated — feed is LIVE.</b>\n"
+                    "Live market data active from next trading cycle.\n"
+                    "Paper trades only (no real orders placed)."
+                )
+            else:
+                return (
+                    "⚠️ <b>Token accepted but Dhan connect failed.</b>\n"
+                    "Verify the token hasn't expired and your client ID is set.\n"
+                    "System will keep using yfinance as fallback."
+                )
+        except Exception as exc:
+            log.error("[TelegramBot] /token handler error: %s", exc)
+            return f"🚨 Token update failed: {_esc(str(exc))}"
+
     # ── /pause / /resume ───────────────────────────────────────────────────
+
+    # ── /build ─────────────────────────────────────────────────────────────
+
+    def _cmd_build(self, msg: dict) -> str:  # noqa: C901
+        try:
+            from deployment.runtime_verifier import (
+                get_manifest, get_deploy_record, verify, TRACKED_FILES,
+            )
+            manifest = get_manifest()
+            deploy   = get_deploy_record()
+
+            if not manifest:
+                return (
+                    "🔧 <b>Build Manifest</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━━\n"
+                    "⚠️ build_manifest.json not found.\n"
+                    "Run deploy.sh to generate a fresh manifest."
+                )
+
+            commit  = _esc(manifest.get("commit", "?"))
+            branch  = _esc(manifest.get("branch", "?"))
+            cmsg    = _esc(manifest.get("commit_message", "")[:60])
+            built   = _esc(manifest.get("build_timestamp", "?")[:19].replace("T", " "))
+            deployed  = _esc(deploy.get("deploy_timestamp", "—")[:19].replace("T", " ")) if deploy else "—"
+            image_sha = _esc(deploy.get("image_sha", "—")[:12]) if deploy else "—"
+
+            # Run live drift check (no alert — called interactively)
+            result = verify(send_alert=False)
+            ok     = result["ok"]
+            vcount = result["verified"]
+            total  = result["total"]
+            drift  = result["drift_files"]
+
+            drift_icon  = "✅" if ok else "⚠️"
+            drift_label = "NONE" if ok else f"{len(drift)} FILE(S) DRIFTED"
+            drift_block = ""
+            if drift:
+                drift_block = "\n\n<b>Drifted files:</b>\n" + "\n".join(
+                    f"  • {_esc(f)}" for f in drift
+                )
+
+            return (
+                "🔧 <b>Deployment Build</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"COMMIT   = <code>{commit}</code>  ({branch})\n"
+                f"MESSAGE  = {cmsg}\n"
+                f"BUILT    = {built} IST\n"
+                f"DEPLOYED = {deployed} IST\n"
+                f"IMAGE    = <code>{image_sha}</code>\n\n"
+                "📦 <b>File Integrity</b>\n"
+                f"VERIFIED = {vcount}/{total}\n"
+                f"DRIFT    = {drift_icon} {drift_label}"
+                f"{drift_block}"
+            )
+        except Exception as exc:
+            log.warning("[TelegramBot] /build error: %s", exc)
+            return f"⚠️ /build error: {_esc(str(exc))}"
+
+    # ── /pause ─────────────────────────────────────────────────────────────
 
     def _cmd_pause(self, msg: dict) -> str:
         self._paused = True

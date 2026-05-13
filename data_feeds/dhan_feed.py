@@ -75,7 +75,7 @@ DHAN_SECURITY_MAP: Dict[str, Dict[str, Any]] = {
     "HDFCBANK":      {"security_id": "1333",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "RELIANCE":      {"security_id": "2885",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "TCS":           {"security_id": "11536", "segment": "NSE_EQ", "itype": "EQUITY"},
-    "INFY":          {"security_id": "10604", "segment": "NSE_EQ", "itype": "EQUITY"},
+    "INFY":          {"security_id": "1594",  "segment": "NSE_EQ", "itype": "EQUITY"},  # was 10604 (=BHARTIARTL) — corrected
     "ICICIBANK":     {"security_id": "4963",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "KOTAKBANK":     {"security_id": "1922",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "HINDUNILVR":    {"security_id": "1394",  "segment": "NSE_EQ", "itype": "EQUITY"},
@@ -86,7 +86,7 @@ DHAN_SECURITY_MAP: Dict[str, Dict[str, Any]] = {
     "WIPRO":         {"security_id": "3787",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "BAJFINANCE":    {"security_id": "317",   "segment": "NSE_EQ", "itype": "EQUITY"},
     "MARUTI":        {"security_id": "10999", "segment": "NSE_EQ", "itype": "EQUITY"},
-    "BHARTIARTL":    {"security_id": "317",   "segment": "NSE_EQ", "itype": "EQUITY"},
+    "BHARTIARTL":    {"security_id": "10604", "segment": "NSE_EQ", "itype": "EQUITY"},  # was 317 (=BAJFINANCE duplicate) — corrected
     "SUNPHARMA":     {"security_id": "3351",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "TITAN":         {"security_id": "3506",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "NESTLEIND":     {"security_id": "17963", "segment": "NSE_EQ", "itype": "EQUITY"},
@@ -95,13 +95,20 @@ DHAN_SECURITY_MAP: Dict[str, Dict[str, Any]] = {
     "TECHM":         {"security_id": "13538", "segment": "NSE_EQ", "itype": "EQUITY"},
     "POWERGRID":     {"security_id": "14977", "segment": "NSE_EQ", "itype": "EQUITY"},
     "NTPC":          {"security_id": "11630", "segment": "NSE_EQ", "itype": "EQUITY"},
-    "ONGC":          {"security_id": "11654", "segment": "NSE_EQ", "itype": "EQUITY"},
+    "ONGC":          {"security_id": "2475",  "segment": "NSE_EQ", "itype": "EQUITY"},  # was 11654 (=LALPATHLAB) — corrected
     "HCLTECH":       {"security_id": "7229",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "ADANIENT":      {"security_id": "25",    "segment": "NSE_EQ", "itype": "EQUITY"},
     "JSWSTEEL":      {"security_id": "11723", "segment": "NSE_EQ", "itype": "EQUITY"},
-    "TATAMOTORS":    {"security_id": "3456",  "segment": "NSE_EQ", "itype": "EQUITY"},
+    # Post-demerger (2024): NSE ticker TATAMOTORS retired. Two successors created:
+    #   TMPV (Passenger Vehicles) = security_id 3456  — NOT the primary successor
+    #   TMCV (Commercial Vehicles, "Tata Motors Limited") = security_id 759782  ← correct
+    # Maps to TMCV so legacy TATAMOTORS positions get correct Tata Motors Ltd prices.
+    "TATAMOTORS":    {"security_id": "759782", "segment": "NSE_EQ", "itype": "EQUITY"},  # was 3456 (=TMPV spin-off) — corrected to TMCV
     "TATASTEEL":     {"security_id": "3499",  "segment": "NSE_EQ", "itype": "EQUITY"},
     "M&M":           {"security_id": "2031",  "segment": "NSE_EQ", "itype": "EQUITY"},
+    # Explicitly mapped to avoid wrong _extra_map dynamic resolution (cross-validated vs security_id_list.csv)
+    "HINDALCO":      {"security_id": "1363",  "segment": "NSE_EQ", "itype": "EQUITY"},  # NSE:1363 — added to static map; was resolved dynamically via _extra_map (unverified)
+    "COALINDIA":     {"security_id": "20374", "segment": "NSE_EQ", "itype": "EQUITY"},  # NSE:20374 — added to static map; was resolved dynamically via _extra_map (unverified)
 }
 
 # MarketFeed exchange segment integers (for WebSocket subscription)
@@ -170,6 +177,56 @@ class DhanFeed(BaseFeed):
         self._extra_map:   Dict[str, Dict[str, Any]] = {}  # loaded from instrument list
 
         self._connect()
+
+    def reload_token(self, new_token: str) -> bool:
+        """
+        Hot-swap the Dhan access token without restarting the process.
+
+        Steps:
+          1. Update os.environ so _get_credentials() picks up the new value.
+          2. Persist the token to .env for survival across restarts (atomic write).
+          3. Reinitialise the dhanhq client via _connect().
+
+        Returns True if the reconnect succeeds (self._live == True).
+        """
+        import pathlib
+
+        new_token = new_token.strip()
+        if not new_token:
+            raise ValueError("Token must not be empty.")
+
+        # 1 — update live environment
+        os.environ["DHAN_ACCESS_TOKEN"] = new_token
+
+        # 2 — persist to .env atomically (dhan_feed.py lives in data_feeds/, so
+        #     parent.parent is the project root where .env sits)
+        env_path = pathlib.Path(__file__).parent.parent / ".env"
+        try:
+            if env_path.exists():
+                lines = env_path.read_text(encoding="utf-8").splitlines(keepends=True)
+                updated = False
+                for i, line in enumerate(lines):
+                    if line.startswith("DHAN_ACCESS_TOKEN"):
+                        lines[i] = f"DHAN_ACCESS_TOKEN = {new_token}\n"
+                        updated = True
+                        break
+                if not updated:
+                    lines.append(f"DHAN_ACCESS_TOKEN = {new_token}\n")
+                tmp = env_path.with_suffix(".tmp")
+                tmp.write_text("".join(lines), encoding="utf-8")
+                tmp.replace(env_path)
+            else:
+                env_path.write_text(f"DHAN_ACCESS_TOKEN = {new_token}\n", encoding="utf-8")
+            log.info("[DhanFeed] .env updated with new access token.")
+        except Exception as exc:
+            log.warning("[DhanFeed] Could not persist token to .env: %s", exc)
+
+        # 3 — reinitialise dhanhq client
+        self._live    = False
+        self._dhan    = None
+        self._context = None
+        self._connect()
+        return self._live
 
     def _connect(self) -> None:
         """Try to initialise dhanhq client with environment credentials."""
