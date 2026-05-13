@@ -49,12 +49,22 @@ python3 scripts/generate_build_manifest.py
 echo ""
 echo "[3/5] docker compose build..."
 docker compose -f "$COMPOSE_FILE" build
-IMAGE_SHA=$(docker images ai-trading-brain:latest --format '{{.ID}}' 2>/dev/null | head -1)
+
+# After compose build the image is named <project>-<service>
+# docker compose project = directory basename = ai-trading-brain
+# service name = ai-trading-brain  →  image = ai-trading-brain-ai-trading-brain
+COMPOSE_IMAGE="ai-trading-brain-ai-trading-brain"
+IMAGE_SHA=$(docker images "$COMPOSE_IMAGE" --format '{{.ID}}' 2>/dev/null | head -1)
+# Fallback: inspect by repo tag
+[ -z "$IMAGE_SHA" ] && IMAGE_SHA=$(docker images ai-trading-brain:latest --format '{{.ID}}' 2>/dev/null | head -1)
 echo "      image = $IMAGE_SHA"
 
 # ── 4. Restart container ──────────────────────────────────────────────────
 echo ""
 echo "[4/5] docker compose up -d..."
+# Stop and remove any container named ai-trading-brain regardless of how it was started
+docker stop ai-trading-brain 2>/dev/null || true
+docker rm   ai-trading-brain 2>/dev/null || true
 docker compose -f "$COMPOSE_FILE" up -d
 echo "      container restarted."
 
