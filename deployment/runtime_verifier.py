@@ -21,7 +21,11 @@ import logging
 from pathlib import Path
 from typing import Any
 
-log = logging.getLogger("deployment.runtime_verifier")
+try:
+    from utils import get_logger as _get_logger
+    log = _get_logger("deployment.runtime_verifier")
+except Exception:
+    log = logging.getLogger("deployment.runtime_verifier")
 
 # ── Files whose hashes are recorded in the build manifest ─────────────────
 TRACKED_FILES: list[str] = [
