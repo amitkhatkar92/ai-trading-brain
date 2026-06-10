@@ -28,8 +28,13 @@ from typing import Dict, List, Optional, Tuple
 from .yahoo_feed    import YahooFeed
 from .nse_feed      import NSEFeed
 from .dhan_feed     import DhanFeed
-from .angelone_feed import AngelOneFeed
 from .base_feed     import TickerQuote, PriceBar, OptionsChain
+try:
+    from .angelone_feed import AngelOneFeed as _AngelOneFeedCls
+    _HAS_ANGELONE = True
+except ImportError:
+    _AngelOneFeedCls = None  # type: ignore[assignment]
+    _HAS_ANGELONE = False
 from utils       import get_logger
 
 log = get_logger(__name__)
@@ -188,6 +193,22 @@ class FeedStatus:
         return f"Yahoo={y}  NSE={n}  Dhan={d}"
 
 
+class _DisabledAngelOne:
+    """Fallback stub used when angelone_feed module is not installed.
+
+    All callers guard on ``self.angelone.is_live`` before using any methods,
+    so a stub with ``is_live = False`` silently routes through to Yahoo/Dhan
+    without any code path changes.
+    """
+    is_live: bool = False
+
+    def get_quote(self, *args, **kwargs):         return None
+    def get_multiple_quotes(self, *args, **kwargs): return {}
+    def get_history(self, *args, **kwargs):        return []
+    def get_options_chain(self, *args, **kwargs):  return None
+    def emit_daily_summary(self, *args, **kwargs): pass
+
+
 class DataFeedManager:
     """
     Central hub for all market data.
@@ -215,7 +236,7 @@ class DataFeedManager:
     def __init__(self) -> None:
         self.yahoo    = YahooFeed()
         self.nse      = NSEFeed()
-        self.angelone = AngelOneFeed()  # PRIMARY Indian data source — TOTP auto-refresh, no daily token
+        self.angelone = _AngelOneFeedCls() if _HAS_ANGELONE else _DisabledAngelOne()  # PRIMARY Indian data source (optional)
         self.dhan     = DhanFeed()      # FALLBACK for Indian data; also handles order execution
         self._stats = _FeedCycleStats()
         self._last_yahoo_refresh: Optional[datetime] = None   # Phase 2: track last successful Yahoo refresh
