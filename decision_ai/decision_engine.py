@@ -176,3 +176,11 @@ class DecisionEngine:
         log.info("  Score    : %.2f", result.confidence_score)
         log.info("  Decision : %s", _type_labels.get(result.trade_type, result.trade_type))
         log.info("  Reason   : %s", result.reasoning)
+        # ── [DebateDecision] — structured, machine-parseable line (Phase 5) ─
+        log.info(
+            "[DebateDecision] symbol=%s score=%.2f decision=%s strategy=%s rr=%.2f",
+            sig.symbol, result.confidence_score,
+            "APPROVED" if result.trade_type != "REJECT" else "REJECTED",
+            getattr(sig, "strategy_name", getattr(sig, "strategy", "?")),
+            getattr(sig, "rr", 0.0),
+        )

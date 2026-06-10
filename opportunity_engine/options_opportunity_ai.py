@@ -97,6 +97,29 @@ class OptionsOpportunityAI:
 
         for symbol in OPTIONS_SYMBOLS:
             try:
+                # ── Per-symbol capability gate ─────────────────────────
+                # Only scan symbols with a live chain — synthetic chains
+                # produce corrupted IV/OI signals and are skipped entirely.
+                # This means NIFTY options work even when BANKNIFTY is down.
+                try:
+                    from data_feeds import get_feed_manager as _gfm_cap
+                    _cap = _gfm_cap().get_options_capability(symbol)
+                    log.info(
+                        "[OptionsCapability] symbol=%-12s  chain_live=%-5s  "
+                        "strategies_enabled=%-5s  source=%s",
+                        symbol, _cap["chain_live"], _cap["strategies_enabled"],
+                        _cap["source"],
+                    )
+                    if not _cap["strategies_enabled"]:
+                        log.info(
+                            "[OptionsCapability] %s source=%s — strategies SKIPPED "
+                            "(live chain required for options signals)",
+                            symbol, _cap["source"],
+                        )
+                        continue
+                except Exception:
+                    pass  # capability check unavailable — proceed normally
+
                 sig = self._scan_symbol(symbol, snapshot)
                 if sig and sig.confidence >= MIN_CONFIDENCE:
                     signals.append(sig)
@@ -132,12 +155,41 @@ class OptionsOpportunityAI:
             log.debug("[OptionsOpportunityAI] No chain for %s.", symbol)
             return None
 
-        if chain.dte < MIN_DTE_ENTRY:
+        # ── OI Trace: strategy_input stage ───────────────────────────────
+        try:
+            _si_ce_oi  = sum(c.oi for c in chain.contracts if c.option_type == "CE")
+            _si_pe_oi  = sum(c.oi for c in chain.contracts if c.option_type == "PE")
+            _si_w_oi   = sum(1 for c in chain.contracts if (c.oi or 0) > 0)
             log.debug(
-                "[OptionsOpportunityAI] %s DTE=%d < %d — skipping.",
+                "[OptionsOITrace] stage=strategy_input symbol=%s contracts=%d "
+                "contracts_with_oi=%d call_oi=%.0f put_oi=%.0f pcr=%.4f is_live=%s",
+                symbol, len(chain.contracts), _si_w_oi,
+                _si_ce_oi, _si_pe_oi, chain.pcr or 0, chain.is_live,
+            )
+        except Exception:
+            pass
+
+        if chain.dte < MIN_DTE_ENTRY:
+            # Near-term expiry (typically last week of weekly cycle, DTE 0–6).
+            # Dhan always returns the near-term contract; request a farther
+            # dte_target so the feed falls through to yfinance which selects
+            # the correct next-weekly / next-monthly expiry.
+            log.info(
+                "[OptionsOpportunityAI] %s DTE=%d < %d — requesting next expiry "
+                "(dte_target=21).",
                 symbol, chain.dte, MIN_DTE_ENTRY,
             )
-            return None
+            chain = self._feed.get_chain(symbol, dte_target=21)
+            if chain is None or chain.dte < MIN_DTE_ENTRY:
+                log.info(
+                    "[OptionsOpportunityAI] %s — no expiry with DTE≥%d available; skipping.",
+                    symbol, MIN_DTE_ENTRY,
+                )
+                return None
+            log.info(
+                "[OptionsOpportunityAI] %s — switched to next expiry DTE=%d.",
+                symbol, chain.dte,
+            )
 
         # ── Chain quality gate ──────────────────────────────────────────
         # Scores 0.0–1.0. Below 0.5 means partial/illiquid/stale chain.

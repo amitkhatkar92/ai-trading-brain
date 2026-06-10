@@ -37,6 +37,12 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
+# ── Phase 7: Re-entry audit tracking ─────────────────────────────────────────
+# Populated by close_position(); checked by place_order().
+# Telemetry only — does NOT block or reject any order.
+_RECENT_CLOSE_TIMES: Dict[str, Dict] = {}    # symbol → {time, r, direction}
+_REENTRY_AUDIT_LOG:  List[dict]      = []    # accumulated this session
+
 # ── Retry configuration ────────────────────────────────────────────────────
 MAX_ORDER_RETRIES = 3       # attempts before giving up
 RETRY_BASE_DELAY  = 0.5    # seconds; doubles each attempt (0.5 → 1.0 → 2.0)
@@ -121,12 +127,42 @@ _CARRY_DAYS_DEFAULT = 5   # fallback for unclassified strategies
 
 
 def _carry_days_for(strategy: str) -> int:
-    """Return the max carry days for a given strategy name."""
+    """Return the max carry days for a given strategy name (trading days)."""
     key = strategy.lower().replace("_", "").replace("-", "").replace(" ", "")
     for prefix, days in _CARRY_DAYS_BY_TYPE.items():
         if key.startswith(prefix):
             return days
     return _CARRY_DAYS_DEFAULT
+
+
+def _trading_days_elapsed(placed_at: datetime, now: datetime) -> int:
+    """Count weekdays (Mon-Fri) elapsed from placed_at to now.
+
+    NSE public holidays are treated as trading days — conservative
+    approximation.  A holiday-adjacent carry may fire one session early,
+    which is the safe failure mode (earlier exit, not later).
+
+    Rationale for weekday-only approach:
+      • Zero external dependency — no holiday list to maintain.
+      • Fixes the primary defect: weekends consuming carry budget.
+      • Holidays add at most 1 session of over-counting per occurrence.
+      • Design review (CarryDesignReview Jun 8 2026): Option B adopted.
+    """
+    count = 0
+    d = placed_at.date()
+    target = now.date()
+    while d < target:
+        d += timedelta(days=1)
+        if d.weekday() < 5:   # Mon=0 … Fri=4
+            count += 1
+    return count
+
+
+# Calendar-day hard ceiling per unit of max_carry (trading days).
+# Prevents infinite deferral when a holiday cluster (e.g. Diwali week)
+# extends the carry window beyond all reasonable bounds.
+# Formula: max_carry_td × _CARRY_CAL_CEIL_FACTOR  →  e.g. 3td × 4 = 12cd
+_CARRY_CAL_CEIL_FACTOR: int = 4
 
 # ── Duplicate-guard LTP freshness thresholds ─────────────────────────────
 _DUP_GUARD_STALE_AFTER_S    = 120  # LTP age (s) above which we mark stale
@@ -135,7 +171,7 @@ _DUP_GUARD_LTP_CONF_TICKS   =   2  # minimum consecutive fresh ticks for full R 
 
 # ── Risk Guards (prevent trade volume explosion & duplicates) ──────────────
 MAX_OPEN_POSITIONS = 15       # maximum concurrent positions (INCREASED 5→15 for capital deployment)
-MAX_CAPITAL_PER_TRADE_PCT = 25.0  # max % of capital per single trade (pilot: ₹20k → ₹5k)
+MAX_CAPITAL_PER_TRADE_PCT = 15.0  # max % of capital per single trade
 MAX_TOTAL_OPEN_EXPOSURE_PCT = 85.0  # max % of total capital in open positions (INCREASED 65→85)
 
 # ── Late-Day Entry Control (institutional time-based rules) ────────────────
@@ -189,6 +225,18 @@ class OrderRecord:
     # EXPIRED_PENDING  : SESSION_EXPIRED written to CSV, pending deregister
     governance_state:    str  = "ACTIVE"   # see constants above
     orphan_watch:        bool = False       # True when past carry_limit (ORPHAN_WATCH state)
+    # Exit reason stamped at close time — used by StrategyHealthMonitor to distinguish
+    # genuine strategy outcomes from system-management events (SESSION_EXPIRED, REPLACEMENT…).
+    close_reason:        str  = ""         # populated by close_position(); empty = unknown
+    # Immutable historical risk anchor — the stop-loss distance that defined 1R at trade open.
+    # Cleanup paths (SESSION_EXPIRED, orphan expiry) may zero out runtime stop_loss; this field
+    # preserves the original value so evaluation layers always compute consistent R-multiples.
+    initial_stop_loss:   float = 0.0      # set once at order creation; never modified afterwards
+    # Post-expiry review engine (Phase C) — counts how many times this position
+    # has been approved for extension by _review_carry_extension.
+    # Phase B: always 0 (dry-run only).  Phase C: incremented on CONTINUE.
+    # Persisted in expiry_retries.json sidecar when Phase C is active.
+    extension_count:     int   = 0
 
 
 @dataclass
@@ -557,6 +605,28 @@ class OrderManager:
             return None
 
         _trade_type = getattr(decision, "trade_type", "FULL")
+
+        # ── PRE-ORDER PRICE INTEGRITY GUARD ───────────────────────────
+        # Blocks phantom/SIM prices before any order is placed.
+        # Catches cases where the feed fallback injected a bad price
+        # (e.g. ₹995 SIM for COALINDIA instead of ₹468 live) that passed
+        # all upstream guards but would book a trade at a nonsensical level.
+        # This is the last-resort gate before actual execution.
+        try:
+            from data_integrity.price_integrity_validator import get_price_validator as _get_pv
+            _integrity = _get_pv().validate(signal.symbol, signal.entry_price)
+            if not _integrity.ok and _integrity.classification != "NO_BAND_REGISTERED":
+                log.warning(
+                    "[OrderManager] ❌ PRE-ORDER PRICE GUARD: %s entry=%.2f BLOCKED — "
+                    "%s: %s",
+                    signal.symbol, signal.entry_price,
+                    _integrity.classification, _integrity.reason,
+                )
+                return None
+        except Exception as _pv_exc:
+            log.debug("[OrderManager] Pre-order price guard skipped: %s", _pv_exc)
+        # ─────────────────────────────────────────────────────────────
+
         log.info("[OrderManager] ➡  Executing LIMIT %s %s qty=%d  signal=%.2f  "
                  "trade_type=%s  zone=%.2f  SL=%.2f  TGT=%.2f",
                  signal.direction.value, signal.symbol,
@@ -648,9 +718,32 @@ class OrderManager:
             signal_vix        = float(_ctx.get("vix", 0.0)),
             signal_distortion = bool(_ctx.get("distortion", False)),
             confidence_score  = float(getattr(decision, "confidence_score", 5.0)),
+            initial_stop_loss = signal.stop_loss,   # immutable — never overwrite
         )
         self._orders[order_id] = record
         self._update_portfolio(signal, qty)
+
+        # Phase 7 — [ReEntryAudit]: telemetry-only check (does NOT block the order)
+        _prev = _RECENT_CLOSE_TIMES.get(signal.symbol)
+        if _prev is not None:
+            _gap_s = (datetime.now() - _prev["time"]).total_seconds()
+            _same_dir = (record.direction == _prev["direction"])
+            _event = {
+                "symbol":        signal.symbol,
+                "previous_exit": _prev["time"].isoformat(),
+                "new_entry":     datetime.now().isoformat(),
+                "gap_seconds":   round(_gap_s, 1),
+                "same_direction": _same_dir,
+                "previous_r":    _prev["r"],
+            }
+            _REENTRY_AUDIT_LOG.append(_event)
+            log.info(
+                "[ReEntryAudit] symbol=%s previous_exit=%s new_entry=%s "
+                "gap_seconds=%.0f same_direction=%s previous_r=%+.3f",
+                signal.symbol, _prev["time"].isoformat(),
+                datetime.now().isoformat(),
+                _gap_s, _same_dir, _prev["r"],
+            )
 
         log.info("[OrderManager] ✅ Order %s registered (AET=%s).",
                  order_id, _aet_mode.value)
@@ -712,6 +805,16 @@ class OrderManager:
         if not rec or rec.status != "open":
             return False
 
+        # Phase 3 — integrity check before any computation
+        if rec.initial_stop_loss <= 0:
+            log.warning(
+                "[RiskIntegrityViolation] symbol=%s order_id=%s "
+                "initial_stop_loss=%s stop_loss=%s entry=%.4f "
+                "— R-multiple cannot be computed for this trade",
+                rec.symbol, order_id, rec.initial_stop_loss,
+                rec.stop_loss, rec.entry_price,
+            )
+
         # Reverse direction to close — use MARKET so exits always fill immediately
         close_dir = "SELL" if rec.direction == "BUY" else "BUY"
         self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
@@ -721,10 +824,21 @@ class OrderManager:
         if rec.direction in ("SELL", "SHORT"):
             pnl = -pnl
 
-        rec.status    = "closed"
-        rec.pnl       = round(pnl, 2)
-        rec.closed_at = datetime.now()
+        rec.status       = "closed"
+        rec.pnl          = round(pnl, 2)
+        rec.closed_at    = datetime.now()
+        rec.close_reason = reason          # stamp exit reason for downstream classification
         self._portfolio.realised_pnl += pnl
+
+        # Phase 7 — record close for [ReEntryAudit] at next order creation
+        _isl  = rec.initial_stop_loss if rec.initial_stop_loss > 0 else rec.stop_loss
+        _risk = abs(rec.entry_price - _isl) * rec.quantity
+        _r    = round(pnl / _risk, 3) if _risk > 0 else 0.0
+        _RECENT_CLOSE_TIMES[rec.symbol] = {
+            "time":      rec.closed_at,
+            "r":         _r,
+            "direction": rec.direction,
+        }
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)
@@ -818,6 +932,11 @@ class OrderManager:
                 reconciled_count, immediate_sl_hits, immediate_expiries.
         Values are 0 before first restore completes or when PAPER_TRADING is False."""
         return dict(self._restore_stats)
+
+    def get_reentry_summary(self) -> List[dict]:
+        """Return the list of [ReEntryAudit] events accumulated this session.
+        Used by _do_eod_learning() to emit [ReEntrySummary]. Telemetry only."""
+        return list(_REENTRY_AUDIT_LOG)
 
     def update_restore_stats(self, **kwargs) -> None:
         """Allow orchestrator to populate post-restore governance fields."""
@@ -930,8 +1049,9 @@ class OrderManager:
                 placed_at     = now,
                 zone_price    = _confirmed_zone,
                 aet_mode      = AdaptiveTimingMode.CONFIRMATION.value,
-                signal_regime = slot.signal_regime,
-                signal_vix    = slot.signal_vix,
+                signal_regime     = slot.signal_regime,
+                signal_vix        = slot.signal_vix,
+                initial_stop_loss = slot.signal.stop_loss,   # immutable
             )
             self._orders[order_id] = rec
             self._update_portfolio(slot.signal, slot.qty)
@@ -1222,8 +1342,9 @@ class OrderManager:
                 order_type    = "LIMIT",
                 placed_at     = now,
                 zone_price    = _reentry_zone_px,     # actual broker limit price
-                signal_regime = slot.signal_regime,
-                signal_vix    = slot.signal_vix,
+                signal_regime     = slot.signal_regime,
+                signal_vix        = slot.signal_vix,
+                initial_stop_loss = slot.stop_loss,   # immutable
             )
             self._orders[new_oid] = rec
 
@@ -1678,7 +1799,7 @@ class OrderManager:
                      order_type, direction, symbol, qty, price)
             import time as _t
             _ms = _t.time_ns() // 1_000_000   # ms timestamp — guarantees uniqueness
-            return f"SIM_{symbol}_{direction}_{qty}_{_ms}"
+            return f"SIM_{symbol}_{direction}_Q{qty}_P{price:.2f}_{_ms}"
         return self._broker.place_order(
             symbol=symbol, exchange="NSE",
             transaction_type=direction, quantity=qty, price=price,
@@ -1930,26 +2051,31 @@ class OrderManager:
                         rec._last_retry_ts.strftime("%H:%M:%S"),
                     )
                     continue
-            age_days  = (now - rec.placed_at).days
-            max_carry = _carry_days_for(rec.strategy)
-            if age_days < max_carry:
+            # ── Option B: trading-day carry (CarryDesignReview Jun 8 2026) ────
+            age_td    = _trading_days_elapsed(rec.placed_at, now)
+            age_cal   = (now - rec.placed_at).days
+            max_carry = _carry_days_for(rec.strategy)  # now means trading days
+            _cal_ceil = max_carry * _CARRY_CAL_CEIL_FACTOR  # e.g. 3td → 12cd ceiling
+            # Primary trigger: trading days elapsed >= limit.
+            # Secondary trigger: calendar ceiling breached (holiday-cluster guard).
+            if age_td < max_carry and age_cal < _cal_ceil:
                 continue
             # Guard 2: require a validated live price from LTPGuard (set by check_all
             # earlier in _do_monitor).  has_live_ltp lives on PortfolioPosition.
             # If the price for this symbol was rejected by LTPGuard this cycle
             # (e.g. >20% deviation), don't use it as an exit — defer to next cycle.
-            # Exception: if the position is 2× past max_carry, close regardless
-            # to prevent infinite deferral when a symbol drops off the feed.
+            # Exception: if the calendar ceiling is already breached, close regardless
+            # to prevent infinite deferral during extended holiday clusters.
             _pos = self._portfolio.positions.get(rec.symbol)
             _has_valid_ltp = _pos is None or getattr(_pos, "has_live_ltp", True)
-            if not _has_valid_ltp and age_days < max_carry * 2:
+            if not _has_valid_ltp and age_td < max_carry * 2 and age_cal < _cal_ceil:
                 log.info(
-                    "[CarryExpiryDeferred] %s age=%dd no_valid_ltp this cycle "
-                    "(max_carry=%dd) — will retry next monitoring cycle.",
-                    rec.symbol, age_days, max_carry,
+                    "[TradingDayCarry][CarryExpiryDeferred] %s age_td=%dtd no_valid_ltp "
+                    "(max_carry=%dtd cal_ceil=%dcd age_cal=%dcd) — retry next cycle.",
+                    rec.symbol, age_td, max_carry, _cal_ceil, age_cal,
                 )
                 continue
-            to_expire.append((oid, rec, age_days, max_carry))
+            to_expire.append((oid, rec, age_td, age_cal, max_carry))
 
         if not to_expire:
             return 0
@@ -1966,8 +2092,15 @@ class OrderManager:
                 for _ns, _q in _q_map.items():
                     _bare = _ns.replace(".NS", "")
                     _ltp  = (getattr(_q, "ltp", None) or getattr(_q, "last_price", None))
-                    if _ltp and float(_ltp) > 0:
+                    _src  = (getattr(_q, "feed_source", "") or "").upper()
+                    if _ltp and float(_ltp) > 0 and _src != "SIM":
                         _ltp_map[_bare] = round(float(_ltp), 2)
+                    elif _src == "SIM":
+                        log.warning(
+                            "[CarryExpiry] REJECTED SIM exit price for %s (%.2f) — "
+                            "phantom price; falling back to entry_price (₹0 PnL).",
+                            _bare, float(_ltp or 0),
+                        )
             except Exception as _e:
                 log.debug("[CarryExpiry] LTP fetch failed: %s", _e)
 
@@ -1980,7 +2113,10 @@ class OrderManager:
 
             try:
                 w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
-                for oid, rec, age_days, max_carry in to_expire:
+                for oid, rec, age_td, age_cal, max_carry in to_expire:
+                    # ── Phase B dry-run review — logs WOULD_DECIDE before expiry ──
+                    _dryrun_ltp = _ltp_map.get(rec.symbol, rec.entry_price)
+                    self._review_carry_extension_dryrun(rec, age_td, max_carry, _dryrun_ltp)
                     # Guard B: order_id dedupe set — belt-and-suspenders
                     if oid in self._closed_ids_today:
                         log.debug(
@@ -2036,14 +2172,15 @@ class OrderManager:
                             "reason":      "SESSION_EXPIRED",
                         })
                         log.warning(
-                            "[CarryExpiry] SESSION_EXPIRED %s %s  "
-                            "age=%dd >= max_carry=%dd  exit=%.2f  pnl=+%.0f",
-                            rec.symbol, oid, age_days, max_carry, exit_price, pnl,
+                            "[TradingDayCarry][CarryExpiry] SESSION_EXPIRED %s %s  "
+                            "age_td=%dtd >= max_carry=%dtd  age_cal=%dcd  exit=%.2f  pnl=%+.0f",
+                            rec.symbol, oid, age_td, max_carry, age_cal, exit_price, pnl,
                         )
 
                         # Complete lifecycle: EXPIRED_PENDING → CLOSED
                         rec.status = "closed"
                         rec.governance_state = "CLOSED"  # no longer exposure-active
+                        rec.closed_at = now              # timestamp for GovernanceScoreAudit
                         rec._last_retry_ts = None   # clear backoff on success
                         self._closed_ids_today.add(oid)
                         self._portfolio.positions.pop(rec.symbol, None)
@@ -2074,6 +2211,89 @@ class OrderManager:
                 fh.close()
 
         return expired
+
+    def _review_carry_extension_dryrun(
+        self, rec: "OrderRecord", age_td: int, max_carry: int, ltp: float,
+    ) -> None:
+        """Phase B dry-run Post-Expiry Review Engine.
+
+        Computes a position-health score and logs what the review engine
+        WOULD decide (CONTINUE or EXIT) but takes NO action.  SESSION_EXPIRED
+        fires as normal regardless of the dry-run outcome.
+
+        Scoring uses position-health factors only (max 7.0 in Phase B).
+        Market context factors (regime, VIX, portfolio heat, opportunity cost)
+        are deferred to Phase C once market_context is wired in.
+
+        Log tag: [CarryReviewDryRun]
+        Evidence gate: 50+ SESSION_EXPIRED trades under 3td carry rule before
+        Phase C (live decisions) is activated.
+        """
+        try:
+            if ltp <= 0 or rec.entry_price <= 0:
+                return
+
+            # ── Position health ─────────────────────────────────────────────
+            if rec.direction == "BUY":
+                pnl        = (ltp - rec.entry_price) * rec.quantity
+                thesis_ok  = ltp >= rec.entry_price * 0.995
+                tgt_range  = rec.target - rec.entry_price
+                tgt_prog   = (ltp - rec.entry_price) / tgt_range * 100 if tgt_range > 0 else 0.0
+            else:
+                pnl        = (rec.entry_price - ltp) * rec.quantity
+                thesis_ok  = ltp <= rec.entry_price * 1.005
+                tgt_range  = rec.entry_price - rec.target
+                tgt_prog   = (rec.entry_price - ltp) / tgt_range * 100 if tgt_range > 0 else 0.0
+
+            sl_dist  = abs(rec.initial_stop_loss - rec.entry_price) if rec.initial_stop_loss \
+                       else abs(rec.stop_loss - rec.entry_price)
+            r_mult   = pnl / (sl_dist * abs(rec.quantity)) if sl_dist > 0 and rec.quantity else 0.0
+            sl_prox  = abs(ltp - rec.stop_loss) / ltp * 100 if ltp else 100.0
+
+            # ── Score (position-health factors, max 7.0) ────────────────────
+            score = 0.0
+            if pnl > 0:                score += 2.0
+            if r_mult >= 0.5:          score += 1.0
+            if thesis_ok:              score += 1.5
+            if tgt_prog >= 50.0:       score += 1.0
+            if rec.confidence_score >= 7.5: score += 0.5
+            # Penalties
+            if pnl < 0:                score -= 2.0
+            if not thesis_ok:          score -= 2.0
+            if sl_prox < 0.5:          score -= 1.0
+
+            # ── Hard conditions ─────────────────────────────────────────────
+            hard_exit_reason = None
+            if sl_prox < 0.3:
+                hard_exit_reason = "SL_PROXIMITY"
+            elif rec.extension_count >= 3:
+                hard_exit_reason = "MAX_EXTENSIONS"
+
+            hard_continue = r_mult >= 2.0 and pnl > 0 and thesis_ok
+
+            if hard_exit_reason:
+                decision, reason = "EXIT",     hard_exit_reason
+            elif hard_continue:
+                decision, reason = "CONTINUE", "HARD_CONTINUE_2R"
+            elif score >= 6.0:
+                decision, reason = "CONTINUE", "scoring"
+            else:
+                decision, reason = "EXIT",     "scoring"
+
+            log.info(
+                "[CarryReviewDryRun] %s %s  age=%dtd/max=%dtd  ext=%d/3"
+                "  would_decide=%s  score=%.1f/7.0(threshold=6.0)"
+                "  pnl=%+.0f  r_mult=%+.2f  thesis=%s  sl_prox=%.1f%%"
+                "  tgt_prog=%.0f%%  conf=%.1f  reason=%s"
+                "  [regime/vix/heat deferred_PhaseC]",
+                rec.symbol, rec.order_id, age_td, max_carry,
+                rec.extension_count, decision, score,
+                pnl, r_mult, "INTACT" if thesis_ok else "BROKEN",
+                sl_prox, max(0.0, tgt_prog), rec.confidence_score, reason,
+            )
+        except Exception as _e:
+            log.debug("[CarryReviewDryRun] score error %s %s: %s",
+                      rec.symbol, getattr(rec, "order_id", "?"), _e)
 
     # ── Smart-Swap constants ───────────────────────────────────────────────
     _SWAP_MIN_AGE_MIN           = 20.0   # never evict a position younger than this
@@ -2770,7 +2990,10 @@ class OrderManager:
                         # immediately evict a restored position just because 0.0 < 0.5+delta.
                         confidence_score = float(row.get("confidence", 0) or 0),
                         # Explicit governance state so any observer can see lifecycle phase.
-                        governance_state = "ACTIVE_CARRY",
+                        governance_state  = "ACTIVE_CARRY",
+                        # Carry restore: use original CSV stop_loss (before extension adjustment)
+                        # as the immutable risk anchor.
+                        initial_stop_loss = float(row.get("stop_loss", 0) or 0),
                     )
                     if _ext_entry:
                         # Tell TradeMonitor (via register()) not to re-fire extension.
@@ -2826,8 +3049,15 @@ class OrderManager:
                             _bare = _ns.replace(".NS", "")
                             _ltp  = (getattr(_q, "ltp", None)
                                      or getattr(_q, "last_price", None))
-                            if _ltp and float(_ltp) > 0:
+                            _src  = (getattr(_q, "feed_source", "") or "").upper()
+                            if _ltp and float(_ltp) > 0 and _src != "SIM":
                                 _expire_ltp[_bare] = round(float(_ltp), 2)
+                            elif _src == "SIM":
+                                log.warning(
+                                    "[SessionExpiry] REJECTED SIM exit price for %s (%.2f) — "
+                                    "phantom price; falling back to entry_price (₹0 PnL).",
+                                    _bare, float(_ltp or 0),
+                                )
                         if _expire_ltp:
                             log.info(
                                 "[OrderManager] SESSION_EXPIRED: live LTP fetched for "

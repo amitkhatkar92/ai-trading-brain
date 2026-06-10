@@ -38,7 +38,10 @@ from utils import get_logger
 from .scenario_generator   import ScenarioGenerator, Scenario
 from .market_simulator     import MarketSimulator
 from .stress_test_engine   import StressTestEngine
-from .strategy_resilience_ai import StrategyResilienceAI, ResilienceScore
+from .strategy_resilience_ai import (
+    StrategyResilienceAI, ResilienceScore,
+    THRESHOLD_STABILITY, THRESHOLD_MC_PROFIT_PROB,
+)
 from .simulation_report    import SimulationReporter
 
 log = get_logger(__name__)
@@ -160,6 +163,102 @@ class SimulationEngine:
                 result.approved_trades.append(signal)
             else:
                 result.rejected_trades.append(signal)
+                log.info(
+                    "[SimulationDecision] symbol=%s strategy=%s "
+                    "confidence=%.2f rr_ratio=%.2f "
+                    "mc_score=%.3f stability_score=%.3f "
+                    "required_threshold=%.2f rejection_reason=%s",
+                    signal.symbol,
+                    getattr(signal, "strategy_name", ""),
+                    getattr(signal, "confidence", 0.0),
+                    getattr(signal, "risk_reward_ratio", 0.0),
+                    score.monte_carlo_profit_prob,
+                    score.stability_score,
+                    THRESHOLD_STABILITY,
+                    score.rejection_reason,
+                )
+                # Legacy tag retained for backward grep compatibility
+                log.info(
+                    "[SimulationReject] symbol=%s mc_probability=%.0f%% "
+                    "simulation_score=%.3f required_mc=%.0f%% required_stability=%.2f "
+                    "survival_rate=%.0f%% worst_loss_r=%.2f stability=%.2f "
+                    "top_failure_reason=%s",
+                    signal.symbol,
+                    score.monte_carlo_profit_prob * 100,
+                    score.stability_score,
+                    THRESHOLD_MC_PROFIT_PROB * 100,
+                    THRESHOLD_STABILITY,
+                    score.survival_rate * 100,
+                    score.worst_loss_r,
+                    score.stability_score,
+                    score.rejection_reason,
+                )
+
+        # ── [SimulationReject] aggregate ──────────────────────────────────────
+        if result.rejected_trades:
+            from collections import Counter as _Counter
+            _reasons = _Counter(
+                s.rejection_reason for s in result.scores if not s.approved
+            )
+            _mc_probs = [
+                s.monte_carlo_profit_prob for s in result.scores if not s.approved
+            ]
+            _stab_vals = [
+                s.stability_score for s in result.scores if not s.approved
+            ]
+            import statistics as _stats
+            log.info(
+                "[SimulationReject] AGGREGATE rejected=%d avg_mc_probability=%.0f%% "
+                "avg_stability=%.2f reject_reason_counts=%s",
+                len(result.rejected_trades),
+                (_stats.mean(_mc_probs) * 100) if _mc_probs else 0.0,
+                _stats.mean(_stab_vals) if _stab_vals else 0.0,
+                dict(_reasons.most_common()),
+            )
+
+        # ── [SimulationSummary] + [SimulationVerdict] ─────────────────────────
+        try:
+            from collections import Counter as _SCtr
+            import statistics as _sstats
+            _all_mc  = [s.monte_carlo_profit_prob for s in result.scores]
+            _all_stab= [s.stability_score for s in result.scores]
+            _rej_reasons = _SCtr(
+                s.rejection_reason for s in result.scores if not s.approved
+            )
+            _dom_reason = _rej_reasons.most_common(1)[0][0] if _rej_reasons else "NONE"
+            _avg_mc   = (_sstats.mean(_all_mc)   * 100) if _all_mc else 0.0
+            _avg_stab = _sstats.mean(_all_stab)   if _all_stab else 0.0
+            log.info(
+                "[SimulationSummary] signals_in=%d signals_out=%d "
+                "avg_mc_score=%.0f%% avg_stability=%.3f "
+                "threshold_stability=%.2f threshold_mc=%.0f%% "
+                "dominant_rejection_reason=%s",
+                result.total_evaluated, len(result.approved_trades),
+                _avg_mc, _avg_stab,
+                THRESHOLD_STABILITY, THRESHOLD_MC_PROFIT_PROB * 100,
+                _dom_reason,
+            )
+            # Verdict logic
+            if result.total_evaluated == 0:
+                _sim_verdict = "NO_SIGNALS"
+            elif len(result.rejected_trades) == 0:
+                _sim_verdict = "SIMULATION_HEALTHY"
+            elif len(result.approved_trades) == 0:
+                _sim_verdict = "SIMULATION_TOO_RESTRICTIVE"
+            elif len(result.rejected_trades) > len(result.approved_trades):
+                _sim_verdict = "SIMULATION_TOO_RESTRICTIVE"
+            else:
+                _sim_verdict = "SIMULATION_HEALTHY"
+            log.info(
+                "[SimulationVerdict] verdict=%s approved=%d rejected=%d "
+                "pass_rate=%.0f%% threshold_stability=%.2f threshold_mc=%.0f%%",
+                _sim_verdict,
+                len(result.approved_trades), len(result.rejected_trades),
+                result.approval_rate * 100,
+                THRESHOLD_STABILITY, THRESHOLD_MC_PROFIT_PROB * 100,
+            )
+        except Exception as _sv_exc:
+            log.debug("[SimulationSummary] skipped: %s", _sv_exc)
 
         # Print cycle summary table
         self._reporter.print_cycle_summary(result.scores)

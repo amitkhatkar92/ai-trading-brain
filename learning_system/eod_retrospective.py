@@ -23,6 +23,7 @@ Output:
 from __future__ import annotations
 
 import csv
+import inspect
 import json
 import os
 import re
@@ -33,6 +34,12 @@ from typing import Dict, List, Optional, Tuple
 from utils import get_logger
 
 log = get_logger(__name__)
+
+# ── [RuntimeFingerprint] ─────────────────────────────────────────────────────
+log.info(
+    "[RuntimeFingerprint] module=%s build=SESSION_C_PATCHSET_V1 pid=%d file=%s",
+    __name__, os.getpid(), os.path.abspath(__file__),
+)
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 _ROOT           = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -54,13 +61,25 @@ _RE_MC_REJECT = re.compile(
     r"(Stability|Survival rate|MC profit|Worst-case) ([\d.]+\S*) < "
     r"(?:threshold|limit) ([\d.]+\S*)"
 )
-_RE_DECISION_SCORE = re.compile(
-    r"\[Decision(?:Engine)?\].*?score=([\d.]+).*?(APPROVED|REJECTED)"
+_RE_DECISION_WSCORE   = re.compile(r"Weighted Score:\s*([\d.]+)")
+_RE_DECISION_APPROVED = re.compile(
+    r"(?:FULL TRADE|PARTIAL TRADE).*?Position Size"
+)
+_RE_DECISION_REJECTED = re.compile(
+    r"REJECTED.*?Position Size"
+)
+# Phase 5 — structured debate decision line emitted by DecisionEngine
+_RE_DEBATE_DECISION = re.compile(
+    r"\[DebateDecision\]\s+symbol=(\S+)\s+score=([\d.]+)\s+decision=(APPROVED|REJECTED)"
+    r"\s+strategy=(\S+)\s+rr=([\d.]+)"
 )
 _RE_ODM_CYCLE = re.compile(
     r"\[ODM\] Cycle recorded: signals=(\d+).*?approved=(\d+).*?tier=(\w+)"
 )
-_RE_REGIME = re.compile(r"regime[=:\s]+([\w_]+)", re.IGNORECASE)
+_RE_REGIME = re.compile(
+    r"regime[=:\s]+(bull_trend|range_market|bear_market|volatile|neutral)", re.IGNORECASE
+)
+_VALID_REGIMES = {"bull_trend", "bear_market", "range_market", "volatile", "neutral"}
 _RE_VIX    = re.compile(r"(?:VIX|vix)[=:\s]+([\d.]+)")
 _RE_STAGNANT = re.compile(r"\[ODM\].*?STAGNANT.*?(\d+) consecutive")
 _RE_LAYER_CRIT = re.compile(
@@ -242,16 +261,83 @@ class EODRetrospective:
         return rejects
 
     def _parse_decisions(self, lines: List[str]) -> List[dict]:
-        decisions = []
+        """
+        Parse DecisionEngine scorecard lines from the trading log.
+
+        Preferred source: [DebateDecision] structured lines (Phase 5).
+        Fallback:
+          "  Weighted Score: X.XX / 10"
+          "  Decision : ✅ FULL TRADE    | Position Size: 100%"
+          "  Decision : ⚡ PARTIAL TRADE | Position Size:  50%"
+          "  Decision : ❌ REJECTED      | Position Size:   0%"
+        """
+        decisions: List[dict] = []
+        _pending_score: Optional[float] = None
+        _wscore_lines  = 0
+        _outcome_lines = 0
+        _debate_decision_lines = 0
         for line in lines:
-            if "Decision" not in line:
-                continue
-            m = _RE_DECISION_SCORE.search(line)
-            if m:
+            # ── Phase 5: prefer structured [DebateDecision] line ──────────────
+            m_dd = _RE_DEBATE_DECISION.search(line)
+            if m_dd:
+                _debate_decision_lines += 1
                 decisions.append({
-                    "score":    float(m.group(1)),
-                    "outcome":  m.group(2),
+                    "score":    float(m_dd.group(2)),
+                    "outcome":  m_dd.group(3),    # "APPROVED" or "REJECTED"
+                    "symbol":   m_dd.group(1),
+                    "strategy": m_dd.group(4),
+                    "rr":       float(m_dd.group(5)),
+                    "source":   "DebateDecision",
                 })
+                continue
+            # ── Fallback: legacy scorecard format ────────────────────────────
+            m_ws = _RE_DECISION_WSCORE.search(line)
+            if m_ws:
+                _pending_score = float(m_ws.group(1))
+                _wscore_lines += 1
+                continue
+            if _RE_DECISION_APPROVED.search(line):
+                _outcome_lines += 1
+                decisions.append({"score": _pending_score or 0.0, "outcome": "APPROVED", "source": "legacy"})
+                _pending_score = None
+            elif _RE_DECISION_REJECTED.search(line):
+                _outcome_lines += 1
+                decisions.append({"score": _pending_score or 0.0, "outcome": "REJECTED", "source": "legacy"})
+                _pending_score = None
+        # ── [DebateParserValidation] ───────────────────────────────────────
+        _approved = sum(1 for d in decisions if d["outcome"] == "APPROVED")
+        _rejected = sum(1 for d in decisions if d["outcome"] == "REJECTED")
+        log.info(
+            "[DebateParserValidation] weighted_score_lines=%d  outcome_lines=%d"
+            "  debate_decision_lines=%d  approved=%d  rejected=%d"
+            "  source=%s",
+            _wscore_lines, _outcome_lines,
+            _debate_decision_lines, _approved, _rejected,
+            "DebateDecision" if _debate_decision_lines > 0 else "legacy_scorecard",
+        )
+        # ── [DebateConsistencyAudit] ──────────────────────────────────────
+        if _debate_decision_lines > 0 and _wscore_lines > 0:
+            # Both sources found in same log — cross-check counts
+            log.warning(
+                "[DebateConsistencyAudit] BOTH sources found: "
+                "debate_decision_lines=%d  wscore_lines=%d  "
+                "Preferring DebateDecision (structured). Legacy lines ignored.",
+                _debate_decision_lines, _wscore_lines,
+            )
+        elif _debate_decision_lines == 0 and _wscore_lines == 0:
+            log.warning(
+                "[DebateConsistencyAudit] NO debate data found in log "
+                "(both DebateDecision=0 and wscore_lines=0). "
+                "Log file may be empty or debate cycle did not run.",
+            )
+        else:
+            log.info(
+                "[DebateConsistencyAudit] source=%s  total_debates=%d  "
+                "approved=%d  rejected=%d  consistency=OK",
+                "DebateDecision" if _debate_decision_lines > 0 else "legacy",
+                _debate_decision_lines + _wscore_lines,
+                _approved, _rejected,
+            )
         return decisions
 
     def _parse_odm(self, lines: List[str]) -> List[dict]:
@@ -297,17 +383,51 @@ class EODRetrospective:
         """Extract most recent regime and VIX from logs."""
         regime = "unknown"
         vix    = 0.0
+        _match_line:    str = ""
+        _match_pattern: str = ""
+        _vix_line:      str = ""
         for line in reversed(lines):
             if not regime or regime == "unknown":
                 m = _RE_REGIME.search(line)
                 if m and m.group(1) not in ("unknown", "None"):
-                    regime = m.group(1)
+                    regime          = m.group(1)
+                    _match_pattern  = m.group(0)
+                    _match_line     = line.strip()[:120]
             if vix == 0.0:
                 m = _RE_VIX.search(line)
                 if m:
-                    vix = float(m.group(1))
+                    vix       = float(m.group(1))
+                    _vix_line = line.strip()[:80]
             if regime != "unknown" and vix > 0.0:
                 break
+        # ── [RegimeParserValidation] / [RegimeParseFailure] ───────────────────────
+        # Confirms exactly which log line produced the regime value.
+        # If regime="unknown" or regime not in whitelist → emit [RegimeParseFailure]
+        if regime == "unknown" or regime not in _VALID_REGIMES:
+            log.warning(
+                "[RegimeParseFailure] result_regime=%r  valid_regimes=%s"
+                "  fallback_used=True  total_log_lines_scanned=%d"
+                "  regex_pattern=%r  matched_pattern=%r  matched_line=%r",
+                regime, sorted(_VALID_REGIMES), len(lines),
+                _RE_REGIME.pattern,
+                _match_pattern if _match_pattern else "(no_match)",
+                _match_line    if _match_line    else "(no_match)",
+            )
+        else:
+            log.info(
+                "[RegimeParserValidation] result_regime=%r  result_vix=%.1f"
+                "  fallback_used=False  total_log_lines_scanned=%d"
+                "  regex_pattern=%r"
+                "  matched_regime_pattern=%r"
+                "  matched_line_preview=%r"
+                "  matched_vix_line_preview=%r",
+                regime, vix,
+                len(lines),
+                _RE_REGIME.pattern,
+                _match_pattern if _match_pattern else "(no_match)",
+                _match_line    if _match_line    else "(no_match)",
+                _vix_line      if _vix_line      else "(no_match)",
+            )
         return regime, vix
 
     # ─────────────────────────────────────────────────────────────────
@@ -483,6 +603,98 @@ class EODRetrospective:
         today_wins = daily_json.get("today", {}).get("wins", 0)
         today_losses = daily_json.get("today", {}).get("losses", 0)
 
+        # ── Research Integrity — classify by architecture generation ──────────
+        # Trades before PREPARED_UNIVERSE_ACTIVATION_DATE = LEGACY_STATIC.
+        # Trades on/after = PREPARED_UNIVERSE_V1.
+        # Classification uses timestamp field from the CSV row.
+        try:
+            from config import PREPARED_UNIVERSE_ACTIVATION_DATE as _act_date
+        except Exception:
+            _act_date = "2026-05-22"
+
+        def _classify_generation(row: dict) -> str:
+            ts = row.get("timestamp", "") or ""
+            date_part = ts[:10]   # "YYYY-MM-DD"
+            if date_part and date_part >= _act_date:
+                return "PREPARED_UNIVERSE_V1"
+            return "LEGACY_STATIC"
+
+        _legacy_closed   = [t for t in closed_trades if _classify_generation(t) == "LEGACY_STATIC"]
+        _prepared_closed = [t for t in closed_trades if _classify_generation(t) == "PREPARED_UNIVERSE_V1"]
+        _legacy_pnl   = sum(float(t.get("pnl", 0.0) or 0.0) for t in _legacy_closed)
+        _prepared_pnl = sum(float(t.get("pnl", 0.0) or 0.0) for t in _prepared_closed)
+
+        # Patch 19/20/22/26: dynamic weight, contamination, clean state, generation tag
+        try:
+            from learning_system.research_integrity import (
+                compute_legacy_weight,
+                emit_contamination_telemetry,
+                emit_clean_research_state,
+                get_system_prepared_trade_count,
+                is_clean_research_ready,
+                MIN_CLEAN_PREPARED_TRADES,
+            )
+            _sys_prepared   = get_system_prepared_trade_count()
+            _dyn_lw         = compute_legacy_weight(_sys_prepared)
+            _clean_ready    = is_clean_research_ready()
+            _contamination  = emit_contamination_telemetry(
+                legacy_count   = len(_legacy_closed),
+                prepared_count = _sys_prepared,
+                source         = "EODRetrospective",
+            )
+            _crs            = emit_clean_research_state(source="EODRetrospective")
+        except Exception as _ri_exc:
+            log.debug("[ResearchIntegrity] EOD helpers skipped: %s", _ri_exc)
+            _sys_prepared  = len(_prepared_closed)
+            _dyn_lw        = 0.25
+            _clean_ready   = False
+            _contamination = {
+                "legacy_trade_count": len(_legacy_closed),
+                "prepared_trade_count": _sys_prepared,
+                "effective_legacy_weight": _dyn_lw,
+                "legacy_weighted_pct": 0.0,
+                "prepared_weighted_pct": 0.0,
+            }
+            _crs = {
+                "prepared_trade_count": _sys_prepared,
+                "required": 100,
+                "ready": _clean_ready,
+                "adaptive_mutation_blocked": True,
+            }
+
+        log.info(
+            "[ResearchIntegrity] EOD  activation_date=%s  "
+            "legacy_trades=%d  legacy_pnl=%.2f  "
+            "prepared_trades=%d  prepared_pnl=%.2f  "
+            "dynamic_legacy_weight=%.4f  prepared_weight=1.00",
+            _act_date,
+            len(_legacy_closed),   _legacy_pnl,
+            len(_prepared_closed), _prepared_pnl,
+            _dyn_lw,
+        )
+
+        # Patch 26: [TelemetryGeneration] — forensic traceability of primary generation
+        try:
+            from config import USE_PREPARED_UNIVERSE as _use_prep_eod
+            _primary_gen = "PREPARED_UNIVERSE_V1" if _use_prep_eod else "LEGACY_STATIC"
+        except Exception:
+            _primary_gen = "PREPARED_UNIVERSE_V1"
+
+        _total_wt = (
+            len(_legacy_closed) * _dyn_lw +
+            _sys_prepared * 1.0
+        )
+        _legacy_wpct_telemetry = (
+            round(len(_legacy_closed) * _dyn_lw / _total_wt * 100, 1)
+            if _total_wt > 0 else 0.0
+        )
+
+        log.info(
+            "[TelemetryGeneration] primary_generation=%s  "
+            "legacy_weighted_pct=%.1f",
+            _primary_gen, _legacy_wpct_telemetry,
+        )
+
         # Symbols traded
         symbols: Dict[str, int] = defaultdict(int)
         for t in trades:
@@ -559,6 +771,21 @@ class EODRetrospective:
         if not watch:
             watch.append("No specific concerns — continue standard monitoring")
 
+        # ── Per-strategy breakdown for Strategy Intelligence section ─────
+        strat_pnl:    Dict[str, float] = defaultdict(float)
+        strat_trades: Dict[str, int]   = defaultdict(int)
+        strat_wins:   Dict[str, int]   = defaultdict(int)
+        for _ct in closed_trades:
+            _s = (_ct.get("strategy", "") or "").strip() or "unknown"
+            _p = float(_ct.get("pnl", 0.0) or 0.0)
+            strat_pnl[_s]    += _p
+            strat_trades[_s] += 1
+            if _p > 0:
+                strat_wins[_s] += 1
+
+        # ── Governance violations (pre-open / late-entry) ─────────────
+        gov_violations = self._parse_governance_violations(trades)
+
         # ── Assemble plain text ────────────────────────────────────────
         sep  = "─" * 52
         sep2 = "═" * 52
@@ -569,10 +796,87 @@ class EODRetrospective:
             sep2,
         ]
 
-        # Section 1: Cycles
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 1 — STRATEGY INTELLIGENCE
+        # Real edge quality: what did each strategy actually produce today?
+        # ──────────────────────────────────────────────────────────────
+        pnl_str = f"₹{today_pnl:+,.0f}" if today_pnl != 0.0 else "—"
         lines_plain += [
-            "🔄 CYCLE HEALTH",
-            f"  Cycles run : {len(cycles)}  |  ✅ HEALTHY: {healthy_n}  |  ⚠️ DEGRADED: {degraded_n}",
+            "🧠 SECTION 1 — STRATEGY INTELLIGENCE",
+            f"  Closed trades : {len(closed_trades)}  |  Open: {len(open_trades)}",
+            f"  Day P&L       : {pnl_str}  (W:{today_wins}  L:{today_losses})",
+        ]
+        if strat_trades:
+            lines_plain.append("  Per-strategy breakdown:")
+            for _sn in sorted(strat_trades):
+                _n  = strat_trades[_sn]
+                _pw = strat_wins[_sn]
+                _wr = int(_pw / _n * 100) if _n else 0
+                _pp = strat_pnl[_sn]
+                lines_plain.append(
+                    f"    {_sn:<38}  {_n:>2} trades  "
+                    f"{_pw}W {_n - _pw}L  {_wr}%WR  ₹{_pp:+,.0f}"
+                )
+        else:
+            lines_plain.append("  No closed trades recorded today.")
+        lines_plain.append(sep)
+
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 1b — RESEARCH INTEGRITY
+        # Architecture generation split: DO NOT merge LEGACY_STATIC and
+        # PREPARED_UNIVERSE_V1 performance for adaptive intelligence use.
+        # ──────────────────────────────────────────────────────────────
+        lines_plain += [
+            "🔬 SECTION 1b — RESEARCH INTEGRITY (Architecture Generation)",
+            f"  Activation date : {_act_date}  (PREPARED_UNIVERSE_V1 epoch start)",
+        ]
+        if _legacy_closed:
+            _lw  = sum(1 for t in _legacy_closed if float(t.get("pnl", 0.0) or 0.0) > 0)
+            _lwr = int(_lw / len(_legacy_closed) * 100) if _legacy_closed else 0
+            lines_plain.append(
+                f"  LEGACY_STATIC   : {len(_legacy_closed)} trades  "
+                f"{_lw}W {len(_legacy_closed)-_lw}L  {_lwr}%WR  "
+                f"₹{_legacy_pnl:+,.0f}  [research_weight=0.25 — DO NOT use for strategy governance]"
+            )
+        else:
+            lines_plain.append("  LEGACY_STATIC   : 0 trades today  ✅ epoch boundary crossed")
+        if _prepared_closed:
+            _pw2 = sum(1 for t in _prepared_closed if float(t.get("pnl", 0.0) or 0.0) > 0)
+            _pwr = int(_pw2 / len(_prepared_closed) * 100) if _prepared_closed else 0
+            lines_plain.append(
+                f"  PREPARED_V1     : {len(_prepared_closed)} trades  "
+                f"{_pw2}W {len(_prepared_closed)-_pw2}L  {_pwr}%WR  "
+                f"₹{_prepared_pnl:+,.0f}  [research_weight=1.00 — valid for governance]"
+            )
+        else:
+            lines_plain.append("  PREPARED_V1     : 0 trades yet — accumulating clean sample")
+
+        # Patch 19/20/22/26: dynamic weight, contamination, clean state
+        lines_plain += [
+            f"  Dynamic legacy weight : {_dyn_lw:.4f}  "
+            f"(decays 0.25→0.10 as prepared_trades grow)",
+            f"  Architecture telemetry :",
+            f"    LEGACY_STATIC      : trades={len(_legacy_closed)}"
+            f"  weighted={len(_legacy_closed) * _dyn_lw:.2f}",
+            f"    PREPARED_UNIVERSE_V1: trades={_sys_prepared}"
+            f"  weighted={_sys_prepared * 1.0:.2f}",
+            f"  Research contamination : "
+            f"legacy_weighted_pct={_contamination['legacy_weighted_pct']:.1f}%  "
+            f"prepared_weighted_pct={_contamination['prepared_weighted_pct']:.1f}%",
+            f"  Clean research gate   : "
+            f"prepared={_crs['prepared_trade_count']}  required={_crs['required']}  "
+            f"ready={'✅ YES' if _crs['ready'] else '⏳ NO'}  "
+            f"adaptive_mutation_blocked={'NO' if _crs['ready'] else 'YES — FROZEN'}",
+            f"  Primary generation    : {_primary_gen}",
+        ]
+
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 2 — OPERATIONAL RELIABILITY
+        # System stability: cycle health, signal funnel, ODM.
+        # ──────────────────────────────────────────────────────────────
+        lines_plain += [
+            "🔄 SECTION 2 — OPERATIONAL RELIABILITY",
+            f"  Cycles     : {len(cycles)}  ✅ {healthy_n}  ⚠️ {degraded_n}",
         ]
         if total_ms_list:
             lines_plain.append(
@@ -581,67 +885,86 @@ class EODRetrospective:
         if slowest_layers:
             layers_str = ", ".join(f"{k}×{v}" for k, v in slowest_layers.items())
             lines_plain.append(f"  Slow layers: {layers_str}")
-
-        lines_plain.append(sep)
-
-        # Section 2: Signal funnel
         lines_plain += [
-            "📡 SIGNAL PIPELINE",
-            f"  Generated  : {total_signals}  (across {len(odm_cy)} cycles)",
-            f"  Backtest   : rejected {total_bt_rj}",
-        ]
-        if mc_reasons:
-            mc_summary = ", ".join(f"{k}: {v}" for k, v in mc_reasons.items())
-            lines_plain.append(f"  MC/Resil.  : rejected {total_mc_rj}  ({mc_summary})")
-        else:
-            lines_plain.append(f"  MC/Resil.  : rejected {total_mc_rj}")
-        lines_plain += [
-            f"  Debate     : {approved_dec} approved, {rejected_dec} rejected",
-            sep,
-        ]
-
-        # Section 3: Trades
-        pnl_str = f"₹{today_pnl:+,.0f}" if today_pnl != 0.0 else "—"
-        lines_plain += [
-            "🎯 TRADES TODAY",
-            f"  Open   : {len(open_trades)}  |  Closed: {len(closed_trades)}",
-            f"  P&L    : {pnl_str}  (W:{today_wins} L:{today_losses})",
-        ]
-        if symbols:
-            lines_plain.append(f"  Symbols: {', '.join(symbols.keys())}")
-        lines_plain.append(sep)
-
-        # Section 4: ODM
-        lines_plain += [
-            "📊 OPPORTUNITY DENSITY",
-            f"  Tier   : {odm_tier}  |  Density: {odm_density:.1f}%",
+            f"  Signals    : {total_signals} generated  →  {total_bt_rj} BT-rejected"
+            f"  →  {total_mc_rj} MC-rejected",
+            f"  Debate     : ✅ {approved_dec} approved  ❌ {rejected_dec} rejected",
+            f"  ODM tier   : {odm_tier}  density {odm_density:.1f}%",
         ]
         if odm_stagnant:
             lines_plain.append(
-                f"  ⚠️  STAGNANT: {consec_expand} consecutive EXPAND cycles"
+                f"  ⚠️  ODM stagnant: {consec_expand} consecutive EXPAND cycles"
+            )
+        if mc_reasons:
+            mc_summary = ", ".join(f"{k}:{v}" for k, v in mc_reasons.items())
+            lines_plain.append(f"  MC reasons : {mc_summary}")
+        if degraded_n > 0 and slowest_layers:
+            worst_layer = max(slowest_layers, key=slowest_layers.get)
+            lines_plain.append(
+                f"  ⚡ {degraded_n} DEGRADED — slowest: {worst_layer}"
             )
         lines_plain.append(sep)
 
-        # Section 5: Context
-        lines_plain += [
-            "🌐 MARKET CONTEXT",
-            f"  Regime : {regime}  |  VIX: {vix:.1f}",
-            sep,
-        ]
-
-        # Section 6: Flags
-        if flags:
-            lines_plain.append("⚠️  AUTO-DETECTED FLAGS")
-            for i, f_text in enumerate(flags, 1):
-                lines_plain.append(f"  {i}. {f_text}")
-            lines_plain.append(sep)
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 3 — GOVERNANCE VIOLATIONS
+        # Execution-window compliance: pre-open and late-entry breaches.
+        # ──────────────────────────────────────────────────────────────
+        lines_plain.append("⚖️  SECTION 3 — GOVERNANCE VIOLATIONS")
+        if gov_violations:
+            lines_plain.append(
+                f"  ⚠️  {len(gov_violations)} violation(s) detected today:"
+            )
+            for _v in gov_violations:
+                lines_plain.append(f"    • {_v}")
+            lines_plain.append(
+                "  ACTION: Review entry timing. Window is 09:45–14:30."
+            )
         else:
-            lines_plain += ["✅ No issues detected today", sep]
+            lines_plain.append("  ✅ All entries within approved window (09:45–14:30).")
+        lines_plain.append(sep)
 
-        # Section 7: Tomorrow watch
-        lines_plain.append("🔭 TOMORROW WATCH")
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 4 — CONCENTRATION RISK
+        # Symbol diversity and exposure structure.
+        # ──────────────────────────────────────────────────────────────
+        lines_plain.append("🔎 SECTION 4 — CONCENTRATION RISK")
+        if symbols:
+            lines_plain += [
+                f"  Symbols seen : {len(symbols)}  ({', '.join(symbols.keys())})",
+            ]
+        else:
+            lines_plain.append("  No symbols traded today.")
+        if len(symbols) == 1:
+            sym1 = next(iter(symbols))
+            lines_plain.append(
+                f"  ⚠️  Single-symbol concentration: only {sym1} today."
+                f"  Universe may be too narrow for current regime."
+            )
+        if re_drops:
+            _drop_parts = [f"{d['symbol']} {d['drift_pct']:.1f}%" for d in re_drops[:3]]
+            lines_plain.append(
+                f"  ↩️  {len(re_drops)} stale re-entry slot(s) dropped"
+                f"  (drifted >1.5%): {', '.join(_drop_parts)}"
+            )
+        if today_pnl < -5000:
+            lines_plain.append(
+                f"  💸 Negative P&L today: ₹{today_pnl:,.0f}"
+            )
+        lines_plain.append(sep)
+
+        # ──────────────────────────────────────────────────────────────
+        # SECTION 5 — MARKET REGIME CONTEXT
+        # Regime, VIX, tomorrow watch, weekly trend.
+        # ──────────────────────────────────────────────────────────────
+        lines_plain += [
+            "🌐 SECTION 5 — MARKET REGIME CONTEXT",
+            f"  Regime : {regime}  |  VIX: {vix:.1f}",
+            "",
+            "  🔭 Tomorrow Watch",
+        ]
         for item in watch:
-            lines_plain.append(f"  • {item}")
+            lines_plain.append(f"    • {item}")
+
         lines_plain += [sep2, "  Ask Copilot: 'what did we learn today?' for analysis", sep2]
 
         # ── Assemble Telegram HTML ─────────────────────────────────────
@@ -652,53 +975,83 @@ class EODRetrospective:
             f"<b>📊 DAILY RETROSPECTIVE — {today_label}</b>",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "",
-            "<b>🔄 Cycle Health</b>",
-            f"  Cycles: {len(cycles)}  |  ✅ {healthy_n}  |  ⚠️ {degraded_n}",
+            # ── S1: Strategy Intelligence ──────────────────────────────
+            "<b>🧠 Strategy Intelligence</b>",
+            f"  Closed: {len(closed_trades)}  Open: {len(open_trades)}"
+            f"  |  P&amp;L: <b>{_h(pnl_str)}</b>  (W:{today_wins} L:{today_losses})",
         ]
-        if total_ms_list:
-            html_lines.append(
-                f"  Latency: {fastest_ms:.0f}ms – {slowest_ms:.0f}ms"
-            )
+        if strat_trades:
+            for _sn in sorted(strat_trades):
+                _n  = strat_trades[_sn]
+                _wr = int(strat_wins[_sn] / _n * 100) if _n else 0
+                _pp = strat_pnl[_sn]
+                html_lines.append(
+                    f"  <code>{_h(_sn):<36}  {_n:>2}tr  {_wr}%WR  ₹{_pp:+,.0f}</code>"
+                )
+        else:
+            html_lines.append("  <i>No closed trades recorded today.</i>")
+
         html_lines += [
             "",
-            "<b>📡 Signal Pipeline</b>",
-            f"  Generated → {total_signals}",
-            f"  Backtest rejected → {total_bt_rj}",
-            f"  MC/Resilience rejected → {total_mc_rj}",
+            # ── S2: Operational Reliability ────────────────────────────
+            "<b>🔄 Operational Reliability</b>",
+            f"  Cycles: {len(cycles)}  ✅ {healthy_n}  ⚠️ {degraded_n}",
+        ]
+        if total_ms_list:
+            html_lines.append(f"  Latency: {fastest_ms:.0f}–{slowest_ms:.0f}ms")
+        html_lines += [
+            f"  Signals: {total_signals} → BT-rj {total_bt_rj} → MC-rj {total_mc_rj}",
             f"  Debate: ✅ {approved_dec}  ❌ {rejected_dec}",
+            f"  ODM: <b>{_h(odm_tier)}</b>  {odm_density:.1f}%",
+        ]
+        if odm_stagnant:
+            html_lines.append(f"  ⚠️ ODM stagnant: {consec_expand} EXPAND cycles")
+
+        html_lines += [
             "",
-            "<b>🎯 Trades</b>",
-            f"  Open: {len(open_trades)}  Closed: {len(closed_trades)}",
-            f"  P&amp;L: <b>{_h(pnl_str)}</b>  (W:{today_wins} L:{today_losses})",
+            # ── S3: Governance Violations ──────────────────────────────
+            "<b>⚖️ Governance Violations</b>",
+        ]
+        if gov_violations:
+            html_lines.append(
+                f"  ⚠️ <b>{len(gov_violations)} violation(s)</b> detected:"
+            )
+            for _v in gov_violations:
+                html_lines.append(f"  • {_h(_v)}")
+            html_lines.append(
+                "  <i>Window: 09:45–14:30. Review entry timing.</i>"
+            )
+        else:
+            html_lines.append("  ✅ All entries within approved window.")
+
+        html_lines += [
+            "",
+            # ── S4: Concentration Risk ─────────────────────────────────
+            "<b>🔎 Concentration Risk</b>",
         ]
         if symbols:
             html_lines.append(
                 f"  Symbols: <code>{_h(', '.join(symbols.keys()))}</code>"
             )
-        html_lines += [
-            "",
-            "<b>📊 Opportunity Density</b>",
-            f"  Tier: <b>{_h(odm_tier)}</b>  Density: {odm_density:.1f}%",
-        ]
-        if odm_stagnant:
+            if len(symbols) == 1:
+                html_lines.append(
+                    f"  ⚠️ Single-symbol concentration today."
+                )
+        else:
+            html_lines.append("  No symbols traded today.")
+        if re_drops:
             html_lines.append(
-                f"  ⚠️ STAGNANT: {consec_expand} consecutive EXPAND cycles"
+                f"  ↩️ {len(re_drops)} re-entry slot(s) dropped (price drift)"
             )
+
         html_lines += [
             "",
-            "<b>🌐 Market</b>",
+            # ── S5: Market Regime Context ──────────────────────────────
+            "<b>🌐 Market Regime Context</b>",
             f"  Regime: <code>{_h(regime)}</code>  VIX: {vix:.1f}",
             "",
+            "<b>🔭 Tomorrow Watch</b>",
         ]
-        if flags:
-            html_lines.append("<b>⚠️ Auto-Detected Flags</b>")
-            for i, f_text in enumerate(flags, 1):
-                html_lines.append(f"  {i}. {_h(f_text)}")
-            html_lines.append("")
-        else:
-            html_lines += ["✅ <b>No issues detected today</b>", ""]
-
-        html_lines.append("<b>🔭 Tomorrow Watch</b>")
         for item in watch:
             html_lines.append(f"  • {_h(item)}")
 
@@ -744,6 +1097,42 @@ class EODRetrospective:
     # ─────────────────────────────────────────────────────────────────
     # Persistence
     # ─────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _parse_governance_violations(trades: List[dict]) -> List[str]:
+        """
+        Detect trades opened outside the approved 09:45–14:30 execution window
+        by inspecting the timestamp column of CSV rows with OPEN/REENTRY_OPEN events.
+        Returns a list of human-readable violation strings, empty list if clean.
+        """
+        violations: List[str] = []
+        _WINDOW_OPEN  = "09:45"
+        _WINDOW_CLOSE = "14:30"
+        for _t in trades:
+            _ev = (_t.get("event", "") or "").strip().upper()
+            if _ev not in ("OPEN", "REENTRY_OPEN"):
+                continue
+            _ts = (_t.get("timestamp", "") or "").strip()
+            if not _ts:
+                continue
+            try:
+                _dt = datetime.fromisoformat(_ts)
+                _t_str = _dt.strftime("%H:%M")
+                _sym   = _t.get("symbol",   "?")
+                _strat = _t.get("strategy", "?")
+                if _t_str < _WINDOW_OPEN:
+                    violations.append(
+                        f"Pre-open entry: {_sym} ({_strat}) at {_t_str}"
+                        f"  [window opens 09:45]"
+                    )
+                elif _t_str > _WINDOW_CLOSE:
+                    violations.append(
+                        f"Late entry: {_sym} ({_strat}) at {_t_str}"
+                        f"  [window closes 14:30]"
+                    )
+            except Exception:
+                continue
+        return violations
 
     def _save(self, plain: str) -> None:
         """Save to data/eod_retro_YYYY-MM-DD.txt (separate from self-eval report)."""

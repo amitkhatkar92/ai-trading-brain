@@ -55,7 +55,17 @@ MIN_SAMPLE          = 10      # need at least this many OFFICIAL trades to auto-
 WIN_RATE_FLOOR      = 0.35    # below 35% win rate → disable
 EXPECTANCY_FLOOR    = -0.30   # below -0.3R expectancy → disable
 MAX_CONSEC_LOSSES   = 5       # 5 consecutive losses → disable
-
+# ── Research Integrity Gate ─────────────────────────────────────────────────────────
+# Minimum PREPARED_UNIVERSE_V1 trades required per strategy before ANY
+# auto-disable, threshold mutation, or adaptive suppression may fire.
+# LEGACY_STATIC trades (stale universe, proxy ATR, frozen levels) must not
+# drive strategy governance decisions.
+# Falls back to config value if available.
+try:
+    from config import MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT as _MIN_PREP_CFG
+    MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT: int = _MIN_PREP_CFG
+except Exception:
+    MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT: int = 25
 PERF_FILE = os.path.join(
     os.path.dirname(__file__), "..", "data", "strategy_performance.json"
 )
@@ -68,6 +78,15 @@ try:
 except Exception:
     BASELINE_CANDIDATE_DATE    = "2026-04-27"
     STABILITY_REQUIRED_SESSIONS = 10
+
+
+def _get_current_arch_gen() -> str:
+    """Return the architecture generation for a trade being recorded right now."""
+    try:
+        from config import USE_PREPARED_UNIVERSE
+        return "PREPARED_UNIVERSE_V1" if USE_PREPARED_UNIVERSE else "LEGACY_STATIC"
+    except Exception:
+        return "LEGACY_STATIC"
 
 
 @dataclass
@@ -88,7 +107,12 @@ class StrategyStats:
     # official_trades: trades recorded ON or AFTER BASELINE_CANDIDATE_DATE.
     # Only these count toward auto-disable decisions.
     # total_trades includes all history (including the engineering-era records).
-    official_trades:  int   = 0
+    official_trades:             int   = 0
+    # prepared_universe_trades: trades with architecture_generation=PREPARED_UNIVERSE_V1.
+    # This is the Research Integrity Gate: only these trades may trigger auto-disable,
+    # threshold mutation, or adaptive suppression.  LEGACY_STATIC trades are weighted
+    # at 0.25 and never count toward punitive governance decisions.
+    prepared_universe_trades:    int   = 0
 
     @property
     def win_rate(self) -> float:
@@ -138,7 +162,8 @@ class StrategyPerformanceTracker:
     # ── Public API ────────────────────────────────────────────────────────────
 
     def record_trade(self, strategy: str, pnl_r: float,
-                     order_id: str = "") -> StrategyStats:
+                     order_id: str = "",
+                     architecture_generation: str = "") -> StrategyStats:
         """
         Record a completed trade for a strategy.
 
@@ -192,6 +217,28 @@ class StrategyPerformanceTracker:
                 s.official_trades += 1
         except Exception:
             pass
+
+        # Count toward prepared-universe ledger for Research Integrity Gate
+        _gen = architecture_generation or ""
+        if _gen == "PREPARED_UNIVERSE_V1" or (
+            not _gen and _get_current_arch_gen() == "PREPARED_UNIVERSE_V1"
+        ):
+            s.prepared_universe_trades += 1
+
+        # ── [ResearchIntegrity] telemetry ───────────────────────────────────────
+        _mutation_blocked = (
+            s.prepared_universe_trades < MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT
+        )
+        log.info(
+            "[ResearchIntegrity] strategy=%s  generation=%s  "
+            "prepared_trades=%d  min_required=%d  "
+            "strategy_mutation_blocked=%s",
+            strategy,
+            _gen or "(inferred)",
+            s.prepared_universe_trades,
+            MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT,
+            _mutation_blocked,
+        )
 
         if pnl_r >= 0:
             s.wins      += 1
@@ -286,10 +333,44 @@ class StrategyPerformanceTracker:
     # ── Auto-disable logic ────────────────────────────────────────────────────
 
     def _check_disable(self, s: StrategyStats) -> None:
-        # Guard: require MIN_SAMPLE *official-window* trades before auto-disable.
+        # Guard 1: require MIN_SAMPLE *official-window* trades before auto-disable.
         # Historical/engineering-era rows (Ledger A) must never disable a strategy.
         if s.official_trades < MIN_SAMPLE:
             return   # not enough official-window data yet
+
+        # Guard 2: Research Integrity Gate — require MIN_PREPARED_UNIVERSE_TRADES
+        # PREPARED_UNIVERSE_V1 trades before ANY per-strategy auto-disable fires.
+        # LEGACY_STATIC trades (stale universe, proxy ATR, frozen levels) are
+        # structurally biased and cannot safely drive strategy governance.
+        if s.prepared_universe_trades < MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT:
+            log.info(
+                "[ResearchIntegrity] _check_disable BLOCKED for %s — "
+                "prepared_trades=%d < min_required=%d  "
+                "LEGACY_STATIC trades may not disable a strategy.",
+                s.name, s.prepared_universe_trades,
+                MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT,
+            )
+            return   # research integrity gate: protect strategy from legacy-data decisions
+
+        # Guard 3: System-wide Adaptive Mutation Freeze (Patch 24).
+        # Until total prepared trade count >= MIN_CLEAN_PREPARED_TRADES (100),
+        # early telemetry distributions are statistically unstable.
+        # Auto-disable during this phase risks overfitting noise.
+        try:
+            from learning_system.research_integrity import (
+                is_clean_research_ready, emit_clean_research_state,
+            )
+            if not is_clean_research_ready():
+                emit_clean_research_state(source="check_disable")
+                log.info(
+                    "[CleanResearchState] _check_disable FROZEN for %s — "
+                    "system not yet clean-research-ready  "
+                    "(prepared_trade_count < MIN_CLEAN_PREPARED_TRADES=%d)",
+                    s.name, 100,
+                )
+                return   # adaptive mutation freeze: protect all strategies system-wide
+        except Exception as _crs_exc:
+            log.debug("[CleanResearchState] gate check skipped: %s", _crs_exc)
 
         reason = ""
         if s.win_rate < WIN_RATE_FLOOR:
@@ -330,6 +411,9 @@ class StrategyPerformanceTracker:
                 # Drop computed properties if they were accidentally serialised
                 for computed in ("win_rate", "avg_r", "avg_win_r", "avg_loss_r", "expectancy"):
                     raw.pop(computed, None)
+                # Backward-compat: backfill prepared_universe_trades for old records
+                if "prepared_universe_trades" not in raw:
+                    raw["prepared_universe_trades"] = 0
                 self._stats[name] = StrategyStats(**raw)
         except Exception as exc:
             log.warning("[PerfTracker] Load failed: %s", exc)

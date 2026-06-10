@@ -23,6 +23,7 @@ Alert categories with auto-formatting:
 """
 
 from __future__ import annotations
+import json
 import os
 import queue
 import threading
@@ -30,6 +31,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from typing import List, Optional
 
 from utils import get_logger
@@ -218,20 +220,153 @@ class NotifierManager:
         notifier.eod_summary(4, 3, 1, 1250.0)
     """
 
+    # Per-alert-category cooldown in seconds.
+    # Prevents operator Telegram spam from multiple governance paths firing in the same cycle.
+    _ALERT_COOLDOWNS: dict = {
+        "OPTIONS_CHAIN":   300.0,   # 5 min
+        "EQUITY_TRUTH":    120.0,   # 2 min
+        "FULL_MARKET":      60.0,   # 1 min
+        "DRIFT":           900.0,   # 15 min
+        "TOKEN":          1800.0,   # 30 min
+    }
+    _DEFAULT_COOLDOWN: float = 60.0   # 60s default for uncategorised market alerts
+    # Persist dedup state here so restarts don't reset the cooldown clock.
+    _ALERT_STATE_PATH: Path = Path("data/alert_governance_state.json")
+
     def __init__(self) -> None:
         token   = os.getenv("TELEGRAM_BOT_TOKEN", "")
         chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
         self._telegram = TelegramNotifier(token, chat_id)
         self._telegram.start()
         self._enabled  = bool(token and chat_id)
+        # Alert deduplication — fingerprint-based with per-category cooldown.
+        # _alert_sent[fingerprint] = wall-clock timestamp (time.time()) of last send.
+        # _category_state[category] = last fingerprint sent, or "CLEAR" when recovered.
+        self._alert_sent: dict  = {}
+        self._category_state: dict = {}
+        self._dedup_lock = threading.Lock()
+        self._load_alert_state()
         log.info("[NotifierManager] Telegram=%s",
                  "enabled" if self._enabled else "disabled (set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID)")
+
+    # ── Alert deduplication helpers ────────────────────────────────────────
+
+    def _load_alert_state(self) -> None:
+        """Restore dedup state from disk on startup so cooldowns survive restarts."""
+        try:
+            if self._ALERT_STATE_PATH.exists():
+                raw  = json.loads(self._ALERT_STATE_PATH.read_text())
+                now  = time.time()
+                # Max plausible cooldown — prune anything older than that
+                max_cd = max(self._ALERT_COOLDOWNS.values(), default=self._DEFAULT_COOLDOWN)
+                self._alert_sent = {
+                    k: v for k, v in raw.get("alert_sent", {}).items()
+                    if isinstance(v, (int, float)) and now - v < max_cd
+                }
+                # Only restore category fingerprints that are still in the fresh window
+                for cat, fp in raw.get("category_state", {}).items():
+                    if fp == "CLEAR" or fp in self._alert_sent:
+                        self._category_state[cat] = fp
+                log.info(
+                    "[AlertGovernance] Restored %d fingerprints from state file",
+                    len(self._alert_sent),
+                )
+        except Exception as exc:
+            log.debug("[AlertGovernance] Could not load state file: %s", exc)
+
+    def _save_alert_state(self) -> None:
+        """Persist current dedup state to disk (called inside _dedup_lock)."""
+        try:
+            self._ALERT_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _tmp = self._ALERT_STATE_PATH.with_suffix(".tmp")
+            _tmp.write_text(json.dumps({
+                "alert_sent":      self._alert_sent,
+                "category_state":  self._category_state,
+            }))
+            _tmp.replace(self._ALERT_STATE_PATH)
+        except Exception as exc:
+            log.debug("[AlertGovernance] Could not save state file: %s", exc)
+
+    @staticmethod
+    def _alert_category(title: str) -> str:
+        """Normalise alert title to a logical category key."""
+        t = title.upper()
+        if "OPTIONS CHAIN" in t or "OPTIONS" in t and "DEGRADED" in t:
+            return "OPTIONS_CHAIN"
+        if "EQUITY TRUTH" in t or "EQUITY SYNTHETIC" in t:
+            return "EQUITY_TRUTH"
+        if "FULL_MARKET" in t or ("EQUITY" in t and "OPTIONS" in t and "SYNTHETIC" in t):
+            return "FULL_MARKET"
+        if "DRIFT" in t:
+            return "DRIFT"
+        if "TOKEN" in t and "EXPIR" in t:
+            return "TOKEN"
+        return title  # unique title = its own category (e.g. trade alerts)
+
+    def mark_alert_cleared(self, category: str) -> None:
+        """Signal that a governance category has recovered to a healthy state.
+        The next alert in this category will bypass cooldown (state-change override)."""
+        with self._dedup_lock:
+            prev = self._category_state.get(category, "CLEAR")
+            if prev != "CLEAR":
+                log.debug("[AlertDedup] category=%s state→CLEAR (was %s)", category, prev)
+            self._category_state[category] = "CLEAR"
+            self._save_alert_state()
+
+    def _should_dispatch(self, alert: Alert) -> bool:
+        """Return True if the alert should be sent to Telegram.
+        Applies fingerprint dedup + cooldown for MARKET_ALERT type only.
+        Trade/risk/system alerts always pass through."""
+        if alert.alert_type not in (AlertType.MARKET_ALERT,):
+            return True
+
+        category    = self._alert_category(alert.title)
+        body_prefix = (alert.body or "")[:50].strip().replace("\n", " ")
+        fingerprint = f"{alert.alert_type.value}|{alert.title}|{body_prefix}"
+        cooldown    = self._ALERT_COOLDOWNS.get(category, self._DEFAULT_COOLDOWN)
+        now         = time.time()   # wall-clock: JSON-serializable for state persistence
+
+        with self._dedup_lock:
+            last_cat_fp = self._category_state.get(category, "CLEAR")
+            last_sent   = self._alert_sent.get(fingerprint)
+
+            # ── State-change override: category had a different/clear fingerprint ─
+            if last_cat_fp != fingerprint:
+                self._category_state[category] = fingerprint
+                self._alert_sent[fingerprint]  = now
+                self._save_alert_state()
+                log.info(
+                    "[AlertGovernance] type=%s sent=True reason=STATE_CHANGE "
+                    "fingerprint=%s",
+                    category, fingerprint[:80],
+                )
+                return True
+
+            # ── Same state: apply cooldown ─────────────────────────────────────
+            if last_sent is not None:
+                age = now - last_sent
+                if age < cooldown:
+                    log.info(
+                        "[AlertDedup] suppressed=True fingerprint=%s age=%.1fs cooldown=%.0fs",
+                        fingerprint[:80], age, cooldown,
+                    )
+                    return False
+
+            # Cooldown expired or first send
+            self._category_state[category] = fingerprint
+            self._alert_sent[fingerprint]  = now
+            self._save_alert_state()
+            log.info(
+                "[AlertGovernance] type=%s sent=True cooldown=%.0fs fingerprint=%s",
+                category, cooldown, fingerprint[:80],
+            )
+            return True
 
     # ── Helper dispatch ────────────────────────────────────────────────────
 
     def _dispatch(self, alert: Alert) -> None:
         log.info(alert.to_log_message())
-        if self._enabled:
+        if self._enabled and self._should_dispatch(alert):
             self._telegram.send(alert)
 
     # ── Typed alert constructors ───────────────────────────────────────────

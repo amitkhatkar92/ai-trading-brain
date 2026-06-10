@@ -205,7 +205,13 @@ class GlobalDataAI:
         with self._lock:
             age = now - self._last_fetch_ts
             if not force and self._last_snap is not None and age < self._CACHE_TTL:
-                log.debug("[GlobalDataAI] Cache hit (age=%.0fs, TTL=%.0fs)", age, self._CACHE_TTL)
+                # Phase 8 — [GlobalCacheAudit] replaces silent DEBUG cache-hit log
+                log.info(
+                    "[GlobalCacheAudit] age_seconds=%.0f ttl=%.0f "
+                    "refresh_in_progress=%s cache_valid=True",
+                    age, self._CACHE_TTL,
+                    str(not self._ready.is_set()),
+                )
                 return self._last_snap
 
         log.info("[GlobalDataAI] Fetching global market data… (cache age=%.0fs)", age)
@@ -353,3 +359,116 @@ class GlobalDataAI:
             eurusd_rate=b["eurusd"], eurusd_change=0,
             cboe_vix=b["cboe_vix"],
         )
+
+    def get_sector_regime_bias(self) -> dict:
+        """
+        Phase F — Sector regime bias overlay for the overnight candidate scanner.
+
+        Returns a dict {sector: adjustment_factor} where each factor is
+        bounded to [-0.20, +0.20] and represents an overnight score nudge
+        based on the last fetched GlobalSnapshot.
+
+        Derivation logic (additive components, each ±):
+          - Equity momentum (S&P500/Nikkei) → positive bias for BANKING, IT, AUTO, METALS
+          - Crude oil move  (Brent±2%)       → ENERGY positive, AUTO/CHEMICALS negative
+          - USD strength  (DXY±0.5%)         → IT positive (USD revenue), FMCG slightly negative
+          - Bond yields   (US10y±10bps)      → FINANCIAL negative (rate pressure)
+          - VIX level     (>25 = risk-off)   → broad defensive bias
+
+        When USE_OVERNIGHT_OVERLAY is False or last snapshot is unavailable,
+        returns an empty dict (no overlay applied).
+
+        This method is intentionally conservative — maximum per-sector adjustment
+        is capped at ±0.20 so it cannot override a bad technical setup.
+        Called by market_scanner.py Stage 2 / premarket_refiner.py.
+        """
+        try:
+            from config import USE_OVERNIGHT_OVERLAY, OVERNIGHT_OVERLAY_REGIME_CONFIDENCE_MIN
+            if not USE_OVERNIGHT_OVERLAY:
+                return {}
+        except ImportError:
+            return {}
+
+        snap = self._last_snap
+        if snap is None:
+            return {}
+
+        # Guard: only apply if regime confidence meets minimum
+        try:
+            from config import OVERNIGHT_OVERLAY_REGIME_CONFIDENCE_MIN as _min_conf
+        except ImportError:
+            _min_conf = 0.70
+        # We don't have a formal regime_confidence here; use VIX as a proxy.
+        # If VIX > 30, global data is highly uncertain — skip overlay.
+        if (snap.cboe_vix or 0) > 30:
+            return {}
+
+        bias: dict = {}
+
+        # ── Equity momentum signal ─────────────────────────────────────────
+        sp_chg   = snap.sp500_change   or 0.0
+        nik_chg  = snap.nikkei_change  or 0.0
+        eq_signal = (sp_chg + nik_chg) / 2.0   # average overnight equity move %
+
+        if eq_signal > 0.5:     # strong positive global equity
+            for s in ("BANKING", "METALS", "IT", "AUTO", "FINANCIAL"):
+                bias[s] = bias.get(s, 0.0) + 0.08
+            for s in ("FMCG", "PHARMA", "POWER"):
+                bias[s] = bias.get(s, 0.0) + 0.03
+        elif eq_signal < -0.5:  # strong negative global equity
+            for s in ("BANKING", "METALS", "IT", "AUTO", "FINANCIAL"):
+                bias[s] = bias.get(s, 0.0) - 0.08
+            for s in ("FMCG", "PHARMA", "POWER"):   # defensives mildly positive
+                bias[s] = bias.get(s, 0.0) + 0.03
+
+        # ── Crude oil signal ─────────────────────────────────────────────────
+        crude_chg = snap.crude_brent_change or 0.0
+        if crude_chg > 2.0:     # crude up >2% → ENERGY up, Auto/Chemicals down
+            bias["ENERGY"] = bias.get("ENERGY", 0.0) + 0.10
+            for s in ("AUTO", "CHEMICALS", "FMCG"):
+                bias[s] = bias.get(s, 0.0) - 0.05
+        elif crude_chg < -2.0:  # crude down >2% → ENERGY down, Auto/Chemicals up
+            bias["ENERGY"] = bias.get("ENERGY", 0.0) - 0.10
+            for s in ("AUTO", "CHEMICALS"):
+                bias[s] = bias.get(s, 0.0) + 0.05
+
+        # ── USD / DXY signal ─────────────────────────────────────────────────
+        dxy_chg = snap.dxy_change or 0.0
+        if dxy_chg > 0.5:    # strong USD → IT (USD earners) positive, FMCG/Import sectors mildly negative
+            bias["IT"] = bias.get("IT", 0.0) + 0.06
+            bias["FMCG"] = bias.get("FMCG", 0.0) - 0.03
+        elif dxy_chg < -0.5: # weak USD → IT slightly negative, commodities positive
+            bias["IT"] = bias.get("IT", 0.0) - 0.04
+            for s in ("METALS", "ENERGY"):
+                bias[s] = bias.get(s, 0.0) + 0.04
+
+        # ── Bond yield signal ────────────────────────────────────────────────
+        yield_chg_bps = snap.us10y_change_bps or 0.0
+        if yield_chg_bps > 10:   # yields rising → FINANCIAL pressure, REALESTATE negative
+            bias["FINANCIAL"] = bias.get("FINANCIAL", 0.0) - 0.06
+            bias["REALESTATE"] = bias.get("REALESTATE", 0.0) - 0.05
+        elif yield_chg_bps < -10: # yields falling → FINANCIAL positive, REALESTATE positive
+            bias["FINANCIAL"] = bias.get("FINANCIAL", 0.0) + 0.05
+            bias["REALESTATE"] = bias.get("REALESTATE", 0.0) + 0.04
+
+        # ── VIX risk-off signal ─────────────────────────────────────────────
+        vix = snap.cboe_vix or 18.0
+        if vix > 25:   # elevated VIX → broad risk-off, defensive sectors favoured
+            for s in ("BANKING", "METALS", "AUTO", "IT"):
+                bias[s] = bias.get(s, 0.0) - 0.05
+            for s in ("FMCG", "PHARMA", "POWER", "HEALTHCARE"):
+                bias[s] = bias.get(s, 0.0) + 0.04
+
+        # Cap each adjustment to [-0.20, +0.20]
+        bias = {k: round(max(-0.20, min(0.20, v)), 3) for k, v in bias.items()}
+
+        if bias:
+            import logging as _logging
+            _logging.getLogger(__name__).debug(
+                "[SectorRegimeBias] sp=%.2f%% crude=%.2f%% dxy=%.2f%% vix=%.1f → %s",
+                sp_chg, crude_chg, dxy_chg, vix,
+                {k: v for k, v in bias.items() if v != 0},
+            )
+
+        return bias
+

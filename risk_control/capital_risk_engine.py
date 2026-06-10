@@ -39,6 +39,8 @@ Key functions
 
 from __future__ import annotations
 
+import json as _json
+from datetime import datetime as _dt
 from typing import Dict, List, Optional, Tuple
 
 from models.market_data  import MarketSnapshot, RegimeLabel, VolatilityLevel
@@ -48,6 +50,29 @@ from config import TOTAL_CAPITAL, MAX_RISK_PER_TRADE_PCT
 from utils import get_logger
 
 log = get_logger(__name__)
+
+# ── Daily EXPOSURE_CAP rejection accumulator (reset at midnight) ───────────
+_EXPOSURE_REJECTIONS_TODAY: List[dict] = []
+_EXPOSURE_REJECTIONS_DATE: str = ""
+# ── Per-cycle EXPOSURE_CAP rejection accumulator (reset each allocate call) ─
+_EXPOSURE_REJECTIONS_LAST_CYCLE: List[dict] = []
+
+def _reset_exposure_accumulator() -> None:
+    """Reset daily accumulator if date has changed."""
+    global _EXPOSURE_REJECTIONS_TODAY, _EXPOSURE_REJECTIONS_DATE
+    today = _dt.now().strftime("%Y-%m-%d")
+    if _EXPOSURE_REJECTIONS_DATE != today:
+        _EXPOSURE_REJECTIONS_TODAY = []
+        _EXPOSURE_REJECTIONS_DATE = today
+
+def get_daily_exposure_rejections() -> List[dict]:
+    """Return today's EXPOSURE_CAP rejection records (non-destructive read)."""
+    _reset_exposure_accumulator()
+    return list(_EXPOSURE_REJECTIONS_TODAY)
+
+def get_last_cycle_exposure_rejections() -> List[dict]:
+    """Return the most recent cycle's heat-rejected signal records (non-destructive read)."""
+    return list(_EXPOSURE_REJECTIONS_LAST_CYCLE)
 
 # ── Regime → max deployment fraction ──────────────────────────────────────
 _EXPOSURE_MAP: Dict[str, float] = {
@@ -134,38 +159,323 @@ class CapitalRiskEngine:
         result: List[TradeSignal] = []
         allocated_total = 0.0
 
-        for sig in signals:
+        # ── [CREPositionCountAudit] — reconcile open position count ────
+        try:
+            _pf_positions = list(portfolio.positions.values()) if portfolio else []
+            _pf_open      = len(_pf_positions)
+            _pf_quarantine = sum(
+                1 for p in _pf_positions
+                if getattr(p, "governance_state", "") in ("QUARANTINED", "QUARANTINE")
+                or getattr(p, "quarantined", False)
+            )
+            _pf_pending   = sum(
+                1 for p in _pf_positions
+                if getattr(p, "status", "") in ("PENDING", "SUBMITTED", "PARTIALLY_FILLED")
+            )
+            _pf_counted   = _pf_open   # CRE counts this-cycle result[], not portfolio
+            _cre_available = max(0, _MAX_POSITIONS - _pf_open)
+            log.info(
+                "[CREPositionCountAudit] max_positions=%d "
+                "positions_open=%d positions_quarantined=%d positions_pending=%d "
+                "positions_counted_by_cre=0 positions_counted_by_order_manager=%d "
+                "available_slots=%d cap_triggered=False rejected_due_to_cap=0 "
+                "counting_method=this_cycle_result_len",
+                _MAX_POSITIONS,
+                _pf_open, _pf_quarantine, _pf_pending,
+                _pf_counted, _cre_available,
+            )
+        except Exception as _pca_exc:
+            log.debug("[CREPositionCountAudit] skipped: %s", _pca_exc)
+
+        # ── [CapitalRiskDecision] rejection counters ────────────────────
+        _crd_budget_rejected   = 0
+        _crd_risk_rejected     = 0
+        _crd_heat_rejected     = 0  # exposure cap
+        _crd_sizing_rejected   = 0  # qty=0 from tight SL
+        _crd_other_rejected    = 0
+        _crd_signals_in        = len(signals)
+
+        # ── Reset per-cycle accumulator ─────────────────────────────────
+        global _EXPOSURE_REJECTIONS_LAST_CYCLE
+        _EXPOSURE_REJECTIONS_LAST_CYCLE = []
+
+        def _ec_record(sig, reason: str) -> dict:
+            """Build a rejection record dict for a signal."""
+            try:
+                _n: dict = {}
+                try:
+                    _n = _json.loads(sig.notes or "{}")
+                except Exception:
+                    pass
+                _rr = sig.risk_reward_ratio
+                _sc = sig.confidence
+                _cv = _n.get("conviction_score") or _sc / 10
+                _se = _n.get("sector") or _n.get("sector_name") or "UNKNOWN"
+                _rg = _n.get("regime") or "unknown"
+                _rs = abs(sig.entry_price - sig.stop_loss)
+                _rt = abs(sig.target_price - sig.entry_price)
+                _rm = round(_rt / _rs, 2) if _rs > 0 else 0.0
+                from config import MIN_CONFIDENCE_SCORE as _MCS
+                return {
+                    "symbol":                  sig.symbol,
+                    "strategy":                sig.strategy_name,
+                    "score":                   _sc,
+                    "conviction":              _cv,
+                    "sector":                  _se,
+                    "regime":                  _rg,
+                    "R_multiple":              _rm,
+                    "entry":                   sig.entry_price,
+                    "stop":                    sig.stop_loss,
+                    "target":                  sig.target_price,
+                    "rr":                      _rr,
+                    "would_pass_risk_control": (_sc >= _MCS and _rr >= 2.0),
+                    "would_pass_simulation":   (_sc >= 6.0 and _rr >= 1.5),
+                    "would_pass_debate":       (_sc >= 6.5),
+                    "rejection_reason":        reason,
+                }
+            except Exception:
+                return {"symbol": getattr(sig, "symbol", "?"), "rejection_reason": reason,
+                        "score": 0.0, "entry": 0.0, "stop": 0.0, "target": 0.0,
+                        "rr": 0.0, "strategy": "", "conviction": 0.0, "sector": "?",
+                        "regime": "?", "R_multiple": 0.0,
+                        "would_pass_risk_control": False,
+                        "would_pass_simulation": False,
+                        "would_pass_debate": False}
+
+        for _sig_idx, sig in enumerate(signals):
             if len(result) >= _MAX_POSITIONS:
                 log.info("[CRE] Max position limit (%d) reached — remaining signals skipped.",
                          _MAX_POSITIONS)
+                # ── [CRECapDecision] per-signal + final [CREPositionCountAudit] ──
+                _cap_remaining = signals[_sig_idx:]
+                _cap_rejected  = 0
+                for _rem_sig in _cap_remaining:
+                    _crd_heat_rejected += 1
+                    _cap_rejected += 1
+                    try:
+                        log.info(
+                            "[CRECapDecision] symbol=%s positions_counted=%d "
+                            "max_positions=%d cap_triggered=True "
+                            "reason=MAX_POSITIONS_CAP",
+                            _rem_sig.symbol, len(result), _MAX_POSITIONS,
+                        )
+                        _rec = _ec_record(_rem_sig, "MAX_POSITIONS_CAP")
+                        _EXPOSURE_REJECTIONS_TODAY.append(_rec)
+                        _EXPOSURE_REJECTIONS_LAST_CYCLE.append(_rec)
+                        log.info(
+                            "[ExposureCapDecision] symbol=%s strategy=%s "
+                            "score=%.2f conviction=%.2f sector=%s regime=%s "
+                            "entry=%.2f stop=%.2f target=%.2f R_multiple=%.2f "
+                            "would_pass_risk_control=%s would_pass_simulation=%s "
+                            "would_pass_debate=%s",
+                            _rec["symbol"], _rec["strategy"],
+                            _rec["score"], _rec["conviction"],
+                            _rec["sector"], _rec["regime"],
+                            _rec["entry"], _rec["stop"], _rec["target"], _rec["R_multiple"],
+                            _rec["would_pass_risk_control"],
+                            _rec["would_pass_simulation"],
+                            _rec["would_pass_debate"],
+                        )
+                    except Exception as _rem_exc:
+                        log.debug("[CRECapDecision] remaining signal error: %s", _rem_exc)
+                # Final [CREPositionCountAudit] with cap_triggered=True
+                try:
+                    _pf2 = list(portfolio.positions.values()) if portfolio else []
+                    _pf2_open = len(_pf2)
+                    log.info(
+                        "[CREPositionCountAudit] max_positions=%d "
+                        "positions_open=%d positions_quarantined=%d positions_pending=%d "
+                        "positions_counted_by_cre=%d positions_counted_by_order_manager=%d "
+                        "available_slots=%d cap_triggered=True rejected_due_to_cap=%d "
+                        "counting_method=this_cycle_result_len",
+                        _MAX_POSITIONS,
+                        _pf2_open,
+                        sum(1 for p in _pf2 if getattr(p, "governance_state", "") in ("QUARANTINED", "QUARANTINE") or getattr(p, "quarantined", False)),
+                        sum(1 for p in _pf2 if getattr(p, "status", "") in ("PENDING", "SUBMITTED", "PARTIALLY_FILLED")),
+                        len(result), _pf2_open,
+                        max(0, _MAX_POSITIONS - len(result)),
+                        _cap_rejected,
+                    )
+                except Exception as _pca2_exc:
+                    log.debug("[CREPositionCountAudit] final skipped: %s", _pca2_exc)
                 break
 
             budget = self._strategy_budget(sig.strategy_name, deployable)
             qty    = self._size_position(sig, budget)
 
             if qty <= 0:
-                log.debug("[CRE] %s \u2192 qty=0 (budget=\u20b9%s SL=%.2f) \u2014 skipped.",
+                sl_dist    = abs(sig.entry_price - sig.stop_loss)
+                risk_amt   = budget * MAX_RISK_PER_TRADE_PCT
+                _rej_reason = "ZERO_BUDGET" if budget < 1.0 else (
+                    "SL_TOO_TIGHT" if sl_dist < 0.001 else
+                    "ENTRY_ZERO" if sig.entry_price <= 0 else
+                    "QTY_ZERO"
+                )
+                if _rej_reason == "ZERO_BUDGET":
+                    _crd_budget_rejected += 1
+                elif _rej_reason in ("SL_TOO_TIGHT", "QTY_ZERO", "ENTRY_ZERO"):
+                    _crd_sizing_rejected += 1
+                else:
+                    _crd_other_rejected += 1
+                log.info(
+                    "[CapitalRiskDecision] symbol=%s strategy=%s "
+                    "entry=%.2f allocated_budget=%.0f required_budget=%.0f "
+                    "available_budget=%.0f position_size=%d risk_amount=%.0f "
+                    "heat_usage=%.1f%% rejection_reason=%s",
+                    sig.symbol, sig.strategy_name,
+                    sig.entry_price, budget, budget,
+                    deployable, qty, risk_amt,
+                    (allocated_total / deployable * 100) if deployable else 0,
+                    _rej_reason,
+                )
+                log.debug("[CRE] %s → qty=0 (budget=₹%s SL=%.2f) — skipped.",
                           sig.symbol, f"{budget:,.0f}", sig.stop_loss)
                 continue
 
             trade_cost = qty * sig.entry_price
             if allocated_total + trade_cost > deployable * 1.05:
-                log.info("[CRE] %s skipped \u2014 total exposure limit reached (\u20b9%s / \u20b9%s).",
+                _crd_heat_rejected += 1
+                log.info(
+                    "[CapitalRiskDecision] symbol=%s strategy=%s "
+                    "entry=%.2f allocated_budget=%.0f required_budget=%.0f "
+                    "available_budget=%.0f position_size=%d risk_amount=%.0f "
+                    "heat_usage=%.1f%% rejection_reason=EXPOSURE_CAP_EXCEEDED",
+                    sig.symbol, sig.strategy_name,
+                    sig.entry_price, budget, trade_cost,
+                    deployable - allocated_total, qty,
+                    budget * MAX_RISK_PER_TRADE_PCT,
+                    (allocated_total / deployable * 100) if deployable else 0,
+                )
+
+                # ── [ExposureCapDecision] — per-rejection quality audit ──────
+                try:
+                    _reset_exposure_accumulator()
+                    from config import MIN_CONFIDENCE_SCORE as _MIN_CONF
+                    _ec_rr = sig.risk_reward_ratio
+                    _ec_notes: dict = {}
+                    try:
+                        _ec_notes = _json.loads(sig.notes or "{}")
+                    except Exception:
+                        pass
+                    _ec_score     = sig.confidence
+                    _ec_conviction= _ec_notes.get("conviction_score") or sig.confidence / 10
+                    _ec_sector    = _ec_notes.get("sector") or _ec_notes.get("sector_name") or "UNKNOWN"
+                    _ec_regime    = _ec_notes.get("regime") or "unknown"
+                    _ec_r_stop    = abs(sig.entry_price - sig.stop_loss)
+                    _ec_r_target  = abs(sig.target_price - sig.entry_price)
+                    _ec_r_mult    = round(_ec_r_target / _ec_r_stop, 2) if _ec_r_stop > 0 else 0.0
+                    # Projections: would this signal clear downstream gates?
+                    #   risk_control: confidence >= MIN_CONFIDENCE_SCORE AND R:R >= 2.0
+                    #   simulation:   confidence >= 6.0 AND R:R >= 1.5 (heuristic proxy)
+                    #   debate:       confidence >= 6.5 (debate threshold)
+                    _ec_pass_rc  = (_ec_score >= _MIN_CONF and _ec_rr >= 2.0)
+                    _ec_pass_sim = (_ec_score >= 6.0 and _ec_rr >= 1.5)
+                    _ec_pass_deb = (_ec_score >= 6.5)
+                    log.info(
+                        "[ExposureCapDecision] symbol=%s strategy=%s "
+                        "score=%.2f conviction=%.2f sector=%s regime=%s "
+                        "entry=%.2f stop=%.2f target=%.2f R_multiple=%.2f "
+                        "would_pass_risk_control=%s would_pass_simulation=%s would_pass_debate=%s",
+                        sig.symbol, sig.strategy_name,
+                        _ec_score, _ec_conviction, _ec_sector, _ec_regime,
+                        sig.entry_price, sig.stop_loss, sig.target_price, _ec_r_mult,
+                        _ec_pass_rc, _ec_pass_sim, _ec_pass_deb,
+                    )
+                    _EXPOSURE_REJECTIONS_TODAY.append({
+                        "symbol":                  sig.symbol,
+                        "strategy":                sig.strategy_name,
+                        "score":                   _ec_score,
+                        "conviction":              _ec_conviction,
+                        "sector":                  _ec_sector,
+                        "regime":                  _ec_regime,
+                        "R_multiple":              _ec_r_mult,
+                        "entry":                   sig.entry_price,
+                        "stop":                    sig.stop_loss,
+                        "target":                  sig.target_price,
+                        "rr":                      _ec_rr,
+                        "would_pass_risk_control": _ec_pass_rc,
+                        "would_pass_simulation":   _ec_pass_sim,
+                        "would_pass_debate":       _ec_pass_deb,
+                        "rejection_reason":        "EXPOSURE_CAP_EXCEEDED",
+                    })
+                    _EXPOSURE_REJECTIONS_LAST_CYCLE.append(_EXPOSURE_REJECTIONS_TODAY[-1])
+                except Exception as _ec_err:
+                    log.debug("[ExposureCapDecision] audit skipped: %s", _ec_err)
+
+                log.info("[CRE] %s skipped — total exposure limit reached (₹%s / ₹%s).",
                          sig.symbol, f"{allocated_total:,.0f}", f"{deployable:,.0f}")
                 continue
 
             sig.quantity  = qty
-            sig.notes    += f" | CRE: budget=₹{budget:,.0f} qty={qty}"
+
+            # JSON-aware metadata update — string concatenation onto JSON
+            # corrupts the structured notes and destroys is_live, dte, etc.
+            _notes_raw = sig.notes or "{}"
+            try:
+                _meta = _json.loads(_notes_raw)
+            except Exception as _e:
+                # Plain-text notes (equity / ETF arb signals) are not JSON.
+                # Wrap the original text so it is not silently discarded.
+                _was_plain_text = bool(_notes_raw) and not _notes_raw.strip().startswith("{")
+                if _was_plain_text:
+                    log.debug(
+                        "[MetadataCorruptionDetected] module=capital_risk_engine  "
+                        "symbol=%s  strategy=%s  notes_are_plain_text — wrapping in JSON",
+                        sig.symbol, getattr(sig, "strategy_name", "UNKNOWN"),
+                    )
+                else:
+                    log.info(
+                        "[MetadataCorruptionDetected] module=capital_risk_engine  "
+                        "symbol=%s  strategy=%s  error=%s  notes_snippet=%r "
+                        "— wrapping in JSON to preserve content",
+                        sig.symbol, getattr(sig, "strategy_name", "UNKNOWN"),
+                        type(_e).__name__, _notes_raw[:80],
+                    )
+                _meta = {"original_notes": _notes_raw} if _notes_raw else {}
+            log.debug(
+                "[MetadataMutationAudit] module=capital_risk_engine  symbol=%s  "
+                "event=before  keys=%s  is_live=%s",
+                sig.symbol, sorted(_meta.keys()), _meta.get("is_live", "absent"),
+            )
+            _meta["cre_budget"] = int(budget)
+            _meta["cre_qty"]    = qty
+            sig.notes = _json.dumps(_meta)
+            log.debug(
+                "[MetadataMutationAudit] module=capital_risk_engine  symbol=%s  "
+                "event=after  keys=%s  is_live=%s",
+                sig.symbol, sorted(_meta.keys()), _meta.get("is_live", "absent"),
+            )
+
             result.append(sig)
             allocated_total += trade_cost
 
         utilisation = (allocated_total / deployable * 100) if deployable else 0
         log.info(
-            "[CRE] %d/%d signals sized. Deployable=\u20b9%s  "
-            "Allocated=\u20b9%s (%.0f%% utilisation)",
+            "[CRE] %d/%d signals sized. Deployable=₹%s  "
+            "Allocated=₹%s (%.0f%% utilisation)",
             len(result), len(signals),
             f"{deployable:,.0f}", f"{allocated_total:,.0f}", utilisation,
         )
+
+        # ── [CapitalRiskSummary] ────────────────────────────────────────
+        _all_rej = _crd_budget_rejected + _crd_risk_rejected + _crd_heat_rejected + _crd_sizing_rejected + _crd_other_rejected
+        _dom_reason = max(
+            [("BUDGET", _crd_budget_rejected), ("RISK_AMOUNT", _crd_risk_rejected),
+             ("EXPOSURE_CAP", _crd_heat_rejected), ("SL_SIZING", _crd_sizing_rejected),
+             ("OTHER", _crd_other_rejected)],
+            key=lambda x: x[1],
+        )[0] if _all_rej > 0 else "NONE"
+        log.info(
+            "[CapitalRiskSummary] signals_in=%d signals_out=%d "
+            "budget_rejected=%d risk_rejected=%d heat_rejected=%d "
+            "sizing_rejected=%d other_rejected=%d "
+            "dominant_rejection_reason=%s deployable=%.0f utilisation_pct=%.1f",
+            _crd_signals_in, len(result),
+            _crd_budget_rejected, _crd_risk_rejected, _crd_heat_rejected,
+            _crd_sizing_rejected, _crd_other_rejected,
+            _dom_reason, deployable, utilisation,
+        )
+
         return result
 
     def deployable_capital(
@@ -173,7 +483,7 @@ class CapitalRiskEngine:
         snapshot: MarketSnapshot,
         portfolio: Optional[Portfolio] = None,
     ) -> float:
-        """Public accessor — returns the deployable capital figure."""
+        """Public accessor - returns the deployable capital figure."""
         return self._compute_deployable_capital(snapshot, portfolio)
 
     # ─────────────────────────────────────────────
@@ -185,7 +495,7 @@ class CapitalRiskEngine:
         snapshot: MarketSnapshot,
         portfolio: Optional[Portfolio],
     ) -> float:
-        """Deployable = Total Capital × regime_exposure × vix_ceiling × dd_reducer."""
+        """Deployable = Total Capital x regime_exposure x vix_ceiling x dd_reducer."""
         regime_exposure = _EXPOSURE_MAP.get(snapshot.regime.value, 0.50)
 
         # VIX ceiling
@@ -227,10 +537,10 @@ class CapitalRiskEngine:
         Institutional position sizing:
             qty = Risk Amount / Stop Distance
 
-        Risk Amount = budget × MAX_RISK_PER_TRADE_PCT
+        Risk Amount = budget * MAX_RISK_PER_TRADE_PCT
         Stop Distance = |entry - stop_loss|
 
-        Result is also capped so the notional cost ≤ strategy budget.
+        Result is also capped so the notional cost <= strategy budget.
         """
         sl_distance = abs(sig.entry_price - sig.stop_loss)
         if sl_distance < 0.001 or sig.entry_price <= 0:

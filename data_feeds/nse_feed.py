@@ -130,20 +130,38 @@ class NSEFeed(BaseFeed):
     def _nse_quote(self, symbol: str) -> Optional[TickerQuote]:
         try:
             nse_name = NSE_INDICES.get(symbol, symbol)
-            data     = self._nse.nse_eq(nse_name) if symbol not in NSE_INDICES \
-                       else self._nse.nse_index_info(nse_name)
-            ltp  = float(data.get("lastPrice", data.get("last", 0)))
-            chg  = float(data.get("change", 0))
-            chgp = float(data.get("pChange", 0))
-            prev = ltp - chg
-            return TickerQuote(
-                symbol=symbol, timestamp=datetime.now(),
-                ltp=ltp, open=float(data.get("open", prev)),
-                high=float(data.get("dayHigh", ltp)),
-                low=float(data.get("dayLow", ltp)),
-                close=prev, change=chg, change_pct=chgp,
-                volume=float(data.get("totalTradedVolume", 0)),
-            )
+            if symbol in NSE_INDICES:
+                # nse_get_index_quote replaced nse_index_info in nsepython >=2.97.
+                # Returns comma-formatted strings ("25,682.40") — strip before float().
+                data = self._nse.nse_get_index_quote(nse_name)
+                def _f(v):
+                    return float(str(v).replace(",", "")) if v else 0.0
+                ltp  = _f(data.get("last", 0))
+                prev = _f(data.get("previousClose", ltp))
+                chg  = round(ltp - prev, 2)
+                chgp = float(data.get("percChange", 0) or 0)
+                return TickerQuote(
+                    symbol=symbol, timestamp=datetime.now(),
+                    ltp=ltp, open=_f(data.get("open", ltp)),
+                    high=_f(data.get("high", ltp)),
+                    low=_f(data.get("low", ltp)),
+                    close=prev, change=chg, change_pct=chgp,
+                    volume=0.0,
+                )
+            else:
+                data = self._nse.nse_eq(nse_name)
+                ltp  = float(data.get("lastPrice", data.get("last", 0)))
+                chg  = float(data.get("change", 0))
+                chgp = float(data.get("pChange", 0))
+                prev = ltp - chg
+                return TickerQuote(
+                    symbol=symbol, timestamp=datetime.now(),
+                    ltp=ltp, open=float(data.get("open", prev)),
+                    high=float(data.get("dayHigh", ltp)),
+                    low=float(data.get("dayLow", ltp)),
+                    close=prev, change=chg, change_pct=chgp,
+                    volume=float(data.get("totalTradedVolume", 0)),
+                )
         except Exception as exc:
             log.debug("[NSEFeed] nse_quote %s: %s", symbol, exc)
             return self._sim_quote(symbol)
@@ -156,6 +174,21 @@ class NSEFeed(BaseFeed):
             raw      = self._nse.nsefetch(
                 f"https://www.nseindia.com/api/option-chain-{'indices' if symbol in NSE_INDICES else 'equities'}?symbol={nse_name}"
             )
+            # Phase 5 NSEOptionsProbe — log response structure before parsing
+            if isinstance(raw, dict):
+                top_keys = list(raw.keys())[:6]
+                log.info(
+                    "[NSEOptionsProbe] symbol=%s response_type=dict "
+                    "top_keys=%s has_records=%s preview=%r",
+                    symbol, top_keys, "records" in raw, str(raw)[:120],
+                )
+            else:
+                log.warning(
+                    "[NSEOptionsProbe] symbol=%s response_type=%s preview=%r "
+                    "— expected dict, got %s",
+                    symbol, type(raw).__name__, str(raw)[:120], type(raw).__name__,
+                )
+                return self._sim_options_chain(symbol, expiry)
             records     = raw["records"]
             spot        = float(records["underlyingValue"])
             expiry_dates= records["expiryDates"]

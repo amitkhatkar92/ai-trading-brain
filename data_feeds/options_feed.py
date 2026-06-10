@@ -410,15 +410,85 @@ class OptionsFeed:
     # ── Private: live fetch ────────────────────────────────────────────
 
     def _fetch_live(self, symbol: str, dte_target: int) -> Optional[OptionsChain]:
-        # ── Path 1: Dhan live options chain (real premium, NSE-native) ────────
+        # ── Path 1: AngelOne live options chain (primary — TOTP auto-refresh) ──
+        # AngelOne SmartAPI provides live LTP + bid/ask for NFO contracts.
+        # No daily manual token required — TOTP rotates automatically.
+        # Do NOT gate on is_live: get_options_chain() calls _refresh_if_needed()
+        # internally and will auto-reconnect expired sessions.
+        try:
+            from data_feeds.data_feed_manager import get_feed_manager as _gfm_ao
+            _ao = getattr(_gfm_ao(), "angelone", None)
+            if _ao is not None:
+                _base_ao = _ao.get_options_chain(symbol, dte_target=dte_target)
+                if _base_ao is not None and getattr(_base_ao, "contracts", None):
+                    _spot     = float(_base_ao.spot_price)
+                    _exp_str  = _base_ao.expiry          # DDMMMYY e.g. "02JUN26"
+                    try:
+                        _expiry_dt = datetime.strptime(_exp_str, "%d%b%y").date()
+                    except ValueError:
+                        try:
+                            _expiry_dt = datetime.strptime(_exp_str[:10], "%Y-%m-%d").date()
+                        except ValueError:
+                            _expiry_dt = date.today()
+                    _dte      = max((_expiry_dt - date.today()).days, 0)
+                    _T        = max(_dte, 1) / 365.0
+                    _interval = NSE_STRIKE_INTERVALS.get(symbol, 50.0)
+                    _calls_ao: List[OptionContract] = []
+                    _puts_ao:  List[OptionContract] = []
+                    for _c in _base_ao.contracts:
+                        if not _c.ltp or _c.ltp < _MIN_PREMIUM:
+                            continue
+                        # AngelOne does not return IV — use BS with 16% seed
+                        _iv = 0.16
+                        _g  = bs_greeks(_spot, _c.strike, _T, _RISK_FREE, _iv, _c.is_call)
+                        _contract = OptionContract(
+                            strike=_c.strike, expiry=_expiry_dt,
+                            option_type=_c.option_type, premium=_c.ltp,
+                            bid=getattr(_c, "bid", 0.0), ask=getattr(_c, "ask", 0.0),
+                            iv=_iv,
+                            delta=_g.get("delta", 0), gamma=_g.get("gamma", 0),
+                            theta=_g.get("theta", 0), vega=_g.get("vega", 0),
+                            open_interest=int(getattr(_c, "oi", 0) or 0),
+                            volume=int(getattr(_c, "volume", 0) or 0),
+                            is_live=True,
+                        )
+                        if _c.is_call:
+                            _calls_ao.append(_contract)
+                        else:
+                            _puts_ao.append(_contract)
+                    if _calls_ao or _puts_ao:
+                        _atm_calls_ao = [c for c in _calls_ao
+                                         if abs(c.strike - _spot) <= _interval * 1.5]
+                        _atm_iv_ao    = (sum(c.iv for c in _atm_calls_ao) / len(_atm_calls_ao)
+                                         if _atm_calls_ao else 0.16)
+                        _chain_ao = OptionsChain(
+                            symbol=symbol, spot=_spot, expiry=_expiry_dt, dte=_dte,
+                            calls=_calls_ao, puts=_puts_ao, atm_iv=_atm_iv_ao, is_live=True,
+                        )
+                        log.info(
+                            "[OptionsFeed] AngelOne live chain %s  DTE=%d  spot=%.0f  "
+                            "ATM-IV=%.1f%%  strikes=%d",
+                            symbol, _dte, _spot, _atm_iv_ao * 100,
+                            len(_calls_ao) + len(_puts_ao),
+                        )
+                        log.info(
+                            "[ExpirySelectionResult] source=ANGELONE  symbol=%s  "
+                            "live_chain=True  expiry=%s  dte=%d",
+                            symbol, _expiry_dt, _dte,
+                        )
+                        return _chain_ao
+        except Exception as _ao_exc:
+            log.debug("[OptionsFeed] AngelOne chain unavailable for %s: %s", symbol, _ao_exc)
+
+        # ── Path 1.5: Dhan live options chain (fallback — requires daily token) ─
         # Dhan option_chain() is a trading-API call (not a data subscription),
-        # so it works even when the OHLC data feed returns 451.
+        # so it may work even when the OHLC data feed returns 451.
         try:
             from data_feeds.data_feed_manager import get_feed_manager
             _fm = get_feed_manager()
             _dhan = getattr(_fm, "dhan", None)
             if _dhan is not None:
-                _base_chain = _dhan.get_options_chain(symbol)
+                _base_chain = _dhan.get_options_chain(symbol, dte_target=dte_target)
                 if _base_chain is not None and getattr(_base_chain, "contracts", None):
                     # Convert base_feed.OptionsChain → options_feed.OptionsChain
                     _spot     = float(_base_chain.spot_price)
@@ -452,25 +522,41 @@ class OptionsFeed:
                         else:
                             _puts.append(_contract)
                     if _calls or _puts:
-                        _atm_calls = [c for c in _calls
-                                      if abs(c.strike - _spot) <= _interval * 1.5]
-                        _atm_iv    = (sum(c.iv for c in _atm_calls) / len(_atm_calls)
-                                      if _atm_calls else 0.16)
-                        _chain = OptionsChain(
-                            symbol=symbol, spot=_spot, expiry=_expiry_dt, dte=_dte,
-                            calls=_calls, puts=_puts, atm_iv=_atm_iv, is_live=True,
-                        )
-                        log.info(
-                            "[OptionsFeed] Dhan live chain %s  DTE=%d  spot=%.0f  "
-                            "ATM-IV=%.1f%%  strikes=%d",
-                            symbol, _dte, _spot, _atm_iv * 100,
-                            len(_calls) + len(_puts),
-                        )
-                        return _chain
+                        # If Dhan returned a near-term expiry (DTE < 7) but the
+                        # caller requested a further one (dte_target ≥ 14), fall
+                        # through to NSE which honours dte_target.
+                        if _dte < 7 and dte_target >= 14:
+                            log.debug(
+                                "[OptionsFeed] Dhan chain %s DTE=%d is near-term "
+                                "but dte_target=%d — falling through to NSE "
+                                "for next expiry.",
+                                symbol, _dte, dte_target,
+                            )
+                        else:
+                            _atm_calls = [c for c in _calls
+                                          if abs(c.strike - _spot) <= _interval * 1.5]
+                            _atm_iv    = (sum(c.iv for c in _atm_calls) / len(_atm_calls)
+                                          if _atm_calls else 0.16)
+                            _chain = OptionsChain(
+                                symbol=symbol, spot=_spot, expiry=_expiry_dt, dte=_dte,
+                                calls=_calls, puts=_puts, atm_iv=_atm_iv, is_live=True,
+                            )
+                            log.info(
+                                "[OptionsFeed] Dhan live chain %s  DTE=%d  spot=%.0f  "
+                                "ATM-IV=%.1f%%  strikes=%d",
+                                symbol, _dte, _spot, _atm_iv * 100,
+                                len(_calls) + len(_puts),
+                            )
+                            log.info(
+                                "[ExpirySelectionResult] source=DHAN  symbol=%s  "
+                                "live_chain=True  expiry=%s  dte=%d",
+                                symbol, _expiry_dt, _dte,
+                            )
+                            return _chain
         except Exception as _dhan_exc:
             log.debug("[OptionsFeed] Dhan chain unavailable for %s: %s", symbol, _dhan_exc)
 
-        # ── Path 1.5: NSE public API via nsepython ─────────────────────────────
+        # ── Path 2: NSE public API via nsepython ───────────────────────────────
         # nseindia.com/api/option-chain-indices is freely accessible from VPS.
         # Returns real premiums, OI, IV during market hours (09:15–15:30 IST).
         try:

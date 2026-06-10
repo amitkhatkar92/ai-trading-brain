@@ -32,6 +32,7 @@ from .agent_status_monitor import AgentStatusMonitor
 from .signal_visualizer    import SignalVisualizer
 from .decision_trace       import DecisionTrace
 from .cycle_health_monitor import CycleHealthMonitor
+from .mi_latency_audit     import MILatencyAudit
 
 log = get_logger(__name__)
 
@@ -63,6 +64,7 @@ class ControlTower:
         self.funnel       = SignalVisualizer(bus)
         self.trace        = DecisionTrace(bus)
         self.health       = CycleHealthMonitor(bus)
+        self.mi_latency   = MILatencyAudit(bus)
         log.info("[ControlTower] ✓ All sub-systems active. "
                  "Dashboard: streamlit run control_tower/dashboard_app.py")
 

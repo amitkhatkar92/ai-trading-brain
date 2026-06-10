@@ -14,6 +14,7 @@ Checks:
 """
 
 from __future__ import annotations
+from datetime import datetime as _dt
 from typing import List
 
 from models.trade_signal  import TradeSignal, SignalType
@@ -30,6 +31,16 @@ log = get_logger(__name__)
 # At RR=2 we only need to win 33% of trades to break even.
 MIN_RR_RATIO = 2.0
 
+# ── Borderline confidence accumulator ───────────────────────────────────────
+# Populated each cycle by filter_with_heat_split() for GOVERNANCE_REJECTION
+# signals in the 6.3-6.79 band. Read by orchestrator for [BorderlineConfidenceAudit].
+_BORDERLINE_LAST_CYCLE: List[dict] = []
+
+
+def get_last_cycle_borderline_rejections() -> List[dict]:
+    """Return borderline (6.3<=conf<6.8) governance rejections from the last cycle."""
+    return list(_BORDERLINE_LAST_CYCLE)
+
 
 class RiskManagerAI:
     """Hard-rule risk filter — all signals must pass every check."""
@@ -37,6 +48,7 @@ class RiskManagerAI:
     def __init__(self):
         self._current_portfolio_heat: float = 0.0   # updated externally
         self.liquidity_guard = LiquidityGuard()      # ADV-based capacity ceiling
+        self._last_reject_summary: dict = {}         # populated by filter_with_heat_split()
         log.info(f"[RiskManagerAI] Initialised. Capital=\u20b9{TOTAL_CAPITAL:,.0f}")
 
     def filter(self, signals: List[TradeSignal]) -> List[TradeSignal]:
@@ -79,38 +91,125 @@ class RiskManagerAI:
         heat_blocked: List[TradeSignal] = []
         seen_symbols: set = set()
 
+        # Reset borderline accumulator for this cycle
+        global _BORDERLINE_LAST_CYCLE
+        _BORDERLINE_LAST_CYCLE = []
+
+        # ── [RiskControlDecision] per-signal forensic counters ──────────────
+        _rcd: dict = {k: 0 for k in (
+            "RR_REJECTION", "HEAT_REJECTION", "COOLDOWN_REJECTION",
+            "GOVERNANCE_REJECTION", "LIQUIDITY_REJECTION",
+            "POSITION_LIMIT_REJECTION", "SECTOR_LIMIT_REJECTION",
+            "CORRELATION_REJECTION", "STALE_SIGNAL_REJECTION", "OTHER_EXACT",
+        )}
+
         for sig in signals:
             reason = self._check(sig, seen_symbols)
+            _req_rr = 0.5 if sig.signal_type in (
+                SignalType.OPTIONS, SignalType.SPREAD
+            ) else MIN_RR_RATIO
             if reason is None:
                 approved.append(sig)
                 seen_symbols.add(sig.symbol)
             elif "Portfolio heat" in reason:
                 # Verify the signal passes all *other* checks before tagging it
-                # as a rotation candidate — never allow a weak signal to sneak in.
+                # as a rotation candidate -- never allow a weak signal to sneak in.
                 saved_heat = self._current_portfolio_heat
                 self._current_portfolio_heat = 0.0
                 other_reason = self._check(sig, seen_symbols)
                 self._current_portfolio_heat = saved_heat
                 if other_reason is None:
                     heat_blocked.append(sig)
+                    _rcd["HEAT_REJECTION"] += 1
+                    log.info(
+                        "[RiskControlDecision] symbol=%s strategy=%s confidence=%.2f "
+                        "conviction=%.2f rr_ratio=%.2f required_rr=%.1f "
+                        "heat_before=%.4f heat_after=%.4f rejection_reason=HEAT_REJECTION",
+                        sig.symbol, sig.strategy_name, sig.confidence,
+                        sig.confidence / 10.0, sig.risk_reward_ratio, _req_rr,
+                        saved_heat, saved_heat,
+                    )
                     log.info(
                         "[RiskManagerAI] HEAT_BLOCK candidate: %s score=%.1f",
                         sig.symbol, sig.confidence,
                     )
                 else:
+                    _cat = self._categorize_reason(other_reason)
+                    _rcd["HEAT_REJECTION"] += 1
                     log.info(
-                        "[RiskManagerAI] ❌ REJECTED %s — %s (heat + %s)",
+                        "[RiskControlDecision] symbol=%s strategy=%s confidence=%.2f "
+                        "conviction=%.2f rr_ratio=%.2f required_rr=%.1f "
+                        "heat_before=%.4f heat_after=%.4f rejection_reason=HEAT_REJECTION "
+                        "secondary_reason=%s exact=%s",
+                        sig.symbol, sig.strategy_name, sig.confidence,
+                        sig.confidence / 10.0, sig.risk_reward_ratio, _req_rr,
+                        saved_heat, saved_heat, _cat, reason[:80],
+                    )
+                    log.info(
+                        "[RiskManagerAI] REJECTED %s -- %s (heat + %s)",
                         sig.symbol, reason, other_reason,
                     )
             else:
-                log.info("[RiskManagerAI] ❌ REJECTED %s — %s", sig.symbol, reason)
+                _cat = self._categorize_reason(reason)
+                _rcd[_cat] += 1
+                log.info(
+                    "[RiskControlDecision] symbol=%s strategy=%s confidence=%.2f "
+                    "conviction=%.2f rr_ratio=%.2f required_rr=%.1f "
+                    "heat_before=%.4f heat_after=%.4f rejection_reason=%s exact=%s",
+                    sig.symbol, sig.strategy_name, sig.confidence,
+                    sig.confidence / 10.0, sig.risk_reward_ratio, _req_rr,
+                    self._current_portfolio_heat, self._current_portfolio_heat,
+                    _cat, reason[:80],
+                )
+                log.info("[RiskManagerAI] REJECTED %s -- %s", sig.symbol, reason)
+                # ── Borderline confidence accumulator ────────────────
+                if _cat == "GOVERNANCE_REJECTION" and 6.3 <= sig.confidence < 6.8:
 
+                    _BORDERLINE_LAST_CYCLE.append({
+                        "symbol":     sig.symbol,
+                        "strategy":   sig.strategy_name,
+                        "confidence": sig.confidence,
+                        "conviction": round(sig.confidence / 10.0, 3),
+                        "rr_ratio":   sig.risk_reward_ratio,
+                        "entry_price": sig.entry_price,
+                        "stop_loss":  sig.stop_loss,
+                        "direction":  sig.direction.value if hasattr(sig.direction, "value") else str(sig.direction),
+                        "rejection_ts": _dt.now().isoformat(timespec="seconds"),
+                        "sector":     getattr(sig, "sector", "UNKNOWN"),
+                        "would_pass_simulation": sig.confidence >= 6.0 and sig.risk_reward_ratio >= 1.5,
+                        "would_pass_debate":     sig.confidence >= 6.5,
+                    })
+
+        # Liquidity guard runs on the approved set
         approved = self.liquidity_guard.filter(approved)
+        _liq_rpt = self.liquidity_guard.last_capacity_report()
+        if _liq_rpt and _liq_rpt.signals_rejected > 0:
+            _rcd["LIQUIDITY_REJECTION"] += _liq_rpt.signals_rejected
+
+        # Store for orchestrator [RiskControlSummary]
+        self._last_reject_summary = dict(_rcd)
+
         return approved, heat_blocked
 
     # ─────────────────────────────────────────────────────────────────
     # PRIVATE
     # ─────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _categorize_reason(reason: str) -> str:
+        """Map a rejection reason string to one of the 10 forensic audit categories."""
+        r = reason.lower()
+        if "confidence" in r:
+            return "GOVERNANCE_REJECTION"
+        if "r:r" in r:
+            return "RR_REJECTION"
+        if "portfolio heat" in r:
+            return "HEAT_REJECTION"
+        if "duplicate symbol" in r:
+            return "POSITION_LIMIT_REJECTION"
+        if "stop loss" in r or "stop distance" in r:
+            return "OTHER_EXACT"
+        return "OTHER_EXACT"
 
     def _check(self, sig: TradeSignal, seen: set) -> str | None:
         """Return None if signal passes, otherwise return rejection reason."""

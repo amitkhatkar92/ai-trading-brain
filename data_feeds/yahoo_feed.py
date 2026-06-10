@@ -19,6 +19,7 @@ Symbol reference for Indian markets:
 
 from __future__ import annotations
 
+import math
 import random
 import concurrent.futures
 from datetime import datetime, timedelta
@@ -26,6 +27,7 @@ from typing import Dict, List, Optional
 
 from .base_feed import BaseFeed, PriceBar, TickerQuote
 from utils import get_logger
+from utils.safe_scalar import safe_scalar
 
 # Maximum seconds to wait for a single-symbol individual retry before giving up
 _INDIVIDUAL_RETRY_TIMEOUT: float = 6.0
@@ -95,6 +97,29 @@ class YahooFeed(BaseFeed):
         except ImportError:
             log.warning("[YahooFeed] yfinance not installed — using simulation. "
                         "Run: pip install yfinance")
+
+    @staticmethod
+    def _normalize_df_columns(df):
+        """
+        Flatten MultiIndex columns returned by yfinance >= 0.2.28 / 1.x for
+        single-symbol downloads.  Without ``group_by``, yf.download() returns
+        columns of the form ``('Close', 'RELIANCE.NS')`` instead of ``'Close'``.
+        After normalisation the row-iteration pattern ``row["Close"]`` is safe.
+        """
+        try:
+            import pandas as pd
+            if isinstance(df.columns, pd.MultiIndex):
+                # Level 0 = field name ('Close', 'Open', …)
+                # Level 1 = ticker symbol ('RELIANCE.NS', …)
+                # Drop level 1 (ticker) — keep level 0 (field names).
+                df = df.copy()
+                df.columns = df.columns.droplevel(level=-1)
+                # Guard against duplicate column names (shouldn't arise for
+                # single-symbol downloads, but be defensive).
+                df = df.loc[:, ~df.columns.duplicated()]
+        except Exception:
+            pass  # return df unchanged; safe_scalar will handle residual Series
+        return df
 
     @staticmethod
     def _yf_close_caches() -> None:
@@ -243,21 +268,25 @@ class YahooFeed(BaseFeed):
             hist = t.history(period="2d", interval="1d", auto_adjust=True)
             if hist.empty:
                 return None   # caller (router or retry pool) handles absence
-            row     = hist.iloc[-1]
-            prev    = hist.iloc[-2]["Close"] if len(hist) > 1 else row["Open"]
-            ltp     = float(row["Close"])
-            change  = ltp - float(prev)
+            # Normalise columns — Ticker.history() usually returns single-level,
+            # but _normalize_df_columns() is idempotent and costs nothing.
+            hist = self._normalize_df_columns(hist)
+            row  = hist.iloc[-1]
+            prev = safe_scalar(hist.iloc[-2].get("Close", 0.0)) if len(hist) > 1 else safe_scalar(row.get("Open", 0.0))
+            ltp  = safe_scalar(row.get("Close", 0.0), 0.0)
+            change = ltp - prev if prev else 0.0
             return TickerQuote(
-                symbol     = alias,
-                timestamp  = datetime.now(),
-                ltp        = ltp,
-                open       = float(row["Open"]),
-                high       = float(row["High"]),
-                low        = float(row["Low"]),
-                close      = float(prev),
-                change     = round(change, 4),
-                change_pct = round(change / prev * 100, 4) if prev else 0.0,
-                volume     = float(row.get("Volume", 0)),
+                symbol      = alias,
+                timestamp   = datetime.now(),
+                ltp         = ltp,
+                open        = safe_scalar(row.get("Open",   0.0), 0.0),
+                high        = safe_scalar(row.get("High",   0.0), 0.0),
+                low         = safe_scalar(row.get("Low",    0.0), 0.0),
+                close       = prev,
+                change      = round(change, 4),
+                change_pct  = round(change / prev * 100, 4) if prev else 0.0,
+                volume      = safe_scalar(row.get("Volume", 0.0), 0.0),
+                feed_source = "YAHOO",
             )
         except Exception as exc:
             log.debug("[YahooFeed] live_quote %s failed: %s", ticker, exc)
@@ -271,26 +300,62 @@ class YahooFeed(BaseFeed):
         try:
             import yfinance as yf
             period = f"{days}d" if days <= 60 else f"{days // 30}mo"
-            df = yf.download(
-                ticker, period=period, interval=interval,
+            # multi_level_index=False → flat columns ['Close','High','Low','Open','Volume']
+            # Avoids the yfinance 1.x MultiIndex that triggers float(Series) TypeError
+            # when concurrent downloads race on shared yfinance internal state.
+            _dl_kwargs: dict = dict(
                 auto_adjust=True, progress=False, threads=False,
             )
+            try:
+                df = yf.download(
+                    ticker, period=period, interval=interval,
+                    multi_level_index=False, **_dl_kwargs,
+                )
+            except TypeError:
+                # Older yfinance that doesn't support multi_level_index
+                df = yf.download(ticker, period=period, interval=interval, **_dl_kwargs)
             if df.empty:
                 return self._sim_history(alias, days)
+
+            # ── Patch 2: Flatten MultiIndex columns (yfinance ≥ 0.2.28 / 1.x) ──
+            # multi_level_index=False should already give flat columns, but
+            # _normalize_df_columns() is idempotent and kept as a safety net.
+            df = self._normalize_df_columns(df)
+
             bars = []
             for ts, row in df.iterrows():
                 bars.append(PriceBar(
                     symbol    = alias,
                     timestamp = ts.to_pydatetime(),
-                    open      = float(row["Open"]),
-                    high      = float(row["High"]),
-                    low       = float(row["Low"]),
-                    close     = float(row["Close"]),
-                    volume    = float(row.get("Volume", 0)),
+                    # safe_scalar is the fallback layer — after _normalize_df_columns
+                    # these should always be plain floats, but defence-in-depth guards
+                    # against any unexpected residual Series or NaN values.
+                    open      = safe_scalar(row.get("Open",  row.get("open",  0.0)), 0.0),
+                    high      = safe_scalar(row.get("High",  row.get("high",  0.0)), 0.0),
+                    low       = safe_scalar(row.get("Low",   row.get("low",   0.0)), 0.0),
+                    close     = safe_scalar(row.get("Close", row.get("close", 0.0)), 0.0),
+                    volume    = safe_scalar(row.get("Volume", row.get("volume", 0.0)), 0.0),
                     interval  = interval,
                 ))
+            # Record successful refresh for trust-score recovery
+            try:
+                from data_feeds.data_integrity_tracker import get_data_integrity_tracker as _gdit
+                _gdit().record_refresh_success(alias.replace(".NS", ""))
+            except Exception:
+                pass
             return bars
         except Exception as exc:
+            # ── Patch 3: Record corruption event before sim fallback ──────────
+            try:
+                from data_feeds.data_integrity_tracker import get_data_integrity_tracker as _gdit
+                _gdit().record_corruption(
+                    symbol         = alias.replace(".NS", ""),
+                    indicator      = "ohlcv_history",
+                    corruption_type= f"{type(exc).__name__}:{str(exc)[:80]}",
+                    fallback_used  = True,  # _sim_history is the fallback
+                )
+            except Exception:
+                pass
             log.debug("[YahooFeed] history %s failed: %s — using sim", ticker, exc)
             return self._sim_history(alias, days)
         finally:
@@ -313,17 +378,19 @@ class YahooFeed(BaseFeed):
                 return None
             row  = df.iloc[-1]
             prev = df.iloc[-2]["Close"] if len(df) > 1 else row["Open"]
-            ltp  = float(row["Close"])
-            if math.isnan(ltp):
+            ltp  = safe_scalar(row.get("Close", 0.0), 0.0)
+            if math.isnan(ltp) or ltp == 0.0:
                 return None
-            chg  = ltp - float(prev)
+            chg  = ltp - safe_scalar(prev, 0.0)
             return TickerQuote(
                 symbol=alias, timestamp=datetime.now(),
-                ltp=ltp, open=float(row["Open"]),
-                high=float(row["High"]), low=float(row["Low"]),
-                close=float(prev), change=round(chg, 4),
-                change_pct=round(chg / prev * 100, 4) if prev else 0.0,
-                volume=float(row.get("Volume", 0)),
+                ltp=ltp, open=safe_scalar(row.get("Open", 0.0), 0.0),
+                high=safe_scalar(row.get("High", 0.0), 0.0),
+                low=safe_scalar(row.get("Low", 0.0), 0.0),
+                close=safe_scalar(prev, 0.0), change=round(chg, 4),
+                change_pct=round(chg / safe_scalar(prev, 0.0) * 100, 4) if safe_scalar(prev, 0.0) else 0.0,
+                volume=safe_scalar(row.get("Volume", 0.0), 0.0),
+                feed_source="YAHOO",
             )
         except Exception:
             return None
@@ -337,6 +404,22 @@ class YahooFeed(BaseFeed):
         "USDINR": 83.5, "DXY": 104, "EURUSD": 1.085,
         "GOLD": 2350, "CRUDE_WTI": 78, "CRUDE_BRENT": 82,
         "VIX": 15.5, "US10Y": 4.3,
+        # NSE large-caps — approximate; only used when yfinance also fails.
+        # Prevents the ₹1000 default from corrupting price-derived signals.
+        "HDFCBANK": 1900.0, "RELIANCE": 1320.0, "TCS": 3800.0,
+        "INFY": 1750.0, "ICICIBANK": 1380.0, "SBIN": 820.0,
+        "AXISBANK": 1200.0, "KOTAKBANK": 2200.0, "LT": 3800.0,
+        "WIPRO": 300.0, "BAJFINANCE": 8900.0, "BAJAJFINSV": 1900.0,
+        "BHARTIARTL": 1830.0, "ITC": 430.0, "HINDUNILVR": 2400.0,
+        "MARUTI": 12000.0, "TITAN": 3600.0, "SUNPHARMA": 1900.0,
+        "TATAMOTORS": 900.0, "TATASTEEL": 165.0, "M&M": 3000.0,
+        "COALINDIA": 468.0, "HINDALCO": 720.0, "NTPC": 380.0,
+        "ONGC": 270.0, "POWERGRID": 340.0, "HCLTECH": 1700.0,
+        "TECHM": 1700.0, "ADANIENT": 2800.0, "ADANIPORTS": 1450.0,
+        "JSWSTEEL": 1050.0, "NESTLEIND": 2300.0, "ULTRACEMCO": 11000.0,
+        "ASIANPAINT": 2400.0, "GRASIM": 2900.0, "TATACONSUM": 1100.0,
+        "HAVELLS": 1700.0, "PIDILITIND": 3100.0, "DIVISLAB": 6000.0,
+        "DRREDDY": 7500.0, "BANKBARODA": 260.0,
     }
 
     def _sim_quote(self, symbol: str) -> TickerQuote:

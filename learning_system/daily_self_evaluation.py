@@ -55,9 +55,18 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time as dtime
 from typing import Dict, List, Optional, Tuple
 
+import inspect
+
 from utils import get_logger
 
 log = get_logger(__name__)
+
+# ── [RuntimeFingerprint] ─────────────────────────────────────────────────────
+# Emitted once at import time so every restart proves which file is executing.
+log.info(
+    "[RuntimeFingerprint] module=%s build=SESSION_C_PATCHSET_V1 pid=%d file=%s",
+    __name__, os.getpid(), os.path.abspath(__file__),
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # PATHS
@@ -98,13 +107,14 @@ _AGGRESSIVE_STRATEGIES = {
 _WINDOW_OPEN  = dtime(9,  45)
 _WINDOW_CLOSE = dtime(14, 30)
 
-# Scoring weights
+# Scoring weights (must sum to 1.00)
 _WEIGHTS = {
-    "signal_quality":    0.20,
-    "strategy_fit":      0.25,
-    "risk_discipline":   0.25,
-    "execution_timing":  0.15,
-    "market_context":    0.15,
+    "signal_quality":       0.18,
+    "strategy_fit":         0.22,
+    "risk_discipline":      0.22,
+    "execution_timing":     0.13,
+    "market_context":       0.15,
+    "governance_compliance": 0.10,   # Phase 2: window / rule compliance dimension
 }
 
 # Grade thresholds
@@ -121,6 +131,43 @@ def _grade(score: float) -> str:
         if score >= threshold:
             return letter
     return "F"
+
+
+def _compute_r_multiple(trade) -> float:
+    """
+    Derive R-multiple from PnL and stop-loss distance.
+
+    Priority chain:
+      1. stored r_multiple (set by CSV recovery path when non-zero)
+      2. initial_stop_loss (immutable anchor set at order open — never zeroed by cleanup)
+      3. runtime stop_loss (last resort — may be 0 after SESSION_EXPIRED cleanup)
+
+    The initial_stop_loss field fixes the avg_r=0.0 blind-spot that occurred
+    when cleanup paths (SESSION_EXPIRED, orphan expiry) zeroed out stop_loss
+    before the self-evaluation ran, making risk=0 and computed_r=0 for all
+    intraday-closed trades.
+    """
+    r_attr = getattr(trade, "r_multiple", None)
+    if r_attr is not None and r_attr != 0.0:
+        return float(r_attr)
+    ep    = getattr(trade, "entry_price",    0.0) or 0.0
+    # Prefer immutable initial_stop_loss; fall back to runtime stop_loss
+    isl   = getattr(trade, "initial_stop_loss", None)
+    sl    = float(isl) if isl else (getattr(trade, "stop_loss", 0.0) or 0.0)
+    qty   = abs(getattr(trade, "quantity", 1) or 1)
+    pnl   = getattr(trade, "pnl",         0.0) or 0.0
+    risk  = abs(ep - sl) * qty
+    if risk > 0:
+        return round(pnl / risk, 3)
+    # ── [AvgRIntegrityFailure] — never silently return 0.0 ──────────────────
+    log.warning(
+        "[AvgRIntegrityFailure] symbol=%s entry=%.4f sl=%.4f initial_sl=%s "
+        "pnl=%.2f qty=%d computed_risk=%.4f — risk=0, R cannot be computed",
+        getattr(trade, "symbol", "?"), ep, getattr(trade, "stop_loss", 0.0) or 0.0,
+        str(isl) if isl else "not_set",
+        pnl, qty, risk,
+    )
+    return 0.0
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -167,6 +214,13 @@ class SelfEvalResult:
     week_win_rate:   float = 0.0
     week_trend:      str   = "stable"   # improving | declining | stable
 
+    # ── Audit / transparency fields —————————————————————————————
+    outcome_cap_applied: bool = False
+    outcome_cap_reason:  str  = ""
+    sample_confidence:   str  = ""  # Exploratory / Low-sample / Full
+    # Governance compliance dimension (Phase 2): 0=violations detected, 10=clean
+    governance_compliance: float = 0.0
+
     def to_dict(self) -> dict:
         return {
             "date":             self.date,
@@ -184,6 +238,9 @@ class SelfEvalResult:
             "win_rate_pct":     round(self.win_rate_pct,      1),
             "avg_r":            round(self.avg_r,             3),
             "issues":           self.issues,
+            "governance_compliance": round(self.governance_compliance, 2),
+            "strategy_mutation_blocked": self.strategy_mutation_blocked,
+            "research_integrity_note":   self.research_integrity_note,
         }
 
 
@@ -210,6 +267,23 @@ class DailyAISelfEvaluator:
     """
 
     def __init__(self) -> None:
+        # ── Schema validation — FAIL HARD if old scoring weights are loaded ──────
+        _expected_w = sorted(round(v, 2) for v in [0.18, 0.22, 0.22, 0.13, 0.15, 0.10])
+        _actual_w   = sorted(round(v, 2) for v in _WEIGHTS.values())
+        if _actual_w != _expected_w or "governance_compliance" not in _WEIGHTS:
+            raise RuntimeError(
+                "[FATAL] Old scoring schema loaded — "
+                f"expected weights {_expected_w} with 6 dims (incl. governance_compliance), "
+                f"got {_actual_w} with keys {list(_WEIGHTS)}. "
+                "Deploy SESSION_C_PATCHSET_V1 to VPS and restart."
+            )
+        log.info(
+            "[EvalSchemaValidation] weights=%s dimensions=%d "
+            "gov_dimension_present=True schema=SESSION_C_PATCHSET_V1 "
+            "file=%s",
+            {k: round(v, 2) for k, v in _WEIGHTS.items()}, len(_WEIGHTS),
+            os.path.abspath(__file__),
+        )
         log.info("[DailyAISelfEvaluator] Initialised.")
 
     # ── Public API ────────────────────────────────────────────────────
@@ -251,8 +325,41 @@ class DailyAISelfEvaluator:
         losses   = total - wins
         net_pnl  = sum(getattr(t, "pnl", 0.0) for t in trades)
         wr_pct   = wins / total * 100
-        r_vals   = [getattr(t, "r_multiple", 0.0) for t in trades]
+        # Use _compute_r_multiple so in-memory trades (no stored r_multiple) still
+        # produce a real R value derived from pnl / (sl_distance × qty).
+        # ── [AvgRAudit] — per-trade R decomposition trace ────────────────────
+        # Reveals WHY avg_r = 0.00R when losses are real.
+        # Key suspects: stop_loss=0.0 (orphan/carry cleanup resets it),
+        # or r_multiple never set on in-memory trades.
+        r_vals: List[float] = []
+        for _t in trades:
+            _ep   = getattr(_t, "entry_price", 0.0) or 0.0
+            _sl   = getattr(_t, "stop_loss",   0.0) or 0.0
+            _qty  = abs(getattr(_t, "quantity", 1) or 1)
+            _pnl  = getattr(_t, "pnl",         0.0) or 0.0
+            _raw  = getattr(_t, "r_multiple",  None)
+            _risk = abs(_ep - _sl) * _qty
+            _cr   = _compute_r_multiple(_t)
+            r_vals.append(_cr)
+            log.info(
+                "[AvgRAudit] symbol=%s  close_reason=%s"
+                "  entry_price=%.4f  stop_loss=%.4f  qty=%d  pnl=%.2f"
+                "  risk_in_rupees=%.2f  raw_r_multiple=%s  computed_r=%+.4f",
+                getattr(_t, "symbol", "?"),
+                getattr(_t, "close_reason", "") or "(blank)",
+                _ep, _sl, _qty, _pnl, _risk,
+                str(_raw) if _raw is not None else "not_set",
+                _cr,
+            )
         avg_r    = sum(r_vals) / len(r_vals) if r_vals else 0.0
+        _zero_count    = sum(1 for r in r_vals if r == 0.0)
+        _nonzero_count = sum(1 for r in r_vals if r != 0.0)
+        log.info(
+            "[AvgRIntegritySummary] trade_count=%d  avg_r=%+.4f "
+            "valid=%d  invalid=%d  fallback_used=%d  zero_r=%d",
+            len(r_vals), avg_r,
+            _nonzero_count, _zero_count, 0, _zero_count,
+        )
 
         # ── Score each category ────────────────────────────────────────
         sq  = self._score_signal_quality(trades, issues)
@@ -260,26 +367,143 @@ class DailyAISelfEvaluator:
         rd  = self._score_risk_discipline(trades, issues, learning_notes)
         et  = self._score_execution_timing(trades, issues)
         mc  = self._score_market_context(trades, last_distortion, issues, learning_notes)
+        gc  = self._score_governance_compliance(trades, issues, learning_notes)
 
         # ── Weighted overall ───────────────────────────────────────────
         overall = (
-            sq  * _WEIGHTS["signal_quality"]   +
-            sf  * _WEIGHTS["strategy_fit"]      +
-            rd  * _WEIGHTS["risk_discipline"]   +
-            et  * _WEIGHTS["execution_timing"]  +
-            mc  * _WEIGHTS["market_context"]
+            sq  * _WEIGHTS["signal_quality"]        +
+            sf  * _WEIGHTS["strategy_fit"]           +
+            rd  * _WEIGHTS["risk_discipline"]        +
+            et  * _WEIGHTS["execution_timing"]       +
+            mc  * _WEIGHTS["market_context"]         +
+            gc  * _WEIGHTS["governance_compliance"]
         )
         overall = round(min(10.0, max(0.0, overall)), 2)
+
+        # ── [GovernanceScoreAudit] ─────────────────────────────────────
+        # Traces exactly which timestamp field _score_execution_timing
+        # inspected per trade and whether gc actually captured the violation.
+        # Key question: does closed_at (CLOSE time) correctly represent
+        # when the trade was ENTERED? Should be placed_at (ENTRY time).
+        for _t in trades:
+            _placed = getattr(_t, "placed_at",  None)
+            _closed = getattr(_t, "closed_at",  None)
+            _sym    = getattr(_t, "symbol", "?")
+            _field_used = "closed_at" if _closed is not None else (
+                          "placed_at" if _placed is not None else "none_available")
+            _placed_time = (
+                _placed.strftime("%H:%M:%S") if hasattr(_placed, "strftime") else str(_placed)
+            ) if _placed else "None"
+            _closed_time = (
+                _closed.strftime("%H:%M:%S") if hasattr(_closed, "strftime") else str(_closed)
+            ) if _closed else "None"
+            _trade_violation = any(
+                (_sym in iss) and (
+                    "pre-open entry" in iss.lower() or "late entry" in iss.lower()
+                )
+                for iss in issues
+            )
+            log.info(
+                "[GovernanceScoreAudit] symbol=%s  placed_at=%s  closed_at=%s"
+                "  timing_field_used_by_scorer=placed_at  violation_in_issues=%s",
+                _sym, _placed_time, _closed_time, _trade_violation,
+            )
+        _overall_no_gc = (
+            sq * _WEIGHTS["signal_quality"]  +
+            sf * _WEIGHTS["strategy_fit"]    +
+            rd * _WEIGHTS["risk_discipline"] +
+            et * _WEIGHTS["execution_timing"]+
+            mc * _WEIGHTS["market_context"]
+        ) / (1.0 - _WEIGHTS["governance_compliance"])
+        log.info(
+            "[GovernanceScoreAudit] gc=%.1f  gc_weight=%.2f  gc_contribution=%.3f"
+            "  overall_with_gc=%.2f  hypothetical_without_gc=%.2f"
+            "  grade_with_gc=%s  grade_without_gc=%s"
+            "  violation_issues_count=%d",
+            gc, _WEIGHTS["governance_compliance"], gc * _WEIGHTS["governance_compliance"],
+            overall, round(min(10.0, max(0.0, _overall_no_gc)), 2),
+            _grade(overall), _grade(round(min(10.0, max(0.0, _overall_no_gc)), 2)),
+            sum(
+                1 for iss in issues
+                if "pre-open entry" in iss.lower() or "late entry" in iss.lower()
+            ),
+        )
+
+        # ── Sample-confidence label (before cap so it appears in audit log) ─
+        if total < 3:
+            _sample_label = "⚠️ Exploratory (n<3 — avoid strong conclusions)"
+        elif total < 10:
+            _sample_label = "📊 Low-confidence statistics (n<10)"
+        else:
+            _sample_label = "📈 Statistically meaningful (n≥10)"
+
+        # ── EvalScoreAudit — full contribution breakdown ───────────────
+        _pre_cap = round(overall, 2)
+        log.info(
+            "[EvalScoreAudit] date=%s n=%d avg_r=%+.3f | "
+            "signal_quality=%.2f×0.18=%.3f  strategy_fit=%.2f×0.22=%.3f  "
+            "risk_discipline=%.2f×0.22=%.3f  exec_timing=%.2f×0.13=%.3f  "
+            "market_context=%.2f×0.15=%.3f  governance=%.2f×0.10=%.3f | pre_cap=%.2f",
+            today, total, avg_r,
+            sq,  sq  * 0.18,
+            sf,  sf  * 0.22,
+            rd,  rd  * 0.22,
+            et,  et  * 0.13,
+            mc,  mc  * 0.15,
+            gc,  gc  * 0.10,
+            _pre_cap,
+        )
 
         # ── Outcome cap: decision quality cannot mask a losing day ─────
         # A day with negative avg R cannot score above 6.0 (B-) because
         # good process on a losing day is still a losing day.
-        # Keep thresholds simple and conservative.
+        _cap_applied = False
+        _cap_reason  = ""
         if avg_r < -0.30:
-            overall = min(overall, 4.0)   # C — clearly losing
+            overall = min(overall, 4.0)   # F — outcome cap: avg_r < -0.30 overrides component scores
+            _cap_applied = True
+            _cap_reason  = f"avg_r={avg_r:+.3f}R < -0.30 → hard cap 4.0/F"
         elif avg_r < 0.0:
             overall = min(overall, 6.0)   # B- — marginally losing
+            if _pre_cap > 6.0:
+                _cap_applied = True
+                _cap_reason  = f"avg_r={avg_r:+.3f}R < 0 → soft cap 6.0/B-"
         overall = round(overall, 2)
+
+        if _cap_applied:
+            log.info(
+                "[EvalScoreAudit] cap_applied=True reason='%s' pre_cap=%.2f final=%.2f grade=%s",
+                _cap_reason, _pre_cap, overall, _grade(overall),
+            )
+        else:
+            log.info(
+                "[EvalScoreAudit] cap_applied=False final=%.2f grade=%s sample='%s'",
+                overall, _grade(overall), _sample_label,
+            )
+
+        # ── Governance grade ceiling ───────────────────────────────────────
+        # A trading day with governance violations (gc=0.0) CANNOT produce A or A+.
+        # Weight 0.10 is deliberately cosmetic; this ceiling enforces the real penalty.
+        # Applied AFTER outcome cap so both constraints compound (worst wins).
+        _pre_gov          = round(overall, 2)   # capture value entering this block
+        _gov_ceil_applied = False
+        _gov_ceil_reason  = ""
+        _GOV_CEIL         = 7.0    # B — max grade allowed on a governance-violated day
+        if gc == 0.0:
+            if overall > _GOV_CEIL:
+                overall           = _GOV_CEIL
+                overall           = round(overall, 2)
+                _gov_ceil_applied = True
+                _gov_ceil_reason  = (
+                    "gc=0.0 (governance violation) → hard ceiling 7.0/B"
+                )
+        log.info(
+            "[GovernancePatchValidation] gc=%.1f  gov_ceil_applied=%s"
+            "  gov_ceil_reason=%r  pre_gov_ceil=%.2f  post_gov_ceil=%.2f"
+            "  placed_at_used=True  final_grade=%s",
+            gc, _gov_ceil_applied, _gov_ceil_reason,
+            _pre_gov, round(overall, 2), _grade(round(overall, 2)),
+        )
 
         # ── Generic learning notes from overall ────────────────────────
         if overall >= 8.5:
@@ -293,23 +517,91 @@ class DailyAISelfEvaluator:
                 "🔴 Poor decision quality. Review strategy-regime fit and risk rules.")
 
         result = SelfEvalResult(
-            date             = today,
-            signal_quality   = round(sq,  2),
-            strategy_fit     = round(sf,  2),
-            risk_discipline  = round(rd,  2),
-            execution_timing = round(et,  2),
-            market_context   = round(mc,  2),
-            overall_score    = overall,
-            grade            = _grade(overall),
-            total_trades     = total,
-            wins             = wins,
-            losses           = losses,
-            net_pnl          = round(net_pnl, 2),
-            win_rate_pct     = round(wr_pct,  1),
-            avg_r            = round(avg_r,   3),
-            issues           = issues,
-            learning_notes   = learning_notes,
+            date                 = today,
+            signal_quality       = round(sq,  2),
+            strategy_fit         = round(sf,  2),
+            risk_discipline      = round(rd,  2),
+            execution_timing     = round(et,  2),
+            market_context       = round(mc,  2),
+            governance_compliance= round(gc,  2),
+            overall_score        = overall,
+            grade                = _grade(overall),
+            total_trades         = total,
+            wins                 = wins,
+            losses               = losses,
+            net_pnl              = round(net_pnl, 2),
+            win_rate_pct         = round(wr_pct,  1),
+            avg_r                = round(avg_r,   3),
+            issues               = issues,
+            learning_notes       = learning_notes,
+            outcome_cap_applied  = _cap_applied,
+            outcome_cap_reason   = _cap_reason,
+            sample_confidence    = _sample_label,
         )
+
+        # ── Research Integrity Gate ───────────────────────────────────────────
+        # Determine the architecture generation for today's trades.
+        # OrderRecord objects don't carry architecture_generation; use config flag.
+        _n_prepared  = 0
+        _n_legacy    = 0
+        try:
+            from config import USE_PREPARED_UNIVERSE as _use_prep
+            from learning_system.strategy_performance_tracker import (
+                MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT as _min_prep,
+                get_performance_tracker as _get_pt,
+            )
+            from learning_system.research_integrity import (
+                compute_legacy_weight,
+                emit_contamination_telemetry,
+                emit_clean_research_state,
+                get_system_prepared_trade_count,
+                is_clean_research_ready,
+            )
+            _current_gen = "PREPARED_UNIVERSE_V1" if _use_prep else "LEGACY_STATIC"
+            # Count prepared_universe_trades across all active strategies
+            _pt = _get_pt()
+            _all_stats = _pt.get_all_stats()
+            # Min prepared across strategies that actually ran today
+            _today_strategies = {getattr(t, "strategy", "") or "" for t in trades}
+            _min_prep_today = min(
+                (_all_stats[s].prepared_universe_trades for s in _today_strategies
+                 if s in _all_stats),
+                default=0,
+            )
+            _mutation_blocked = _min_prep_today < _min_prep
+            if _current_gen == "PREPARED_UNIVERSE_V1":
+                _n_prepared = total
+            else:
+                _n_legacy   = total
+
+            # Patch 19: dynamic legacy weight
+            _sys_prepared  = get_system_prepared_trade_count()
+            _dyn_lw        = compute_legacy_weight(_sys_prepared)
+
+            _ri_note = (
+                f"generation={_current_gen}  prepared_sample={_min_prep_today}  "
+                f"min_required={_min_prep}  mutation_blocked={_mutation_blocked}  "
+                f"dynamic_legacy_weight={_dyn_lw:.4f}"
+            )
+            log.info(
+                "[ResearchIntegrity] date=%s  legacy_trades=%d  prepared_trades=%d  "
+                "dynamic_legacy_weight=%.4f  prepared_weight=1.00  "
+                "strategy_mutation_blocked=%s",
+                today, _n_legacy, _n_prepared, _dyn_lw, _mutation_blocked,
+            )
+            # Patch 20: [ResearchContamination] telemetry
+            emit_contamination_telemetry(
+                legacy_count=_n_legacy,
+                prepared_count=_sys_prepared,
+                source="DailySelfEval",
+            )
+            # Patch 22: [CleanResearchState] telemetry
+            emit_clean_research_state(source="DailySelfEval")
+
+            result.strategy_mutation_blocked = _mutation_blocked
+            result.research_integrity_note   = _ri_note
+        except Exception as _ri_exc:
+            log.debug("[ResearchIntegrity] check skipped: %s", _ri_exc)
         result.week_avg_score, result.week_win_rate, result.week_trend = \
             self._weekly_stats(result)
         return result
@@ -332,6 +624,13 @@ class DailyAISelfEvaluator:
             f"Wins: {result.wins}  │  Losses: {result.losses}  │  "
             f"WR: {result.win_rate_pct:.0f}%",
             f"  Net P&L: ₹{result.net_pnl:+,.0f}  │  Avg R: {result.avg_r:+.2f}R",
+        ]
+
+        # Sample confidence label
+        if result.sample_confidence:
+            lines.append(f"  Sample: {result.sample_confidence}")
+
+        lines += [
             sep2,
             "  DECISION QUALITY SCORES",
             sep2,
@@ -340,10 +639,32 @@ class DailyAISelfEvaluator:
             f"  Risk Discipline  {bar(result.risk_discipline)}  {result.risk_discipline:>4.1f}/10",
             f"  Exec Timing      {bar(result.execution_timing)}  {result.execution_timing:>4.1f}/10",
             f"  Market Context   {bar(result.market_context)}  {result.market_context:>4.1f}/10",
+            f"  Gov Compliance   {bar(result.governance_compliance)}  {result.governance_compliance:>4.1f}/10",
             sep2,
             f"  ▶  OVERALL AI SCORE  :  {result.overall_score:.1f} / 10  "
             f"[ Grade: {result.grade} ]",
         ]
+
+        # Governance violation banner (shown whenever GC score is 0)
+        if result.governance_compliance == 0.0:
+            lines.append(
+                "  ⚠️ Governance Violation: Entry outside approved execution window."
+            )
+            lines.append(
+                "     This score dimension fires independently of trade outcomes."
+            )
+
+        # Outcome cap explanation (shown whenever cap was applied)
+        if result.outcome_cap_applied:
+            lines.append(
+                f"  ⚡ Outcome cap applied: {result.outcome_cap_reason}"
+            )
+            lines.append(
+                "     Component scores reflect process quality; final grade"
+            )
+            lines.append(
+                "     reflects the actual outcome (avg R < threshold)."
+            )
 
         if result.issues:
             lines += [sep2, "  ⚠  ISSUES DETECTED"]
@@ -382,6 +703,16 @@ class DailyAISelfEvaluator:
                 fh.write(report_text)
                 fh.write(f"\n\n[Generated at {datetime.now().isoformat(timespec='seconds')}]\n")
             log.info("[DailyAISelfEvaluator] Report saved → %s", os.path.abspath(fname))
+            # ── [EODRuntimePath] — prove exact file + class executing this report ──
+            log.info(
+                "[EODRuntimePath] self_eval_class=%s module_file=%s pid=%d "
+                "report_date=%s runtime_date=%s",
+                self.__class__.__name__,
+                os.path.abspath(inspect.getfile(self.__class__)),
+                os.getpid(),
+                result.date,
+                datetime.now().strftime("%Y-%m-%d"),
+            )
         except Exception as exc:
             log.warning("[DailyAISelfEvaluator] Could not save report: %s", exc)
 
@@ -420,9 +751,23 @@ class DailyAISelfEvaluator:
                 f"  Risk Discipline  : {result.risk_discipline:.1f}/10\n"
                 f"  Exec Timing      : {result.execution_timing:.1f}/10\n"
                 f"  Market Context   : {result.market_context:.1f}/10\n"
+                f"  Gov Compliance   : {result.governance_compliance:.1f}/10\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"<b>Overall : {result.overall_score:.1f}/10  [{result.grade}]</b>"
             )
+            if result.governance_compliance == 0.0:
+                msg += (
+                    f"\n⚠️ <b>Governance Violation</b>: Entry outside approved"
+                    f" execution window (09:45–14:30)."
+                    f"\n<i>This dimension fires independently of trade P&amp;L.</i>"
+                )
+            if result.outcome_cap_applied:
+                msg += (
+                    f"\n⚡ <i>Outcome cap: {result.outcome_cap_reason}</i>\n"
+                    f"<i>(Components score process; grade reflects actual outcome)</i>"
+                )
+            if result.sample_confidence:
+                msg += f"\n📌 <i>{result.sample_confidence}</i>"
             if result.issues:
                 msg += "\n⚠️ <b>Issues:</b>\n"
                 for issue in result.issues[:5]:   # cap Telegram msg length
@@ -614,7 +959,10 @@ class DailyAISelfEvaluator:
 
         timed_trades = 0
         for t in trades:
-            ts = getattr(t, "closed_at", None) or getattr(t, "timestamp", None)
+            # Use placed_at (ENTRY time) — not closed_at (EXIT time).
+            # Pre-open governance violations must be checked against when the
+            # trade was ENTERED, not when it was CLOSED.
+            ts = getattr(t, "placed_at", None) or getattr(t, "closed_at", None)
             if ts is None:
                 continue
             if isinstance(ts, str):
@@ -713,6 +1061,40 @@ class DailyAISelfEvaluator:
             score = min(10.0, score + 1.0)  # credit for discipline
 
         return max(0.0, min(10.0, score))
+
+    def _score_governance_compliance(
+        self,
+        trades,
+        issues: List[str],
+        notes: List[str],
+    ) -> float:
+        """
+        Governance compliance: did every trade obey execution-window rules?
+
+        Scoring:
+          10 — no window violations detected in today's issues list
+           0 — any pre-open entry (before 09:45) or late entry (after 14:30)
+
+        The score is completely INDEPENDENT of trade P&L.  This means window
+        violations penalise the grade even when the trade was profitable —
+        the old avg_r=0.0 blind spot that let Apr-29 and May-14 slip through
+        as A+ days cannot recur here.
+
+        This scorer must be called AFTER _score_execution_timing() because
+        the timing scorer is responsible for populating the 'issues' list with
+        the pre-open / late-entry strings that this method detects.
+        """
+        violations = sum(
+            1 for issue in issues
+            if "pre-open entry" in issue.lower() or "late entry" in issue.lower()
+        )
+        if violations > 0:
+            notes.append(
+                f"⚠️ Governance Violation: {violations} trade(s) outside the "
+                f"09:45–14:30 execution window. Review entry timing before next session."
+            )
+            return 0.0
+        return 10.0
 
     # ── History persistence + weekly stats ───────────────────────────
 

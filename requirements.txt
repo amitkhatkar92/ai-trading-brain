@@ -27,6 +27,7 @@ dhanhq>=2.0.0
 # AngelOne SmartAPI
 smartapi-python>=1.3.7
 pyotp>=2.9.0              # TOTP for AngelOne 2FA
+logzero>=1.7.0            # required by smartapi-python
 
 # ── HTTP / WebSocket ──────────────────────────────────────────────────
 requests>=2.31.0

@@ -1,25 +1,25 @@
 """
-Trade Analytics Layer — Performance Measurement Engine
+Trade Analytics Layer â€” Performance Measurement Engine
 =======================================================
 Tracks every closed trade outcome and produces quantified evidence that the
 adaptive exit/extension logic is improving (or hurting) system expectancy.
 
 4 Blocks:
-  Block 1 — Trade-level log       (symbol, entry, exit, R, duration, exit reason)
-  Block 2 — Exit reason breakdown (SL / TARGET / TIME_STALE / EARLY_LOSS / EXTENSION)
-  Block 3 — Adaptive logic impact (savings per feature, extension success rate)
-  Block 4 — Daily performance     (expectancy, win rate, net R, profit factor)
+  Block 1 â€” Trade-level log       (symbol, entry, exit, R, duration, exit reason)
+  Block 2 â€” Exit reason breakdown (SL / TARGET / TIME_STALE / EARLY_LOSS / EXTENSION)
+  Block 3 â€” Adaptive logic impact (savings per feature, extension success rate)
+  Block 4 â€” Daily performance     (expectancy, win rate, net R, profit factor)
 
 Additional metrics beyond user request:
-  • Profit Factor
-  • Best / Worst trade
-  • Win/Loss streaks
-  • Avg duration: winners vs losers
-  • Strategy breakdown (expectancy per strategy)
-  • R-distribution buckets
+  â€¢ Profit Factor
+  â€¢ Best / Worst trade
+  â€¢ Win/Loss streaks
+  â€¢ Avg duration: winners vs losers
+  â€¢ Strategy breakdown (expectancy per strategy)
+  â€¢ R-distribution buckets
 
 Persistence:
-  data/trade_analytics_YYYY-MM-DD.json — appended after each trade close,
+  data/trade_analytics_YYYY-MM-DD.json â€” appended after each trade close,
   reloaded on startup so restarts within the same trading day preserve all data.
 
 Calling convention:
@@ -29,11 +29,12 @@ Calling convention:
   )
   analytics.mark_extension(oid, r_multiple)   # called when extension fires
   print(analytics.daily_report())             # plain text
-  print(analytics.telegram_report())          # HTML — send via notifier
+  print(analytics.telegram_report())          # HTML â€” send via notifier
 """
 
 from __future__ import annotations
 
+import inspect
 import json
 import os
 import statistics
@@ -46,39 +47,63 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
-# ── Paths ──────────────────────────────────────────────────────────────────────
+# ── [RuntimeFingerprint] ─────────────────────────────────────────────────────
+log.info(
+    "[RuntimeFingerprint] module=%s build=SESSION_C_PATCHSET_V1 pid=%d file=%s",
+    __name__, os.getpid(), os.path.abspath(__file__),
+)
+
+# â”€â”€ Paths â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 _ROOT      = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DATA_DIR  = os.path.join(_ROOT, "data")
 
-# Baseline: assume a full SL hit = −1.0R (definition of 1 unit of risk)
+# Baseline: assume a full SL hit = âˆ’1.0R (definition of 1 unit of risk)
 _BASELINE_SL_R = -1.0
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Per-trade record
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+# ── Research Integrity — Architecture Generation ─────────────────────────────
+# Determines the research weight of each trade record.
+# LEGACY_STATIC (pre-2026-05-22): structurally biased setup quality — 0.25 weight
+# PREPARED_UNIVERSE_V1 (post-activation): full research-grade data — 1.00 weight
+_ARCH_GEN_LEGACY  = "LEGACY_STATIC"
+_ARCH_GEN_PREP_V1 = "PREPARED_UNIVERSE_V1"
+
+
+def _get_architecture_generation() -> str:
+    """Return the architecture generation for a trade being recorded right now."""
+    try:
+        from config import USE_PREPARED_UNIVERSE
+        return _ARCH_GEN_PREP_V1 if USE_PREPARED_UNIVERSE else _ARCH_GEN_LEGACY
+    except Exception:
+        return _ARCH_GEN_LEGACY
+
 
 @dataclass
 class ClosedTradeRecord:
     """One entry per closed trade — the atomic unit of the analytics layer."""
-    symbol:           str
-    strategy:         str
-    direction:        str          # BUY | SELL
-    entry_price:      float
-    exit_price:       float
-    stop_loss:        float        # stop at time of close (may have been trailed)
-    target:           float
-    r_multiple:       float        # realised R-multiple at exit
-    duration_minutes: float        # minutes from placed_at to close
-    exit_reason:      str          # SL / TARGET / TIME_STALE / EARLY_LOSS / EXTENSION / EMERGENCY
-    was_extended:     bool         # trade went through profit extension
-    r_at_extension:   float        # R when extension was triggered (0 if not extended)
-    timestamp:        str          # ISO close timestamp
+    symbol:                str
+    strategy:              str
+    direction:             str          # BUY | SELL
+    entry_price:           float
+    exit_price:            float
+    stop_loss:             float        # stop at time of close (may have been trailed)
+    target:                float
+    r_multiple:            float        # realised R-multiple at exit
+    duration_minutes:      float        # minutes from placed_at to close
+    exit_reason:           str          # SL / TARGET / TIME_STALE / EARLY_LOSS / EXTENSION / EMERGENCY
+    was_extended:          bool         # trade went through profit extension
+    r_at_extension:        float        # R when extension was triggered (0 if not extended)
+    timestamp:             str          # ISO close timestamp
+    architecture_generation: str = _ARCH_GEN_LEGACY  # LEGACY_STATIC | PREPARED_UNIVERSE_V1
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Main analytics engine
-# ─────────────────────────────────────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 class TradeAnalytics:
     """
@@ -91,15 +116,41 @@ class TradeAnalytics:
     def __init__(self) -> None:
         self._date:   str                       = datetime.now().strftime("%Y-%m-%d")
         self._trades: List[ClosedTradeRecord]   = []
-        # Pending extension R-level: oid → R when extension was triggered
+        # Pending extension R-level: oid â†’ R when extension was triggered
         self._pending_extension_r: Dict[str, float] = {}
         self._load()
         log.info("[TradeAnalytics] Initialised (date=%s, loaded=%d trades).",
                  self._date, len(self._trades))
 
-    # ─────────────────────────────────────────────────────────────────
-    # Public API — called by TradeMonitor
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Date rotation â€” fixes singleton staleness across midnight
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+    def _refresh_date(self) -> None:
+        """
+        Rotate to today if the calendar date has changed since singleton init.
+
+        Root cause fixed: TradeMonitor creates this object once at startup.
+        When the service runs across midnight, self._date stays at the init
+        date forever, causing report headers and file paths to show stale dates.
+        Calling _refresh_date() at the start of record_closed_trade and report
+        methods ensures the date is always current.
+        """
+        _today = datetime.now().strftime("%Y-%m-%d")
+        if _today == self._date:
+            return
+        log.info(
+            "[TradeAnalytics] Date rotation %s â†’ %s  resetting in-memory state.",
+            self._date, _today,
+        )
+        self._date                = _today
+        self._trades              = []
+        self._pending_extension_r = {}
+        self._load()   # load today's JSON if it already exists (e.g. post-restart)
+
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Public API â€” called by TradeMonitor
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def mark_extension(self, oid: str, r_at_extension: float) -> None:
         """
@@ -112,7 +163,7 @@ class TradeAnalytics:
         self,
         order,                          # OrderRecord
         ltp: float,                     # exit price
-        action: str,                    # close_sl | close_target | adaptive_exit | …
+        action: str,                    # close_sl | close_target | adaptive_exit | â€¦
         adaptive_reason: Optional[str], # TIME_STALE | EARLY_LOSS | None
         was_extended: bool,             # True if _extended[oid] was set
         *,
@@ -121,8 +172,12 @@ class TradeAnalytics:
         """
         Called from TradeMonitor._act() for every trade close.
         """
+        self._refresh_date()
         entry   = order.entry_price
-        sl      = order.stop_loss
+        # Use initial_stop_loss (immutable historical anchor) if available.
+        # runtime stop_loss may be 0 after SESSION_EXPIRED / orphan-expiry cleanup.
+        _isl    = getattr(order, "initial_stop_loss", None)
+        sl      = float(_isl) if _isl else order.stop_loss
         target  = getattr(order, "target",   0.0) or 0.0
         risk    = abs(entry - sl) if sl else 0.0
         is_long = order.direction == "BUY"
@@ -133,6 +188,15 @@ class TradeAnalytics:
         else:
             r_multiple = 0.0
         r_multiple = round(r_multiple, 3)
+
+        log.info(
+            "[HistoricalRiskValidation] symbol=%s  runtime_sl=%.4f  initial_sl=%.4f"
+            "  risk_source=%s  risk_rupees=%.2f  computed_r=%+.3f",
+            order.symbol, order.stop_loss,
+            float(_isl) if _isl else 0.0,
+            "INITIAL" if _isl else "RUNTIME",
+            round(risk, 2), r_multiple,
+        )
 
         # Duration
         placed_at = (getattr(order, "placed_at",  None)
@@ -149,20 +213,23 @@ class TradeAnalytics:
         # R when extension was triggered
         r_at_ext = self._pending_extension_r.pop(order.order_id, 0.0)
 
+        arch_gen = _get_architecture_generation()
+
         rec = ClosedTradeRecord(
-            symbol           = order.symbol,
-            strategy         = getattr(order, "strategy", "unknown") or "unknown",
-            direction        = order.direction,
-            entry_price      = round(entry, 2),
-            exit_price       = round(ltp, 2),
-            stop_loss        = round(sl, 2) if sl else 0.0,
-            target           = round(target, 2),
-            r_multiple       = r_multiple,
-            duration_minutes = duration_minutes,
-            exit_reason      = exit_reason,
-            was_extended     = was_extended,
-            r_at_extension   = round(r_at_ext, 3),
-            timestamp        = now.isoformat(),
+            symbol                  = order.symbol,
+            strategy                = getattr(order, "strategy", "unknown") or "unknown",
+            direction               = order.direction,
+            entry_price             = round(entry, 2),
+            exit_price              = round(ltp, 2),
+            stop_loss               = round(sl, 2) if sl else 0.0,
+            target                  = round(target, 2),
+            r_multiple              = r_multiple,
+            duration_minutes        = duration_minutes,
+            exit_reason             = exit_reason,
+            was_extended            = was_extended,
+            r_at_extension          = round(r_at_ext, 3),
+            timestamp               = now.isoformat(),
+            architecture_generation = arch_gen,
         )
         self._trades.append(rec)
         self._save()
@@ -172,13 +239,49 @@ class TradeAnalytics:
             rec.symbol, rec.direction, exit_reason,
             r_multiple, duration_minutes, exit_reason, was_extended,
         )
+        log.info(
+            "[ArchitectureGeneration] trade_id=%s_%s_%s@%.2f  generation=%s",
+            order.symbol, order.direction,
+            getattr(order, "order_id", "?")[:8],
+            ltp, arch_gen,
+        )
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Report generation
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def daily_report(self) -> str:
         """Plain-text daily performance report covering all 4 blocks."""
+        self._refresh_date()
+        # â”€â”€ [ReportDateValidation] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        # Detects singleton date-staleness: self._date is captured at __init__
+        # time. If TradeMonitor holds this object across midnight, _date never
+        # updates and every report header shows the init day, not today.
+        _runtime_date = datetime.now().strftime("%Y-%m-%d")
+        if _runtime_date != self._date:
+            log.warning(
+                "[ReportDateValidation] report_type=plain_daily  STALE_DATE_DETECTED"
+                "  init_date=%s  runtime_date=%s  delta_days=%s"
+                "  data_file_being_used=%s"
+                "  FIX: refresh self._date at report time or re-init daily",
+                self._date, _runtime_date,
+                str((datetime.strptime(_runtime_date, "%Y-%m-%d") -
+                     datetime.strptime(self._date,    "%Y-%m-%d")).days),
+                self._filepath(),
+            )
+        else:
+            log.info(
+                "[ReportDateValidation] report_type=plain_daily  date=%s  fresh=True",
+                self._date,
+            )
+        # ── [TradeAnalyticsPath] ──────────────────────────────────────────────
+        log.info(
+            "[TradeAnalyticsPath] class=%s file=%s pid=%d "
+            "report_date=%s runtime_date=%s refresh_called=True",
+            self.__class__.__name__,
+            os.path.abspath(inspect.getfile(self.__class__)),
+            os.getpid(), self._date, _runtime_date,
+        )
         if not self._trades:
             return f"[TradeAnalytics] No trades recorded for {self._date}."
 
@@ -188,10 +291,10 @@ class TradeAnalytics:
         b4 = self._block4_daily_summary()
         verdict = self._verdict(b4)
 
-        sep = "═" * 56
+        sep = "â•" * 56
         return "\n".join([
             sep,
-            f"  📊 AI PERFORMANCE REPORT — {self._date}",
+            f"  ðŸ“Š AI PERFORMANCE REPORT â€” {self._date}",
             sep,
             b1, "",
             b2, "",
@@ -203,8 +306,34 @@ class TradeAnalytics:
 
     def telegram_report(self) -> str:
         """HTML-formatted Telegram message (compatible with parse_mode=HTML)."""
+        self._refresh_date()
+        # â”€â”€ [ReportDateValidation] â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+        _runtime_date = datetime.now().strftime("%Y-%m-%d")
+        if _runtime_date != self._date:
+            log.warning(
+                "[ReportDateValidation] report_type=telegram  STALE_DATE_DETECTED"
+                "  init_date=%s  runtime_date=%s  delta_days=%s"
+                "  data_file_being_used=%s"
+                "  FIX: refresh self._date at report time or re-init daily",
+                self._date, _runtime_date,
+                str((datetime.strptime(_runtime_date, "%Y-%m-%d") -
+                     datetime.strptime(self._date,    "%Y-%m-%d")).days),
+                self._filepath(),
+            )
+        else:
+            log.info(
+                "[ReportDateValidation] report_type=telegram  date=%s  fresh=True",
+                self._date,
+            )        # ── [TradeAnalyticsPath] ──────────────────────────────────────────────
+        log.info(
+            "[TradeAnalyticsPath] class=%s file=%s pid=%d "
+            "report_date=%s runtime_date=%s refresh_called=True",
+            self.__class__.__name__,
+            os.path.abspath(inspect.getfile(self.__class__)),
+            os.getpid(), self._date, _runtime_date,
+        )
         if not self._trades:
-            return f"<b>📊 Performance Report {self._date}</b>\nNo trades recorded today."
+            return f"<b>ðŸ“Š Performance Report {self._date}</b>\nNo trades recorded today."
 
         b2 = self._block2_exit_breakdown_tg()
         b3 = self._block3_adaptive_impact_tg()
@@ -212,7 +341,7 @@ class TradeAnalytics:
         verdict = self._verdict_tg(self._compute_summary())
 
         return "\n".join([
-            f"<b>📊 AI PERFORMANCE REPORT — {self._date}</b>",
+            f"<b>ðŸ“Š AI PERFORMANCE REPORT â€” {self._date}</b>",
             "",
             b4,
             "",
@@ -223,17 +352,17 @@ class TradeAnalytics:
             verdict,
         ])
 
-    # ─────────────────────────────────────────────────────────────────
-    # Block 1 — Trade-level log
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Block 1 â€” Trade-level log
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _block1_trade_log(self) -> str:
-        lines = ["── Block 1: Trade Log ──────────────────────────────────────"]
+        lines = ["â”€â”€ Block 1: Trade Log â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€"]
         hdr = f"{'SYMBOL':<12} {'DIR':<5} {'ENTRY':>8} {'EXIT':>8} {'R':>6} {'DUR':>6} {'REASON':<12}"
         lines.append(hdr)
-        lines.append("─" * 60)
+        lines.append("â”€" * 60)
         for t in sorted(self._trades, key=lambda x: x.timestamp):
-            ext_mark = "⚡" if t.was_extended else " "
+            ext_mark = "âš¡" if t.was_extended else " "
             lines.append(
                 f"{t.symbol:<12} {t.direction:<5} {t.entry_price:>8.2f} "
                 f"{t.exit_price:>8.2f} {t.r_multiple:>+6.2f}R "
@@ -241,14 +370,14 @@ class TradeAnalytics:
             )
         return "\n".join(lines)
 
-    # ─────────────────────────────────────────────────────────────────
-    # Block 2 — Exit reason breakdown
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Block 2 â€” Exit reason breakdown
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _block2_exit_breakdown(self) -> str:
         counts = self._exit_counts()
         total  = sum(counts.values())
-        lines  = ["── Block 2: Exit Reason Breakdown ─────────────────────────"]
+        lines  = ["â”€â”€ Block 2: Exit Reason Breakdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€"]
         order  = ["SL", "TARGET", "TIME_STALE", "EARLY_LOSS", "EXTENSION", "EMERGENCY"]
         for k in order:
             n = counts.get(k, 0)
@@ -264,40 +393,40 @@ class TradeAnalytics:
     def _block2_exit_breakdown_tg(self) -> str:
         counts = self._exit_counts()
         total  = sum(counts.values())
-        lines  = ["<b>📤 Exit Breakdown</b>"]
-        icons  = {"SL": "🔴", "TARGET": "🟢", "TIME_STALE": "⏱", "EARLY_LOSS": "📉",
-                  "EXTENSION": "⚡", "EMERGENCY": "🚨"}
+        lines  = ["<b>ðŸ“¤ Exit Breakdown</b>"]
+        icons  = {"SL": "ðŸ”´", "TARGET": "ðŸŸ¢", "TIME_STALE": "â±", "EARLY_LOSS": "ðŸ“‰",
+                  "EXTENSION": "âš¡", "EMERGENCY": "ðŸš¨"}
         for k in ["SL", "TARGET", "TIME_STALE", "EARLY_LOSS", "EXTENSION"]:
             n   = counts.get(k, 0)
             pct = n / total * 100 if total else 0
-            ico = icons.get(k, "•")
+            ico = icons.get(k, "â€¢")
             lines.append(f"{ico} {k}: <b>{n}</b>  ({pct:.0f}%)")
         return "\n".join(lines)
 
-    # ─────────────────────────────────────────────────────────────────
-    # Block 3 — Adaptive logic impact
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Block 3 â€” Adaptive logic impact
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _block3_adaptive_impact(self) -> str:
         early  = self._early_loss_impact()
         time_e = self._time_exit_impact()
         ext    = self._extension_impact()
 
-        lines = ["── Block 3: Adaptive Logic Impact ─────────────────────────"]
+        lines = ["â”€â”€ Block 3: Adaptive Logic Impact â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€"]
 
-        # A — Early Loss
+        # A â€” Early Loss
         if early["count"] > 0:
             lines.append(
                 f"  A. Early Loss (n={early['count']})\n"
                 f"     Baseline SL    = {_BASELINE_SL_R:+.1f}R\n"
                 f"     Avg exit R     = {early['avg_r']:+.2f}R\n"
                 f"     Saving/trade   = {early['saving_per_trade']:+.2f}R\n"
-                f"     Total saved    = {early['total_saved']:+.2f}R  ✅"
+                f"     Total saved    = {early['total_saved']:+.2f}R  âœ…"
             )
         else:
             lines.append("  A. Early Loss: no trades.")
 
-        # B — Time Exit
+        # B â€” Time Exit
         if time_e["count"] > 0:
             lines.append(
                 f"  B. Time Exit (n={time_e['count']})\n"
@@ -308,13 +437,13 @@ class TradeAnalytics:
         else:
             lines.append("  B. Time Exit: no stale trades removed.")
 
-        # C — Extension
+        # C â€” Extension
         if ext["total"] > 0:
             rate = ext["successful"] / ext["total"] * 100
             lines.append(
                 f"  C. Extension (n={ext['total']})\n"
                 f"     Success rate          = {rate:.0f}%  "
-                f"({'✅' if rate >= 50 else '⚠️'})\n"
+                f"({'âœ…' if rate >= 50 else 'âš ï¸'})\n"
                 f"     Successful = {ext['successful']}  |  Failed = {ext['failed']}\n"
                 f"     Avg gain (successful) = {ext['avg_gain']:+.2f}R\n"
                 f"     Avg loss  (failed)    = {ext['avg_fail']:+.2f}R\n"
@@ -330,26 +459,26 @@ class TradeAnalytics:
         time_e = self._time_exit_impact()
         ext    = self._extension_impact()
 
-        lines = ["<b>🤖 Adaptive Logic Impact</b>"]
+        lines = ["<b>ðŸ¤– Adaptive Logic Impact</b>"]
 
         if early["count"] > 0:
             lines.append(
-                f"📉 Early Loss (n={early['count']}): "
+                f"ðŸ“‰ Early Loss (n={early['count']}): "
                 f"saved {early['total_saved']:+.2f}R total "
                 f"({early['saving_per_trade']:+.2f}R/trade)"
             )
 
         if time_e["count"] > 0:
             lines.append(
-                f"⏱ Time Exit (n={time_e['count']}): "
+                f"â± Time Exit (n={time_e['count']}): "
                 f"{time_e['hours_freed']:.1f}h freed"
             )
 
         if ext["total"] > 0:
             rate = ext["successful"] / ext["total"] * 100
             lines.append(
-                f"⚡ Extension (n={ext['total']}): "
-                f"<b>{rate:.0f}%</b> success rate · "
+                f"âš¡ Extension (n={ext['total']}): "
+                f"<b>{rate:.0f}%</b> success rate Â· "
                 f"net {ext['net_r']:+.2f}R"
             )
 
@@ -358,14 +487,14 @@ class TradeAnalytics:
 
         return "\n".join(lines)
 
-    # ─────────────────────────────────────────────────────────────────
-    # Block 4 — Daily performance summary
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # Block 4 â€” Daily performance summary
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _block4_daily_summary(self) -> str:
         s = self._compute_summary()
         lines = [
-            "── Block 4: Daily Performance Summary ─────────────────────",
+            "â”€â”€ Block 4: Daily Performance Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€",
             f"  Trades      : {s['total']}",
             f"  Wins        : {s['wins']}   |   Losses : {s['losses']}",
             f"  Win Rate    : {s['win_rate']:.1f}%",
@@ -373,7 +502,7 @@ class TradeAnalytics:
             f"  Avg Win     : +{s['avg_win']:.2f}R",
             f"  Avg Loss    :  {s['avg_loss']:.2f}R",
             f"  Expectancy  : {s['expectancy']:+.3f}R per trade  "
-            f"({'✅' if s['expectancy'] > 0 else '❌'})",
+            f"({'âœ…' if s['expectancy'] > 0 else 'âŒ'})",
             "",
             f"  Net R       : {s['net_r']:+.2f}R",
             f"  Profit Factor: {s['profit_factor']:.2f}",
@@ -382,8 +511,8 @@ class TradeAnalytics:
             f"  Worst trade : {s['worst_r']:+.2f}R  ({s['worst_sym']})",
             f"  Max Win streak  : {s['max_win_streak']}",
             f"  Max Loss streak : {s['max_loss_streak']}",
-            f"  Avg duration — winners : {s['avg_dur_win']:.0f} min",
-            f"  Avg duration — losers  : {s['avg_dur_loss']:.0f} min",
+            f"  Avg duration â€” winners : {s['avg_dur_win']:.0f} min",
+            f"  Avg duration â€” losers  : {s['avg_dur_loss']:.0f} min",
         ]
 
         # R-Distribution
@@ -392,10 +521,10 @@ class TradeAnalytics:
             "",
             "  R-Distribution:",
             f"    < -1.0R : {buckets['below_m1']}",
-            f"    -1R–0R  : {buckets['m1_to_0']}",
-            f"     0R–1R  : {buckets['p0_to_1']}",
-            f"     1R–2R  : {buckets['p1_to_2']}",
-            f"     2R–3R  : {buckets['p2_to_3']}",
+            f"    -1Râ€“0R  : {buckets['m1_to_0']}",
+            f"     0Râ€“1R  : {buckets['p0_to_1']}",
+            f"     1Râ€“2R  : {buckets['p1_to_2']}",
+            f"     2Râ€“3R  : {buckets['p2_to_3']}",
             f"    > +3R   : {buckets['above_p3']}",
         ]
 
@@ -415,7 +544,7 @@ class TradeAnalytics:
         s = self._compute_summary()
         ok = s["expectancy"] > 0
         lines = [
-            f"<b>📈 Daily Summary</b>",
+            f"<b>ðŸ“ˆ Daily Summary</b>",
             f"Trades: <b>{s['total']}</b>  |  Win Rate: <b>{s['win_rate']:.1f}%</b>",
             f"Net P&amp;L: <b>{s['net_r']:+.2f}R</b>  |  Profit Factor: <b>{s['profit_factor']:.2f}</b>",
             "",
@@ -424,34 +553,34 @@ class TradeAnalytics:
         ]
         return "\n".join(lines)
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Verdict
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _verdict(self, block4_text: str) -> str:
         s = self._compute_summary()
         v = self._verdict_line(s)
-        return f"── VERDICT ─────────────────────────────────────────────────\n  {v}"
+        return f"â”€â”€ VERDICT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€\n  {v}"
 
     def _verdict_tg(self, s: dict) -> str:
         v = self._verdict_line(s)
-        return f"<b>🏁 VERDICT</b>\n{v}"
+        return f"<b>ðŸ VERDICT</b>\n{v}"
 
     def _verdict_line(self, s: dict) -> str:
         exp = s["expectancy"]
         wr  = s["win_rate"]
         tot = s["total"]
         if tot < 3:
-            return "⏳ Insufficient data — need ≥3 trades for reliable verdict."
+            return "â³ Insufficient data â€” need â‰¥3 trades for reliable verdict."
         if exp > 0.3 and wr >= 50:
-            return f"✅ System improving expectancy ({exp:+.3f}R/trade, WR={wr:.0f}%)"
+            return f"âœ… System improving expectancy ({exp:+.3f}R/trade, WR={wr:.0f}%)"
         if exp > 0:
-            return f"⚠️  Marginally positive ({exp:+.3f}R/trade) — monitor closely."
-        return f"❌ Negative expectancy ({exp:+.3f}R/trade) — review thresholds."
+            return f"âš ï¸  Marginally positive ({exp:+.3f}R/trade) â€” monitor closely."
+        return f"âŒ Negative expectancy ({exp:+.3f}R/trade) â€” review thresholds."
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Metric computation helpers
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _exit_counts(self) -> Dict[str, int]:
         counts: Dict[str, int] = defaultdict(int)
@@ -608,9 +737,9 @@ class TradeAnalytics:
             "strategy_breakdown": strat_breakdown,
         }
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Persistence
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def _filepath(self) -> str:
         return os.path.join(_DATA_DIR, f"trade_analytics_{self._date}.json")
@@ -619,7 +748,7 @@ class TradeAnalytics:
         os.makedirs(_DATA_DIR, exist_ok=True)
         try:
             fp = self._filepath()
-            # Merge with existing file — OrderManager also writes dup_guard stats
+            # Merge with existing file â€” OrderManager also writes dup_guard stats
             # to the same file.  We preserve any existing keys and only update
             # the "trades" key so neither writer clobbers the other.
             existing: dict = {}
@@ -629,7 +758,7 @@ class TradeAnalytics:
                         loaded = json.load(fh)
                         if isinstance(loaded, dict):
                             existing = loaded
-                        # list format (old files) — no existing keys to preserve
+                        # list format (old files) â€” no existing keys to preserve
                 except Exception:
                     pass
             existing["trades"] = [asdict(t) for t in self._trades]
@@ -645,7 +774,7 @@ class TradeAnalytics:
         try:
             with open(fp, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            # New format: shared dict file — trades live under "trades" key.
+            # New format: shared dict file â€” trades live under "trades" key.
             # Old format: bare list of ClosedTradeRecord dicts.
             if isinstance(data, dict):
                 rows = data.get("trades", [])
@@ -653,23 +782,29 @@ class TradeAnalytics:
                 rows = data
             else:
                 rows = []
-            self._trades = [
-                ClosedTradeRecord(**r) for r in rows if isinstance(r, dict)
-            ]
+            loaded = []
+            for r in rows:
+                if not isinstance(r, dict):
+                    continue
+                # Backward-compat: backfill architecture_generation for old records
+                if "architecture_generation" not in r:
+                    r["architecture_generation"] = _ARCH_GEN_LEGACY
+                loaded.append(ClosedTradeRecord(**r))
+            self._trades = loaded
         except Exception as exc:
             log.warning("[TradeAnalytics] Load failed: %s", exc)
             self._trades = []
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Helpers
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     @staticmethod
     def _classify_exit(action: str, adaptive_reason: Optional[str],
                         was_extended: bool) -> str:
-        """Map trade-monitor action → human exit label."""
+        """Map trade-monitor action â†’ human exit label."""
         if was_extended:
-            return "EXTENSION"       # any close on an extended trade → EXTENSION
+            return "EXTENSION"       # any close on an extended trade â†’ EXTENSION
         if action == "close_sl":
             return "SL"
         if action == "close_target":
@@ -682,12 +817,15 @@ class TradeAnalytics:
             return "EOD_CLOSE"
         return action.upper().replace("CLOSE_", "")
 
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     # Accessors
-    # ─────────────────────────────────────────────────────────────────
+    # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def get_trades(self) -> List[ClosedTradeRecord]:
         return list(self._trades)
 
     def trade_count(self) -> int:
         return len(self._trades)
+
+
+

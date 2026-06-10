@@ -102,14 +102,35 @@ SCHEDULE = {
     "closing_analysis":       "15:00",   # pre-expiry / closing trades      (15:00 IST — matches MarketMonitor)
     # ── EOD ────────────────────────────────────────────────────────────────
     "eod_learning":           "15:35",   # performance learning cycle       (15:35 IST = post market close)
+    # ── Multi-Stage Market Preparation Engine ──────────────────────────────
+    "post_market_scan":       "16:45",   # Phase D: full Nifty500 scanner   (runs ~20 min, after MF NAV settle)
+    "premarket_refiner":      "08:45",   # Phase G: pre-open conviction decay + gap refresh
     # ── Legacy aliases (kept for backward compatibility) ───────────────────
     "market_regime_analysis": "09:05",
     "opportunity_scan":       "09:10",
     "mid_day_review":         "13:00",
+    # ── Weekend intelligence ────────────────────────────────────────────────
+    "saturday_intelligence":  "08:00",   # Saturday: deep accumulation cycle
+    "sunday_intelligence":    "09:00",   # Sunday:   Monday tactical preparation
 }
 
 # Continuous monitoring (Q2 — light scan interval)
 CONTINUOUS_SCAN_INTERVAL = 30   # seconds between price/volume/breakout checks
+
+# ─────────────────────────────────────────────
+# WEEKEND INTELLIGENCE OPERATING PRINCIPLE
+# ─────────────────────────────────────────────
+# Weekend periods are high-value intelligence accumulation windows.
+# Saturday: deep market intelligence (rescan, sector, regime, telemetry review)
+# Sunday:   Monday tactical preparation (global context, ranking, readiness)
+#
+# GOVERNANCE: weekend cycles are read-and-report ONLY.
+#   - No threshold mutations
+#   - No strategy enable/disable
+#   - No adaptive weight updates
+#   - Mutation freeze (MIN_CLEAN_PREPARED_TRADES) remains active
+# Set False to idle the system on weekends (reverts to prior behaviour).
+WEEKEND_INTELLIGENCE_ENABLED: bool = True
 
 # ─────────────────────────────────────────────
 # EVALUATION BASELINE
@@ -158,6 +179,119 @@ ADAPTIVE_EXTENSION_MAX_VIX      = 20.0   # do NOT extend if VIX above this (vola
 ADAPTIVE_EXTENSION_TARGET_PCT   = 0.10   # only extend if within last 10% of target distance
 ADAPTIVE_EXTENSION_TIME_CAP_MIN = 90     # extended trade still going after this many minutes
                                           # → tighten SL to 0.5R step (force trailing close)
+
+# ─────────────────────────────────────────────
+# MULTI-STAGE MARKET PREPARATION ENGINE
+# Phase C-H feature flags — each independently disable-able at runtime.
+# Set False to instantly revert any phase without redeployment.
+# ─────────────────────────────────────────────
+
+# Phase E — Prepared universe injection into OpportunityEngine
+# When True: _prepared_watchlist() is consulted; falls back to static on failure.
+# When False: scanner always uses static _BASE_WATCHLIST + _EXTENDED_WATCHLIST.
+USE_PREPARED_UNIVERSE: bool = True   # ACTIVATED — Controlled Telemetry-Governed activation
+
+# Minimum scan coverage for a candidate file to be considered valid.
+# If scanner_stats.coverage_pct < this → file treated as invalid → static fallback.
+PREPARED_UNIVERSE_MIN_COVERAGE_PCT: float = 60.0
+
+# Phase F — Overnight macro/regime context overlay on candidate scores
+USE_OVERNIGHT_OVERLAY: bool = True   # ACTIVATED — Controlled Telemetry-Governed activation
+
+# Minimum regime confidence before overnight overlay fires.
+# Below this threshold the adaptive_adjustment remains 0 (neutral).
+OVERNIGHT_OVERLAY_REGIME_CONFIDENCE_MIN: float = 0.70
+
+# Phase G — Premarket refinement (gap/decay re-scoring at 08:45 IST)
+USE_PREMARKET_REFINEMENT: bool = True   # ACTIVATED — Controlled Telemetry-Governed activation
+
+# UTC time of day after which premarket job is considered overdue.
+# 03:40 UTC = 09:10 IST — 5 min buffer before first live cycle.
+PREMARKET_DEADLINE_UTC_HHMM: str = "03:40"
+
+# Phase H — Hybrid live engine (80% prepared core + 20% opportunistic exploration)
+USE_HYBRID_EXPLORATION: bool = True    # ACTIVATED — 80/20 capital structure
+
+# Fraction of the prepared candidate pool reserved for opportunistic discovery.
+# Deliberate 80/20 decision (2026-05-22): exploration expanded from 3→20 after
+# architecture review confirmed governance infrastructure is sufficient:
+#   telemetry integrity, safe-mode, mutation freeze, fallback isolation,
+#   validator enforcement, and deterministic routing all active.
+# Bounded: [1, 20].  Mutation freeze (MIN_CLEAN_PREPARED_TRADES=100) remains.
+# Do NOT increase to 25 without [ExplorationAudit] telemetry review.
+EXPLORATION_BUDGET_PCT: int = 20
+
+# Capital cap for the exploration bucket (% of deployable capital).
+# Architectural placeholder — records the 80/20 intent at config level.
+# Not yet wired into CapitalRiskEngine; wiring deferred until CRE review
+# confirms no conflict with per-strategy _STRATEGY_SHARE buckets.
+# Enforcement: manual review of [DhanPartialSuccess] + [ExplorationAudit] logs.
+EXPLORATION_CAPITAL_CAP_PCT: int = 20
+
+# Signal threshold for opportunistic (non-prepared) candidates.
+# Raised to 7.2 vs standard 6.8 to compensate for lack of overnight validation.
+# Review after 10+ live sessions before any reduction.
+EXPLORATION_THRESHOLD: float = 7.2
+
+# ── Research Integrity — Architecture Generation Tagging ──────────────────
+# Date when the Prepared Universe architecture was activated in production.
+# All trades BEFORE this date carry architecture_generation="LEGACY_STATIC".
+# All trades ON or AFTER carry architecture_generation="PREPARED_UNIVERSE_V1".
+# This constant is the single source of truth for classification across all modules.
+PREPARED_UNIVERSE_ACTIVATION_DATE: str = "2026-05-22"
+
+# Research weight per architecture generation.
+# LEGACY_STATIC trades contain execution/governance information but structurally
+# biased setup-quality data (stale levels, narrow universe, proxy ATR distortion).
+# Only PREPARED_UNIVERSE_V1 trades carry full research-grade market intelligence.
+RESEARCH_WEIGHT_LEGACY_STATIC:     float = 0.25
+RESEARCH_WEIGHT_PREPARED_V1:       float = 1.00
+
+# Minimum number of PREPARED_UNIVERSE_V1 trades required per strategy before
+# auto-disable, threshold mutation, or adaptive suppression may fire.
+# Below this sample: strategy is protected — no punitive adaptive action.
+MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT: int = 25
+
+# System-wide adaptive mutation freeze (Patch 21/24).
+# Until total PREPARED_UNIVERSE_V1 trades across all strategies reaches this
+# threshold, ALL adaptive mutations are frozen:
+#   • strategy auto-disabling
+#   • adaptive threshold changes
+#   • overlay amplification
+#   • exploration budget expansion
+#   • confidence auto-scaling / demotion
+# Observation, reporting, ranking, and telemetry are always permitted.
+MIN_CLEAN_PREPARED_TRADES: int = 100
+
+# ── Scanner resource bounds (prevent silent infrastructure creep) ──────────
+SCANNER_MAX_SYMBOLS:          int   = 600    # hard cap on symbols attempted per run
+SCANNER_MAX_CANDIDATES:       int   = 120    # hard cap on candidates written to store
+SCANNER_MAX_RUNTIME_MINUTES:  int   = 20     # abort if scanner exceeds this
+PREMARKET_MAX_RUNTIME_MINUTES: int  = 25     # abort if premarket refiner exceeds this
+SCANNER_MEMORY_RETENTION_DAYS: int  = 30     # days of concentration history to keep
+
+# ── Shadow mode (validation before live activation) ────────────────────────
+# When True: prepared universe is generated and logged but does NOT influence
+# execution. Allows 5-10 sessions of silent validation before Phase E goes live.
+SCANNER_SHADOW_MODE: bool = False  # set True when Phase D first runs, False after validation
+
+# ── Candidate quality floor — Patch 4 ─────────────────────────────────────
+# Candidates scored below this threshold by market_scanner are dropped before
+# being written to the store.  Prevents weak/choppy-market candidates entering
+# the prepared universe.  Do NOT weaken this dynamically.
+MIN_PREPARED_SCORE: float = 0.55
+
+# ── Absolute candidate cap — Patch 3 ──────────────────────────────────────
+# Hard ceiling applied AFTER all ranking, sector-cap, and score-floor filters.
+# Guarantees the prepared universe never silently expands beyond this count.
+# Emits [PreparedUniverseCap] when truncation actually occurs.
+MAX_PREPARED_CANDIDATES: int = 120
+
+# ── Safe mode trigger thresholds — Patch 7 ────────────────────────────────
+# SAFE MODE reduces system sophistication (disables prepared universe +
+# exploration) but NEVER stops the engine or closes positions.
+SAFE_MODE_MAX_FALLBACK_SESSIONS: int   = 3     # >N consecutive static fallbacks → safe mode
+SAFE_MODE_MAX_MISSING_LTP_PCT:   float = 50.0  # >N% of prepared symbols have LTP=0 → safe mode
 
 # ─────────────────────────────────────────────
 # LOGGING

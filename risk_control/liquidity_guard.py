@@ -31,6 +31,7 @@ Behaviour
 """
 
 from __future__ import annotations
+import json as _json
 from dataclasses import dataclass
 from typing import List
 
@@ -150,8 +151,41 @@ class LiquidityGuard:
                         res.adv_crore, res.max_pos_inr,
                     )
                     sig.quantity = res.approved_qty
-                    sig.notes += (f" [LiqCap qty capped {res.original_qty}→{res.approved_qty}"
-                                  f" ADV=₹{res.adv_crore:.0f}cr]")
+
+                    # JSON-aware metadata update — preserves structured fields
+                    _notes_raw = sig.notes or "{}"
+                    try:
+                        _meta = _json.loads(_notes_raw)
+                    except Exception as _e:
+                        _was_plain_text = bool(_notes_raw) and not _notes_raw.strip().startswith("{")
+                        if _was_plain_text:
+                            log.debug(
+                                "[MetadataCorruptionDetected] module=liquidity_guard  "
+                                "symbol=%s  notes_are_plain_text — wrapping in JSON",
+                                sig.symbol,
+                            )
+                        else:
+                            log.info(
+                                "[MetadataCorruptionDetected] module=liquidity_guard  "
+                                "symbol=%s  error=%s  notes_snippet=%r "
+                                "— wrapping in JSON to preserve content",
+                                sig.symbol, type(_e).__name__, _notes_raw[:80],
+                            )
+                        _meta = {"original_notes": _notes_raw} if _notes_raw else {}
+                    log.debug(
+                        "[MetadataMutationAudit] module=liquidity_guard  symbol=%s  "
+                        "event=before  keys=%s  is_live=%s",
+                        sig.symbol, sorted(_meta.keys()), _meta.get("is_live", "absent"),
+                    )
+                    _meta["liq_original_qty"] = res.original_qty
+                    _meta["liq_approved_qty"] = res.approved_qty
+                    _meta["liq_adv_crore"]    = round(res.adv_crore, 2)
+                    sig.notes = _json.dumps(_meta)
+                    log.debug(
+                        "[MetadataMutationAudit] module=liquidity_guard  symbol=%s  "
+                        "event=after  keys=%s  is_live=%s",
+                        sig.symbol, sorted(_meta.keys()), _meta.get("is_live", "absent"),
+                    )
                 approved.append(sig)
 
         # Build capacity report

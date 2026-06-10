@@ -48,6 +48,11 @@ DEEP_SCAN_SCHEDULE: List[str] = [
     "09:05",   # market open — regime detection
     "09:10",   # first opportunity scan
     "09:20",   # strategy evaluation
+    "10:30",   # mid-morning re-scan
+    "11:30",   # mid-session scan
+    "13:00",   # afternoon scan
+    "14:00",   # early afternoon scan
+    "15:00",   # closing analysis + options exit evaluation
 ]
 
 # Symbols watched in continuous mode
@@ -101,6 +106,16 @@ class MarketMonitor:
         if self._running:
             return
         self._running = True
+        # Pre-mark scan slots that have already passed today so a mid-day
+        # restart does not replay morning scans (e.g. 09:05/09:10/09:20
+        # replaying at 14:23).  Only future slots will fire after restart.
+        _now_hhmm = datetime.now().strftime("%H:%M")
+        _today    = datetime.now().date()
+        for _slot in DEEP_SCAN_SCHEDULE:
+            if _slot < _now_hhmm:
+                self._scans_fired[_slot] = _today
+                log.info("[MarketMonitor] Restart: marking past slot %s as fired "
+                         "(current time %s)", _slot, _now_hhmm)
         self._thread  = threading.Thread(
             target=self._loop, daemon=True, name="MarketMonitor"
         )

@@ -37,6 +37,22 @@ LEARNING_DB_PATH = os.path.join(
     os.path.dirname(__file__), "..", "data", "learning_db.json"
 )
 
+# ── Exit-reason classification for StrategyHealthMonitor ─────────────────────
+# STRATEGY_CLOSE_REASONS: exits driven by the strategy's own logic at a real
+# market price.  Only these events should update win-rate / avg-R / Sharpe.
+#
+# Any reason NOT in this set is treated as a SYSTEM_MANAGEMENT_EVENT and
+# counted separately in [OperationalHealth] logs but excluded from strategy
+# health metrics.  Conservative allowlist: new reasons are SYSTEM by default
+# until explicitly promoted here after review.
+_STRATEGY_CLOSE_REASONS: frozenset = frozenset({
+    "close_sl",        # stop-loss hit at market price
+    "close_target",    # target hit at market price
+    "adaptive_exit",   # TIME_STALE / EARLY_LOSS via adaptive exit engine
+    "timed_exit",      # reserved for future max-hold strategy logic
+    "extension_exit",  # reserved for future extension close
+})
+
 
 class LearningEngine:
     """
@@ -108,6 +124,12 @@ class LearningEngine:
         # ── End Learning Gate ─────────────────────────────────────────────────────
 
         strategy_buckets: Dict[str, List[float]] = defaultdict(list)
+        # Per-strategy accumulators for telemetry logs emitted after the loop.
+        # _pure_stats  : counts only STRATEGY events (fed to SHM)
+        # _sys_events  : counts by close_reason for SYSTEM events (excluded from SHM)
+        _pure_stats: Dict[str, Dict] = defaultdict(lambda: {"count": 0, "wins": 0, "total_r": 0.0})
+        _sys_events: Dict[str, Dict[str, int]] = defaultdict(lambda: defaultdict(int))
+
         for trade in closed_trades:
             pnl_pct = (
                 trade.pnl / (trade.entry_price * trade.quantity)
@@ -120,7 +142,48 @@ class LearningEngine:
                 sl_dist = abs(trade.entry_price - trade.stop_loss) if hasattr(trade, 'stop_loss') else 0
                 r_mult  = (trade.pnl / (sl_dist * abs(trade.quantity))
                            if sl_dist > 0 and trade.quantity else 0.0)
-                self._shm.record_trade(trade.strategy, pnl_pct, r_mult)
+                _close_reason = getattr(trade, "close_reason", "") or ""
+                if _close_reason in _STRATEGY_CLOSE_REASONS:
+                    # Pure strategy event — feeds win-rate / avg-R / Sharpe
+                    self._shm.record_trade(trade.strategy, pnl_pct, r_mult)
+                    _ps = _pure_stats[trade.strategy]
+                    _ps["count"] += 1
+                    if pnl_pct > 0:
+                        _ps["wins"] += 1
+                    _ps["total_r"] += r_mult
+                else:
+                    # System management event — excluded from SHM, logged separately
+                    _sys_events[trade.strategy][_close_reason or "unknown"] += 1
+
+        # ── Emit pure-strategy and operational-health telemetry ──────
+        _all_strats = set(_pure_stats) | set(_sys_events)
+        for _sname in sorted(_all_strats):
+            _ps = _pure_stats.get(_sname, {})
+            _n  = _ps.get("count", 0)
+            if _n > 0:
+                _wr    = _ps["wins"] / _n * 100
+                _avg_r = _ps["total_r"] / _n
+                log.info(
+                    "[StrategyHealth] strategy=%s  pure_wr=%.0f%%  pure_avg_r=%+.3f"
+                    "  pure_trade_count=%d",
+                    _sname, _wr, _avg_r, _n,
+                )
+            _se = _sys_events.get(_sname, {})
+            if _se:
+                _sess  = _se.get("SESSION_EXPIRED", 0) + _se.get("SESSION_EXPIRED_EXTENDED", 0)
+                _orphan= (_se.get("orphan_close", 0) + _se.get("ORPHAN_CLEANUP", 0)
+                          + _se.get("DUPLICATE_CLEANUP", 0)
+                          + _se.get("SESSION_EXPIRED_LEGACY_ORPHAN_CLEANUP", 0))
+                _emerg = _se.get("emergency_close", 0) + _se.get("close_emergency", 0)
+                _rest  = (_se.get("REPLACEMENT", 0) + _se.get("SYSTEM_CLEANUP", 0)
+                          + _se.get("restart_cleanup", 0)
+                          + _se.get("STRUCTURAL_MISMATCH_EXCLUDE_LEARNING_GOVERNANCE", 0))
+                _other = sum(_se.values()) - _sess - _orphan - _emerg - _rest
+                log.info(
+                    "[OperationalHealth] strategy=%s  session_expired=%d"
+                    "  orphan_cleanup=%d  emergency_close=%d  restart_events=%d  other=%d",
+                    _sname, _sess, _orphan, _emerg, _rest, max(0, _other),
+                )
 
         for strategy, pnl_list in strategy_buckets.items():
             self._update_strategy_stats(strategy, pnl_list)

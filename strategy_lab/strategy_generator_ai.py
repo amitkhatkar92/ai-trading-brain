@@ -183,9 +183,19 @@ class StrategyGeneratorAI:
                 log.debug("[StrategyGeneratorAI] %s strategy %s not in active set — skipped.",
                           signal.symbol, signal.strategy_name)
                 return None
-            # Validate R:R against whichever strategy (evolved or original) is selected
+            # Validate R:R against whichever strategy (evolved or original) is selected.
+            # Options/spread signals (Iron Condor, Short Straddle, Bull Call Spread) have
+            # their own quality gates inside the OptionsOpportunityAI builder:
+            #   • credit-to-width ratio ≥ IC_MIN_CREDIT_TO_WIDTH
+            #   • chain quality score ≥ 0.5
+            #   • leg OI ≥ MIN_TRADABLE_OI
+            #   • DTE ≥ MIN_DTE_ENTRY
+            #   • live chain required (SYNTHETIC_PENALTY blocks Black-Scholes signals)
+            # The equity RR formula (reward/risk on entry/target/stop) does NOT apply
+            # to premium-selling strategies where RR is structurally < 1.0 by design.
             params = STRATEGY_PARAMS[signal.strategy_name]
-            if rr < params["min_rr"]:
+            if (signal.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD)
+                    and rr < params["min_rr"]):
                 log.debug("[StrategyGeneratorAI] %s RR %.1f < min %.1f — skipped.",
                           signal.symbol, rr, params["min_rr"])
                 return None

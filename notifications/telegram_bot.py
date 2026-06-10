@@ -16,12 +16,13 @@ Commands
 ---------
 /start        — Register your Chat ID + welcome message
 /help         — All available commands
-/status       — System status (mode, feeds, uptime)
+/status       — System status (mode, feeds, uptime, feed integrity)
+/cycle        — Last completed cycle: stock, strategy, score, feed integrity
 /nifty        — NIFTY + BANKNIFTY live LTP from Dhan
 /vix          — India VIX + USD/INR live
 /market       — Full mini market snapshot
-/positions    — Open paper/live positions
-/pnl          — Today's P&L summary
+/positions    — Open paper/live positions with feed source + governance state
+/pnl          — Today's P&L (realized + unrealized + carry exposure)
 /edges        — Active trading edges with expectancy
 /pause        — Pause signal generation (owner only)
 /resume       — Resume signal generation (owner only)
@@ -333,6 +334,7 @@ class TelegramCommandBot:
         self._handlers = {
             "/help":      self._cmd_help,
             "/status":    self._cmd_status,
+            "/cycle":     self._cmd_cycle,
             "/nifty":     self._cmd_nifty,
             "/vix":       self._cmd_vix,
             "/market":    self._cmd_market,
@@ -350,6 +352,7 @@ class TelegramCommandBot:
             "/analytics": self._cmd_analytics,
             "/backlog":   self._cmd_backlog,
             "/build":     self._cmd_build,
+            "/rescan":    self._cmd_rescan,
         }
 
     # ── /start ─────────────────────────────────────────────────────────────
@@ -389,15 +392,16 @@ class TelegramCommandBot:
         return (
             "📖 <b>Available Commands</b>\n"
             "━━━━━━━━━━━━━━━━━━━━━\n"
-            "/status       — System status &amp; feed health\n"
+            "/status       — System status &amp; feed integrity\n"
+            "/cycle        — Last cycle: stock, strategy, score, feed\n"
             "/nifty        — NIFTY &amp; BANKNIFTY live price\n"
             "/vix          — India VIX &amp; USD/INR\n"
             "/market       — Full market snapshot\n"
             "/snapshot     — Live indices + NIFTY options now\n"
             "/perf         — Strategy leaderboard (win%, expectancy)\n"
             "/learn        — Learning stage + regime map\n"
-            "/positions    — Open positions\n"
-            "/pnl          — Today's P&amp;L\n"
+            "/positions    — Open positions (feed source + governance)\n"
+            "/pnl          — Today's P&amp;L (realized + unrealized + carry)\n"
             "/edges        — Active trading edges\n"
             "/eod          — Today's operational retrospective\n"
             "/report       — AI self-evaluation quality report\n"
@@ -405,6 +409,7 @@ class TelegramCommandBot:
             "/backlog      — Open improvement items (auto-tracked)\n"
             "/token        — Update Dhan API token (hot-reload, no restart)\n"
             "/build        — Deployment manifest, git commit, drift status\n"
+            "/rescan       — Force full universe + candidate rescan now\n"
             "/pause        — Pause signal generation\n"
             "/resume       — Resume signal generation\n"
             "/help         — This message"
@@ -423,18 +428,64 @@ class TelegramCommandBot:
 
         try:
             from data_feeds import get_feed_manager
+            from data_feeds.data_feed_manager import FeedTruthLevel
             fm      = get_feed_manager()
-            status  = fm.get_status()
+            status  = fm.status()
             dhan_s  = "✅ LIVE" if status.dhan_live  else "⚡ SIM"
             yahoo_s = "✅ LIVE" if status.yahoo_live else "⚡ SIM"
             feed_line = f"Dhan: {dhan_s}  |  Yahoo: {yahoo_s}"
+
+            # Feed composition from last cycle stats
+            _st = fm._stats
+            truth_lvl, _ = fm.get_current_truth_level()
+            _truth_icon = {
+                FeedTruthLevel.LIVE:      "✅",
+                FeedTruthLevel.DEGRADED:  "⚠️",
+                FeedTruthLevel.CRITICAL:  "🔴",
+                FeedTruthLevel.SYNTHETIC: "💀",
+            }.get(truth_lvl, "❓")
+            if _st.total:
+                _pct = lambda n: f"{round(n/_st.total*100)}%"
+                truth_detail = (
+                    f"{_truth_icon} {truth_lvl}  "
+                    f"[dhan={_pct(_st.dhan_hits)}  yahoo={_pct(_st.yahoo_hits)}  sim={_pct(_st.sim_hits)}  n={_st.total}]"
+                )
+            else:
+                truth_detail = f"{_truth_icon} {truth_lvl}  [no cycle data yet]"
+            opts_lvl, _ = fm.get_options_truth_level("NIFTY")
+            _opts_icon = {
+                "LIVE":           "✅",
+                "DEGRADED_CACHE": "⚠️",
+                "SYNTHETIC":      "🔴",
+            }.get(opts_lvl.value if hasattr(opts_lvl, "value") else str(opts_lvl), "❓")
+            opts_tag = f"\nOptions: {_opts_icon} {opts_lvl}"
         except Exception:
-            feed_line = "Feed status unavailable"
+            feed_line    = "Feed status unavailable"
+            truth_detail = ""
+            opts_tag     = ""
 
         uptime = datetime.now() - self._start_ts
         h, rem = divmod(int(uptime.total_seconds()), 3600)
         m, s   = divmod(rem, 60)
         paused = "⏸ PAUSED" if self._paused else "▶️ RUNNING"
+
+        truth_line = f"\nTruth:   {_esc(truth_detail)}" if truth_detail else ""
+        opts_line  = f"\n{_esc(opts_tag)}" if opts_tag else ""
+        # Universe / prepared candidates health
+        universe_line = ""
+        try:
+            from opportunity_engine.equity_scanner_ai import (
+                _SAFE_MODE_ACTIVE, _SAFE_MODE_REASON, _LAST_PREPARED_STATS,
+            )
+            if _SAFE_MODE_ACTIVE:
+                _reason_short = (_SAFE_MODE_REASON or "unknown")[:60]
+                universe_line = f"\nUniverse: ⚠️ SAFE MODE — {_esc(_reason_short)}"
+            else:
+                _pcount = _LAST_PREPARED_STATS.get("prepared_count", 0)
+                _icon   = "✅" if _pcount > 0 else "⚡"
+                universe_line = f"\nUniverse: {_icon} {_pcount} prepared candidates"
+        except Exception:
+            pass
 
         return (
             f"📊 <b>System Status</b>\n"
@@ -443,11 +494,85 @@ class TelegramCommandBot:
             f"Mode:    {mode}\n"
             f"Capital: {capital}\n"
             f"Uptime:  {h}h {m}m {s}s\n"
-            f"Feeds:   {_esc(feed_line)}\n"
+            f"Feeds:   {_esc(feed_line)}"
+            f"{truth_line}"
+            f"{opts_line}"
+            f"{universe_line}\n"
             f"Time:    {datetime.now().strftime('%d-%b-%Y  %H:%M:%S')}"
         )
 
-    # ── /nifty ─────────────────────────────────────────────────────────────
+    # ── /cycle ─────────────────────────────────────────────────────────────
+
+    def _cmd_cycle(self, msg: dict) -> str:
+        try:
+            from orchestrator.master_orchestrator import get_orchestrator
+            orch = get_orchestrator()
+            rpt  = orch.get_last_cycle_report() if orch else {}
+        except Exception:
+            rpt = {}
+
+        if not rpt:
+            return (
+                "🔄 <b>Last Cycle</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━━\n"
+                "No cycle completed yet this session.\n"
+                f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+            )
+
+        # Feed integrity icons (equity domain)
+        _equity_icons = {
+            "FeedTruthLevel.LIVE":      "✅ LIVE",
+            "FeedTruthLevel.DEGRADED":  "⚠️ PARTIAL FALLBACK",
+            "FeedTruthLevel.CRITICAL":  "🔴 CRITICAL",
+            "FeedTruthLevel.SYNTHETIC": "💀 SYNTHETIC",
+        }
+        _opts_icons = {
+            "OptionsTruthLevel.LIVE":           "✅ LIVE",
+            "OptionsTruthLevel.DEGRADED_CACHE": "⚠️ CACHE",
+            "OptionsTruthLevel.SYNTHETIC":      "🔴 SYNTHETIC",
+        }
+        equity_integrity = _equity_icons.get(rpt.get("truth_level", ""), rpt.get("truth_level", "unknown"))
+        opts_integrity   = _opts_icons.get(rpt.get("opts_truth", ""), rpt.get("opts_truth", "unknown"))
+
+        # Phase 9: feed stats detail for operator visibility
+        _fs          = rpt.get("feed_stats", {})
+        _live_cnt    = _fs.get("live", "—")
+        _sim_cnt     = _fs.get("sim", "—")
+        _nodata_cnt  = _fs.get("nodata", "—")
+        _last_yahoo  = _fs.get("last_yahoo_refresh") or "—"
+        _live_pct    = _fs.get("live_pct")
+        _pct_tag     = f" ({_live_pct}% live)" if _live_pct is not None else ""
+
+        lines = [
+            "🔄 <b>Last Cycle</b>",
+            "━━━━━━━━━━━━━━━━━━━━━",
+            f"Time:      {_esc(rpt.get('ts', '—'))}",
+            f"Regime:    {_esc(rpt.get('regime', '—'))}",
+            f"VIX:       {rpt.get('vix', '—')}",
+            f"Scanned:   {rpt.get('signals_scanned', 0)} signals",
+            f"Next:      {_esc(rpt.get('next_slot', '—'))}",
+            f"Equity:    {_esc(equity_integrity)}{_esc(_pct_tag)}",
+            f"  live={_live_cnt}  sim={_sim_cnt}  nodata={_nodata_cnt}  last={_esc(_last_yahoo)}",
+            f"Options:   {_esc(opts_integrity)}",
+        ]
+
+        executed = rpt.get("executed", [])
+        if executed:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━")
+            lines.append(f"<b>Executed ({len(executed)}):</b>")
+            for t in executed[:5]:
+                dir_icon = "▲" if t.get("direction", "BUY") == "BUY" else "▼"
+                lines.append(
+                    f"  {dir_icon} <b>{_esc(t['symbol'])}</b>  "
+                    f"@₹{t['entry']:.2f}  "
+                    f"score={t['score']}/10\n"
+                    f"     {_esc(t['strategy'])}"
+                )
+        else:
+            lines.append("━━━━━━━━━━━━━━━━━━━━━")
+            lines.append("No trades executed this cycle.")
+
+        return "\n".join(lines)
 
     def _cmd_nifty(self, msg: dict) -> str:
         try:
@@ -530,23 +655,77 @@ class TelegramCommandBot:
 
     def _cmd_positions(self, msg: dict) -> str:
         try:
-            from data_feeds.dhan_feed import DhanFeed
-            feed   = DhanFeed()
-            if feed.is_live:
-                positions = feed.get_positions()
-                if not positions:
-                    return "📂 <b>Positions</b>\n━━━━━━━━━━━━━━━━━━━━━\nNo open positions."
-                lines = ["📂 <b>Open Positions</b>", "━━━━━━━━━━━━━━━━━━━━━"]
-                for p in positions[:10]:
-                    sym    = _esc(str(p.get("tradingSymbol", "?")))
-                    qty    = p.get("netQty", 0)
-                    avg    = p.get("avgCostPrice", 0)
-                    pnl    = p.get("unrealizedProfit", 0)
-                    pnl_s  = f"{'▲' if pnl >= 0 else '▼'} ₹{pnl:+,.0f}"
-                    lines.append(f"<b>{sym}</b>  qty={qty}  avg=₹{avg:.2f}  {pnl_s}")
-                return "\n".join(lines)
-            else:
-                return "ℹ️ Running in simulation mode — no live positions."
+            import config as _cfg
+            paper_mode = getattr(_cfg, "PAPER_TRADING", True)
+
+            # Always pull from OrderManager (the system of record for paper mode)
+            from orchestrator.master_orchestrator import get_orchestrator
+            orch = get_orchestrator()
+            open_orders = orch.order_manager.get_open_orders() if orch else []
+
+            # Per-symbol feed source from the router (best-effort)
+            sym_sources: dict = {}
+            try:
+                from data_feeds.market_data_router import get_market_data_router
+                sym_sources = get_market_data_router().get_symbol_sources()
+            except Exception:
+                pass
+
+            if not open_orders:
+                lbl = "🧪 Paper" if paper_mode else "💵 Live"
+                return (
+                    f"📂 <b>Positions</b>  [{lbl}]\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    "No open positions."
+                )
+
+            lines = [
+                f"📂 <b>Open Positions</b>  ({'🧪 Paper' if paper_mode else '💵 Live'})",
+                "━━━━━━━━━━━━━━━━━━━━━",
+            ]
+            total_unrealized = 0.0
+            for rec in open_orders[:10]:
+                sym   = rec.symbol
+                dir_  = rec.direction
+                qty   = rec.quantity
+                entry = rec.entry_price
+                sl    = rec.stop_loss
+                gov   = rec.governance_state   # ACTIVE | ACTIVE_CARRY | ORPHAN_WATCH
+                strat = rec.strategy[:22] if len(rec.strategy) > 22 else rec.strategy
+
+                # Unrealized P&L: use router LTP if available
+                try:
+                    from data_feeds.market_data_router import get_market_data_router
+                    ltp, _ = get_market_data_router().get_ltp(sym)
+                except Exception:
+                    ltp = 0.0
+                if ltp > 0 and entry > 0:
+                    pnl = (ltp - entry) * qty if dir_ == "BUY" else (entry - ltp) * qty
+                    pnl_s = f"{'▲' if pnl >= 0 else '▼'} ₹{pnl:+,.0f}"
+                    total_unrealized += pnl
+                else:
+                    pnl_s = "—"
+
+                # Feed source badge
+                src = sym_sources.get(sym, "?")
+                src_badge = {"DHAN": "🟢", "YAHOO": "🟡", "CACHE": "🟠", "DEGRADED": "🔴"}.get(src, "❓")
+
+                # Governance badge
+                gov_badge = {"ACTIVE": "", "ACTIVE_CARRY": " 🔁CARRY", "ORPHAN_WATCH": " ⚠️ORPHAN"}.get(gov, "")
+
+                dir_icon = "▲" if dir_ == "BUY" else "▼"
+                lines.append(
+                    f"{dir_icon} <b>{_esc(sym)}</b>{_esc(gov_badge)}  {src_badge}{_esc(src)}\n"
+                    f"   qty={qty}  entry=₹{entry:.2f}  sl=₹{sl:.2f}  {_esc(pnl_s)}\n"
+                    f"   {_esc(strat)}"
+                )
+
+            if total_unrealized:
+                lines.append("━━━━━━━━━━━━━━━━━━━━━")
+                lines.append(f"Unrealized total: {'▲' if total_unrealized >= 0 else '▼'} ₹{total_unrealized:+,.0f}")
+            lines.append(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
+            return "\n".join(lines)
+
         except Exception as exc:
             return f"⚠️ Positions error: {_esc(str(exc))}"
 
@@ -554,24 +733,81 @@ class TelegramCommandBot:
 
     def _cmd_pnl(self, msg: dict) -> str:
         try:
-            from data_feeds.dhan_feed import DhanFeed
-            feed = DhanFeed()
-            if feed.is_live:
-                positions = feed.get_positions()
-                realized   = sum(p.get("realizedProfit",   0) for p in positions)
-                unrealized = sum(p.get("unrealizedProfit", 0) for p in positions)
-                total      = realized + unrealized
-                icon       = "💰" if total >= 0 else "🔴"
-                return (
-                    f"{icon} <b>Today's P&amp;L</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"Realized:    ₹{realized:+,.0f}\n"
-                    f"Unrealized:  ₹{unrealized:+,.0f}\n"
-                    f"<b>Total:       ₹{total:+,.0f}</b>\n"
-                    f"🕐 {datetime.now().strftime('%H:%M:%S')}"
-                )
-            else:
-                return "ℹ️ Running in simulation mode — P&L from paper trades only."
+            import csv as _csv
+            import os as _os
+            import config as _cfg
+            paper_mode = getattr(_cfg, "PAPER_TRADING", True)
+            today_str  = datetime.now().strftime("%Y-%m-%d")
+
+            # ── Paper-mode P&L from paper_trades.csv ─────────────────────
+            realized    = 0.0
+            trade_count = 0
+            winner      = ("—", 0.0)
+            loser       = ("—", 0.0)
+
+            csv_path = _os.path.join(
+                _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+                "data", "paper_trades.csv",
+            )
+            if _os.path.exists(csv_path):
+                with open(csv_path, newline="", encoding="utf-8") as f:
+                    reader = _csv.DictReader(f)
+                    for row in reader:
+                        ts = row.get("timestamp", "")
+                        if not ts.startswith(today_str):
+                            continue
+                        if row.get("action", "") != "CLOSE":
+                            continue
+                        pnl = float(row.get("pnl", 0) or 0)
+                        realized    += pnl
+                        trade_count += 1
+                        sym = row.get("symbol", "?")
+                        if pnl > winner[1]:
+                            winner = (sym, pnl)
+                        if pnl < loser[1]:
+                            loser = (sym, pnl)
+
+            # ── Unrealized from open OrderManager positions ───────────────
+            unrealized = 0.0
+            carry_exposure = 0.0
+            try:
+                from orchestrator.master_orchestrator import get_orchestrator
+                from data_feeds.market_data_router import get_market_data_router
+                _orch  = get_orchestrator()
+                router = get_market_data_router()
+                for rec in (_orch.order_manager.get_open_orders() if _orch else []):
+                    ltp, _ = router.get_ltp(rec.symbol)
+                    if ltp > 0 and rec.entry_price > 0:
+                        pnl = (ltp - rec.entry_price) * rec.quantity \
+                              if rec.direction == "BUY" \
+                              else (rec.entry_price - ltp) * rec.quantity
+                        unrealized += pnl
+                    exposure = rec.entry_price * rec.quantity
+                    if rec.governance_state == "ACTIVE_CARRY":
+                        carry_exposure += exposure
+            except Exception:
+                pass
+
+            total = realized + unrealized
+            icon  = "💰" if total >= 0 else "🔴"
+            lbl   = "🧪 Paper" if paper_mode else "💵 Live"
+
+            lines = [
+                f"{icon} <b>Today's P&amp;L</b>  [{lbl}]",
+                "━━━━━━━━━━━━━━━━━━━━━",
+                f"Realized:       ₹{realized:+,.0f}  ({trade_count} closed trades)",
+                f"Unrealized:     ₹{unrealized:+,.0f}",
+                f"<b>Total:          ₹{total:+,.0f}</b>",
+            ]
+            if carry_exposure > 0:
+                lines.append(f"Carry exposure: ₹{carry_exposure:,.0f}")
+            if winner[0] != "—":
+                lines.append(f"Best trade:     {_esc(winner[0])} ₹{winner[1]:+,.0f}")
+            if loser[0] != "—":
+                lines.append(f"Worst trade:    {_esc(loser[0])} ₹{loser[1]:+,.0f}")
+            lines.append(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
+            return "\n".join(lines)
+
         except Exception as exc:
             return f"⚠️ P&L error: {_esc(str(exc))}"
 
@@ -609,8 +845,8 @@ class TelegramCommandBot:
 
         # ── Part 1: indices ────────────────────────────────────────────────
         try:
-            from data_feeds.dhan_feed import DhanFeed
-            feed   = DhanFeed()
+            from data_feeds import get_feed_manager as _gfm_live
+            feed   = _gfm_live().dhan  # reuse singleton DhanFeed
             nifty  = feed.get_quote("NIFTY")
             bnk    = feed.get_quote("BANKNIFTY")
             vix    = feed.get_ltp("INDIAVIX")
@@ -876,6 +1112,50 @@ class TelegramCommandBot:
             return f"⚠️ /build error: {_esc(str(exc))}"
 
     # ── /pause ─────────────────────────────────────────────────────────────
+
+    # ── /rescan ────────────────────────────────────────────────────────────
+
+    def _cmd_rescan(self, msg: dict) -> str:
+        """
+        Force a full universe + candidate rescan immediately.
+        The Phase D scanner (~20 min) runs in a background thread.
+        Returns an ACK immediately; Telegram alert sent on completion.
+        """
+        def _run_background():
+            try:
+                from opportunity_engine.market_scanner import run_scan
+                log.info("[TelegramRescan] Manual rescan triggered via /rescan command.")
+                success = run_scan()
+                if success:
+                    _msg = (
+                        "✅ <b>Universe rescan complete.</b>\n"
+                        "Candidate store updated — new setups ready for tomorrow."
+                    )
+                    log.info("[TelegramRescan] Manual rescan completed successfully.")
+                else:
+                    _msg = (
+                        "⚠️ <b>Universe rescan finished with errors.</b>\n"
+                        "Previous candidates retained as fallback."
+                    )
+                    log.warning("[TelegramRescan] Manual rescan returned failure.")
+                try:
+                    self.send_message(_msg)
+                except Exception:
+                    pass
+            except Exception as exc:
+                log.error("[TelegramRescan] Background rescan crashed: %s", exc)
+                try:
+                    self.send_message(f"🚨 Rescan crashed: {_esc(str(exc)[:120])}")
+                except Exception:
+                    pass
+
+        t = threading.Thread(target=_run_background, daemon=True, name="TelegramRescan")
+        t.start()
+        return (
+            "🔄 <b>Universe rescan started.</b>\n"
+            "Running full Phase D scanner (~20 min).\n"
+            "You'll receive a Telegram alert when complete."
+        )
 
     def _cmd_pause(self, msg: dict) -> str:
         self._paused = True

@@ -117,8 +117,9 @@ class MarketDataRouter:
         self._total_calls:      int = 0
 
         # ── Per-cycle state (reset by get_live_prices) ────────────────────
-        self._last_degraded:    Set[str]        = set()
-        self._last_source_dist: Dict[str, int]  = {}
+        self._last_degraded:      Set[str]        = set()
+        self._last_source_dist:   Dict[str, int]  = {}
+        self._last_symbol_sources: Dict[str, str] = {}   # sym → DHAN|YAHOO|CACHE|DEGRADED
 
         log.info(
             "[MarketDataRouter] Initialised.  primary=Dhan(%s)  fallback=Yahoo(%s)",
@@ -164,8 +165,9 @@ class MarketDataRouter:
         (they were excluded from the returned dict and from monitoring).
         """
         # ── Reset per-cycle state ─────────────────────────────────────────
-        self._last_degraded    = set()
-        self._last_source_dist = {}
+        self._last_degraded       = set()
+        self._last_source_dist    = {}
+        self._last_symbol_sources = {}
 
         bare_symbols = [self._bare(s) for s in symbols]
         self._total_calls += len(bare_symbols)
@@ -192,6 +194,7 @@ class MarketDataRouter:
                         self._last_source_dist["DHAN"] = (
                             self._last_source_dist.get("DHAN", 0) + 1
                         )
+                        self._last_symbol_sources[bare] = "DHAN"
                         log.debug("[MarketDataRouter] DHAN  %s=%.2f", bare, q.ltp)
             except Exception as exc:
                 log.warning("[MarketDataRouter] Dhan batch error: %s", exc)
@@ -237,6 +240,7 @@ class MarketDataRouter:
                         self._last_source_dist["YAHOO"] = (
                             self._last_source_dist.get("YAHOO", 0) + 1
                         )
+                        self._last_symbol_sources[bare] = "YAHOO"
                         if q.fallback_active:
                             log.info("[MarketDataRouter] YAHOO_FALLBACK  %s=%.2f "
                                      "(Dhan unavailable)", bare, q.ltp)
@@ -279,6 +283,7 @@ class MarketDataRouter:
                     self._last_source_dist["CACHE"] = (
                         self._last_source_dist.get("CACHE", 0) + 1
                     )
+                    self._last_symbol_sources[bare] = "CACHE"
                     log.info(
                         "[MarketDataRouter] CACHE_FALLBACK  %s  ltp=%.2f  "
                         "age=%.0fs  orig_src=%s",
@@ -297,6 +302,7 @@ class MarketDataRouter:
                 # No cache at all → degraded
                 self._last_degraded.add(bare)
                 self._degraded_count += 1
+                self._last_symbol_sources[bare] = "DEGRADED"
                 log.warning(
                     "[MarketDataRouter] FEED_DEGRADED  %s  "
                     "no live data and no cached LTP — symbol excluded",
@@ -355,6 +361,14 @@ class MarketDataRouter:
         for these symbols until a live price is re-established.
         """
         return set(self._last_degraded)
+
+    def get_symbol_sources(self) -> Dict[str, str]:
+        """
+        Per-symbol data source from the most recent get_live_prices() call.
+        Returns dict of bare_symbol → "DHAN" | "YAHOO" | "CACHE" | "DEGRADED".
+        Empty between calls or before the first call.
+        """
+        return dict(self._last_symbol_sources)
 
     def get_router_stats(self) -> dict:
         """

@@ -83,12 +83,22 @@ class SmartExecutionEngine:
         bullish_exposure = 0.0
         bearish_exposure = 0.0
         
-        # Sort by confidence (highest first)
-        sorted_trades = sorted(
-            trades,
-            key=lambda x: x.get("confidence", 0.0),
-            reverse=True
-        )
+        def _combined_score(t: dict) -> float:
+            """Rank by combined score: confidence 55% + normalised R:R 45%.
+            confidence is 0–1 (normalised from 0–10 by the orchestrator).
+            rr normalised as min(rr/5, 1.0) so RR≥5 scores 1.0.
+            """
+            conf   = t.get("confidence", 0.7)
+            entry  = t.get("entry_price", 0.0)
+            target = t.get("target", 0.0) or 0.0
+            stop   = t.get("stop_loss", entry) or entry
+            risk   = abs(entry - stop)
+            rr     = abs(target - entry) / risk if (risk > 0 and entry > 0) else 1.0
+            rr_norm = min(rr / 5.0, 1.0)
+            return conf * 0.55 + rr_norm * 0.45
+
+        # Sort by combined score (confidence 55% + R:R 45%), highest first
+        sorted_trades = sorted(trades, key=_combined_score, reverse=True)
         
         log.info(
             "[SmartExecution] Filtering %d trades | "
@@ -115,20 +125,25 @@ class SmartExecutionEngine:
                 continue
             
             # ── RULE 5: Dynamic Position Sizing ──
-            # position_size = capital × confidence_factor × vix_factor × drawdown_factor
-            
+            # position_size = capital × per_trade_fraction × confidence_factor × vix_factor × drawdown_factor
+            # per_trade_fraction = 0.15 matches PortfolioAllocationAI._MAX_SINGLE_TRADE_FRACTION
+            # Without this fraction, position_size = capital × 0.9 = 9M which always exceeds
+            # max_exposure = 8M when capital = ₹1 Crore, blocking every signal.
+
             # Confidence factor: clamp to [0.3, 0.9]
             confidence_factor = max(0.3, min(confidence, 0.9))
-            
+
             # VIX factor: lower VIX → larger positions; higher VIX → smaller
             # At VIX=15 (normal) → factor=1.0
             # At VIX=25 (elevated) → factor=0.4 (half size)
             # Range: [0.4, 1.0] (no position grows above normal despite low VIX)
             vix_normal = 15.0
             vix_factor = max(0.4, min(1.0, 1.0 - (vix - vix_normal) / 20.0))
-            
+
+            _MAX_PER_TRADE_FRACTION = 0.15  # per-trade cap, sync with PortfolioAllocationAI
             position_size = (
                 self.capital
+                * _MAX_PER_TRADE_FRACTION
                 * confidence_factor
                 * vix_factor
                 * drawdown_factor

@@ -55,6 +55,7 @@ LAYER_LATENCY_WARN_OVERRIDES: dict = {
 LAYER_LATENCY_CRIT_OVERRIDES: dict = {
     "GlobalIntelligence":  12_000,  # only CRITICAL if truly hung (>12s)
     "MarketIntelligence":  15_000,  # only abort cycle if yfinance is completely hung (>15s)
+    "OpportunityEngine":   90_000,  # yfinance NSE batch may be slow; don't abort up to 90s
 }
 
 

@@ -406,9 +406,109 @@ class TradeMonitor:
                 except Exception:
                     pass
 
+        # ── ConcentrationAudit + ExposureAudit: observe-only telemetry ──
+        self._emit_concentration_telemetry(price_feed)
+        # ── StalePositionAudit: log all positions open >24 h with full context ──
+        self._emit_stale_position_audit(price_feed)
+
     # ─────────────────────────────────────────────────────────────────
     # PRIVATE
     # ─────────────────────────────────────────────────────────────────
+
+    def _emit_concentration_telemetry(self, price_feed: Optional[dict]) -> None:
+        """
+        Emit [ConcentrationAudit] and [ExposureAudit] for currently open positions.
+
+        OBSERVE ONLY — no execution blocking.  Runs once per monitoring cycle so
+        that log analysis can track exposure concentration trends over time.
+        """
+        if not self._open_orders:
+            return
+        n = len(self._open_orders)
+        sym_exposure: Dict[str, float]   = {}
+        strat_exposure: Dict[str, float] = {}
+        long_n = short_n = 0
+        total_gross = 0.0
+
+        for _oid, order in self._open_orders.items():
+            gross = abs((order.entry_price or 0.0) * (order.quantity or 0))
+            total_gross += gross
+            sym_exposure[order.symbol]     = sym_exposure.get(order.symbol,     0.0) + gross
+            strat_exposure[order.strategy] = strat_exposure.get(order.strategy, 0.0) + gross
+            _dir = (getattr(order, "direction", "") or "").upper()
+            if _dir in ("BUY", "LONG"):
+                long_n += 1
+            else:
+                short_n += 1
+
+        _denom       = total_gross if total_gross > 0 else 1.0
+        _max_sym_w   = max(sym_exposure.values())   / _denom * 100 if sym_exposure   else 0.0
+        _max_strat_w = max(strat_exposure.values()) / _denom * 100 if strat_exposure else 0.0
+        _bias = "LONG" if long_n > short_n else "SHORT" if short_n > long_n else "NEUTRAL"
+
+        log.info(
+            "[ConcentrationAudit] open_positions=%d  symbols=%d  strategies=%d"
+            "  directional_bias=%s  largest_symbol_weight=%.0f%%"
+            "  largest_strategy_weight=%.0f%%",
+            n, len(sym_exposure), len(strat_exposure),
+            _bias, _max_sym_w, _max_strat_w,
+        )
+        for _oid, order in self._open_orders.items():
+            _gross = abs((order.entry_price or 0.0) * (order.quantity or 0))
+            _pct   = _gross / _denom * 100
+            log.info(
+                "[ExposureAudit] symbol=%s  strategy=%s  gross_exposure=\u20b9%.0f"
+                "  portfolio_pct=%.1f%%  direction=%s",
+                order.symbol, order.strategy, _gross, _pct,
+                (getattr(order, "direction", "") or "").upper(),
+            )
+
+    def _emit_stale_position_audit(self, price_feed: Optional[dict]) -> None:
+        """
+        Emit [StalePositionAudit] log lines for every open position that has
+        been open for more than 24 hours.  This is an observation log — never
+        takes autonomous action.
+
+        Logged fields:
+          symbol, direction, age_h, entry, ltp, sl_active,
+          feed_degraded_cycles, feed_state, governance_state
+        """
+        now = datetime.now()
+        for oid, order in self._open_orders.items():
+            if not order.placed_at:
+                continue
+            # Skip positions already closed — governance_state tracks lifecycle.
+            # CarryExpiry marks CLOSED before removing from _open_orders; avoid
+            # logging 50+ redundant StalePositionAudit lines for finished trades.
+            if getattr(order, "governance_state", "ACTIVE") == "CLOSED":
+                continue
+            age_h = (now - order.placed_at).total_seconds() / 3600
+            if age_h < 24:
+                continue   # only audit positions open more than one day
+            ltp = self._get_ltp(order.symbol, price_feed)
+            risk = abs(order.entry_price - (order.stop_loss or order.entry_price))
+            if risk > 0 and ltp is not None:
+                unreal_r = ((ltp - order.entry_price) / risk
+                            if order.direction == "BUY"
+                            else (order.entry_price - ltp) / risk)
+            else:
+                unreal_r = None
+            feed_deg_cycles = self._feed_degraded_cycles.get(oid, 0)
+            feed_state = "DEGRADED" if feed_deg_cycles > 0 else "LIVE"
+            sl_active = order.stop_loss is not None and order.stop_loss > 0
+            governance_state = getattr(order, "governance_state", "ACTIVE")
+            log.info(
+                "[StalePositionAudit] symbol=%s  dir=%s  age=%.1fh  "
+                "entry=%.2f  ltp=%s  sl_active=%s  unreal_r=%s  "
+                "feed_state=%s  feed_degraded_cycles=%d  governance_state=%s  "
+                "oid=%s",
+                order.symbol, order.direction, age_h,
+                order.entry_price, f"{ltp:.2f}" if ltp else "N/A",
+                sl_active,
+                f"{unreal_r:+.2f}R" if unreal_r is not None else "N/A",
+                feed_state, feed_deg_cycles,
+                governance_state, oid,
+            )
 
     def _evaluate(self, order: OrderRecord, ltp: float) -> Optional[str]:
         entry  = order.entry_price
