@@ -84,6 +84,7 @@ from global_intelligence                    import GlobalIntelligenceEngine, Dis
 from data_integrity                         import DataIntegrityEngine
 from risk_guardian                          import FailSafeRiskGuardian, GuardianDecision
 from system_monitor                         import SystemMonitor
+from system_monitor.trade_blocker_report    import TradeDiagnosticEngine
 from performance                            import PerformanceEvaluator
 from research_lab                           import ResearchLab
 from validation_engine                      import ValidationEngine
@@ -98,6 +99,8 @@ from control_tower import ControlTower
 
 # ── Edge Discovery Engine ─────────────────────────────────────────────
 from edge_discovery import EdgeDiscoveryEngine
+# ── Weekend Intelligence ──────────────────────────────────────────────
+from orchestrator.weekend_intelligence import WeekendIntelligenceEngine
 
 from communication import (
     EventType, MarketEvent, OpportunityEvent, RiskEvent,
@@ -106,6 +109,17 @@ from communication import (
 )
 
 log = get_logger(__name__)
+
+# ── Daily replacement audit accumulator (reset at midnight) ───────────────
+_REPLACEMENT_DAILY_AUDIT: List[dict] = []
+_REPLACEMENT_DAILY_DATE: str = ""
+
+def _reset_replacement_accumulator() -> None:
+    global _REPLACEMENT_DAILY_AUDIT, _REPLACEMENT_DAILY_DATE
+    today = datetime.now().strftime("%Y-%m-%d")
+    if _REPLACEMENT_DAILY_DATE != today:
+        _REPLACEMENT_DAILY_AUDIT = []
+        _REPLACEMENT_DAILY_DATE  = today
 
 # ── All agent names (used to register with the MessageRouter) ──────────────
 ALL_AGENTS = [
@@ -150,6 +164,17 @@ ALL_AGENTS = [
     "MetaLearningEngine", "FeatureExtractor", "MetaModel",
     "TrainingEngine", "StrategyWeightPredictor", "PerformanceDataset",
 ]
+
+
+# Module-level accessor — set by MasterOrchestrator.__init__(); used by
+# Telegram bot to reach order_manager and cycle reports without creating
+# a second orchestrator instance.
+_ORCH_INSTANCE: "Optional[MasterOrchestrator]" = None
+
+
+def get_orchestrator() -> "Optional[MasterOrchestrator]":
+    """Return the running MasterOrchestrator instance (None before first init)."""
+    return _ORCH_INSTANCE
 
 
 class MasterOrchestrator:
@@ -270,6 +295,11 @@ class MasterOrchestrator:
         self.validation_engine   = ValidationEngine(n_mc_runs=1_000)
 
         self._halt = False
+        # ── Cycle diagnostic state (set by sub-methods, read at cycle end) ──
+        self._last_sl_reject_summary: dict = {}
+        self._last_rc_reject_summary: dict = {}
+        self._last_options_placed: int = 0
+        self._last_oqg_summary: dict = {}
 
         # ── EDA Communication Layer ────────────────────────────────────
         self.bus        = get_bus()
@@ -282,8 +312,12 @@ class MasterOrchestrator:
 
         # ── Edge Discovery Engine (research layer) ────────────────────
         self.edge_discovery = EdgeDiscoveryEngine()
+        # ── Weekend Intelligence Engine ───────────────────────────────
+        self.weekend_intelligence = WeekendIntelligenceEngine(orchestrator=self)
         # Cache last snapshot so the EOD learning cycle can run EDE
         self._last_snapshot: Optional[MarketSnapshot] = None
+        # Last completed cycle report — read by Telegram /cycle command
+        self._last_cycle_report: dict = {}
         # Feed-degraded escalation counter (symbol → consecutive degraded cycles)
         self._feed_degraded_counts: dict = {}
         # Monitoring continuity: tracks last successful _do_monitor execution.
@@ -304,6 +338,29 @@ class MasterOrchestrator:
             self.notifier = None
 
         log.info("All agents initialised successfully.")
+
+        # Phase 1 — [RuntimeImportAudit]: prove exact files executing after restart
+        try:
+            import inspect as _inspect
+            import learning_system.daily_self_evaluation as _dse_mod
+            import trade_monitoring.trade_analytics       as _ta_mod
+            import learning_system.eod_retrospective      as _retro_mod
+            log.info(
+                "[RuntimeImportAudit] daily_self_evaluation=%s "
+                "trade_analytics=%s eod_retrospective=%s pid=%d",
+                os.path.abspath(_inspect.getfile(_dse_mod.DailyAISelfEvaluator)),
+                os.path.abspath(_inspect.getfile(_ta_mod.TradeAnalytics)),
+                os.path.abspath(_inspect.getfile(_retro_mod.EODRetrospective))
+                    if hasattr(_retro_mod, "EODRetrospective")
+                    else _retro_mod.__file__,
+                os.getpid(),
+            )
+        except Exception as _ria_exc:
+            log.warning("[RuntimeImportAudit] FAILED: %s", _ria_exc)
+
+        # Register as the global singleton (for Telegram bot access)
+        global _ORCH_INSTANCE
+        _ORCH_INSTANCE = self
 
     # ──────────────────────────────────────────────────────────────────
     # EDA SETUP
@@ -376,8 +433,8 @@ class MasterOrchestrator:
         if self.market_monitor.is_running:
             return
         try:
-            from data_feeds.dhan_feed import DhanFeed
-            self.market_monitor._feed = DhanFeed()
+            from data_feeds import get_feed_manager
+            self.market_monitor._feed = get_feed_manager().dhan  # reuse singleton DhanFeed
             self.market_monitor.start()
             log.info("[Orchestrator] ✅ Continuous market monitoring started.")
         except Exception as exc:
@@ -478,23 +535,68 @@ class MasterOrchestrator:
         """Execute one complete analysis + execution cycle."""
         if self._halt:
             log.warning("Trading halted — skipping cycle.")
+            log.info("[GlobalAbortCause] cause=self._halt cycle_skipped=True")
             return
 
         # ── Emergency Kill Switch Check ──────────────────────────────────
-        # Professional safety mechanism: if kill_switch.json has
-        # "trading_enabled": false, stop ALL trading immediately, regardless
-        # of other conditions. This allows instant remote halt via file change.
         if not is_trading_enabled():
             status = get_kill_switch_status()
             log.critical(
                 "🚨 EMERGENCY KILL SWITCH ACTIVE — Trading disabled. Reason: %s",
                 status.get("reason", "Unknown")
             )
+            log.info("[GlobalAbortCause] cause=kill_switch reason=%s cycle_skipped=True",
+                     status.get("reason", "Unknown"))
             return
 
         log.info("▶ Starting full analysis cycle — %s",
                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         self.system_monitor.start_cycle()
+
+        # ── Observability: CandidateFreshnessAudit ────────────────────────
+        try:
+            import json as _json_cfa
+            from pathlib import Path as _Path_cfa
+            from datetime import datetime as _dt_cfa, date as _date_cfa
+            _cfa_today  = _date_cfa.today().isoformat()
+            _cfa_path   = _Path_cfa("data/daily_candidates.json")
+            _cfa_n      = 0
+            _cfa_fresh  = False
+            _cfa_stale_n = 0
+            _cfa_ttl_h  = 0.0
+            if _cfa_path.exists():
+                try:
+                    _cfa_data = _json_cfa.loads(_cfa_path.read_text(encoding="utf-8"))
+                    _cfa_cands = _cfa_data.get("candidates", [])
+                    _cfa_n    = len(_cfa_cands)
+                    _cfa_mtime = _cfa_path.stat().st_mtime
+                    _cfa_fresh = _date_cfa.fromtimestamp(_cfa_mtime).isoformat() == _cfa_today
+                    _now_ts   = _dt_cfa.now().timestamp()
+                    for _c in _cfa_cands:
+                        _vu = _c.get("valid_until_utc") or _c.get("expires_at")
+                        if _vu:
+                            try:
+                                import time as _time_cfa
+                                _exp = _dt_cfa.fromisoformat(_vu.replace("Z", "+00:00")).timestamp()
+                                if _exp < _now_ts:
+                                    _cfa_stale_n += 1
+                            except Exception:
+                                pass
+                except Exception:
+                    pass
+            log.info(
+                "[CandidateFreshnessAudit] date=%s candidates=%d fresh=%s stale_count=%d",
+                _cfa_today, _cfa_n, _cfa_fresh, _cfa_stale_n,
+            )
+        except Exception as _cfa_exc:
+            log.debug("[CandidateFreshnessAudit] skipped: %s", _cfa_exc)
+
+        # V2.5: Shadow audit — fire-and-forget, never delays the cycle
+        try:
+            from opportunity_engine.delta_refresh_shadow import run_shadow_audit as _rsa
+            _rsa(datetime.now().strftime("%H%M"))
+        except Exception:
+            pass
 
         # ── Expire / context-invalidate LIMIT orders from prior cycle(s) ─
         # Four checks (in priority order):
@@ -675,6 +777,7 @@ class MasterOrchestrator:
             ))
 
         # ── STEP 2: Opportunity Scan (ODM-guided) ─────────────────────
+        _diag = TradeDiagnosticEngine()  # observability only — no pipeline effect
         odm_directive = self.odm.get_directive(snapshot)
         if odm_directive.tier != "NORMAL":
             log.info("[ODM] %s", odm_directive.message)
@@ -682,6 +785,9 @@ class MasterOrchestrator:
             signals: List[TradeSignal] = self._run_opportunity_engine(snapshot, odm_directive)
         if not signals:
             log.info("No opportunities found this cycle.")
+            _diag.record_stage("OpportunityEngine", 0, 0, "NO_ENTRY_CONDITIONS_MET")
+            _diag.set_totals(0, 0)
+            _diag.generate()
             self.odm.record_cycle(signals_generated=0, approved_trades=0)
             self.system_monitor.finalize_cycle()
             return
@@ -690,6 +796,9 @@ class MasterOrchestrator:
         with self.system_monitor.time_layer("StrategyLab"):
             enriched_signals = self._run_strategy_lab(signals, snapshot)
         if self._abort_if_timed_out("StrategyLab"): return
+        _sl_reasons = getattr(self, '_last_sl_reject_summary', {})
+        _sl_top = max(_sl_reasons, key=_sl_reasons.get, default="UNKNOWN") if _sl_reasons else "OK"
+        _diag.record_stage("StrategyLab", len(signals), len(enriched_signals), _sl_top)
 
         # ── STEP 3.5: Capital Risk Engine ────────────────────────────
         with self.system_monitor.time_layer("CapitalRiskEngine"):
@@ -697,11 +806,189 @@ class MasterOrchestrator:
             cre_signals = self.capital_risk_engine.allocate(
                 enriched_signals, snapshot, portfolio
             )
+        _diag.record_stage("CapitalRiskEngine", len(enriched_signals), len(cre_signals))
+
+        # ── [PortfolioCapacityAudit] — slot utilization ───────────────────
+        try:
+            from risk_control.capital_risk_engine import _MAX_POSITIONS as _CRE_MAX
+            _pca_positions   = list(portfolio.positions.values()) if portfolio else []
+            _pca_n_open      = len(_pca_positions)
+            _pca_now         = datetime.now()
+            _pca_profitable  = sum(1 for p in _pca_positions if p.unrealised_pnl > 0)
+            _pca_losing      = sum(1 for p in _pca_positions if p.unrealised_pnl < 0)
+            _pca_stale       = sum(1 for p in _pca_positions if not p.has_live_ltp)
+            _pca_over2d      = sum(
+                1 for p in _pca_positions
+                if (_pca_now - p.entry_time).total_seconds() >= 2 * 86400
+            )
+            _pca_over3d      = sum(
+                1 for p in _pca_positions
+                if (_pca_now - p.entry_time).total_seconds() >= 3 * 86400
+            )
+            _pca_slots_avail = max(0, _CRE_MAX - _pca_n_open)
+            _pca_blocked     = _pca_n_open >= _CRE_MAX
+            log.info(
+                "[PortfolioCapacityAudit] max_positions=%d positions_open=%d "
+                "positions_stale=%d positions_profitable=%d positions_losing=%d "
+                "positions_over_2_days=%d positions_over_3_days=%d "
+                "available_slots=%d blocked_due_to_capacity=%s",
+                _CRE_MAX, _pca_n_open,
+                _pca_stale, _pca_profitable, _pca_losing,
+                _pca_over2d, _pca_over3d,
+                _pca_slots_avail, _pca_blocked,
+            )
+        except Exception as _pca_exc:
+            log.debug("[PortfolioCapacityAudit] skipped: %s", _pca_exc)
+
+        # ── [PortfolioQualityAudit] + [ReplacementOpportunityAudit] ──────────
+        try:
+            from risk_control.capital_risk_engine import (
+                get_last_cycle_exposure_rejections as _get_ec_cycle,
+                _MAX_POSITIONS as _CRE_MAX_POS,
+            )
+            _ec_cycle_rejs = _get_ec_cycle()
+
+            # ── [PortfolioQualityAudit] ─────────────────────────────────
+            _pqa_orders = self.order_manager.get_open_orders()
+            _pqa_n      = len(_pqa_orders)
+            if _pqa_n > 0:
+                _pqa_scores    = [r.confidence_score for r in _pqa_orders]
+                _pqa_avg_sc    = round(sum(_pqa_scores) / _pqa_n, 2)
+                _pqa_min_sc    = min(_pqa_scores)
+                _pqa_max_sc    = max(_pqa_scores)
+                _pqa_weakest   = next((r.symbol for r in _pqa_orders
+                                       if r.confidence_score == _pqa_min_sc), "NONE")
+                _pqa_strongest = next((r.symbol for r in _pqa_orders
+                                       if r.confidence_score == _pqa_max_sc), "NONE")
+            else:
+                _pqa_avg_sc = _pqa_min_sc = _pqa_max_sc = 0.0
+                _pqa_weakest = _pqa_strongest = "NONE"
+            log.info(
+                "[PortfolioQualityAudit] positions_open=%d avg_portfolio_score=%.2f "
+                "lowest_score=%.2f highest_score=%.2f avg_confidence=%.2f "
+                "weakest_position=%s strongest_position=%s",
+                _pqa_n, _pqa_avg_sc, _pqa_min_sc, _pqa_max_sc, _pqa_avg_sc,
+                _pqa_weakest, _pqa_strongest,
+            )
+
+            # ── [ReplacementOpportunityAudit] per heat-rejected signal ──
+            _reset_replacement_accumulator()
+            _pqa_now = datetime.now()
+            for _ec_r in _ec_cycle_rejs:
+                try:
+                    _roa_sym   = _ec_r["symbol"]
+                    _roa_score = _ec_r.get("score", 0.0)
+                    _roa_conv  = _ec_r.get("conviction", 0.0)
+                    _roa_strat = _ec_r.get("strategy", "unknown")
+                    _roa_entry = _ec_r.get("entry", 0.0)
+                    _roa_stop  = _ec_r.get("stop", 0.0)
+                    _roa_tgt   = _ec_r.get("target", 0.0)
+                    _roa_rr    = _ec_r.get("rr", 0.0)
+
+                    # Build evictable candidate list (mirrors _smart_swap_check logic)
+                    _roa_candidates = []
+                    for _roa_rec in _pqa_orders:
+                        if _roa_rec.status != "open":
+                            continue
+                        _roa_age = ((_pqa_now - _roa_rec.placed_at).total_seconds() / 60.0
+                                    if _roa_rec.placed_at else 999.0)
+                        if _roa_age < 20.0:
+                            continue  # too fresh
+                        _roa_risk = (abs(_roa_rec.entry_price - _roa_rec.stop_loss)
+                                     if _roa_rec.stop_loss and
+                                     _roa_rec.stop_loss != _roa_rec.entry_price else 0.0)
+                        _roa_pos  = portfolio.positions.get(_roa_rec.symbol)
+                        _roa_r    = None
+                        if _roa_pos and _roa_pos.has_live_ltp and _roa_risk > 0:
+                            _roa_r = (
+                                (_roa_pos.ltp - _roa_rec.entry_price) / _roa_risk
+                                if _roa_rec.direction == "BUY"
+                                else (_roa_rec.entry_price - _roa_pos.ltp) / _roa_risk
+                            )
+                        if _roa_r is not None and _roa_r >= 1.5:
+                            continue  # safe winner — never evict
+                        _roa_candidates.append((_roa_r, _roa_age, _roa_rec))
+
+                    _roa_portfolio_full = _pqa_n >= _CRE_MAX_POS
+                    _roa_has_candidate  = len(_roa_candidates) > 0
+                    _roa_wk_sym = _roa_wk_strat = "NONE"
+                    _roa_wk_sc  = _roa_wk_conf  = 0.0
+                    _roa_eligible = False
+
+                    if _roa_has_candidate:
+                        _roa_candidates.sort(
+                            key=lambda x: (x[0] if x[0] is not None else 0.0,
+                                           x[2].confidence_score, -x[1])
+                        )
+                        _, _, _roa_wk_rec = _roa_candidates[0]
+                        _roa_wk_sym   = _roa_wk_rec.symbol
+                        _roa_wk_strat = _roa_wk_rec.strategy
+                        _roa_wk_sc    = _roa_wk_rec.confidence_score
+                        _roa_wk_conf  = _roa_wk_rec.confidence_score
+                        # Score-delta gate (mirrors _SWAP_SCORE_DELTA = 0.5)
+                        _roa_eligible = _roa_score >= _roa_wk_sc + 0.5
+                        # RR gate (mirrors _SWAP_MIN_NEW_RR = 1.5)
+                        if _roa_rr < 1.5:
+                            _roa_eligible = False
+
+                    _roa_sc_delta   = round(_roa_score - _roa_wk_sc, 2)
+                    _roa_conf_delta = round(_roa_conv - _roa_wk_conf, 2)
+
+                    if not _roa_portfolio_full:
+                        _roa_rej = "PORTFOLIO_NOT_FULL"
+                    elif not _roa_has_candidate:
+                        _roa_rej = "NO_EVICTABLE_POSITIONS"
+                    elif _roa_rr < 1.5:
+                        _roa_rej = "NEW_SIGNAL_RR_TOO_LOW"
+                    elif not _roa_eligible:
+                        _roa_rej = "SCORE_DELTA_INSUFFICIENT"
+                    else:
+                        _roa_rej = "REPLACEMENT_ELIGIBLE_NOT_TRIGGERED"
+
+                    log.info(
+                        "[ReplacementOpportunityAudit] symbol=%s strategy=%s "
+                        "new_signal_score=%.2f new_signal_confidence=%.2f "
+                        "new_signal_conviction=%.2f portfolio_full=%s "
+                        "lowest_position_symbol=%s lowest_position_strategy=%s "
+                        "lowest_position_score=%.2f lowest_position_confidence=%.2f "
+                        "score_delta=%.2f confidence_delta=%.2f "
+                        "replacement_candidate=%s replacement_eligible=%s "
+                        "replacement_triggered=False rejection_reason=%s",
+                        _roa_sym, _roa_strat,
+                        _roa_score, _roa_score, _roa_conv,
+                        _roa_portfolio_full,
+                        _roa_wk_sym, _roa_wk_strat,
+                        _roa_wk_sc, _roa_wk_conf,
+                        _roa_sc_delta, _roa_conf_delta,
+                        _roa_has_candidate, _roa_eligible,
+                        _roa_rej,
+                    )
+                    _REPLACEMENT_DAILY_AUDIT.append({
+                        "symbol":        _roa_sym,
+                        "strategy":      _roa_strat,
+                        "score":         _roa_score,
+                        "candidate":     _roa_has_candidate,
+                        "eligible":      _roa_eligible,
+                        "score_delta":   _roa_sc_delta,
+                        "rej_reason":    _roa_rej,
+                    })
+                except Exception as _roa_exc:
+                    log.debug("[ReplacementOpportunityAudit] per-signal error: %s", _roa_exc)
+
+        except Exception as _rep_block_exc:
+            log.debug("[ReplacementOpportunityAudit] block skipped: %s", _rep_block_exc)
 
         # ── STEP 4: Risk Filtering ─────────────────────────────────
         with self.system_monitor.time_layer("RiskControl"):
             approved_signals = self._run_risk_control(cre_signals, snapshot)
         if self._abort_if_timed_out("RiskControl"): return
+        _rc_out_total = len(approved_signals)  # before options split; for TradeDiagnostic
+        _rc_s = getattr(self, '_last_rc_reject_summary', {})
+        _rc_blocker = (
+            f"RR×{_rc_s.get('rr', 0)} HEAT×{_rc_s.get('heat', 0)} "
+            f"OTHER×{_rc_s.get('other', 0)}"
+        ) if any(_rc_s.get(k, 0) for k in ('rr', 'heat', 'other')) else "OK"
+        _diag.record_stage("RiskControl", len(cre_signals), _rc_out_total, _rc_blocker)
 
         # ── STEP 4b: Options Fast-Path ────────────────────────────────
         # Options/spread signals must NOT pass through the equity-oriented
@@ -713,10 +1000,16 @@ class MasterOrchestrator:
                             if s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD)]
         approved_signals = [s for s in approved_signals
                             if s.signal_type not in (_SigType.OPTIONS, _SigType.SPREAD)]
+        _n_opts_signals = len(_options_signals)  # captured for TradeDiagnostic
 
         if _options_signals:
             log.info("── Options Fast-Path: %d signal(s) ──", len(_options_signals))
             self._run_options_fast_path(_options_signals, snapshot)
+            _oqg = getattr(self, '_last_oqg_summary', {})
+            _diag.record_stage("OptionsQualityGate",
+                               _oqg.get('in', _n_opts_signals),
+                               _oqg.get('passed', 0),
+                               "C1-C6_QUALITY_GATES" if _oqg.get('rejected', 0) > 0 else "OK")
 
         # ── STEP 4.5: Market Simulation ────────────────────────────────
         with self.system_monitor.time_layer("MarketSimulation"):
@@ -733,6 +1026,19 @@ class MasterOrchestrator:
                                   / max(len(approved_signals), 1)),
                 },
             ))
+            # ── Priority 6 (SimulationCalibrationAudit): threshold drift ──
+            try:
+                from market_simulation.simulation_calibration_audit import (
+                    get_simulation_audit as _gsa,
+                )
+                _sa = _gsa()
+                _sa.record_cycle(sim_result)
+                _sa.emit_cycle_audit()
+            except Exception:
+                pass
+        _diag.record_stage("MarketSimulation", len(approved_signals),
+                           len(sim_result.approved_trades) if hasattr(sim_result, 'approved_trades') else len(approved_signals),
+                           "STABILITY_THRESHOLD")
 
         # ── STEP 5: Fail-Safe Risk Guardian gate ───────────────────────
         with self.system_monitor.time_layer("RiskGuardian"):
@@ -751,6 +1057,12 @@ class MasterOrchestrator:
         ))
         if not guardian_decision.approved:
             log.warning("[RiskGuardian] BLOCKED: %s", guardian_decision.reason)
+            _diag.record_stage("RiskGuardian",
+                               len(sim_result.approved_trades) if hasattr(sim_result, 'approved_trades') else 0,
+                               0, guardian_decision.reason or "GUARDIAN_BLOCKED")
+            _diag.set_totals(len(signals), 0, _n_opts_signals,
+                             getattr(self, '_last_options_placed', 0))
+            _diag.generate()
             self.system_monitor.finalize_cycle()
             return
 
@@ -809,11 +1121,11 @@ class MasterOrchestrator:
                         "symbol": s.symbol,
                         "sector": getattr(s, "sector", "OTHER"),
                         "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
-                        "confidence": getattr(s, "confidence_score", 0.7),
+                        "confidence": s.confidence / 10.0,  # TradeSignal.confidence is 0–10; normalise to 0–1
                         "entry_price": s.entry_price,
                         "stop_loss": s.stop_loss,
-                        "target": s.target if hasattr(s, "target") else None,
-                        "original_signal": s,  # keep reference to full signal
+                        "target": s.target_price,           # TradeSignal uses target_price, not target
+                        "original_signal": s,
                     }
                     for s in decorrelated_signals
                 ],
@@ -861,6 +1173,106 @@ class MasterOrchestrator:
                 row = self._run_debate_and_decide(signal, snapshot)
                 if row:
                     executed.append(row)
+        _diag.record_stage("DebateAndDecision", len(signals_for_debate), len(executed),
+                           "CONFIDENCE_BELOW_THRESHOLD_6.5")
+
+        # ── SIGNAL LIFECYCLE FUNNEL SUMMARY ───────────────────────────
+        # Counts each signal as it passes through each filter stage.
+        # Lets you see exactly where signals are disappearing each cycle.
+        _n_generated   = len(signals)
+        _n_strategy    = len(enriched_signals)
+        _n_risk        = len(approved_signals)
+        _n_sim         = len(sim_result.approved_trades)   if hasattr(sim_result, "approved_trades")   else _n_risk
+        _n_guardian    = len(guardian_decision.approved_signals) if guardian_decision.approved else 0
+        _n_debate      = len(signals_for_debate)
+        _n_executed    = len(executed)
+        log.info(
+            "[SignalLifecycle] generated=%d  strategy_lab=%d  risk_control=%d  "
+            "simulation=%d  guardian=%d  debate_input=%d  executed=%d",
+            _n_generated, _n_strategy, _n_risk, _n_sim,
+            _n_guardian, _n_debate, _n_executed,
+        )
+
+        # ── [PipelineAttrition] structured funnel report ──────────────────────
+        def _pct(a: int, b: int) -> str:
+            return f"{100 * a // b if b else 0}%"
+        _prep_attrition = getattr(
+            __import__(
+                "opportunity_engine.equity_scanner_ai",
+                fromlist=["_LAST_PREPARED_STATS"],
+            ),
+            "_LAST_PREPARED_STATS", {},
+        )
+        _n_watchlist = _prep_attrition.get("watchlist_count", 0) if isinstance(_prep_attrition, dict) else 0
+        _n_prepared  = _prep_attrition.get("prepared_count",  0) if isinstance(_prep_attrition, dict) else 0
+        log.info(
+            "[PipelineAttrition] "
+            "watchlist=%d prepared=%d(-%.0f%%) "
+            "signals=%d(-%.0f%%) "
+            "strategy_lab=%d(-%.0f%%) "
+            "risk_control=%d(-%.0f%%) "
+            "simulation=%d(-%.0f%%) "
+            "approved=%d(-%.0f%%) "
+            "dominant_attrition=%s",
+            _n_watchlist,
+            _n_prepared,  100 - (100 * _n_prepared  // _n_watchlist  if _n_watchlist  else 100),
+            _n_generated, 100 - (100 * _n_generated // _n_prepared   if _n_prepared   else 100),
+            _n_strategy,  100 - (100 * _n_strategy  // _n_generated  if _n_generated  else 100),
+            _n_risk,      100 - (100 * _n_risk      // _n_strategy   if _n_strategy   else 100),
+            _n_sim,       100 - (100 * _n_sim       // _n_risk       if _n_risk       else 100),
+            _n_executed,  100 - (100 * _n_executed  // _n_sim        if _n_sim        else 100),
+            max(
+                [
+                    ("prepared_enrichment",  _n_watchlist  - _n_prepared),
+                    ("signal_generation",    _n_prepared   - _n_generated),
+                    ("strategy_lab",         _n_generated  - _n_strategy),
+                    ("risk_control",         _n_strategy   - _n_risk),
+                    ("simulation",           _n_risk       - _n_sim),
+                    ("debate_execution",     _n_sim        - _n_executed),
+                ],
+                key=lambda x: x[1],
+            )[0],
+        )
+
+        # ── Self-Diagnostic: "Why no trade?" synthesis ────────────────────────────
+        _diag.set_totals(
+            generated=_n_generated,
+            executed=_n_executed,
+            options_in=getattr(self, '_last_oqg_summary', {}).get('in', 0),
+            options_fast_path_passed=getattr(self, '_last_options_placed', 0),
+        )
+        _diag.generate()
+
+        # ── Forensic telemetry: execution stage (observational only) ─────────────
+        try:
+            from control_tower.pipeline_forensic_reporter import get_forensic_reporter as _gfr
+            _regime_val_f = (
+                getattr(snapshot.regime, "value", str(snapshot.regime))
+                if snapshot else "UNKNOWN"
+            )
+            _carry_cnt = len(self.trade_monitor.get_open_trades()) if hasattr(self.trade_monitor, "get_open_trades") else 0
+            _forensic_r = _gfr()
+            _forensic_r.record_execution_cycle(
+                candidates=_n_generated,
+                approved=_n_risk,
+                orders=_n_executed,
+                regime=_regime_val_f,
+                stale_count=_carry_cnt,
+            )
+            # Emit per-cycle pipeline tags for intraday observability
+            from opportunity_engine.equity_scanner_ai import _LAST_PREPARED_STATS as _fps
+            _prep_cnt = _fps.get("prepared_count", 0) if isinstance(_fps, dict) else 0
+            _inv_cnt  = _fps.get("invalidated_count", 0) if isinstance(_fps, dict) else 0
+            _forensic_r.emit_cycle_pipeline_tags(
+                cycle_num=getattr(self.system_monitor, "_cycle_id", 0),
+                prepared_count=_prep_cnt,
+                invalidated_count=_inv_cnt,
+                signals=_n_generated,
+                approved=_n_risk,
+                regime=_regime_val_f,
+            )
+        except Exception:
+            pass
 
         self.bus.publish(SystemEvent(
             event_type=EventType.CYCLE_COMPLETE,
@@ -874,6 +1286,58 @@ class MasterOrchestrator:
         self._last_snapshot = snapshot    # cache for EOD EDE cycle
         # Inform ODM of outcome so it can tune density tier next cycle
         self.odm.record_cycle(signals_generated=len(signals), approved_trades=len(sim_result.approved_trades))
+        # ── PER-CYCLE FEED HEALTH SUMMARY ─────────────────────────────
+        try:
+            from data_feeds import get_feed_manager as _gfm_cycle
+            _fm = _gfm_cycle()
+            log.info("[FeedHealth] %s", _fm.get_cycle_feed_summary())
+            # Market Truth Governor: log warnings, fire Telegram on SYNTHETIC
+            _fm.check_truth_governance()
+            # Phase 7: persistent CSV audit trail
+            _fm.write_cycle_audit()
+            _fm.reset_cycle_stats()
+            # Periodic token expiry check (warns at <24h and <6h)
+            _fm.dhan.check_token_expiry()
+        except Exception:
+            pass
+
+        # ── CAPTURE LAST CYCLE REPORT (for Telegram /cycle) ───────────
+        try:
+            from data_feeds.data_feed_manager import FeedTruthLevel as _FTL
+            from data_feeds import get_feed_manager as _gfm2
+            _fm2          = _gfm2()
+            _truth_lvl, _truth_mod = _fm2.get_current_truth_level()
+            _opts_lvl, _           = _fm2.get_options_truth_level()
+            import config as _cfg
+            _schedule = getattr(_cfg, "SCHEDULE", {})
+            _now_slot = datetime.now().hour * 100 + datetime.now().minute
+            _next_slot = next(
+                (t for t in sorted(_schedule.keys()) if t > _now_slot), None
+            )
+            self._last_cycle_report = {
+                "ts":           datetime.now().strftime("%d-%b %H:%M"),
+                "regime":       str(getattr(snapshot.regime, "value", snapshot.regime)),
+                "vix":          round(float(getattr(snapshot, "vix", 0.0)), 1),
+                "truth_level":  str(_truth_lvl),
+                "truth_mod":    _truth_mod,
+                "opts_truth":   str(_opts_lvl),
+                "feed_stats":   _fm2.get_cycle_stats_summary(),   # Phase 9
+                "executed":     [
+                    {
+                        "symbol":    r.get("symbol", "?"),
+                        "strategy":  r.get("strategy", "?"),
+                        "score":     round(float(r.get("score", 0)), 2),
+                        "direction": r.get("direction", "?"),
+                        "entry":     round(float(r.get("entry", 0)), 2),
+                    }
+                    for r in executed
+                ],
+                "signals_scanned": len(signals),
+                "next_slot":    f"{_next_slot // 100:02d}:{_next_slot % 100:02d}" if _next_slot else "—",
+            }
+        except Exception:
+            pass
+
         if executed:
             self._print_cycle_summary(executed, snapshot)
         else:
@@ -1075,6 +1539,66 @@ class MasterOrchestrator:
         )
         log.info("  %d signals after strategy lab", len(tested))
 
+        # ── [StrategyLabReject] forensic audit ────────────────────────────────
+        # Emit one structured line per signal that did NOT survive strategy lab
+        # so operators can identify the dominant rejection vector.
+        from strategy_lab.backtesting_ai import _BACKTEST_CACHE as _BT_CACHE_REF
+        from strategy_lab.strategy_generator_ai import STRATEGY_PARAMS as _SP_REF
+        _tested_syms  = {s.symbol for s in tested}
+        _matched_syms = {s.symbol for s in matched}
+        _reject_by_reason: dict = {}
+        _reject_by_strategy: dict = {}
+        for _s in signals:
+            if _s.symbol in _tested_syms:
+                continue  # survived
+            _strat    = getattr(_s, "strategy_name", "UNASSIGNED")
+            _bt_result = _BT_CACHE_REF.get(_strat)
+            _bt_score  = getattr(_bt_result, "composite_score", None) if _bt_result else None
+            _passes_gate = getattr(_bt_result, "passes_gate", None) if _bt_result else None
+            if _s.symbol not in _matched_syms:
+                # Dropped by assign_strategy: bear-market equity long, R:R below
+                # strategy min_rr, or MetaController active-set exclusion.
+                _rr = getattr(_s, "risk_reward_ratio", 0.0)
+                _assigned_strat = getattr(_s, "strategy_name", "UNKNOWN")
+                _params = _SP_REF.get(_assigned_strat, {})
+                _min_rr = _params.get("min_rr", 0.0)
+                if _rr < _min_rr:
+                    _rej_reason = f"RR_{_rr:.1f}_below_min_{_min_rr:.1f}"
+                elif _assigned_strat in (shm_disabled | perf_disabled):
+                    _rej_reason = "STRATEGY_DISABLED"
+                else:
+                    _rej_reason = "ASSIGN_REJECTED"
+            elif _strat in (shm_disabled | perf_disabled):
+                _rej_reason = "STRATEGY_DISABLED"
+            elif _passes_gate is False:
+                _rej_reason = "BACKTEST_GATE_FAIL"
+            else:
+                _rej_reason = "BACKTEST_SCORE_LOW"
+            _regime_match = (
+                getattr(snapshot.regime, "value", str(snapshot.regime))
+                if snapshot else "UNKNOWN"
+            )
+            _qgate = "PASS" if _passes_gate else ("FAIL" if _passes_gate is False else "NO_DATA")
+            log.info(
+                "[StrategyLabReject] symbol=%s strategy=%s rejection_reason=%s "
+                "backtest_score=%s regime_match=%s quality_gate=%s",
+                _s.symbol, _strat, _rej_reason,
+                f"{_bt_score:.3f}" if _bt_score is not None else "N/A",
+                _regime_match, _qgate,
+            )
+            _reject_by_reason[_rej_reason]    = _reject_by_reason.get(_rej_reason, 0) + 1
+            _reject_by_strategy[_strat]       = _reject_by_strategy.get(_strat, 0) + 1
+        _strategy_reject_count = len(signals) - len(tested)
+        if _strategy_reject_count:
+            log.info(
+                "[StrategyLabReject] AGGREGATE strategy_reject_count=%d "
+                "reject_by_strategy=%s reject_by_reason=%s",
+                _strategy_reject_count,
+                dict(sorted(_reject_by_strategy.items(), key=lambda x: -x[1])),
+                dict(sorted(_reject_by_reason.items(), key=lambda x: -x[1])),
+            )
+        self._last_sl_reject_summary = dict(_reject_by_reason)  # for TradeDiagnostic
+
         self.bus.publish(SystemEvent(
             event_type=EventType.STRATEGY_LAB_COMPLETE,
             source_agent="StrategyGeneratorAI",
@@ -1148,6 +1672,11 @@ class MasterOrchestrator:
 
         # ── LAYER B: Signal Quality Gate ────────────────────────────────
         qualified = self._options_quality_gate(signals, snapshot)
+        self._last_oqg_summary = {  # for TradeDiagnostic
+            "in": len(signals), "passed": len(qualified),
+            "rejected": len(signals) - len(qualified),
+        }
+        self._last_options_placed = 0  # reset; incremented per placed order below
         if not qualified:
             return
 
@@ -1182,6 +1711,7 @@ class MasterOrchestrator:
             ), signal_context=_sig_ctx)
 
             if order:
+                self._last_options_placed += 1
                 log.info(
                     "[OptionsFastPath] ✅ PLACED %s  %s  lots=%d  "
                     "max_loss=₹%.0f  DTE=%d  chain_quality=%.2f",
@@ -1282,10 +1812,20 @@ class MasterOrchestrator:
 
             # Parse signal metadata
             meta: dict = {}
+            _notes_parse_ok = False
+            _notes_raw = sig.notes or ""
             try:
-                meta = _json.loads(sig.notes or "{}")
-            except Exception:
-                pass
+                meta = _json.loads(_notes_raw or "{}")
+                _notes_parse_ok = True
+            except Exception as _pe:
+                # Should not happen after CRE/LiquidityGuard were fixed to use
+                # JSON-aware mutations.  Kept as a hard-stop safety net.
+                log.info(
+                    "[MetadataCorruptionDetected] "
+                    "module=master_orchestrator._options_quality_gate  "
+                    "symbol=%s  strategy=%s  error=%s  notes_snippet=%r",
+                    sym, strat, type(_pe).__name__, _notes_raw[:100],
+                )
 
             is_live      = meta.get("is_live", False)
             chain_qual   = meta.get("chain_quality", 0.0)
@@ -1293,8 +1833,59 @@ class MasterOrchestrator:
             iv_rank      = meta.get("iv_rank", 50.0)
             chain_issues = meta.get("chain_issues", [])
 
+            # ── Capability lookup (used by both audit lines below) ─────────────
+            _cap_source = "UNKNOWN"
+            _cap_live   = False
+            try:
+                from data_feeds import get_feed_manager as _gfm_qual
+                _cap_info   = _gfm_qual().get_options_capability(sym)
+                _cap_source = _cap_info.get("source", "UNKNOWN")
+                _cap_live   = _cap_info.get("chain_live", False)
+            except Exception:
+                pass
+
+            # [MetadataIntegrityAudit] — emitted for every signal ──────────────
+            log.info(
+                "[MetadataIntegrityAudit] symbol=%s  strategy=%s  "
+                "notes_parse_ok=%s  metadata_keys=%s  is_live=%s  source=%s",
+                sym, strat,
+                _notes_parse_ok,
+                sorted(meta.keys()),
+                is_live,
+                _cap_source,
+            )
+
+            # [OptionsDecisionTrace] — full pipeline journey ───────────────────
+            _iv_source = (
+                "DHAN_LIVE" if _cap_source == "DHAN"
+                else "BS_SEED" if _cap_source in ("ANGELONE", "NSE")
+                else "UNKNOWN"
+            )
+            log.info(
+                "[OptionsDecisionTrace] symbol=%s  strategy=%s  confidence=%.1f  "
+                "capability_source=%s  capability_live=%s  "
+                "signal_dte=%d  signal_iv_rank=%.0f  "
+                "notes_parse_ok=%s  is_live_in_notes=%s",
+                sym, strat, sig.confidence,
+                _cap_source, _cap_live,
+                dte, iv_rank,
+                _notes_parse_ok,
+                is_live,
+            )
+
             # Check 1: Live data gate
             if not is_live:
+                log.info(
+                    "[OptionsQualityAudit] symbol=%s  strategy=%s  "
+                    "source=%s  chain_live=%s  iv_source=%s  iv_rank=%.0f  "
+                    "is_synthetic=%s  rejection_reason=%s  notes_parse_ok=%s",
+                    sym, strat,
+                    _cap_source, _cap_live,
+                    _iv_source, iv_rank,
+                    not _cap_live,
+                    "notes_json_corrupted" if not _notes_parse_ok else "is_live_false_in_notes",
+                    _notes_parse_ok,
+                )
                 log.info(
                     "[OptionsQuality] ❌ [C1] %s %s — synthetic data, not permitted.",
                     sym, strat,
@@ -1416,6 +2007,169 @@ class MasterOrchestrator:
         sized      = self.portfolio_allocator.size_positions(checked, snapshot)
         stressed   = self.stress_test_ai.validate(sized, snapshot)
         log.info("  %d signals passed risk control", len(stressed))
+
+        # ── [RiskControlDecision] for PortfolioAllocationAI drops ─────────────
+        from risk_control.risk_manager_ai import MIN_RR_RATIO as _MIN_RR
+        _pa_out_syms = {s.symbol for s in sized}
+        for _s in checked:
+            if _s.symbol not in _pa_out_syms:
+                _req_rr = 0.5 if _s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD) else _MIN_RR
+                log.info(
+                    "[RiskControlDecision] symbol=%s strategy=%s confidence=%.2f "
+                    "conviction=%.2f rr_ratio=%.2f required_rr=%.1f "
+                    "heat_before=%.4f heat_after=%.4f "
+                    "rejection_reason=POSITION_LIMIT_REJECTION exact=SIZING_DROP_PA",
+                    _s.symbol, _s.strategy_name, _s.confidence,
+                    _s.confidence / 10.0, _s.risk_reward_ratio, _req_rr,
+                    self.risk_manager._current_portfolio_heat,
+                    self.risk_manager._current_portfolio_heat,
+                )
+        _pa_rej = len(checked) - len(sized)
+
+        # ── [RiskControlDecision] for StressTestAI drops ──────────────────────
+        _st_out_syms = {s.symbol for s in stressed}
+        for _s in sized:
+            if _s.symbol not in _st_out_syms:
+                _req_rr = 0.5 if _s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD) else _MIN_RR
+                log.info(
+                    "[RiskControlDecision] symbol=%s strategy=%s confidence=%.2f "
+                    "conviction=%.2f rr_ratio=%.2f required_rr=%.1f "
+                    "heat_before=%.4f heat_after=%.4f "
+                    "rejection_reason=OTHER_EXACT exact=STRESS_TEST_FAIL",
+                    _s.symbol, _s.strategy_name, _s.confidence,
+                    _s.confidence / 10.0, _s.risk_reward_ratio, _req_rr,
+                    self.risk_manager._current_portfolio_heat,
+                    self.risk_manager._current_portfolio_heat,
+                )
+        _st_rej = len(sized) - len(stressed)
+
+        # ── [RiskControlSummary] ──────────────────────────────────────────────
+        _rm_s = getattr(self.risk_manager, "_last_reject_summary", {})
+        _rc_full = {
+            "rr_rejected":              _rm_s.get("RR_REJECTION", 0),
+            "heat_rejected":            _rm_s.get("HEAT_REJECTION", 0),
+            "cooldown_rejected":        _rm_s.get("COOLDOWN_REJECTION", 0),
+            "governance_rejected":      _rm_s.get("GOVERNANCE_REJECTION", 0),
+            "liquidity_rejected":       _rm_s.get("LIQUIDITY_REJECTION", 0),
+            "position_limit_rejected":  _rm_s.get("POSITION_LIMIT_REJECTION", 0) + _pa_rej,
+            "sector_rejected":          _rm_s.get("SECTOR_LIMIT_REJECTION", 0),
+            "correlation_rejected":     _rm_s.get("CORRELATION_REJECTION", 0),
+            "stale_rejected":           _rm_s.get("STALE_SIGNAL_REJECTION", 0),
+            "other_rejected":           _rm_s.get("OTHER_EXACT", 0) + _st_rej,
+        }
+        _rc_total_rej = sum(_rc_full.values())
+        _rc_dom_key   = max(_rc_full, key=_rc_full.get) if _rc_total_rej > 0 else "none"
+        _rc_signals_in = len(signals)
+        log.info(
+            "[RiskControlSummary] signals_in=%d signals_out=%d "
+            "rr_rejected=%d heat_rejected=%d cooldown_rejected=%d governance_rejected=%d "
+            "liquidity_rejected=%d position_limit_rejected=%d sector_rejected=%d "
+            "correlation_rejected=%d stale_rejected=%d other_rejected=%d "
+            "dominant_reason=%s",
+            _rc_signals_in, len(stressed),
+            _rc_full["rr_rejected"], _rc_full["heat_rejected"],
+            _rc_full["cooldown_rejected"], _rc_full["governance_rejected"],
+            _rc_full["liquidity_rejected"], _rc_full["position_limit_rejected"],
+            _rc_full["sector_rejected"], _rc_full["correlation_rejected"],
+            _rc_full["stale_rejected"], _rc_full["other_rejected"],
+            _rc_dom_key,
+        )
+
+        # ── [RiskControlVerdict] ─────────────────────────────────────────────
+        if _rc_signals_in == 0 or _rc_total_rej == 0:
+            _rc_verdict = "RISKCONTROL_HEALTHY"
+        elif _rc_dom_key in ("rr_rejected", "heat_rejected"):
+            _rc_verdict = "RISKCONTROL_HEALTHY"
+        elif _rc_dom_key in (
+            "governance_rejected", "other_rejected", "position_limit_rejected",
+            "sector_rejected", "stale_rejected", "liquidity_rejected",
+            "correlation_rejected",
+        ):
+            _rc_verdict = "RISKCONTROL_OVER_RESTRICTIVE"
+        else:
+            _rc_verdict = "INSUFFICIENT_EVIDENCE"
+        log.info(
+            "[RiskControlVerdict] verdict=%s dominant_reason=%s "
+            "signals_in=%d signals_out=%d total_rejected=%d",
+            _rc_verdict, _rc_dom_key, _rc_signals_in, len(stressed), _rc_total_rej,
+        )
+
+        # ── Update _last_rc_reject_summary for TradeDiagnostic blocker string ─
+        self._last_rc_reject_summary = {
+            "rr":   _rc_full["rr_rejected"],
+            "heat": _rc_full["heat_rejected"],
+            "other": (
+                _rc_full["governance_rejected"] + _rc_full["cooldown_rejected"] +
+                _rc_full["liquidity_rejected"]  + _rc_full["position_limit_rejected"] +
+                _rc_full["sector_rejected"]     + _rc_full["correlation_rejected"] +
+                _rc_full["stale_rejected"]      + _rc_full["other_rejected"]
+            ),
+        }
+
+        # ── [BorderlineConfidenceAudit] + shadow persistence ─────────────────
+        try:
+            import json as _json_bl
+            from pathlib import Path as _Path_bl
+            from datetime import datetime as _dt_bl
+            from risk_control.risk_manager_ai import (
+                get_last_cycle_borderline_rejections as _get_bl,
+            )
+            _bl_list = _get_bl()
+            _bl_regime = str(getattr(snapshot, "regime", "UNKNOWN"))
+            for _bl in _bl_list:
+                log.info(
+                    "[BorderlineConfidenceAudit] symbol=%s strategy=%s "
+                    "confidence=%.2f conviction=%.2f rr_ratio=%.2f "
+                    "sector=%s regime=%s "
+                    "would_pass_simulation=%s would_pass_debate=%s",
+                    _bl["symbol"], _bl["strategy"],
+                    _bl["confidence"], _bl["conviction"], _bl["rr_ratio"],
+                    _bl.get("sector", "UNKNOWN"), _bl_regime,
+                    _bl["would_pass_simulation"], _bl["would_pass_debate"],
+                )
+            # Persist to shadow tracking file for [BorderlineOutcome] EOD
+            if _bl_list:
+                _bl_path = _Path_bl("/app/data") if _Path_bl("/app/data").exists() \
+                    else _Path_bl(__file__).resolve().parents[1] / "data"
+                _bl_file = _bl_path / "borderline_rejections.json"
+                _existing: list = []
+                if _bl_file.exists():
+                    try:
+                        _existing = _json_bl.loads(_bl_file.read_text(encoding="utf-8"))
+                    except Exception:
+                        _existing = []
+                _today_str = _dt_bl.now().strftime("%Y-%m-%d")
+                for _bl in _bl_list:
+                    # Deduplicate: same symbol + same rejection date
+                    _key = (_bl["symbol"], _today_str, _bl["strategy"])
+                    if not any(
+                        e.get("symbol") == _key[0]
+                        and e.get("rejection_date") == _key[1]
+                        and e.get("strategy") == _key[2]
+                        for e in _existing
+                    ):
+                        _existing.append({
+                            "symbol":        _bl["symbol"],
+                            "strategy":      _bl["strategy"],
+                            "confidence":    _bl["confidence"],
+                            "rr_ratio":      _bl["rr_ratio"],
+                            "entry_price":   _bl["entry_price"],
+                            "stop_loss":     _bl["stop_loss"],
+                            "direction":     _bl["direction"],
+                            "rejection_date": _today_str,
+                            "regime":        _bl_regime,
+                            "sector":        _bl.get("sector", "UNKNOWN"),
+                            "would_pass_simulation": _bl["would_pass_simulation"],
+                            "would_pass_debate":     _bl["would_pass_debate"],
+                            "day1_price":    None,
+                            "day3_price":    None,
+                            "day5_price":    None,
+                        })
+                _bl_file.write_text(
+                    _json_bl.dumps(_existing, indent=2), encoding="utf-8"
+                )
+        except Exception as _bl_exc:
+            log.debug("[BorderlineConfidenceAudit] block skipped: %s", _bl_exc)
 
         rejected_count = len(signals) - len(stressed)
         if rejected_count:
@@ -1622,6 +2376,71 @@ class MasterOrchestrator:
         votes    = self.debate_system.run(signal, snapshot)
         decision = self.decision_engine.decide(signal, votes, snapshot)
 
+        # ── Market Truth Governance ─────────────────────────────────────────
+        # EQUITY truth controls hard suppression/cap (equity LTPs are the source
+        # of truth for P&L).  OPTIONS truth applies a modest size penalty only —
+        # it must never cause a hard block on equity trades.
+        try:
+            from data_feeds import get_feed_manager as _gfm_dd
+            from data_feeds.data_feed_manager import FeedTruthLevel, OptionsTruthLevel
+            _fm_gov      = _gfm_dd()
+            _equity_lvl, _ = _fm_gov.get_current_truth_level()
+            _opts_lvl, _   = _fm_gov.get_options_truth_level()
+
+            # ── EQUITY TRUTH: hard rules ─────────────────────────────────────
+            if decision.approved and _equity_lvl == FeedTruthLevel.SYNTHETIC:
+                log.warning(
+                    "[MarketTruthGovernor] EQUITY_SYNTHETIC — "
+                    "SUPPRESSING new trade approval for %s", signal.symbol,
+                )
+                decision.approved               = False
+                decision.trade_type             = "REJECT"
+                decision.position_size_modifier = 0.0
+                decision.reasoning += (
+                    " | [GOVERNANCE] BLOCKED: 100% synthetic equity data — no live truth"
+                )
+
+            elif decision.approved and decision.trade_type == "FULL" and _equity_lvl == FeedTruthLevel.CRITICAL:
+                log.warning(
+                    "[MarketTruthGovernor] EQUITY_CRITICAL — "
+                    "downgrading %s FULL→PARTIAL, size capped 50%%", signal.symbol,
+                )
+                decision.trade_type             = "PARTIAL"
+                decision.position_size_modifier = min(decision.position_size_modifier, 0.5)
+                decision.reasoning += (
+                    " | [GOVERNANCE] Size capped 50%: CRITICAL equity feed (>60% sim)"
+                )
+
+            # ── OPTIONS TRUTH: soft penalty only — never a hard block ────────
+            if decision.approved and _opts_lvl == OptionsTruthLevel.SYNTHETIC:
+                _size_cap = 0.60
+                decision.position_size_modifier = min(decision.position_size_modifier, _size_cap)
+                if decision.trade_type == "FULL":
+                    decision.trade_type = "PARTIAL"
+                log.info(
+                    "[OptionsGovernance] equity_truth=%s options_truth=SYNTHETIC "
+                    "action=PARTIAL_DOWNGRADE size_cap=60%% symbol=%s",
+                    _equity_lvl, signal.symbol,
+                )
+                decision.reasoning += (
+                    f" | [GOVERNANCE] Options synthetic (equity={_equity_lvl}): size capped 60%%"
+                )
+
+            elif decision.approved and _opts_lvl == OptionsTruthLevel.DEGRADED_CACHE:
+                _size_cap = 0.80
+                decision.position_size_modifier = min(decision.position_size_modifier, _size_cap)
+                log.info(
+                    "[OptionsGovernance] equity_truth=%s options_truth=DEGRADED_CACHE "
+                    "size_cap=80%% symbol=%s",
+                    _equity_lvl, signal.symbol,
+                )
+                decision.reasoning += (
+                    " | [GOVERNANCE] Options cache-degraded: size capped 80%%"
+                )
+
+        except Exception:
+            pass
+
         if decision.approved:
             log.info("  ✅ %s", decision.summary())
             self.bus.publish(DecisionEvent(
@@ -1726,6 +2545,10 @@ class MasterOrchestrator:
             ))
         return None
 
+    def get_last_cycle_report(self) -> dict:
+        """Return the most recently captured cycle summary (for Telegram /cycle)."""
+        return dict(self._last_cycle_report)
+
     def _print_cycle_summary(self, executed: List[dict],
                               snapshot: MarketSnapshot) -> None:
         """Print a formatted cycle-end table including live LTP for data verification."""
@@ -1803,10 +2626,10 @@ class MasterOrchestrator:
         # Fetch live prices
         _live_pf: dict = {}
         _degraded_syms: set = set()
+        _syms = list({o.symbol for o in restored})   # unique symbols (denominator for label)
         try:
             from data_feeds.market_data_router import get_market_data_router
             _router  = get_market_data_router()
-            _syms    = list({o.symbol for o in restored})
             _quotes  = _router.get_live_prices(_syms)
             _degraded_syms = _router.get_degraded_symbols()
             for sym, q in _quotes.items():
@@ -1911,7 +2734,7 @@ class MasterOrchestrator:
                 from notifications.notifier_manager import get_notifier
                 _lines = [
                     f"Restart governance pass: {len(restored)} position(s) checked",
-                    f"Gap: {_gap_sec // 60} min  Live prices: {len(_live_pf)}/{len(restored)}",
+                    f"Gap: {_gap_sec // 60} min  Live prices: {len(_live_pf)}/{len(_syms)}",
                 ]
                 if _immediate_actions:
                     _lines.append(
@@ -2232,6 +3055,358 @@ class MasterOrchestrator:
             priority=Priority.NORMAL,
             description="eod_learning",
         )
+
+    def _run_saturday_intelligence(self) -> None:
+        """
+        Weekend Intelligence — Saturday deep accumulation cycle.
+        Runs only on Saturdays (weekday == 5). Guard is here so the
+        scheduler can use every().day.at() without risk of firing on
+        weekdays.
+        """
+        if datetime.now().weekday() != 5:
+            return
+        try:
+            self.weekend_intelligence.run_saturday_cycle()
+        except Exception as exc:
+            log.error("[WeekendResearch] Saturday cycle crashed: %s", exc, exc_info=True)
+
+    def _run_sunday_intelligence(self) -> None:
+        """
+        Weekend Intelligence — Sunday Monday preparation cycle.
+        Runs only on Sundays (weekday == 6).
+        """
+        if datetime.now().weekday() != 6:
+            return
+        try:
+            self.weekend_intelligence.run_sunday_cycle()
+        except Exception as exc:
+            log.error("[MondayPreparation] Sunday cycle crashed: %s", exc, exc_info=True)
+
+    def _run_post_market_scan(self) -> None:
+        """
+        Phase D — Post-market deep scan.  Scheduled at 16:45 IST.
+        Runs ~20 min, writes prepared candidates to data/daily_candidates.json.
+        Skipped on NSE holidays; skipped if SCANNER_SHADOW_MODE=True until
+        shadow validation is complete.
+        """
+        try:
+            from config import is_nse_holiday
+            if is_nse_holiday():
+                log.info("[Orchestrator] NSE HOLIDAY — post-market scan skipped.")
+                return
+            log.info("[Orchestrator] 16:45 IST — starting Phase D post-market scanner.")
+            from opportunity_engine.market_scanner import run_scan
+            success = run_scan()
+            if success:
+                log.info("[Orchestrator] Phase D scanner complete — candidate store updated.")
+            else:
+                log.warning("[Orchestrator] Phase D scanner returned failure — static fallback active tomorrow.")
+        except Exception as exc:
+            log.error("[Orchestrator] Phase D scanner crashed: %s", exc, exc_info=True)
+
+        # ── Observability: UniverseGenerationAudit ────────────────────────
+        try:
+            import json as _json_uga
+            from pathlib import Path as _Path_uga
+            from datetime import date as _date_uga
+            _uga_today = _date_uga.today().isoformat()
+            _uga_path  = _Path_uga("data/daily_candidates.json")
+            _uga_n     = 0
+            _uga_fresh = False
+            _uga_source = "UNKNOWN"
+            if _uga_path.exists():
+                try:
+                    _uga_data  = _json_uga.loads(_uga_path.read_text(encoding="utf-8"))
+                    _uga_n     = len(_uga_data.get("candidates", []))
+                    _uga_mtime = _uga_path.stat().st_mtime
+                    _uga_fresh = _date_uga.fromtimestamp(_uga_mtime).isoformat() == _uga_today
+                    _uga_source = _uga_data.get("source", "phase_d")
+                except Exception:
+                    pass
+            log.info(
+                "[UniverseGenerationAudit] date=%s candidates_written=%d fresh=%s source=%s",
+                _uga_today, _uga_n, _uga_fresh, _uga_source,
+            )
+        except Exception as _uga_exc:
+            log.debug("[UniverseGenerationAudit] skipped: %s", _uga_exc)
+
+    def _run_premarket_refiner(self) -> None:
+        """
+        Phase G — Pre-market refinement.  Scheduled at 08:45 IST.
+        Applies overnight gap / conviction-decay re-scoring to prepared candidates.
+        Skipped if USE_PREMARKET_REFINEMENT is False or candidate store is stale.
+        """
+        try:
+            from config import USE_PREMARKET_REFINEMENT
+            if not USE_PREMARKET_REFINEMENT:
+                return
+            from config import is_nse_holiday
+            if is_nse_holiday():
+                log.info("[Orchestrator] NSE HOLIDAY — premarket refiner skipped.")
+                return
+            log.info("[Orchestrator] 08:45 IST — starting Phase G premarket refiner.")
+            from opportunity_engine.premarket_refiner import run_premarket_refinement
+            run_premarket_refinement()
+        except ImportError:
+            # Phase G module not yet implemented — silently skip
+            log.debug("[Orchestrator] Phase G premarket_refiner not yet implemented — skipping.")
+        except Exception as exc:
+            log.error("[Orchestrator] Premarket refiner crashed: %s", exc, exc_info=True)
+
+        # ── Observability: PremarketReadinessAudit ────────────────────────
+        try:
+            import json as _json_pmra
+            from pathlib import Path as _Path_pmra
+            from datetime import datetime as _dt_pmra, date as _date_pmra
+            _pmra_path = _Path_pmra("data/daily_candidates.json")
+            _pmra_today = _date_pmra.today().isoformat()
+            _pmra_n = 0
+            _pmra_fresh = False
+            _pmra_refined_at = None
+            if _pmra_path.exists():
+                try:
+                    _pmra_data = _json_pmra.loads(_pmra_path.read_text(encoding="utf-8"))
+                    _pmra_n = len(_pmra_data.get("candidates", []))
+                    _pmra_mtime = _pmra_path.stat().st_mtime
+                    _pmra_fresh = _date_pmra.fromtimestamp(_pmra_mtime).isoformat() == _pmra_today
+                    _pmra_refined_at = _pmra_data.get("refined_at") or _pmra_data.get("prepared_at")
+                except Exception:
+                    pass
+            log.info(
+                "[PremarketReadinessAudit] date=%s candidates=%d fresh=%s refined_at=%s",
+                _pmra_today, _pmra_n, _pmra_fresh, _pmra_refined_at or "UNKNOWN",
+            )
+        except Exception as _pmra_exc:
+            log.debug("[PremarketReadinessAudit] skipped: %s", _pmra_exc)
+
+        # ── Pre-Market Configuration Integrity Audit ────────────────────────────
+        try:
+            from utils.deployment_integrity_auditor import emit_deployment_integrity_audit as _dia
+            _dia(context="premarket")
+        except Exception as _dia_exc:
+            log.debug("[DeploymentIntegrityAudit] premarket skipped: %s", _dia_exc)
+
+    # ── Fix 1: Intraday expired-candidate refresh ─────────────────────────────
+
+    def _run_intraday_refresh(self, label: str = "intraday") -> None:
+        """
+        Fix 1 — Mid-session refresh of expired prepared candidates.
+        Scheduled at 11:30 IST and 13:30 IST.
+
+        Fetches current LTPs for all 65 prepared candidates (expired + valid).
+        Candidates whose price is still within ±5% of their stored base_ltp
+        have their valid_until_utc extended by 4 hours.
+
+        Runs only on market days; safely skips on NSE holidays.
+        Never modifies RSI/ATR/S&R levels — only extends TTL for structurally
+        unchanged setups so they remain in the prepared pool until session end.
+        """
+        _ret_scheduled  = datetime.now().strftime("%H:%M:%S")
+        _ret_triggered  = False
+        _ret_skipped    = False
+        _ret_skip_reason = "NOT_REACHED"
+        try:
+            from config import is_nse_holiday
+            if is_nse_holiday():
+                _ret_skipped, _ret_skip_reason = True, "NSE_HOLIDAY"
+                log.info(
+                    "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                    "triggered=False skipped=True reason=NSE_HOLIDAY label=%s",
+                    _ret_scheduled, _ret_scheduled, label,
+                )
+                return
+            if not self._is_market_session():
+                _ret_skipped, _ret_skip_reason = True, "OUTSIDE_MARKET_HOURS"
+                log.info(
+                    "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                    "triggered=False skipped=True reason=OUTSIDE_MARKET_HOURS label=%s",
+                    _ret_scheduled, _ret_scheduled, label,
+                )
+                log.debug("[IntradayRefresh] Outside market hours — skipped (%s).", label)
+                return
+
+            from opportunity_engine.candidate_store import CandidateStore, STORE_FILE
+            import json
+
+            if not STORE_FILE.exists():
+                _ret_skipped, _ret_skip_reason = True, "NO_STORE_FILE"
+                log.info(
+                    "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                    "triggered=False skipped=True reason=NO_STORE_FILE label=%s",
+                    _ret_scheduled, _ret_scheduled, label,
+                )
+                log.debug("[IntradayRefresh] No store file — skipped (%s).", label)
+                return
+
+            payload   = json.loads(STORE_FILE.read_text(encoding="utf-8"))
+            candidates = payload.get("candidates", [])
+            all_syms  = [c["symbol"] for c in candidates if c.get("symbol")]
+            if not all_syms:
+                _ret_skipped, _ret_skip_reason = True, "NO_CANDIDATES"
+                log.info(
+                    "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                    "triggered=False skipped=True reason=NO_CANDIDATES label=%s",
+                    _ret_scheduled, _ret_scheduled, label,
+                )
+                return
+
+            # Count stale before refresh
+            from datetime import timezone as _tz
+            _now_utc = datetime.now(_tz.utc)
+
+            def _count_stale(cands: list) -> int:
+                total = 0
+                for _c in cands:
+                    vu = _c.get("valid_until_utc") or ""
+                    if not vu:
+                        continue
+                    try:
+                        if datetime.fromisoformat(vu.replace("Z", "+00:00")) < _now_utc:
+                            total += 1
+                    except Exception:
+                        pass
+                return total
+
+            _stale_before = _count_stale(candidates)
+
+            _ret_triggered = True
+            _ret_actual    = datetime.now().strftime("%H:%M:%S")
+            log.info(
+                "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                "triggered=True skipped=False reason=OK label=%s "
+                "candidates_total=%d stale_before=%d",
+                _ret_scheduled, _ret_actual, label, len(candidates), _stale_before,
+            )
+            log.info("[IntradayRefresh] %s — fetching LTPs for %d prepared candidates...",
+                     label, len(all_syms))
+
+            try:
+                from data_feeds import get_feed_manager
+                feed = get_feed_manager()
+                ns_syms = [f"{s}.NS" for s in all_syms]
+                quotes  = feed.get_multiple_quotes(ns_syms)
+                prices: dict = {}
+                for ns_sym, q in quotes.items():
+                    bare = ns_sym.replace(".NS", "")
+                    if q is not None and hasattr(q, "ltp") and q.ltp and q.ltp > 0:
+                        prices[bare] = float(q.ltp)
+            except Exception as exc:
+                log.warning("[IntradayRefresh] LTP fetch failed: %s — refresh aborted.", exc)
+                log.info(
+                    "[RefreshCandidateAudit] label=%s candidates_examined=%d "
+                    "candidates_refreshed=0 candidates_skipped=%d "
+                    "expired_before_refresh=%d failure_reason=LTP_FETCH_FAILED",
+                    label, len(candidates), len(candidates), _stale_before,
+                )
+                log.info(
+                    "[RefreshSummary] refresh_runs=1 total_candidates_refreshed=0 "
+                    "stale_before=%d stale_after=%d dominant_reason=LTP_FETCH_FAILED",
+                    _stale_before, _stale_before,
+                )
+                return
+
+            extended = CandidateStore.refresh_expired(prices, extend_hours=4.0)
+
+            # Recount stale after refresh
+            _payload_after = json.loads(STORE_FILE.read_text(encoding="utf-8"))
+            _cands_after   = _payload_after.get("candidates", [])
+            _stale_after   = _count_stale(_cands_after)
+            _prices_found  = sum(1 for s in all_syms if s in prices)
+            _skipped_count = len(all_syms) - _prices_found
+
+            log.info(
+                "[RefreshCandidateAudit] label=%s candidates_examined=%d "
+                "candidates_refreshed=%d candidates_skipped=%d "
+                "expired_before_refresh=%d prices_found=%d prices_missing=%d",
+                label, len(candidates), extended, _skipped_count,
+                _stale_before, _prices_found, _skipped_count,
+            )
+            log.info(
+                "[RefreshSummary] refresh_runs=1 total_candidates_refreshed=%d "
+                "stale_before=%d stale_after=%d dominant_reason=%s",
+                extended, _stale_before, _stale_after,
+                "TTL_EXTENDED" if extended > 0 else
+                ("NO_PRICES" if _prices_found == 0 else "PRICE_DRIFT_EXCEEDED"),
+            )
+
+            log.info("[IntradayRefresh] %s complete — %d/%d expired candidates revived.",
+                     label, extended, len(all_syms))
+
+        except Exception as exc:
+            log.error("[IntradayRefresh] %s crashed: %s", label, exc, exc_info=True)
+            if not _ret_triggered:
+                log.info(
+                    "[RefreshExecutionTrace] scheduled_time=%s actual_time=%s "
+                    "triggered=False skipped=True reason=EXCEPTION label=%s error=%s",
+                    _ret_scheduled, datetime.now().strftime("%H:%M:%S"), label, exc,
+                )
+
+    # ── Fix 7: Weekly nifty500_universe.json rebuild ──────────────────────────
+
+    def _check_scanner_events(self) -> None:
+        """
+        V2 — Poll for pending event-driven mini rescan requests from equity_scanner_ai.
+        Called every 5 minutes by the position-monitor slot during market hours.
+
+        Handles the event by running _run_intraday_refresh() which re-fetches
+        LTPs and extends TTL for structurally unchanged candidates.
+        Trigger events: POOL_EXHAUSTION, REGIME_TRANSITION, BREADTH_COLLAPSE,
+        VIX_SURGE, EXPLORATION_STARVATION.
+        """
+        try:
+            from opportunity_engine.equity_scanner_ai import get_pending_mini_rescan
+            event = get_pending_mini_rescan()
+            if not event:
+                return
+            reason   = event.get("reason", "UNKNOWN")
+            priority = event.get("priority", "NORMAL")
+            log.info(
+                "[ScannerEvent] Mini rescan requested: %s priority=%s — running intraday refresh.",
+                reason, priority,
+            )
+            label = f"event_{reason.split(':')[0].lower()}"
+            self._run_intraday_refresh(label=label)
+        except Exception as exc:
+            log.debug("[ScannerEvent] Poll failed: %s", exc)
+
+    def _run_weekly_universe_rebuild(self) -> None:
+        """
+        Fix 7 — Rebuild nifty500_universe.json every Monday at 08:30 IST.
+        Runs the Phase D market_scanner in universe-rebuild-only mode so the
+        source pool for the 16:45 IST post-market scan is never more than
+        one week stale.
+
+        Guard: only runs on Mondays (weekday == 0).  If the existing file is
+        less than 24 hours old the rebuild is skipped (e.g. if today's 16:45
+        scan already refreshed it).
+        """
+        if datetime.now().weekday() != 0:   # 0 = Monday
+            return
+        try:
+            from config import is_nse_holiday
+            if is_nse_holiday():
+                log.info("[UniverseRebuild] NSE HOLIDAY (Monday) — universe rebuild skipped.")
+                return
+
+            import time as _time
+            from pathlib import Path as _Path
+            _universe_file = _Path(__file__).parent.parent / "data" / "nifty500_universe.json"
+            if _universe_file.exists():
+                age_h = (_time.time() - _universe_file.stat().st_mtime) / 3600.0
+                if age_h < 24.0:
+                    log.info("[UniverseRebuild] nifty500_universe.json is only %.1fh old — skipping.", age_h)
+                    return
+
+            log.info("[UniverseRebuild] Monday 08:30 — rebuilding nifty500_universe.json...")
+            from opportunity_engine.market_scanner import run_scan
+            success = run_scan()
+            if success:
+                log.info("[UniverseRebuild] Universe rebuild complete — nifty500_universe.json refreshed.")
+            else:
+                log.warning("[UniverseRebuild] Universe rebuild returned failure — previous file retained.")
+        except Exception as exc:
+            log.error("[UniverseRebuild] Crashed: %s", exc, exc_info=True)
+
 
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
@@ -2618,13 +3793,1096 @@ class MasterOrchestrator:
         except Exception as _shm_tick_exc:
             log.warning("[EOD] SHM tick_session failed: %s", _shm_tick_exc)
 
+        # ── PCR Cache Quality Summary ──────────────────────────────────────
+        try:
+            self.market_data_ai.emit_pcr_cache_summary()
+        except Exception as _pcr_sum_exc:
+            log.warning("[EOD] PCR cache summary failed: %s", _pcr_sum_exc)
+
+        # ── Phase 6: Dhan daily data-feed summary ─────────────────────────
+        try:
+            from data_feeds import get_feed_manager
+            _fm = get_feed_manager()
+            _dhan = getattr(_fm, "_dhan_feed", None) or getattr(_fm, "dhan_feed", None)
+            if _dhan is not None and hasattr(_dhan, "emit_daily_summary"):
+                _dhan.emit_daily_summary()
+            else:
+                log.debug("[EOD] DhanFeed not accessible via feed_manager — skipping emit_daily_summary")
+        except Exception as _dhan_sum_exc:
+            log.warning("[EOD] DhanFeed daily summary failed: %s", _dhan_sum_exc)
+
+        # ── Symbol Normalization Health ────────────────────────────────────
+        try:
+            from utils.symbol_utils import get_normalization_health as _gnh
+            from utils.symbol_utils import reset_normalization_counters as _rsc
+            _h = _gnh()
+            log.info(
+                "[SymbolNormalizationHealth] symbols_processed=%d symbols_normalized=%d "
+                "normalization_rate=%.6f lookup_failures_prevented=%d",
+                _h["symbols_processed"], _h["symbols_normalized"],
+                _h["normalization_rate"], _h["lookup_failures_prevented"],
+            )
+            _rsc()
+        except Exception as _sym_e:
+            log.debug("[SymbolNormalizationHealth] skipped: %s", _sym_e)
+
+        # ── Options OI EOD Summary ─────────────────────────────────────────
+        try:
+            from data_feeds import get_feed_manager as _get_fm_ois
+            _fm_ois  = _get_fm_ois()
+            _ois_syms = ["NIFTY", "BANKNIFTY"]
+            _ois_checked = 0
+            _ois_with_oi = 0
+            _ois_without_oi = 0
+            _ois_pcr_vals: list = []
+            _ois_fail_reasons: list = []
+            for _ois_sym in _ois_syms:
+                _ois_st  = getattr(_fm_ois, "_options_chain_state", {}).get(_ois_sym, {})
+                _ois_ch  = _ois_st.get("chain")
+                _ois_checked += 1
+                if _ois_ch is None:
+                    _ois_without_oi += 1
+                    _ois_fail_reasons.append(f"{_ois_sym}:NO_CHAIN")
+                    continue
+                _ois_toi = _ois_ch.total_oi or 0
+                if _ois_toi > 0:
+                    _ois_with_oi += 1
+                else:
+                    _ois_without_oi += 1
+                    # determine why: are any contracts non-zero?
+                    _sample_c = next((c for c in _ois_ch.contracts if (c.oi or 0) > 0), None)
+                    _ois_fail_reasons.append(
+                        f"{_ois_sym}:ZERO_TOTAL_OI_but_contract_oi_nonzero={_sample_c is not None}"
+                    )
+                if _ois_ch.pcr:
+                    _ois_pcr_vals.append(_ois_ch.pcr)
+            _avg_pcr_ois  = sum(_ois_pcr_vals) / len(_ois_pcr_vals) if _ois_pcr_vals else 0.0
+            _dom_fail_ois = _ois_fail_reasons[0] if _ois_fail_reasons else "NONE"
+            log.info(
+                "[OptionsOISummary] chains_checked=%d chains_with_oi=%d "
+                "chains_without_oi=%d avg_pcr=%.4f dominant_failure_reason=%s",
+                _ois_checked, _ois_with_oi, _ois_without_oi,
+                _avg_pcr_ois, _dom_fail_ois,
+            )
+        except Exception as _ois_exc:
+            log.debug("[OptionsOISummary] skipped: %s", _ois_exc)
+
+        # ── EOD Configuration Integrity Audit ────────────────────────────────
+        try:
+            from utils.deployment_integrity_auditor import emit_deployment_integrity_audit as _dia_eod
+            _dia_eod(context="eod")
+        except Exception as _dia_eod_exc:
+            log.debug("[DeploymentIntegrityAudit] eod skipped: %s", _dia_eod_exc)
+
+        # ── [ExposureCapSummary] + [LearningOpportunityAudit] + [ExposureCapVerdict] ─
+        try:
+            from risk_control.capital_risk_engine import (
+                get_daily_exposure_rejections as _get_ec_rej,
+                _MAX_POSITIONS as _EC_MAX,
+            )
+            from config import MIN_CONFIDENCE_SCORE as _EC_MIN_CONF
+
+            _ec_rejs = _get_ec_rej()
+            _ec_n    = len(_ec_rejs)
+
+            # ── [ExposureCapSummary] ────────────────────────────────────
+            if _ec_n > 0:
+                _ec_pass_rc  = sum(1 for r in _ec_rejs if r.get("would_pass_risk_control"))
+                _ec_pass_sim = sum(1 for r in _ec_rejs if r.get("would_pass_simulation"))
+                _ec_pass_deb = sum(1 for r in _ec_rejs if r.get("would_pass_debate"))
+                _ec_scores   = [r["score"] for r in _ec_rejs]
+                _ec_avg_sc   = round(sum(_ec_scores) / len(_ec_scores), 2)
+                _ec_max_sc   = round(max(_ec_scores), 2)
+                # Strategy distribution
+                _ec_strat_d: dict = {}
+                for r in _ec_rejs:
+                    s = r.get("strategy", "unknown")
+                    _ec_strat_d[s] = _ec_strat_d.get(s, 0) + 1
+                # Sector distribution
+                _ec_sect_d: dict = {}
+                for r in _ec_rejs:
+                    s = r.get("sector", "UNKNOWN")
+                    _ec_sect_d[s] = _ec_sect_d.get(s, 0) + 1
+                log.info(
+                    "[ExposureCapSummary] signals_rejected=%d "
+                    "signals_would_pass_risk_control=%d signals_would_pass_simulation=%d "
+                    "signals_would_pass_debate=%d "
+                    "avg_score_rejected=%.2f max_score_rejected=%.2f "
+                    "strategy_distribution=%s sector_distribution=%s",
+                    _ec_n, _ec_pass_rc, _ec_pass_sim, _ec_pass_deb,
+                    _ec_avg_sc, _ec_max_sc,
+                    _ec_strat_d, _ec_sect_d,
+                )
+            else:
+                _ec_pass_rc = _ec_pass_sim = _ec_pass_deb = 0
+                _ec_avg_sc  = _ec_max_sc = 0.0
+                log.info(
+                    "[ExposureCapSummary] signals_rejected=0 "
+                    "signals_would_pass_risk_control=0 signals_would_pass_simulation=0 "
+                    "signals_would_pass_debate=0 avg_score_rejected=0.00 "
+                    "max_score_rejected=0.00 strategy_distribution={} sector_distribution={}"
+                )
+
+            # ── [LearningOpportunityAudit] ──────────────────────────────
+            # Count today's executed trades from paper journal
+            _ec_executed = len(trades)
+            _ec_total    = _ec_executed + _ec_n
+            _ec_loss_pct = round(_ec_n / _ec_total * 100, 1) if _ec_total > 0 else 0.0
+            log.info(
+                "[LearningOpportunityAudit] executed_trades=%d blocked_trades=%d "
+                "learning_samples_generated=%d learning_samples_lost=%d "
+                "estimated_learning_loss_pct=%.1f",
+                _ec_executed, _ec_n,
+                _ec_executed, _ec_n,
+                _ec_loss_pct,
+            )
+
+            # ── [ExposureCapVerdict] ────────────────────────────────────
+            _ec_pass_rc_pct = round(_ec_pass_rc / _ec_n * 100, 1) if _ec_n > 0 else 0.0
+            if _ec_n < 3:
+                _ec_verdict = "INSUFFICIENT_EVIDENCE"
+                _ec_reason  = (
+                    f"Only {_ec_n} EXPOSURE_CAP rejection(s) today — "
+                    f"need >=3 for statistical verdict"
+                )
+            elif _ec_avg_sc < _EC_MIN_CONF:
+                _ec_verdict = "EXPOSURE_CAP_HEALTHY"
+                _ec_reason  = (
+                    f"avg_score_rejected={_ec_avg_sc:.2f} < "
+                    f"MIN_CONFIDENCE_SCORE={_EC_MIN_CONF} — "
+                    f"rejected signals were below execution quality threshold; "
+                    f"{_ec_pass_rc}/{_ec_n} projected to pass risk_control"
+                )
+            elif _ec_pass_rc_pct >= 50.0 and _ec_loss_pct >= 40.0:
+                _ec_verdict = "EXPOSURE_CAP_TOO_RESTRICTIVE"
+                _ec_reason  = (
+                    f"avg_score_rejected={_ec_avg_sc:.2f} >= {_EC_MIN_CONF}; "
+                    f"{_ec_pass_rc_pct:.0f}% projected to pass risk_control; "
+                    f"estimated_learning_loss_pct={_ec_loss_pct:.1f}% — "
+                    f"cap is blocking high-quality signals"
+                )
+            else:
+                _ec_verdict = "INSUFFICIENT_EVIDENCE"
+                _ec_reason  = (
+                    f"avg_score={_ec_avg_sc:.2f} would_pass_rc={_ec_pass_rc_pct:.0f}% "
+                    f"learning_loss={_ec_loss_pct:.1f}% — mixed evidence, "
+                    f"need higher would_pass_rc_pct (>=50%) AND learning_loss (>=40%) "
+                    f"to confirm restrictive"
+                )
+            log.info(
+                "[ExposureCapVerdict] verdict=%s reason=\"%s\"",
+                _ec_verdict, _ec_reason,
+            )
+        except Exception as _ec_eod_exc:
+            log.debug("[ExposureCapSummary] EOD audit skipped: %s", _ec_eod_exc)
+
+        # ── [ReplacementSummary] + [ReplacementVerdict] ────────────────────────
+        try:
+            _reset_replacement_accumulator()
+            _rep_n      = len(_REPLACEMENT_DAILY_AUDIT)
+            _rep_cands  = sum(1 for r in _REPLACEMENT_DAILY_AUDIT if r.get("candidate"))
+            _rep_elig   = sum(1 for r in _REPLACEMENT_DAILY_AUDIT if r.get("eligible"))
+            # replacement_triggered is always 0 — CRE does not call _smart_swap_check
+            _rep_triggered = 0
+            # higher_quality = eligible (score_delta passed AND rr >= 1.5)
+            _rep_hq     = _rep_elig
+            _rep_deltas = [r["score_delta"] for r in _REPLACEMENT_DAILY_AUDIT
+                           if "score_delta" in r]
+            _rep_avg_d  = round(sum(_rep_deltas) / len(_rep_deltas), 2) if _rep_deltas else 0.0
+            _rep_max_d  = round(max(_rep_deltas), 2) if _rep_deltas else 0.0
+
+            # Dominant rejection reason across all per-signal audits
+            _rep_rej_counts: dict = {}
+            for r in _REPLACEMENT_DAILY_AUDIT:
+                _rr = r.get("rej_reason", "UNKNOWN")
+                _rep_rej_counts[_rr] = _rep_rej_counts.get(_rr, 0) + 1
+            _rep_dom_rej = (max(_rep_rej_counts, key=_rep_rej_counts.get)
+                            if _rep_rej_counts else "NONE")
+
+            log.info(
+                "[ReplacementSummary] exposure_rejections=%d "
+                "replacement_candidates=%d replacement_eligible=%d "
+                "replacement_triggered=%d higher_quality_signals_rejected=%d "
+                "avg_score_delta=%.2f max_score_delta=%.2f "
+                "dominant_rejection_reason=%s",
+                _rep_n, _rep_cands, _rep_elig,
+                _rep_triggered, _rep_hq,
+                _rep_avg_d, _rep_max_d,
+                _rep_dom_rej,
+            )
+
+            # ── [ReplacementVerdict] ────────────────────────────────────
+            if _rep_n == 0:
+                _rep_verdict = "NO_REPLACEMENT_OPPORTUNITIES_FOUND"
+                _rep_reason  = "No heat-rejected signals recorded today"
+            elif _rep_elig == 0 and _rep_cands == 0:
+                _rep_verdict = "REPLACEMENT_WORKING"
+                _rep_reason  = (
+                    f"{_rep_n} rejected signals; no evictable positions found "
+                    f"(all positions fresh/winning) — cap is working correctly"
+                )
+            elif _rep_elig == 0 and _rep_cands > 0:
+                _rep_verdict = "REPLACEMENT_TOO_STRICT"
+                _rep_reason  = (
+                    f"{_rep_cands}/{_rep_n} rejections had an evictable candidate "
+                    f"but none passed score_delta >= 0.5 or rr >= 1.5 threshold; "
+                    f"avg_score_delta={_rep_avg_d:.2f} max_score_delta={_rep_max_d:.2f}"
+                )
+            elif _rep_elig > 0 and _rep_triggered == 0:
+                _rep_verdict = "REPLACEMENT_NOT_TRIGGERING"
+                _rep_reason  = (
+                    f"{_rep_elig}/{_rep_n} rejected signals met replacement eligibility "
+                    f"(score_delta >= 0.5 and rr >= 1.5) but replacement_triggered=0 — "
+                    f"CRE rejects at layer 3.5 before order_manager._smart_swap_check "
+                    f"is reachable at layer 11; dominant_rej={_rep_dom_rej}"
+                )
+            else:
+                _rep_verdict = "REPLACEMENT_WORKING"
+                _rep_reason  = (
+                    f"triggered={_rep_triggered} eligible={_rep_elig} "
+                    f"candidates={_rep_cands} total_rejections={_rep_n}"
+                )
+            log.info(
+                "[ReplacementVerdict] verdict=%s reason=\"%s\"",
+                _rep_verdict, _rep_reason,
+            )
+        except Exception as _rep_eod_exc:
+            log.debug("[ReplacementSummary] EOD audit skipped: %s", _rep_eod_exc)
+
+        # ── [BorderlineOutcome] + [BorderlineConfidenceSummary] + [BorderlineConfidenceVerdict]
+        try:
+            import json as _json_bv
+            from pathlib import Path as _Path_bv
+            from datetime import datetime as _dt_bv
+            from data_feeds.data_feed_manager import get_feed_manager as _get_feed_bv
+
+            _bl_path_bv = _Path_bv("/app/data") if _Path_bv("/app/data").exists() \
+                else _Path_bv(__file__).resolve().parents[1] / "data"
+            _bl_file_bv = _bl_path_bv / "borderline_rejections.json"
+
+            if _bl_file_bv.exists():
+                _bl_data: list = _json_bv.loads(_bl_file_bv.read_text(encoding="utf-8"))
+                _today_bv = _dt_bv.now().strftime("%Y-%m-%d")
+                _feed_bv = _get_feed_bv()
+                _changed = False
+
+                for _entry in _bl_data:
+                    try:
+                        _rej_date = _dt_bv.strptime(_entry["rejection_date"], "%Y-%m-%d")
+                        _days_elapsed = (_dt_bv.now() - _rej_date).days
+                        _sym = _entry["symbol"]
+
+                        # Fill price slots as days elapse
+                        if _days_elapsed >= 1 and _entry.get("day1_price") is None:
+                            _q = _feed_bv.get_quote(_sym)
+                            if _q and getattr(_q, "ltp", None):
+                                _entry["day1_price"] = float(_q.ltp)
+                                _changed = True
+                        if _days_elapsed >= 3 and _entry.get("day3_price") is None:
+                            _q = _feed_bv.get_quote(_sym)
+                            if _q and getattr(_q, "ltp", None):
+                                _entry["day3_price"] = float(_q.ltp)
+                                _changed = True
+                        if _days_elapsed >= 5 and _entry.get("day5_price") is None:
+                            _q = _feed_bv.get_quote(_sym)
+                            if _q and getattr(_q, "ltp", None):
+                                _entry["day5_price"] = float(_q.ltp)
+                                _changed = True
+
+                        # Emit [BorderlineOutcome] for signals with day5 filled
+                        if _entry.get("day5_price") is not None:
+                            _ep  = float(_entry["entry_price"])
+                            _sl  = float(_entry["stop_loss"])
+                            _dir = str(_entry.get("direction", "BUY")).upper()
+                            _p1  = _entry.get("day1_price")
+                            _p3  = _entry.get("day3_price")
+                            _p5  = _entry["day5_price"]
+                            _prices = [p for p in [_p1, _p3, _p5] if p is not None]
+                            _risk = abs(_ep - _sl) if abs(_ep - _sl) > 0 else 1.0
+                            if _dir == "SELL" or _dir == "SHORT":
+                                _max_fav = _ep - min(_prices) if _prices else 0.0
+                                _max_adv = max(_prices) - _ep if _prices else 0.0
+                                _shadow_r = (_ep - _p5) / _risk
+                            else:
+                                _max_fav = max(_prices) - _ep if _prices else 0.0
+                                _max_adv = _ep - min(_prices) if _prices else 0.0
+                                _shadow_r = (_p5 - _ep) / _risk
+                            log.info(
+                                "[BorderlineOutcome] symbol=%s entry_price=%.2f "
+                                "price_after_1_day=%s price_after_3_days=%s price_after_5_days=%.2f "
+                                "max_favorable_move=%.2f max_adverse_move=%.2f shadow_R=%.2f",
+                                _sym, _ep,
+                                f"{_p1:.2f}" if _p1 else "N/A",
+                                f"{_p3:.2f}" if _p3 else "N/A",
+                                _p5, _max_fav, _max_adv, _shadow_r,
+                            )
+                    except Exception as _bv_row_exc:
+                        log.debug("[BorderlineOutcome] row error %s: %s", _entry.get("symbol"), _bv_row_exc)
+
+                if _changed:
+                    _bl_file_bv.write_text(_json_bv.dumps(_bl_data, indent=2), encoding="utf-8")
+
+                # ── [BorderlineConfidenceSummary] ─────────────────────────
+                _bl_today = [e for e in _bl_data if e.get("rejection_date") == _today_bv]
+                _bl_with_outcome = [
+                    e for e in _bl_data if e.get("day5_price") is not None
+                ]
+                _n_rej = len(_bl_today)
+                _avg_conf = (sum(e["confidence"] for e in _bl_today) / _n_rej) if _n_rej else 0.0
+                _avg_rr   = (sum(e["rr_ratio"] for e in _bl_today) / _n_rej)   if _n_rej else 0.0
+
+                # Shadow win rate: direction-adjusted R > 0 = win
+                _shadow_results = []
+                for _e in _bl_with_outcome:
+                    try:
+                        _ep  = float(_e["entry_price"])
+                        _sl  = float(_e["stop_loss"])
+                        _p5  = float(_e["day5_price"])
+                        _dir = str(_e.get("direction", "BUY")).upper()
+                        _risk = abs(_ep - _sl) if abs(_ep - _sl) > 0 else 1.0
+                        _r = (_ep - _p5) / _risk if _dir in ("SELL", "SHORT") else (_p5 - _ep) / _risk
+                        _shadow_results.append(_r)
+                    except Exception:
+                        pass
+                _shadow_win_rate = (sum(1 for r in _shadow_results if r > 0) / len(_shadow_results)) if _shadow_results else 0.0
+                _avg_shadow_r    = (sum(_shadow_results) / len(_shadow_results)) if _shadow_results else 0.0
+
+                log.info(
+                    "[BorderlineConfidenceSummary] signals_rejected=%d avg_confidence=%.2f "
+                    "avg_rr=%.2f shadow_win_rate=%.1f%% avg_shadow_R=%.2f "
+                    "total_with_outcome=%d",
+                    _n_rej, _avg_conf, _avg_rr,
+                    _shadow_win_rate * 100, _avg_shadow_r,
+                    len(_bl_with_outcome),
+                )
+
+                # ── [BorderlineConfidenceVerdict] ─────────────────────────
+                if len(_bl_with_outcome) < 5:
+                    _bl_verdict = "INSUFFICIENT_EVIDENCE"
+                    _bl_reason  = f"only {len(_bl_with_outcome)} completed outcome(s) — need >= 5"
+                elif _shadow_win_rate >= 0.50 and _avg_shadow_r >= 0.5:
+                    _bl_verdict = "CONFIDENCE_FLOOR_TOO_HIGH"
+                    _bl_reason  = (
+                        f"shadow_win_rate={_shadow_win_rate:.0%} avg_shadow_R={_avg_shadow_r:.2f} "
+                        f"-- borderline signals are profitable above threshold"
+                    )
+                else:
+                    _bl_verdict = "CONFIDENCE_FLOOR_HEALTHY"
+                    _bl_reason  = (
+                        f"shadow_win_rate={_shadow_win_rate:.0%} avg_shadow_R={_avg_shadow_r:.2f} "
+                        f"-- below breakeven; floor is justified"
+                    )
+                log.info(
+                    "[BorderlineConfidenceVerdict] verdict=%s reason=\"%s\"",
+                    _bl_verdict, _bl_reason,
+                )
+
+        except Exception as _bl_eod_exc:
+            log.debug("[BorderlineConfidenceSummary] EOD audit skipped: %s", _bl_eod_exc)
+
+
+        # Observability-only: emits [UniverseGenerationAudit], [CandidateFreshnessAudit],
+        # [RefreshValidationAudit], [SignalReadinessAudit], [PipelineReadinessAssessment],
+        # [SystemReadinessReport]. No behavioral changes. All in try/except.
+        try:
+            import sqlite3 as _sq3_sra
+            from pathlib import Path as _Path_sra
+            from datetime import datetime as _dt_sra
+            _sra_now     = _dt_sra.now()
+            _sra_today   = _sra_now.strftime("%Y-%m-%d")
+            _app_root_sra = _Path_sra("/app") if _Path_sra("/app").exists() else _Path_sra(__file__).resolve().parents[1]
+
+            # ── Helpers ──────────────────────────────────────────────────
+            def _sra_age_min(ts):
+                if not ts:
+                    return None
+                try:
+                    return (_sra_now - _dt_sra.fromisoformat(str(ts).replace("Z", ""))).total_seconds() / 60
+                except Exception:
+                    return None
+
+            def _sra_open_dbs():
+                _d = _app_root_sra / "data"
+                return list(_d.glob("*.db")) + list(_d.glob("*.sqlite")) if _d.exists() else []
+
+            def _sra_tables(conn):
+                return [r[0] for r in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                ).fetchall()]
+
+            def _sra_query(conn, sql, params=()):
+                try:
+                    cur = conn.execute(sql, params)
+                    cols = [d[0] for d in cur.description]
+                    return [dict(zip(cols, row)) for row in cur.fetchall()]
+                except Exception:
+                    return []
+
+            # ── PHASE 1: Universe Generation ─────────────────────────────
+            _sra_univ_candidates  = 0
+            _sra_univ_data_ok     = 0
+            _sra_univ_data_fail   = 0
+            _sra_univ_trigger     = "UNKNOWN"
+            _sra_univ_phase       = "UNKNOWN"
+            _sra_univ_active      = False
+            _sra_univ_last_upd    = "none"
+            _sra_univ_sec_cap     = 0
+            _sra_univ_score_floor = 0
+            _sra_univ_scan_ok     = False
+
+            try:
+                import opportunity_engine.equity_scanner_ai as _esm_sra
+                _sc = getattr(_esm_sra, "_scanner", getattr(_esm_sra, "_instance", None))
+                if _sc is None:
+                    # Try to access via orchestrator attribute
+                    _sc = getattr(self, "equity_scanner", getattr(self, "_equity_scanner", None))
+                if _sc is not None:
+                    _sra_univ_phase    = str(getattr(_sc, "phase", getattr(_sc, "_phase", "UNKNOWN")))
+                    _sra_univ_active   = bool(getattr(_sc, "prepared_universe_active",
+                                                       getattr(_sc, "_prepared_universe_active", False)))
+                    _llu = getattr(_sc, "last_level_update", getattr(_sc, "_last_level_update", None))
+                    _sra_univ_last_upd = str(_llu) if _llu else "none"
+                    _sra_univ_trigger  = "SCHEDULER"
+            except Exception:
+                pass
+
+            # Query SQLite for today's candidate rows
+            for _cdb in _sra_open_dbs():
+                try:
+                    with _sq3_sra.connect(str(_cdb)) as _cc:
+                        for _tbl in _sra_tables(_cc):
+                            if any(k in _tbl.lower() for k in ("candidate", "universe", "opportunity")):
+                                _rows = _sra_query(_cc, f"SELECT * FROM {_tbl} ORDER BY rowid DESC LIMIT 200")
+                                if not _rows:
+                                    continue
+                                _today_cnt = 0
+                                for _r in _rows:
+                                    for _tf in ("prepared_at", "created_at", "timestamp"):
+                                        if _tf in _r and _r[_tf]:
+                                            _am = _sra_age_min(_r[_tf])
+                                            if _am is not None and 0 < _am < 1440:
+                                                _today_cnt += 1
+                                                _sra_univ_trigger = _r.get("trigger_source", "SCHEDULER")
+                                            break
+                                    _inv_r = str(_r.get("invalidation_reason", "")).upper()
+                                    if _inv_r in ("SECTOR_CAP", "SECTOR_CONCENTRATION", "SECTOR_LIMIT"):
+                                        _sra_univ_sec_cap += 1
+                                    elif _inv_r in ("SCORE_FLOOR", "LOW_SCORE", "BELOW_THRESHOLD"):
+                                        _sra_univ_score_floor += 1
+                                if _today_cnt > 0:
+                                    _sra_univ_candidates = _today_cnt
+                                    _sra_univ_data_ok    = _today_cnt
+                                    _sra_univ_scan_ok    = True
+                                break
+                except Exception:
+                    pass
+
+            # Fallback: JSON candidate stores
+            for _jp in [_app_root_sra / "data" / "prepared_candidates.json",
+                        _app_root_sra / "data" / "daily_candidates.json",
+                        _app_root_sra / "data" / "candidates.json"]:
+                if _jp.exists() and _sra_univ_candidates == 0:
+                    try:
+                        import json as _json_sra
+                        _jd = _json_sra.loads(_jp.read_text())
+                        _jl = _jd if isinstance(_jd, list) else list(_jd.values())
+                        _sra_univ_candidates = len(_jl)
+                        _sra_univ_data_ok    = _sra_univ_candidates
+                        _sra_univ_scan_ok    = _sra_univ_candidates > 0
+                        _sra_univ_trigger    = "SCHEDULER"
+                    except Exception:
+                        pass
+
+            _sra_univ_coverage = round(100 * _sra_univ_data_ok / max(_sra_univ_candidates, 1), 1) if _sra_univ_candidates > 0 else 0.0
+
+            log.info(
+                "[UniverseGenerationAudit] date=%s scan_executed=%s trigger_source=%s "
+                "universe_attempted=%d data_ok=%d data_failed=%d coverage_pct=%.1f%% "
+                "sector_cap_removals=%d score_floor_removals=%d final_candidates_written=%d "
+                "phase=%s prepared_universe_active=%s last_level_update=%s",
+                _sra_today, _sra_univ_scan_ok, _sra_univ_trigger,
+                _sra_univ_candidates, _sra_univ_data_ok, _sra_univ_data_fail,
+                _sra_univ_coverage, _sra_univ_sec_cap, _sra_univ_score_floor,
+                _sra_univ_candidates, _sra_univ_phase, _sra_univ_active,
+                _sra_univ_last_upd,
+            )
+
+            # ── PHASE 2: Premarket Refinement ─────────────────────────────
+            # Inferred from candidate timestamps: if any candidate has a refined_at
+            # or prepared_at between 08:00-09:30 today, the refiner ran.
+            _sra_pm_ran         = False
+            _sra_pm_cands_after = _sra_univ_candidates
+            _sra_pm_reason      = "NO_REFINEMENT_RECORD_FOUND"
+
+            for _cdb in _sra_open_dbs():
+                try:
+                    with _sq3_sra.connect(str(_cdb)) as _cc:
+                        for _tbl in _sra_tables(_cc):
+                            if any(k in _tbl.lower() for k in ("candidate", "universe", "refine")):
+                                _pmrows = _sra_query(
+                                    _cc,
+                                    f"SELECT * FROM {_tbl} WHERE "
+                                    f"COALESCE(refined_at, prepared_at, created_at) >= ? "
+                                    f"AND COALESCE(refined_at, prepared_at, created_at) < ? "
+                                    f"ORDER BY rowid DESC LIMIT 50",
+                                    (_sra_today + " 08:00:00", _sra_today + " 09:30:00"),
+                                )
+                                if _pmrows:
+                                    _sra_pm_ran         = True
+                                    _sra_pm_cands_after = len(_pmrows)
+                                    _sra_pm_reason      = "REFINEMENT_INFERRED_FROM_DB"
+                                    break
+                except Exception:
+                    pass
+
+            if not _sra_pm_ran:
+                if _sra_univ_candidates == 0:
+                    _sra_pm_reason = "NO_GAP_DATA"
+                elif _sra_now.hour < 8:
+                    _sra_pm_reason = "PRE_SCHEDULE"
+                else:
+                    _sra_pm_reason = "NO_REFINEMENT_REQUIRED"
+
+            log.info(
+                "[PremarketReadinessAudit] date=%s refiner_executed=%s "
+                "candidates_before=%d candidates_after=%d "
+                "no_change_reason=%s",
+                _sra_today, _sra_pm_ran,
+                _sra_univ_candidates, _sra_pm_cands_after,
+                _sra_pm_reason if not _sra_pm_ran else "none",
+            )
+
+            # ── PHASE 3: Candidate Freshness ──────────────────────────────
+            _sra_cf_count  = 0
+            _sra_cf_fresh  = 0
+            _sra_cf_expire = 0
+            _sra_cf_inval  = 0
+            _sra_cf_ages   = []
+            _sra_cf_ttl    = 480  # 8h default
+
+            try:
+                import config as _cfg_sra
+                for _a in ("CANDIDATE_TTL_MINUTES", "UNIVERSE_TTL_MINUTES"):
+                    if hasattr(_cfg_sra, _a):
+                        _sra_cf_ttl = getattr(_cfg_sra, _a)
+                        break
+            except Exception:
+                pass
+
+            for _cdb in _sra_open_dbs():
+                try:
+                    with _sq3_sra.connect(str(_cdb)) as _cc:
+                        for _tbl in _sra_tables(_cc):
+                            if any(k in _tbl.lower() for k in ("candidate", "universe")):
+                                _cfrows = _sra_query(_cc, f"SELECT * FROM {_tbl} ORDER BY rowid DESC LIMIT 200")
+                                if not _cfrows:
+                                    continue
+                                for _r in _cfrows:
+                                    _ts = None
+                                    for _tf in ("prepared_at", "last_refresh_time", "refreshed_at", "created_at"):
+                                        if _tf in _r and _r[_tf]:
+                                            _ts = _r[_tf]
+                                            break
+                                    _age_m = _sra_age_min(_ts)
+                                    if _age_m is not None:
+                                        _sra_cf_ages.append(_age_m)
+                                        if _age_m > _sra_cf_ttl:
+                                            _sra_cf_expire += 1
+                                        else:
+                                            _sra_cf_fresh += 1
+                                    else:
+                                        _sra_cf_fresh += 1
+                                    if _r.get("invalidated") or _r.get("is_invalid"):
+                                        _sra_cf_inval += 1
+                                _sra_cf_count = _sra_cf_fresh + _sra_cf_expire + _sra_cf_inval
+                                break
+                except Exception:
+                    pass
+
+            _sra_cf_avg_age = round(sum(_sra_cf_ages) / len(_sra_cf_ages), 1) if _sra_cf_ages else None
+            _sra_cf_max_age = round(max(_sra_cf_ages), 1) if _sra_cf_ages else None
+
+            log.info(
+                "[CandidateFreshnessAudit] date=%s candidate_count=%d "
+                "fresh=%d expired=%d invalidated=%d "
+                "avg_age_minutes=%s oldest_age_minutes=%s ttl_minutes=%d ttl_rejected=%d",
+                _sra_today, _sra_cf_count,
+                _sra_cf_fresh, _sra_cf_expire, _sra_cf_inval,
+                _sra_cf_avg_age, _sra_cf_max_age, _sra_cf_ttl, _sra_cf_expire,
+            )
+
+            # ── PHASE 4: Refresh Validation — top-20 before execution ─────
+            _sra_rv_refreshed = 0
+            _sra_rv_stale     = 0
+            _sra_rv_target    = 30  # minutes
+            _sra_rv_stale_flag = False
+
+            try:
+                import config as _cfg_sra2
+                for _a2 in ("CANDIDATE_REFRESH_TARGET_MINUTES", "REFRESH_TARGET_MINUTES",
+                            "MAX_CANDIDATE_AGE_MINUTES"):
+                    if hasattr(_cfg_sra2, _a2):
+                        _sra_rv_target = getattr(_cfg_sra2, _a2)
+                        break
+            except Exception:
+                pass
+
+            for _cdb in _sra_open_dbs():
+                try:
+                    with _sq3_sra.connect(str(_cdb)) as _cc:
+                        for _tbl in _sra_tables(_cc):
+                            if any(k in _tbl.lower() for k in ("candidate", "universe")):
+                                _rvrows = _sra_query(
+                                    _cc,
+                                    f"SELECT * FROM {_tbl} ORDER BY "
+                                    f"COALESCE(score, composite_score, rank_score, 0) DESC LIMIT 20"
+                                )
+                                if not _rvrows:
+                                    _rvrows = _sra_query(_cc, f"SELECT * FROM {_tbl} LIMIT 20")
+                                for _r in _rvrows:
+                                    _ts = None
+                                    for _tf in ("last_refresh_time", "refreshed_at", "prepared_at"):
+                                        if _tf in _r and _r[_tf]:
+                                            _ts = _r[_tf]
+                                            break
+                                    _age_m = _sra_age_min(_ts)
+                                    if _age_m is not None and _age_m > _sra_rv_target:
+                                        _sra_rv_stale += 1
+                                        _sra_rv_stale_flag = True
+                                        _sym = _r.get("symbol", _r.get("ticker", "?"))
+                                        log.warning(
+                                            "[RefreshValidationAudit] STALE symbol=%s "
+                                            "age_minutes=%.1f freshness_target_minutes=%d "
+                                            "stale_before_execution=True",
+                                            _sym, _age_m, _sra_rv_target,
+                                        )
+                                    else:
+                                        _sra_rv_refreshed += 1
+                                break
+                except Exception:
+                    pass
+
+            log.info(
+                "[RefreshValidationAudit] date=%s top_n=%d refreshed=%d stale=%d "
+                "stale_before_execution=%s freshness_target_minutes=%d",
+                _sra_today, _sra_rv_refreshed + _sra_rv_stale,
+                _sra_rv_refreshed, _sra_rv_stale,
+                _sra_rv_stale_flag, _sra_rv_target,
+            )
+
+            # ── PHASE 5: Signal Readiness ──────────────────────────────────
+            _sra_trades_today    = 0
+            _sra_open_positions  = 0
+            _sra_exec_eligible   = 0
+
+            try:
+                import csv as _csv_sra
+                _cpath = _app_root_sra / "data" / "paper_trades.csv"
+                if _cpath.exists():
+                    with _cpath.open() as _cf:
+                        for _cr in _csv_sra.DictReader(_cf):
+                            _cts = _cr.get("timestamp", _cr.get("time", _cr.get("date", "")))
+                            if _sra_today in str(_cts):
+                                _sra_trades_today += 1
+            except Exception:
+                pass
+
+            try:
+                _positions = getattr(self.order_manager, "_positions",
+                                     getattr(self.order_manager, "positions", {}))
+                _sra_open_positions = len(_positions)
+            except Exception:
+                pass
+
+            try:
+                _om_stats = getattr(self.order_manager, "get_stats",
+                                    getattr(self.order_manager, "stats", None))
+                if callable(_om_stats):
+                    _st = _om_stats()
+                    _sra_exec_eligible = _st.get("execution_eligible",
+                                                  _st.get("eligible_signals", 0))
+            except Exception:
+                pass
+
+            log.info(
+                "[SignalReadinessAudit] date=%s prepared_candidates=%d "
+                "execution_eligible=%d open_positions=%d trades_today=%d",
+                _sra_today, _sra_univ_candidates,
+                _sra_exec_eligible, _sra_open_positions, _sra_trades_today,
+            )
+
+            # ── PHASE 6: Pipeline Readiness Assessment ─────────────────────
+            _sra_blockers    = []
+            _sra_dom_blocker = "NONE"
+            _sra_sec_blocker = None
+
+            if _sra_univ_candidates == 0:
+                _sra_blockers.append("NO_UNIVERSE_CANDIDATES")
+            if _sra_cf_expire > _sra_cf_fresh:
+                _sra_blockers.append("MAJORITY_CANDIDATES_STALE")
+            if _sra_rv_stale_flag:
+                _sra_blockers.append(f"STALE_TOP_CANDIDATES_{_sra_rv_stale}")
+
+            try:
+                _ca_path = _app_root_sra / "data" / "ca_quarantine.json"
+                if _ca_path.exists():
+                    import json as _json_sra2
+                    _ca = _json_sra2.loads(_ca_path.read_text())
+                    _ca_count = len(_ca) if isinstance(_ca, (list, dict)) else 0
+                    if _ca_count > 0:
+                        _sra_blockers.append(f"CA_QUARANTINE_{_ca_count}_POSITIONS")
+            except Exception:
+                pass
+
+            # Check daily P&L for risk-guardian trigger
+            try:
+                _cpath2 = _app_root_sra / "data" / "paper_trades.csv"
+                if _cpath2.exists():
+                    import csv as _csv_sra2
+                    _today_pnl = 0.0
+                    with _cpath2.open() as _cf2:
+                        for _cr2 in _csv_sra2.DictReader(_cf2):
+                            _ts2 = _cr2.get("timestamp", _cr2.get("date", ""))
+                            if _sra_today in str(_ts2):
+                                try:
+                                    _today_pnl += float(_cr2.get("pnl", _cr2.get("realized_pnl", 0)) or 0)
+                                except Exception:
+                                    pass
+                    if _today_pnl < -50000:
+                        _sra_blockers.append(f"DAILY_LOSS_LIMIT_pnl={_today_pnl:.0f}")
+            except Exception:
+                pass
+
+            if _sra_blockers:
+                _sra_dom_blocker = _sra_blockers[0]
+                _sra_sec_blocker = _sra_blockers[1] if len(_sra_blockers) > 1 else None
+
+            log.info(
+                "[PipelineReadinessAssessment] date=%s dominant_blocker=%s "
+                "secondary_blocker=%s all_blockers=%s open_positions=%d trades_today=%d",
+                _sra_today, _sra_dom_blocker, _sra_sec_blocker,
+                _sra_blockers, _sra_open_positions, _sra_trades_today,
+            )
+
+            # ── PHASE 7: System Readiness Report (Final Score) ─────────────
+            _sra_score_univ   = 100 if _sra_univ_candidates >= 10 else (50 if _sra_univ_candidates > 0 else 0)
+            _sra_score_pm     = 100 if _sra_pm_ran else (100 if _sra_now.hour < 8 else 20)
+            _sra_cf_total     = max(_sra_cf_fresh + _sra_cf_expire + _sra_cf_inval, 1)
+            _sra_score_fresh  = int(100 * _sra_cf_fresh / _sra_cf_total) if _sra_cf_count > 0 else 0
+            _sra_rv_total     = max(_sra_rv_refreshed + _sra_rv_stale, 1)
+            _sra_score_refr   = int(100 * _sra_rv_refreshed / _sra_rv_total) if (_sra_rv_refreshed + _sra_rv_stale) > 0 else (0 if _sra_univ_candidates > 0 else 50)
+            _sra_score_sig    = 100 if _sra_trades_today > 0 else (70 if _sra_open_positions > 0 else (30 if _sra_univ_candidates > 0 else 0))
+            _sra_score_exec   = max(0, 100 - len(_sra_blockers) * 20)
+            _sra_overall      = (_sra_score_univ + _sra_score_pm + _sra_score_fresh + _sra_score_refr + _sra_score_sig + _sra_score_exec) // 6
+            _sra_status       = "READY" if _sra_overall >= 75 else ("PARTIAL" if _sra_overall >= 45 else "NOT_READY")
+            _sra_reco         = "SYSTEM_HEALTHY" if _sra_overall >= 75 else ("MONITOR" if _sra_overall >= 45 else "ACTION_REQUIRED")
+
+            log.info(
+                "[SystemReadinessReport] date=%s "
+                "universe_generation=%d premarket_refinement=%d candidate_freshness=%d "
+                "refresh_health=%d signal_readiness=%d execution_readiness=%d "
+                "overall=%d overall_status=%s recommendation=%s",
+                _sra_today,
+                _sra_score_univ, _sra_score_pm, _sra_score_fresh,
+                _sra_score_refr, _sra_score_sig, _sra_score_exec,
+                _sra_overall, _sra_status, _sra_reco,
+            )
+
+        except Exception as _sra_exc:
+            log.debug("[SystemReadinessAudit] EOD phase skipped: %s", _sra_exc)
+
+        # ── Phase 7: Re-entry audit summary ───────────────────────────────
+        try:
+            _reentry_events = self.order_manager.get_reentry_summary()
+            _re_count  = len(_reentry_events)
+            _re_same   = sum(1 for e in _reentry_events if e.get("same_direction"))
+            _re_opp    = _re_count - _re_same
+            _re_fast   = sum(1 for e in _reentry_events if e.get("gap_seconds", 9999) < 1800)
+            log.info(
+                "[ReEntrySummary] count=%d same_dir=%d opposite_dir=%d "
+                "rapid_reentry_under30min=%d",
+                _re_count, _re_same, _re_opp, _re_fast,
+            )
+        except Exception as _re_exc:
+            log.debug("[EOD] ReEntrySummary failed: %s", _re_exc)
+
         # Print end-of-day diagnostics
         self.bus.print_stats()
         self.task_queue.print_stats()
 
+        # V2.5: Shadow audit summary — decision-gate verdict for the day
+        try:
+            from opportunity_engine.delta_refresh_shadow import log_shadow_audit_summary as _lsas
+            _lsas()
+        except Exception as _shadow_exc:
+            log.debug("[ShadowAuditSummary] Skipped: %s", _shadow_exc)
+
+        # ── Patch 8: Prepared Universe Audit (shadow validation report) ───────
+        # Compares today's prepared candidates vs actually-traded symbols.
+        # Emits [PreparedUniverseAudit] — the primary activation-readiness report.
+        # Always runs (even when USE_PREPARED_UNIVERSE=False) so shadow data
+        # accumulates before activation.
+        try:
+            self._run_prepared_universe_audit(trades)
+        except Exception as _audit_exc:
+            log.debug("[PreparedUniverseAudit] Skipped: %s", _audit_exc)
+
+        # ── Section 5: Exploration Performance Audit (EOD) ───────────────────
+        # Emits [ExplorationAudit] — primary calibration telemetry for deciding
+        # when to increase EXPLORATION_BUDGET_PCT beyond the soft-activation 3%.
+        try:
+            self._run_exploration_audit(trades)
+        except Exception as _exp_exc:
+            log.debug("[ExplorationAudit] Skipped: %s", _exp_exc)
+
+        # ── Section 6: Daily Pipeline Forensic Summary (EOD) ────────────────
+        # Emits [PipelineForensicSummary] — master daily observability report.
+        # Purely observational, no behavioral mutation.
+        try:
+            from control_tower.pipeline_forensic_reporter import get_forensic_reporter as _gfr
+            _gfr().emit_daily_summary()
+        except Exception as _frs_exc:
+            log.debug("[PipelineForensicSummary] Skipped: %s", _frs_exc)
+
+        # ── Priority 7 (TelemetryCoverageAudit): meta-audit of all audit modules ──
+        # Probes all 6 Forensic Refinement audit modules, reports coverage,
+        # warns on dark (zero-activity) modules, and calls emit_eod_report()
+        # on each — so all EOD forensic summaries fire from this single call.
+        try:
+            from control_tower.telemetry_coverage_audit import (
+                get_telemetry_coverage_audit as _gtca,
+            )
+            _gtca().emit_coverage_report()
+        except Exception as _tca_exc:
+            log.debug("[TelemetryCoverageAudit] Skipped: %s", _tca_exc)
+
+        # ── InvalidationEffectivenessReport: 5-section EOD invalidation summary ──
+        # Crosses persistent invalidation_state.json with current store to
+        # classify genuine vs feed-induced, recovery rates, and recurring symbols.
+        try:
+            from opportunity_engine.invalidation_tracker import get_invalidation_tracker as _git_eod
+            _git_eod().emit_session_summary()
+        except Exception as _inv_eod_exc:
+            log.debug("[InvalidationEffectivenessReport] Skipped: %s", _inv_eod_exc)
+
     # ──────────────────────────────────────────────────────────────────
-    # SCHEDULER
+    # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT
     # ──────────────────────────────────────────────────────────────────
+
+    def _run_prepared_universe_audit(self, trades: list) -> None:
+        """
+        Patch 8 — EOD prepared-universe audit.
+
+        Compares:
+          - Today's prepared candidates (from daily_candidates.json)
+          - Actually-selected trade symbols (from closed + open orders today)
+          - Missed opportunities (prepared but not traded)
+          - Exploration catches (traded but NOT in prepared list)
+          - Score distribution of prepared vs selected
+          - Concentration metrics
+
+        Emits [PreparedUniverseAudit] — the primary activation-readiness report.
+        This report becomes the signal to enable USE_PREPARED_UNIVERSE=True when
+        overlap ≥ 50% and missed_rate is stable over 5+ sessions.
+
+        Telemetry only — no behavioral mutation.
+        """
+        try:
+            from opportunity_engine.candidate_store import CandidateStore
+        except ImportError:
+            return
+
+        candidates = CandidateStore.read()
+        if not candidates:
+            log.info("[PreparedUniverseAudit] No candidate store available — audit skipped.")
+            return
+
+        prepared_syms = {c["symbol"] for c in candidates}
+
+        # Traded symbols today
+        traded_syms: set = set()
+        for t in trades:
+            sym = getattr(t, "symbol", None)
+            if sym:
+                traded_syms.add(sym)
+        # Also include open orders
+        try:
+            for o in self.order_manager.get_open_orders():
+                sym = getattr(o, "symbol", getattr(o, "tradingsymbol", None))
+                if sym:
+                    traded_syms.add(sym.replace(".NS", ""))
+        except Exception:
+            pass
+
+        # Metrics
+        overlap_syms     = prepared_syms & traded_syms
+        missed_syms      = prepared_syms - traded_syms
+        exploration_syms = traded_syms - prepared_syms
+
+        overlap_count     = len(overlap_syms)
+        prepared_count    = len(prepared_syms)
+        missed_count      = len(missed_syms)
+        exploration_count = len(exploration_syms)
+        traded_count      = len(traded_syms)
+
+        overlap_pct  = round(overlap_count / traded_count * 100, 1) if traded_count else 0.0
+        missed_pct   = round(missed_count  / prepared_count * 100, 1) if prepared_count else 0.0
+        explore_pct  = round(exploration_count / max(traded_count, 1) * 100, 1)
+
+        # Score distribution of prepared candidates
+        scores  = [c.get("score", 0.0) for c in candidates]
+        avg_score = round(sum(scores) / len(scores), 3) if scores else 0.0
+        min_score = round(min(scores), 3) if scores else 0.0
+        max_score = round(max(scores), 3) if scores else 0.0
+
+        # Sector distribution of missed candidates
+        sector_missed: dict = {}
+        for c in candidates:
+            if c["symbol"] in missed_syms:
+                sec = c.get("sector", "UNKNOWN")
+                sector_missed[sec] = sector_missed.get(sec, 0) + 1
+
+        # Premarket completion status
+        premarket_complete = False
+        try:
+            import json as _json
+            from opportunity_engine.candidate_store import STORE_FILE
+            if STORE_FILE.exists():
+                _p = _json.loads(STORE_FILE.read_text(encoding="utf-8"))
+                premarket_complete = bool(_p.get("premarket_refresh_complete", False))
+        except Exception:
+            pass
+
+        log.info(
+            "[PreparedUniverseAudit]"
+            " date=%s"
+            " prepared=%d"
+            " traded=%d"
+            " overlap=%d(%.1f%%)"
+            " missed=%d(%.1f%%)"
+            " exploration_catches=%d(%.1f%%)"
+            " score_avg=%.3f score_min=%.3f score_max=%.3f"
+            " premarket_complete=%s"
+            " top_missed_sectors=%s",
+            datetime.now().strftime("%Y-%m-%d"),
+            prepared_count,
+            traded_count,
+            overlap_count, overlap_pct,
+            missed_count, missed_pct,
+            exploration_count, explore_pct,
+            avg_score, min_score, max_score,
+            premarket_complete,
+            str(sorted(sector_missed.items(), key=lambda x: -x[1])[:5]),
+        )
+
+        # Readiness signal: ≥50% overlap for 5+ sessions → ready to enable
+        if overlap_pct >= 50.0 and traded_count >= 3:
+            log.info(
+                "[PreparedUniverseAudit] READINESS_SIGNAL overlap=%.1f%% >= 50%%"
+                " — consider enabling USE_PREPARED_UNIVERSE=True after 5+ consistent sessions.",
+                overlap_pct,
+            )
+        elif overlap_pct < 30.0 and traded_count >= 3:
+            log.info(
+                "[PreparedUniverseAudit] LOW_OVERLAP overlap=%.1f%% < 30%%"
+                " — scanner may be targeting wrong regime; review [PreparedUniverseStats].",
+                overlap_pct,
+            )
+
+    def _run_exploration_audit(self, trades: list) -> None:
+        """
+        Section 5 — EOD exploration performance audit.
+
+        Emits [ExplorationAudit] using:
+          - Session counters from equity_scanner_ai._EXPLORE_STATS
+          - Closed trades tagged [EXPLORATORY] in entry_label
+
+        This is the primary calibration telemetry for EXPLORATION_BUDGET_PCT
+        progression (3→5→8→10). Never raises.
+        """
+        try:
+            from opportunity_engine.equity_scanner_ai import get_session_exploration_stats
+            stats = get_session_exploration_stats()
+        except Exception:
+            stats = {}
+
+        evaluated         = stats.get("evaluated", 0)
+        signals_generated = stats.get("signals_generated", 0)
+
+        # Identify exploration trades from today's closed trades
+        explore_trades = []
+        prepared_trades = []
+        for t in trades:
+            lbl = getattr(t, "entry_label", "") or ""
+            if "[EXPLORATORY]" in lbl:
+                explore_trades.append(t)
+            else:
+                prepared_trades.append(t)
+
+        executed = len(explore_trades)
+
+        # Win/loss and avg_r from exploration trades
+        wins = 0
+        total_r = 0.0
+        for t in explore_trades:
+            pnl  = getattr(t, "pnl", None)
+            risk = getattr(t, "risk_amount", None)
+            if pnl is not None:
+                if pnl > 0:
+                    wins += 1
+                if risk and risk > 0:
+                    total_r += pnl / risk
+
+        wr    = round(wins / executed * 100, 1) if executed else 0.0
+        avg_r = round(total_r / executed, 2) if executed else 0.0
+
+        # False positive rate: signals generated but not executed
+        false_pos_rate = round(
+            (signals_generated - executed) / max(signals_generated, 1), 3
+        )
+
+        # Missed prepared equivalents: prepared candidates in today's store
+        # that match symbols the exploration found — overlap shows redundancy
+        missed_prepared_equiv = 0
+        try:
+            from opportunity_engine.candidate_store import CandidateStore
+            candidates = CandidateStore.read() or []
+            prepared_syms = {c["symbol"] for c in candidates}
+            explore_syms  = {getattr(t, "symbol", "") for t in explore_trades}
+            missed_prepared_equiv = len(explore_syms & prepared_syms)
+        except Exception:
+            pass
+
+        log.info(
+            "[ExplorationAudit]"
+            " date=%s"
+            " evaluated=%d"
+            " signals_generated=%d"
+            " executed=%d"
+            " wr=%.1f"
+            " avg_r=%.2f"
+            " false_positive_rate=%.3f"
+            " missed_prepared_equivalents=%d"
+            " prepared_trades_today=%d",
+            datetime.now().strftime("%Y-%m-%d"),
+            evaluated,
+            signals_generated,
+            executed,
+            wr,
+            avg_r,
+            false_pos_rate,
+            missed_prepared_equiv,
+            len(prepared_trades),
+        )
+
+        # Budget progression hint
+        if executed >= 3 and wr >= 60.0 and false_pos_rate <= 0.15:
+            log.info(
+                "[ExplorationAudit] BUDGET_INCREASE_ELIGIBLE"
+                " wr=%.1f avg_r=%.2f false_pos=%.3f"
+                " — review 10+ sessions before increasing EXPLORATION_BUDGET_PCT",
+                wr, avg_r, false_pos_rate,
+            )
 
     # ── Helpers ───────────────────────────────────────────────────────
 
@@ -2668,6 +4926,32 @@ class MasterOrchestrator:
         except Exception as exc:
             log.warning("  ⚠️  GlobalDataAI pre-warm failed: %s", exc)
 
+        # ── Fix 2: S/R level auto-validation ─────────────────────────
+        # Detects and repairs any resistance<LTP or support>LTP entries
+        # using ATR(14)-anchored levels fetched from yfinance.
+        try:
+            from opportunity_engine.equity_scanner_ai import validate_and_refresh_sr_levels
+            _sr_result = validate_and_refresh_sr_levels()
+            if _sr_result["repaired"] > 0:
+                log.warning(
+                    "  ⚠️  S/R levels repaired: %d/%d symbols had broken levels — rebuilt with ATR(14).",
+                    _sr_result["repaired"], _sr_result["total"],
+                )
+                try:
+                    from notifications import get_notifier
+                    get_notifier().market_alert(
+                        "🔧 S/R Levels Auto-Repaired",
+                        f"{_sr_result['repaired']} symbol(s) had stale resistance/support "
+                        f"levels.\nRepaired: {_sr_result['broken_symbols']}\n"
+                        f"ATR-anchored levels applied — levels are now valid.",
+                    )
+                except Exception:
+                    pass
+            else:
+                log.info("  ✅ S/R levels valid — no repair needed.")
+        except Exception as _sr_exc:
+            log.warning("  ⚠️  S/R level validation failed: %s", _sr_exc)
+
         # Check data feed health
         try:
             from data_feeds import get_feed_manager
@@ -2695,6 +4979,41 @@ class MasterOrchestrator:
             n.market_alert("🟢 AI Trading Brain Online", _body)
         except Exception as exc:
             log.debug("Telegram pre-market ping failed: %s", exc)
+
+        # ── Fix 3: Prepared universe freshness check ─────────────────
+        # If daily_candidates.json is missing or from a previous day,
+        # trigger Phase D scanner now so first cycle has fresh candidates.
+        try:
+            import json as _json
+            from pathlib import Path as _Path
+            from datetime import date as _date
+            _cand_path = _Path("data/daily_candidates.json")
+            _needs_scan = False
+            if not _cand_path.exists():
+                log.warning("  ⚠️  daily_candidates.json missing — triggering Phase D scan.")
+                _needs_scan = True
+            else:
+                _mtime = _date.fromtimestamp(_cand_path.stat().st_mtime)
+                if _mtime < _date.today():
+                    log.warning(
+                        "  ⚠️  daily_candidates.json is stale (last updated %s) — triggering Phase D scan.",
+                        _mtime,
+                    )
+                    _needs_scan = True
+                else:
+                    _cand_data = _json.loads(_cand_path.read_text())
+                    _n_cands   = len(_cand_data.get("candidates", []))
+                    log.info("  ✅ Prepared universe fresh: %d candidates.", _n_cands)
+            if _needs_scan:
+                import threading as _threading
+                _t = _threading.Thread(
+                    target=self._run_post_market_scan,
+                    daemon=True, name="PremarketPhaseD",
+                )
+                _t.start()
+                log.info("  Phase D scanner triggered in background thread.")
+        except Exception as _cand_exc:
+            log.warning("  ⚠️  Candidate freshness check failed: %s", _cand_exc)
 
         log.info("  Pre-market init complete. Waiting for 09:05 deep scan.")
 
@@ -2891,9 +5210,25 @@ class MasterOrchestrator:
         # rather than waiting up to 5 minutes for the first monitor cycle.
         self._post_restore_governance_pass()
 
+        # ── Startup CSV orphan audit ────────────────────────────────
+        # Detects any position in paper_trades.csv as OPEN-without-CLOSE
+        # that is NOT tracked by order_manager — fires Telegram alert.
+        self._startup_csv_orphan_audit()
+
         # ── Pre-market ─────────────────────────────────────────────────
         sched_lib.every().day.at("08:00").do(self._premarket_init)
         sched_lib.every().day.at("08:30").do(self._premarket_data_warmup)
+
+        # ── Phase 8: GlobalDataAI pre-open force-refreshes ─────────────
+        def _global_prewarm():
+            try:
+                self.global_intelligence.data_ai.fetch(force=True)
+                log.info("[Orchestrator] GlobalDataAI pre-open prewarm complete.")
+            except Exception as _pw_exc:
+                log.warning("[Orchestrator] GlobalDataAI prewarm failed: %s", _pw_exc)
+        sched_lib.every().day.at("08:45").do(_global_prewarm)
+        sched_lib.every().day.at("09:00").do(_global_prewarm)
+        sched_lib.every().day.at("09:10").do(_global_prewarm)
 
         # ── Intraday full-cycle slots ───────────────────────────────────
         # 09:45  first trade decision window
@@ -2916,18 +5251,55 @@ class MasterOrchestrator:
         # ── EOD learning ───────────────────────────────────────────────
         sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(self.run_eod_learning)
 
-        # ── Position monitor (every 5 min, market hours only) ──────────
-        sched_lib.every(5).minutes.do(
-            lambda: self.monitor_open_positions()
-            if self._is_market_session() else None
+        # ── Post-market deep scan (Phase D) — 16:45 IST ───────────────
+        sched_lib.every().day.at(SCHEDULE["post_market_scan"]).do(self._run_post_market_scan)
+
+        # ── Pre-market refiner (Phase G) — 08:45 IST ──────────────────
+        sched_lib.every().day.at(SCHEDULE["premarket_refiner"]).do(self._run_premarket_refiner)
+
+        # ── Fix 1: Intraday candidate TTL refresh — 11:30 and 13:30 IST ──────
+        # Re-validates expired prepared candidates against live LTPs.
+        # Extends TTL by 4h for setups that are still structurally intact.
+        sched_lib.every().day.at("11:30").do(
+            lambda: self._run_intraday_refresh("mid_session")
+        )
+        sched_lib.every().day.at("13:30").do(
+            lambda: self._run_intraday_refresh("afternoon")
         )
 
+        # ── Fix 7: Weekly nifty500_universe.json rebuild — Monday 08:30 IST ──
+        # Keeps the Phase D scanner's source pool fresh on a weekly cadence.
+        sched_lib.every().day.at("08:30").do(self._run_weekly_universe_rebuild)
+
+        # ── Weekend intelligence ────────────────────────────────────────
+        # Day-of-week guard is inside the runner methods; every().day fires
+        # daily but the guard returns immediately on non-weekend days.
+        sched_lib.every().day.at(SCHEDULE["saturday_intelligence"]).do(
+            self._run_saturday_intelligence
+        )
+        sched_lib.every().day.at(SCHEDULE["sunday_intelligence"]).do(
+            self._run_sunday_intelligence
+        )
+
+        # V2: position monitor + scanner event poll (every 5 min, market hours only)
+        def _five_min_tasks():
+            if not self._is_market_session():
+                return
+            self.monitor_open_positions()
+            self._check_scanner_events()   # V2: handle event-driven mini rescans
+
+        sched_lib.every(5).minutes.do(_five_min_tasks)
+
         log.info("[Orchestrator] Scheduler armed.")
-        log.info("  Pre-market : 08:00 init | 08:30 data warm-up")
+        log.info("  Pre-market : 08:00 init | 08:30 data warm-up + [Mon] universe rebuild")
         log.info("  Deep scans : 09:05 / 09:10 / 09:20  (MarketMonitor — opening window only)")
         log.info("  Full cycle : 09:45 / 10:30 / 11:30 / 13:00 / 14:00 / 15:00")
+        log.info("  Intraday refresh: 11:30 (mid-session) | 13:30 (afternoon) — candidate TTL extension")
         log.info("  EOD        : 15:35")
+        log.info("  Post-scan  : 16:45  (Phase D market scanner)")
+        log.info("  Pre-mkt    : 08:45  (Phase G premarket refiner)")
         log.info("  Monitoring : every 5 min  |  Light scan: every 30s")
+        log.info("  Weekend    : Saturday 08:00 deep accumulation | Sunday 09:00 Monday prep")
 
         self.bus.publish(SystemEvent(
             event_type=EventType.SYSTEM_STARTUP,
@@ -2974,6 +5346,87 @@ class MasterOrchestrator:
         )
         t.start()
         log.info("[Orchestrator] Scheduler thread running (15s resolution).")
+
+
+    def _startup_csv_orphan_audit(self) -> None:
+        """
+        Fix: Startup CSV Orphan Audit.
+
+        Reads paper_trades.csv immediately on startup and detects any OPEN row
+        that has no matching CLOSE row.  Cross-checks against order_manager's
+        in-memory state so positions that ARE being tracked are not falsely
+        flagged.  Any truly orphaned row → CRITICAL log + Telegram alert.
+
+        This runs synchronously before the scheduler thread starts so the
+        user is notified within seconds of container boot.
+        """
+        import csv
+        from pathlib import Path
+
+        csv_path = Path("data/paper_trades.csv")
+        if not csv_path.exists():
+            log.info("[OrphanAudit] paper_trades.csv not found — skipping.")
+            return
+
+        try:
+            rows = list(csv.DictReader(open(csv_path)))
+        except Exception as exc:
+            log.warning("[OrphanAudit] Could not read CSV: %s", exc)
+            return
+
+        opens  = {r["order_id"]: r for r in rows if r.get("event", "").strip() == "OPEN"}
+        closes = {r["order_id"] for r in rows  if r.get("event", "").strip() == "CLOSE"}
+        orphan_ids = set(opens.keys()) - closes
+
+        if not orphan_ids:
+            log.info("[OrphanAudit] CSV integrity OK — 0 orphaned positions.")
+            return
+
+        # Cross-check: is the order_manager already tracking these?
+        try:
+            tracked_ids = {o.order_id for o in self.order_manager.get_open_orders()}
+        except Exception:
+            tracked_ids = set()
+
+        truly_orphaned = orphan_ids - tracked_ids
+        tracked_orphans = orphan_ids & tracked_ids
+
+        for oid in tracked_orphans:
+            log.info(
+                "[OrphanAudit] %s is OPEN-without-CLOSE in CSV but IS tracked "
+                "by order_manager — restore OK.",
+                opens[oid].get("symbol", oid),
+            )
+
+        if not truly_orphaned:
+            log.info(
+                "[OrphanAudit] All %d CSV-open positions are tracked — no action needed.",
+                len(orphan_ids),
+            )
+            return
+
+        # Build alert message
+        lines = []
+        for oid in truly_orphaned:
+            r = opens[oid]
+            lines.append(
+                f"  {r.get('symbol','?')} {r.get('direction','?')} "
+                f"{r.get('quantity','?')} @ {r.get('entry_price','?')} "
+                f"(SL={r.get('stop_loss','?')})"
+            )
+        alert_body = (
+            f"WARNING: {len(truly_orphaned)} position(s) found in paper_trades.csv "
+            f"as OPEN without a CLOSE row AND not tracked by order_manager:\n"
+            + "\n".join(lines)
+            + "\nManual review required."
+        )
+        log.critical("[OrphanAudit] %s", alert_body)
+
+        try:
+            from notifications import get_notifier
+            get_notifier().market_alert("⚠️ ORPHAN POSITION ALERT", alert_body)
+        except Exception as exc:
+            log.warning("[OrphanAudit] Telegram alert failed: %s", exc)
 
     def set_stop_event(self, stop_event: threading.Event) -> None:
         """Let main.py inject the real stop Event so halt propagates to the main loop."""

@@ -32,6 +32,11 @@ class MarketDataAI:
 
     def __init__(self):
         self.indices: List[str] = INDICES
+        # ── PCR cache health counters (reset each session) ─────────────
+        self._pcr_fresh_reads:   int = 0
+        self._pcr_stale_reads:   int = 0
+        self._pcr_expired_reads: int = 0
+        self._pcr_fallback_reads: int = 0
         log.info("[MarketDataAI] Initialised. Tracking %d indices.", len(self.indices))
 
     # ─────────────────────────────────────────────
@@ -205,34 +210,71 @@ class MarketDataAI:
         """Read PCR from the options_feed in-memory cache — ZERO network I/O.
 
         The AngelOne background refresh loop populates _options_chain_state
-        every ~9 minutes during market hours via market_monitor.  We read
-        that cached value directly instead of making a blocking HTTP request.
+        every ~9 minutes during market hours.  We read that cached value
+        directly instead of making a blocking HTTP request.
 
         Fallback chain:
-          1. Cached chain PCR  (age < 600 s  → [PCRCacheRead])
-          2. Stale cached PCR  (age >= 600 s → [PCRCacheRead] with STALE flag)
-          3. Neutral 0.85      (no cache at all → [PCRFallback])
+          1. FRESH cache   (age <= 600 s)        -> [PCRCacheHealth freshness=FRESH]
+          2. STALE cache   (600 < age <= 1800 s) -> [PCRCacheHealth freshness=STALE]
+          3. EXPIRED cache (age > 1800 s)        -> [PCRCacheHealth freshness=EXPIRED]
+          4. No cache                            -> [PCRFallback] pcr=0.85
         """
+        _INF = float("inf")
         try:
             from data_feeds import get_feed_manager
             pcr, age_sec, source = get_feed_manager().get_cached_pcr("NIFTY")
             if pcr is not None:
-                stale_flag = "STALE" if age_sec >= 600 else "FRESH"
+                if age_sec <= 600:
+                    freshness = "FRESH"
+                    self._pcr_fresh_reads += 1
+                elif age_sec <= 1800:
+                    freshness = "STALE"
+                    self._pcr_stale_reads += 1
+                else:
+                    freshness = "EXPIRED"
+                    self._pcr_expired_reads += 1
                 log.info(
-                    "[PCRCacheRead] source=%s age_seconds=%.0f pcr=%.4f freshness=%s",
-                    source, age_sec, pcr, stale_flag,
+                    "[PCRCacheHealth] source=%s age_seconds=%.0f "
+                    "freshness=%s pcr=%.4f",
+                    source, age_sec, freshness, pcr,
                 )
                 return round(pcr, 2)
-            # Cache exists but no valid PCR value
+            # Cache present but no valid PCR value inside it
+            _age_display = -1 if age_sec == _INF else int(age_sec)
+            self._pcr_fallback_reads += 1
             log.info(
-                "[PCRFallback] reason=no_valid_pcr_in_cache source=%s "
-                "age_seconds=%.0f pcr=0.85",
-                source,
-                age_sec if age_sec != float("inf") else -1,
+                "[PCRFallback] reason=no_valid_cache source=%s "
+                "age_seconds=%d pcr=0.85",
+                source, _age_display,
             )
         except Exception as exc:
-            log.info("[PCRFallback] reason=exception error=%s pcr=0.85", exc)
+            self._pcr_fallback_reads += 1
+            log.info(
+                "[PCRFallback] reason=exception source=NONE "
+                "age_seconds=-1 error=%s pcr=0.85", exc,
+            )
         return 0.85  # neutral — neither bullish nor bearish
+
+    def emit_pcr_cache_summary(self) -> None:
+        """Emit daily PCR cache quality summary.  Called once at EOD."""
+        total = (self._pcr_fresh_reads + self._pcr_stale_reads
+                 + self._pcr_expired_reads + self._pcr_fallback_reads)
+        if total == 0:
+            log.info("[PCRCacheSummary] no MI cycles recorded today")
+            return
+        fresh_pct    = round(self._pcr_fresh_reads    / total * 100, 1)
+        fallback_pct = round(self._pcr_fallback_reads / total * 100, 1)
+        log.info(
+            "[PCRCacheSummary] fresh_reads=%d stale_reads=%d "
+            "expired_reads=%d fallback_reads=%d "
+            "fresh_pct=%.1f%% fallback_pct=%.1f%%",
+            self._pcr_fresh_reads,
+            self._pcr_stale_reads,
+            self._pcr_expired_reads,
+            self._pcr_fallback_reads,
+            fresh_pct,
+            fallback_pct,
+        )
 
     def _fetch_fii_dii(self) -> Dict[str, float]:
         """Fetch FII/DII institutional flow data (simulated)."""
