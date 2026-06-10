@@ -194,12 +194,45 @@ class MarketDataAI:
             "indices":    indices_data,
             "vix":        vix,
             "vix_source": vix_src,
-            "pcr":        round(random.uniform(0.7, 1.4), 2),
+            "pcr":        self._fetch_live_pcr(random),
             "breadth":    round(random.uniform(0.3, 0.8), 2),
             "fii_dii":    self._fetch_fii_dii(),
             "timestamp":  datetime.now().isoformat(),
             "data_source": "LIVE" if is_live else "SIM",
         }
+
+    def _fetch_live_pcr(self, random_module) -> float:
+        """Read PCR from the options_feed in-memory cache — ZERO network I/O.
+
+        The AngelOne background refresh loop populates _options_chain_state
+        every ~9 minutes during market hours via market_monitor.  We read
+        that cached value directly instead of making a blocking HTTP request.
+
+        Fallback chain:
+          1. Cached chain PCR  (age < 600 s  → [PCRCacheRead])
+          2. Stale cached PCR  (age >= 600 s → [PCRCacheRead] with STALE flag)
+          3. Neutral 0.85      (no cache at all → [PCRFallback])
+        """
+        try:
+            from data_feeds import get_feed_manager
+            pcr, age_sec, source = get_feed_manager().get_cached_pcr("NIFTY")
+            if pcr is not None:
+                stale_flag = "STALE" if age_sec >= 600 else "FRESH"
+                log.info(
+                    "[PCRCacheRead] source=%s age_seconds=%.0f pcr=%.4f freshness=%s",
+                    source, age_sec, pcr, stale_flag,
+                )
+                return round(pcr, 2)
+            # Cache exists but no valid PCR value
+            log.info(
+                "[PCRFallback] reason=no_valid_pcr_in_cache source=%s "
+                "age_seconds=%.0f pcr=0.85",
+                source,
+                age_sec if age_sec != float("inf") else -1,
+            )
+        except Exception as exc:
+            log.info("[PCRFallback] reason=exception error=%s pcr=0.85", exc)
+        return 0.85  # neutral — neither bullish nor bearish
 
     def _fetch_fii_dii(self) -> Dict[str, float]:
         """Fetch FII/DII institutional flow data (simulated)."""
