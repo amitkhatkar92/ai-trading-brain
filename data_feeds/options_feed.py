@@ -421,6 +421,19 @@ class OptionsFeed:
             if _ao is not None:
                 _base_ao = _ao.get_options_chain(symbol, dte_target=dte_target)
                 if _base_ao is not None and getattr(_base_ao, "contracts", None):
+                    # ── P1A: sync raw chain back to DataFeedManager._options_chain_state ──
+                    # The warm loop calls AngelOneFeed directly and never touches
+                    # _options_chain_state, so fetched_at was frozen at first-cycle time.
+                    # Writing here keeps get_cached_pcr() age < 300s after every refresh.
+                    try:
+                        _gfm_ao()._options_chain_state[symbol.upper()] = {
+                            "chain":      _base_ao,
+                            "fetched_at": datetime.now(),
+                            "source":     "ANGELONE",
+                            "is_live":    True,
+                        }
+                    except Exception:
+                        pass
                     _spot     = float(_base_ao.spot_price)
                     _exp_str  = _base_ao.expiry          # DDMMMYY e.g. "02JUN26"
                     try:
