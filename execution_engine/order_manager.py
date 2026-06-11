@@ -3040,6 +3040,13 @@ class OrderManager:
                 _expire_ltp: dict = {}
                 _exp_syms = list({r.get("symbol", "") for _, r, *_ in expire_rows
                                   if r.get("symbol")})
+                # Build entry-price map for LTPGuard-equivalent sanity check below.
+                # key=symbol, value=entry_price float  (0 if unavailable)
+                _expire_entry: dict = {
+                    r.get("symbol", ""): float(r.get("entry_price") or 0)
+                    for _, r, *_ in expire_rows
+                    if r.get("symbol")
+                }
                 if _exp_syms:
                     try:
                         from data_feeds.data_feed_manager import get_feed_manager as _gfm
@@ -3051,6 +3058,24 @@ class OrderManager:
                                      or getattr(_q, "last_price", None))
                             _src  = (getattr(_q, "feed_source", "") or "").upper()
                             if _ltp and float(_ltp) > 0 and _src != "SIM":
+                                # ── LTPGuard-equivalent sanity check ──────────────
+                                # This path has no access to TradeMonitor.LTPGuard
+                                # (no last_known_good baseline).  Use entry_price as
+                                # the reference.  Reject if feed deviates >25% from
+                                # entry — the same class of corruption that caused the
+                                # MARICO phantom P&L (+₹334k) on 2026-06-11.
+                                _entry_ref = _expire_entry.get(_bare, 0)
+                                if _entry_ref > 0:
+                                    _dev = abs(float(_ltp) - _entry_ref) / _entry_ref
+                                    if _dev > 0.25:
+                                        log.warning(
+                                            "[SessionExpiry] REJECTED suspicious exit price "
+                                            "for %s: feed=%.2f vs entry=%.2f (%.0f%% deviation "
+                                            "> 25%% guard) — possible corrupt Dhan value; "
+                                            "falling back to entry_price (₹0 PnL).",
+                                            _bare, float(_ltp), _entry_ref, _dev * 100,
+                                        )
+                                        continue   # skip — don't add to _expire_ltp
                                 _expire_ltp[_bare] = round(float(_ltp), 2)
                             elif _src == "SIM":
                                 log.warning(
