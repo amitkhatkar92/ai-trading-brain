@@ -43,6 +43,7 @@ jobs:
             set -e
             cd /root/ai-trading-brain
             echo "=== git sync ==="
+            git remote prune origin
             git fetch origin main
             git reset --hard origin/main
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
