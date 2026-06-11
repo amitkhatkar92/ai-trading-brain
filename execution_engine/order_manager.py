@@ -2082,7 +2082,7 @@ class OrderManager:
 
         # Batch-fetch live prices for expiring symbols not already in live_prices
         _ltp_map: Dict[str, float] = dict(live_prices or {})
-        missing_syms = [rec.symbol for _, rec, _, _ in to_expire
+        missing_syms = [rec.symbol for _, rec, _, _, _ in to_expire
                         if rec.symbol not in _ltp_map]
         if missing_syms:
             try:
