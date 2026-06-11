@@ -14,7 +14,9 @@ Features:
 
 from __future__ import annotations
 
+import json
 import math
+import os
 import time
 import threading
 from dataclasses import dataclass, field
@@ -22,6 +24,10 @@ from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from utils import get_logger
+
+# ── IV history persistence path ────────────────────────────────────────────
+_IV_DATA_DIR      = os.path.join(os.path.dirname(__file__), "..", "data")
+_IV_HISTORY_FILE  = os.path.join(_IV_DATA_DIR, "iv_history.json")
 
 log = get_logger(__name__)
 
@@ -215,6 +221,7 @@ class OptionsFeed:
         self._cache:      Dict[str, Tuple[float, OptionsChain]] = {}
         self._iv_history: Dict[str, List[Tuple[date, float]]]   = {}
         self._lock = threading.Lock()
+        self._load_iv_history()   # P3: restore from previous session
 
         # Background refresh thread — keeps chain cache warm between cycles.
         # Options scan cold-start costs ~1.5s/symbol; with cycle gaps of 10–90 min
@@ -833,6 +840,45 @@ class OptionsFeed:
 
     # ── Private: IV Rank ───────────────────────────────────────────────
 
+    def _load_iv_history(self) -> None:
+        """Load persisted IV history from data/iv_history.json on startup."""
+        try:
+            if not os.path.exists(_IV_HISTORY_FILE):
+                log.warning("[IVHistoryLoad] file=%s not found — starting with empty history",
+                            _IV_HISTORY_FILE)
+                return
+            with open(_IV_HISTORY_FILE, "r", encoding="utf-8") as fh:
+                raw: dict = json.load(fh)
+            loaded: Dict[str, List[Tuple[date, float]]] = {}
+            total_rows = 0
+            for sym, entries in raw.items():
+                loaded[sym] = [(date.fromisoformat(d), float(iv)) for d, iv in entries]
+                total_rows += len(loaded[sym])
+            self._iv_history = loaded
+            log.info("[IVHistoryLoad] symbols=%d rows=%d file=%s",
+                     len(loaded), total_rows, _IV_HISTORY_FILE)
+        except Exception as exc:
+            log.warning("[IVHistoryLoadError] Could not load IV history (%s) "
+                        "— starting with empty history (IVR=50 fallback active)", exc)
+
+    def _persist_iv_history(self) -> None:
+        """Atomically persist IV history to data/iv_history.json."""
+        try:
+            os.makedirs(_IV_DATA_DIR, exist_ok=True)
+            serialisable = {
+                sym: [[d.isoformat(), iv] for d, iv in entries]
+                for sym, entries in self._iv_history.items()
+            }
+            total_rows = sum(len(v) for v in serialisable.values())
+            tmp = _IV_HISTORY_FILE + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(serialisable, fh, separators=(",", ":"))
+            os.replace(tmp, _IV_HISTORY_FILE)
+            log.debug("[IVHistoryPersist] symbols=%d rows=%d file=%s",
+                      len(serialisable), total_rows, _IV_HISTORY_FILE)
+        except Exception as exc:
+            log.warning("[IVHistoryPersistError] Could not save IV history: %s", exc)
+
     def _update_iv_history(self, symbol: str, atm_iv: float) -> None:
         today = date.today()
         hist  = self._iv_history.setdefault(symbol, [])
@@ -844,6 +890,7 @@ class OptionsFeed:
         # Keep ~252 trading days
         cutoff = today - timedelta(days=365)
         self._iv_history[symbol] = [(d, v) for d, v in hist if d >= cutoff]
+        self._persist_iv_history()   # P3: write through to disk
 
     def _compute_iv_rank(self, symbol: str, current_iv: float) -> float:
         """IV Rank: 100 × (current – 52w_low) / (52w_high – 52w_low)."""
