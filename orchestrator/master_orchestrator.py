@@ -2704,9 +2704,11 @@ class MasterOrchestrator:
                 "SL check deferred to first scheduler monitor cycle."
             )
 
-        # Also run carry-expiry check with live prices
+        # Also run carry-expiry check with LTPGuard-validated prices
+        # (raw _live_pf can contain corrupt Dhan values — must use resolved prices)
         try:
-            _n_expired = self.order_manager.check_and_expire_carries(_live_pf)
+            _post_validated = self.trade_monitor.get_resolved_prices()
+            _n_expired = self.order_manager.check_and_expire_carries(_post_validated or _live_pf)
             if _n_expired:
                 log.info(
                     "[PostRestoreGovernance] CarryExpiry: %d position(s) "
@@ -2966,9 +2968,13 @@ class MasterOrchestrator:
 
             # ── Deterministic carry-expiry check ──────────────────────────────
             # Carry expiry must be time-bound (every cycle) not restart-bound.
-            # Passes the validated live prices so exits use real market prices.
+            # CRITICAL: pass get_resolved_prices() (LTPGuard-validated), NOT raw
+            # _live_pf.  _live_pf can contain corrupt Dhan values (~₹1000) that
+            # LTPGuard corrects inside check_all().  Using raw prices here caused
+            # phantom P&L on MARICO (exit=1001.96 vs real~810) on 2026-06-11.
+            _validated_pf  = self.trade_monitor.get_resolved_prices() if _check_all_ok else {}
             try:
-                _n_expired = self.order_manager.check_and_expire_carries(_live_pf)
+                _n_expired = self.order_manager.check_and_expire_carries(_validated_pf or _live_pf)
                 if _n_expired:
                     log.info("[Monitor] CarryExpiry: closed %d position(s) at live LTP.", _n_expired)
             except Exception as _ce_exc:
