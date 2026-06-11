@@ -43,7 +43,13 @@ jobs:
             set -e
             cd /root/ai-trading-brain
             echo "=== git sync ==="
-            git fetch origin main
+            # --force bypasses the compare-and-swap ref check that causes:
+            # "cannot lock ref 'refs/remotes/origin/main': is at A but expected B"
+            # This happens when a previous manual SSH deploy advanced the ref and
+            # GitHub Actions then tries to fetch expecting the older SHA.
+            # git remote prune (the alternative) only removes deleted-branch refs
+            # and does NOT fix a ref that exists at the wrong SHA.
+            git fetch --force origin main
             git reset --hard origin/main
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
 
