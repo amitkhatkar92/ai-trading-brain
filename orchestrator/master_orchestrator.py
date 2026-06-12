@@ -2341,11 +2341,42 @@ class MasterOrchestrator:
                 sig.symbol, sig.confidence, score_edge,
             )
 
+            # ── Resolve OrderRecord + exit price for the weakest position ─────
+            # portfolio.positions is keyed by symbol; close_position requires
+            # the UUID order_id from the matching OrderRecord.
+            _rot_records = self.order_manager.get_open_orders()
+            _rot_rec     = next(
+                (r for r in _rot_records
+                 if r.symbol == weakest.symbol and r.status == "open"),
+                None,
+            )
+            if _rot_rec is None:
+                log.warning(
+                    "[RotationReject] %s — no open OrderRecord found for weakest "
+                    "position %s. Skipping rotation.",
+                    sig.symbol, weakest.symbol,
+                )
+                continue
+            # Prefer live LTP; fall back to entry price if no live feed.
+            _rot_exit_px = (
+                weakest.ltp
+                if weakest.has_live_ltp and weakest.ltp > 0
+                else _rot_rec.entry_price
+            )
+
             # Close the weakest position via order manager
             try:
                 self.order_manager.close_position(
-                    weakest.symbol,
+                    _rot_rec.order_id,
+                    _rot_exit_px,
                     reason=f"SMARTSWAP_ROTATION: replaced by {sig.symbol}",
+                )
+                log.info(
+                    "[InstitutionalRotation] closed_symbol=%s closed_oid=%s "
+                    "exit_price=%.2f incoming_symbol=%s incoming_score=%.2f "
+                    "replaced_score=%.2f",
+                    weakest.symbol, _rot_rec.order_id, _rot_exit_px,
+                    sig.symbol, sig.confidence, weakest_confidence,
                 )
             except Exception as exc:
                 log.error(
