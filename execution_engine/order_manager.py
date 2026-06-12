@@ -356,6 +356,12 @@ class OrderManager:
         # Reset each calendar day at the top of check_and_expire_carries().
         self._closed_ids_today: set = set()
         self._closed_ids_today_date: Optional[str] = None
+        # Daily rotation throttle for smart-swap (Pathway A).
+        # Stores the calendar-date string of the last successful cross-signal
+        # replacement.  A new date string never matches, so it resets itself
+        # automatically on the first execute() call of each trading day.
+        # Limits churn: at most 1 forced position replacement per day.
+        self._swap_rotation_date: Optional[str] = None
         # Restore diagnostics: populated by _restore_from_journal() at each startup.
         # Exposed via get_restore_stats() so orchestrator and health monitors can
         # report restore integrity in startup Telegram pings and cycle reports.
@@ -453,6 +459,15 @@ class OrderManager:
                 )
                 if _swap:
                     _swap_oid, _swap_sym, _weak_score = _swap
+                    # ── Daily rotation throttle (Pathway A, FIX 1) ───────────
+                    _ss_today = datetime.now().strftime("%Y-%m-%d")
+                    if self._swap_rotation_date == _ss_today:
+                        log.info(
+                            "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
+                            "new_symbol=%s status=BLOCKED reason=DAILY_CAP_REACHED",
+                            _ss_today, _swap_sym, signal.symbol,
+                        )
+                        return None
                     # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
                     # If the weakest position belongs to a DIFFERENT symbol than
                     # the incoming signal, evicting it will NOT reduce the open
@@ -477,6 +492,12 @@ class OrderManager:
                         else _swap_rec.entry_price
                     )
                     self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                    self._swap_rotation_date = _ss_today
+                    log.info(
+                        "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
+                        "new_symbol=%s status=CONSUMED",
+                        _ss_today, _swap_sym, signal.symbol,
+                    )
                     log.info(
                         "[Replace] Closed %s (score=%.1f) → new %s stronger (score=%.1f).",
                         _swap_sym, _weak_score, signal.symbol, _new_score,
@@ -500,6 +521,15 @@ class OrderManager:
             )
             if _swap:
                 _swap_oid, _swap_sym, _weak_score = _swap
+                # ── Daily rotation throttle (Pathway A, FIX 2) ───────────
+                _ss_today = datetime.now().strftime("%Y-%m-%d")
+                if self._swap_rotation_date == _ss_today:
+                    log.info(
+                        "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
+                        "new_symbol=%s status=BLOCKED reason=DAILY_CAP_REACHED",
+                        _ss_today, _swap_sym, signal.symbol,
+                    )
+                    return None
                 # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
                 # Max-positions guard: evicting a different symbol frees a
                 # portfolio slot, but if signal.symbol already has an open
@@ -528,6 +558,12 @@ class OrderManager:
                     else _swap_rec.entry_price
                 )
                 self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                self._swap_rotation_date = _ss_today
+                log.info(
+                    "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
+                    "new_symbol=%s status=CONSUMED",
+                    _ss_today, _swap_sym, signal.symbol,
+                )
                 log.info(
                     "[Replace] Closed %s (score=%.1f) → new %s stronger (score=%.1f).",
                     _swap_sym, _weak_score, signal.symbol, _new_score,
