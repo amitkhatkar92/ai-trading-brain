@@ -199,6 +199,29 @@ class CapitalRiskEngine:
         global _EXPOSURE_REJECTIONS_LAST_CYCLE
         _EXPOSURE_REJECTIONS_LAST_CYCLE = []
 
+        # ── Quality sort: rank signals by combined score BEFORE cap fires ──
+        # Ensures MAX_POSITIONS cap discards weakest signals, not last-arrived.
+        # Formula mirrors SmartExecution._combined_score (conf×0.55 + RR_norm×0.45).
+        # conf is on 0–10 scale here; normalise to 0–1 before weighting.
+        def _cre_quality_score(s: TradeSignal) -> float:
+            _c = float(getattr(s, "confidence", 0.0)) / 10.0
+            _r = float(getattr(s, "risk_reward_ratio", 0.0))
+            return _c * 0.55 + min(_r / 5.0, 1.0) * 0.45
+
+        signals = sorted(signals, key=_cre_quality_score, reverse=True)
+
+        try:
+            _qs_top = signals[0] if signals else None
+            log.info(
+                "[CREQualitySort] signals_in=%d top_symbol=%s top_conf=%.2f top_rr=%.2f",
+                len(signals),
+                _qs_top.symbol if _qs_top else "NONE",
+                float(getattr(_qs_top, "confidence", 0.0)) if _qs_top else 0.0,
+                float(getattr(_qs_top, "risk_reward_ratio", 0.0)) if _qs_top else 0.0,
+            )
+        except Exception as _qs_exc:
+            log.debug("[CREQualitySort] telemetry skipped: %s", _qs_exc)
+
         def _ec_record(sig, reason: str) -> dict:
             """Build a rejection record dict for a signal."""
             try:
@@ -253,11 +276,14 @@ class CapitalRiskEngine:
                     _crd_heat_rejected += 1
                     _cap_rejected += 1
                     try:
+                        _cap_rank = _sig_idx + (_cap_rejected)
+                        _cap_qs   = round(_cre_quality_score(_rem_sig), 4)
                         log.info(
                             "[CRECapDecision] symbol=%s positions_counted=%d "
                             "max_positions=%d cap_triggered=True "
-                            "reason=MAX_POSITIONS_CAP",
+                            "reason=MAX_POSITIONS_CAP cap_rank=%d quality_score=%.4f",
                             _rem_sig.symbol, len(result), _MAX_POSITIONS,
+                            _cap_rank, _cap_qs,
                         )
                         _rec = _ec_record(_rem_sig, "MAX_POSITIONS_CAP")
                         _EXPOSURE_REJECTIONS_TODAY.append(_rec)
