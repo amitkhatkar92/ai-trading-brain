@@ -43,14 +43,19 @@ jobs:
             set -e
             cd /root/ai-trading-brain
             echo "=== git sync ==="
-            # --force bypasses the compare-and-swap ref check that causes:
-            # "cannot lock ref 'refs/remotes/origin/main': is at A but expected B"
-            # This happens when a previous manual SSH deploy advanced the ref and
-            # GitHub Actions then tries to fetch expecting the older SHA.
-            # git remote prune (the alternative) only removes deleted-branch refs
-            # and does NOT fix a ref that exists at the wrong SHA.
-            git fetch --force origin main
-            git reset --hard origin/main
+            # Delete the stale remote-tracking ref before fetching.
+            # When a previous manual SSH deploy or a partially-completed Actions
+            # run already advanced refs/remotes/origin/main to the NEW sha, git's
+            # atomic compare-and-swap transaction fails with:
+            #   "cannot lock ref '...': is at NEW but expected OLD"
+            # --force only overrides non-fast-forward safety, not this CAS check.
+            # Deleting the ref first ensures git creates it fresh with no prior
+            # expectation, eliminating the mismatch entirely.
+            git update-ref -d refs/remotes/origin/main 2>/dev/null || true
+            git fetch origin main
+            # Reset to FETCH_HEAD (always set by git fetch regardless of whether
+            # the remote-tracking ref was updated) so the working tree is current.
+            git reset --hard FETCH_HEAD
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
 
             # ═══ Remove stale PID locks ════════════════════════════════════════
