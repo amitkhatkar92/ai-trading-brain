@@ -183,6 +183,14 @@ _LATE_ENTRY_CUTOFF_H, _LATE_ENTRY_CUTOFF_M   = 14, 30   # hard cutoff
 _LATE_ENTRY_ELEVATED_H, _LATE_ENTRY_ELEVATED_M = 13, 30  # elevated-threshold window starts
 _LATE_ENTRY_MIN_SCORE = 7.0                               # score floor in elevated window
 
+# ── Early-Entry Governance (09:45 execution window) ────────────────────────
+# No order may be placed before 09:45 IST regardless of how execute() is
+# reached.  Layer 3 (last-resort) of the defence-in-depth stack:
+#   Layer 1: orchestrator deep-scan handler  (suppresses task submission)
+#   Layer 2: run_full_cycle() / options fast-path (skip cycle entirely)
+#   Layer 3: order_manager.execute() hard block  ← this constant
+_EXEC_WIN_OPEN_H, _EXEC_WIN_OPEN_M = 9, 45   # earliest permitted order time IST
+
 
 @dataclass
 class OrderRecord:
@@ -441,6 +449,29 @@ class OrderManager:
           vix       – float India VIX value
           distortion – bool any distortion event active
         """
+        # ── Layer 3: ExecutionWindowBlock ───────────────────────────────────
+        # Last-resort hard block: reject any order placed before 09:45 IST.
+        # Catches callers that bypass Layers 1 and 2 (e.g. test harnesses,
+        # direct calls, future code paths not yet guarded upstream).
+        _ewb_now = datetime.now()
+        _ewb_win = _ewb_now.replace(
+            hour=_EXEC_WIN_OPEN_H, minute=_EXEC_WIN_OPEN_M,
+            second=0, microsecond=0,
+        )
+        if _ewb_now < _ewb_win:
+            _ewb_mins = int((_ewb_win - _ewb_now).total_seconds() / 60)
+            log.warning(
+                "[ExecutionWindowBlock] symbol=%s strategy=%s "
+                "attempt_time=%s allowed_window=09:45 "
+                "minutes_early=%d action=ORDER_REJECTED",
+                signal.symbol,
+                getattr(signal, 'strategy_name', '?'),
+                _ewb_now.strftime('%H:%M:%S'),
+                _ewb_mins,
+            )
+            return None
+        # ── end ExecutionWindowBlock ──────────────────────────────────────────
+
         # ── FIX 1: Guard against duplicate trades on same symbol ──────
         _new_score = float(getattr(decision, "confidence_score", 5.0))
         _is_same_symbol_swap = False  # True when we replace the *same* symbol (exempt from late-entry guard)

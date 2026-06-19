@@ -505,6 +505,22 @@ class MasterOrchestrator:
             elif actual_name in ("first_opportunity_scan", "strategy_evaluation",
                                "mid_morning_scan", "mid_session_scan",
                                "afternoon_scan", "early_afternoon_scan"):
+                # ── Layer 1: ExecutionWindowGuard ─────────────────────────
+                # The deep-scan path bypasses _guarded_cycle and calls
+                # run_full_cycle directly via the task queue.  Guard here
+                # so no full cycle (and therefore no order placement) is
+                # submitted before the 09:45 execution window opens.
+                _now_scan = datetime.now()
+                _scan_win = _now_scan.replace(hour=9, minute=45, second=0, microsecond=0)
+                if _now_scan < _scan_win:
+                    _mins = int((_scan_win - _now_scan).total_seconds() / 60)
+                    log.info(
+                        "[ExecWindowGuard] L1 deep_scan=%s suppressed at %s — "
+                        "execution window opens 09:45 (%d min remaining).",
+                        actual_name, _now_scan.strftime("%H:%M:%S"), _mins,
+                    )
+                    return
+                # ── end Layer 1 ───────────────────────────────────────────
                 # Lightweight opportunity re-scan (non-blocking)
                 self.task_queue.submit_to(
                     "MasterOrchestrator",
@@ -549,6 +565,22 @@ class MasterOrchestrator:
             log.warning("Trading halted — skipping cycle.")
             log.info("[GlobalAbortCause] cause=self._halt cycle_skipped=True")
             return
+
+        # ── Layer 2: ExecutionWindowGuard ─────────────────────────────────
+        # Defence-in-depth: catch any call path that bypassed Layer 1.
+        # run_full_cycle() must never execute before 09:45 IST.
+        _rfc_now = datetime.now()
+        _rfc_win = _rfc_now.replace(hour=9, minute=45, second=0, microsecond=0)
+        if _rfc_now < _rfc_win:
+            _rfc_mins = int((_rfc_win - _rfc_now).total_seconds() / 60)
+            log.info(
+                "[ExecWindowGuard] L2 run_full_cycle suppressed at %s — "
+                "execution window opens 09:45 (%d min remaining).",
+                _rfc_now.strftime("%H:%M:%S"), _rfc_mins,
+            )
+            log.info("[GlobalAbortCause] cause=exec_window_not_open cycle_skipped=True")
+            return
+        # ── end Layer 2 ───────────────────────────────────────────────────
 
         # ── Emergency Kill Switch Check ──────────────────────────────────
         if not is_trading_enabled():
@@ -1667,6 +1699,19 @@ class MasterOrchestrator:
         """
         log.info("── Options Fast-Path: %d signal(s) entering 4-layer validation ──",
                  len(signals))
+
+        # ── Layer 2 (options): ExecutionWindowGuard ───────────────────────
+        # Options fast-path bypasses run_full_cycle; guard independently.
+        _ofp_now = datetime.now()
+        _ofp_win = _ofp_now.replace(hour=9, minute=45, second=0, microsecond=0)
+        if _ofp_now < _ofp_win:
+            log.info(
+                "[ExecWindowGuard] L2 options_fast_path suppressed at %s — "
+                "execution window opens 09:45.",
+                _ofp_now.strftime("%H:%M:%S"),
+            )
+            return
+        # ── end Layer 2 (options) ─────────────────────────────────────────
 
         # ── LAYER A: Universal Kill-Switch ─────────────────────────────
         # These thresholds match RiskGuardian's hard-coded limits exactly.
