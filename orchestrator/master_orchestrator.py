@@ -323,6 +323,9 @@ class MasterOrchestrator:
         # Monitoring continuity: tracks last successful _do_monitor execution.
         # Used by FIX #3 blackout detection to emit [MonitoringGap] warnings.
         self._last_monitor_ts: Optional[datetime] = None
+        # Counts cycles where open positions existed but the price feed was empty.
+        # Incremented in _do_monitor; reset to 0 on any successful check_all().
+        self._missed_monitor_cycles: int = 0
 
         # ── Persistence + Notifications ───────────────────────────────
         try:
@@ -396,6 +399,15 @@ class MasterOrchestrator:
         self.task_queue.start_worker("TradeMonitor")
         self.task_queue.start_worker("LearningEngine")
         self.task_queue.start_worker("MasterOrchestrator")
+
+        # ── Wire OIOS execution feedback bridge (shadow-safe, fire-and-forget) ──
+        try:
+            from oios.execution_bridge import get_execution_bridge
+            self._oios_exec_bridge = get_execution_bridge()
+            self._oios_exec_bridge.subscribe(self.bus)
+            log.info("[EDA] OIOS execution feedback bridge wired.")
+        except Exception as _bridge_exc:
+            log.warning("[EDA] OIOS execution bridge not loaded: %s", _bridge_exc)
 
         log.info("[EDA] Communication layer wired. Bus ready. Workers started.")
 
@@ -2985,6 +2997,38 @@ class MasterOrchestrator:
         # Merge — options synthetic prices override raw spot prices
         _live_pf.update(_options_fixed)
 
+        # ── Empty-feed guard: warn when open positions will be silently skipped ──
+        _open_trades = self.trade_monitor.get_open_trades()
+        if not _live_pf and _open_trades:
+            self._missed_monitor_cycles += 1
+            _affected_syms = sorted({o.symbol for o in _open_trades})
+            log.warning(
+                "[Monitor] OPEN_POSITIONS_PRESENT_BUT_NO_PRICE_FEED "
+                "missed_cycle=%d  open_positions=%d  symbols=%s  ts=%s",
+                self._missed_monitor_cycles,
+                len(_open_trades),
+                _affected_syms,
+                _now_ts.strftime("%H:%M:%S"),
+            )
+            try:
+                from notifications.notifier_manager import get_notifier
+                if self._missed_monitor_cycles == 1 or self._missed_monitor_cycles % 6 == 0:
+                    get_notifier().send_alert(
+                        f"[Monitor] No price feed for {len(_open_trades)} open "
+                        f"position(s) — cycle #{self._missed_monitor_cycles} skipped.\n"
+                        f"Symbols: {_affected_syms}\n"
+                        f"Time: {_now_ts.strftime('%H:%M:%S IST')}"
+                    )
+            except Exception:
+                pass
+        elif _live_pf and self._missed_monitor_cycles > 0:
+            # Feed recovered — reset counter
+            log.info(
+                "[Monitor] Price feed recovered after %d missed cycle(s).",
+                self._missed_monitor_cycles,
+            )
+            self._missed_monitor_cycles = 0
+
         # ── Pass live prices to trade monitor so SL/target use real prices ──
         if _live_pf:
             log.debug("[Monitor] Passing %d live prices to check_all: %s",
@@ -3173,22 +3217,38 @@ class MasterOrchestrator:
         Applies overnight gap / conviction-decay re-scoring to prepared candidates.
         Skipped if USE_PREMARKET_REFINEMENT is False or candidate store is stale.
         """
+        _ran_ok = False
         try:
             from config import USE_PREMARKET_REFINEMENT
             if not USE_PREMARKET_REFINEMENT:
+                log.info("[Orchestrator] Premarket refiner disabled (USE_PREMARKET_REFINEMENT=False).")
+                _ran_ok = True
                 return
             from config import is_nse_holiday
             if is_nse_holiday():
                 log.info("[Orchestrator] NSE HOLIDAY — premarket refiner skipped.")
+                _ran_ok = True
                 return
             log.info("[Orchestrator] 08:45 IST — starting Phase G premarket refiner.")
             from opportunity_engine.premarket_refiner import run_premarket_refinement
             run_premarket_refinement()
+            _ran_ok = True
         except ImportError:
             # Phase G module not yet implemented — silently skip
-            log.debug("[Orchestrator] Phase G premarket_refiner not yet implemented — skipping.")
+            log.info("[Orchestrator] Phase G premarket_refiner not yet implemented — skipping.")
+            _ran_ok = True
         except Exception as exc:
             log.error("[Orchestrator] Premarket refiner crashed: %s", exc, exc_info=True)
+        finally:
+            # Always emit a ct_event so the dashboard knows this slot was serviced
+            try:
+                self.bus.publish(SystemEvent(
+                    event_type=EventType.PREMARKET_REFINER_RUN,
+                    source_agent="PremarketRefiner",
+                    payload={"ok": _ran_ok, "ts": datetime.now().isoformat()},
+                ))
+            except Exception:
+                pass
 
         # ── Observability: PremarketReadinessAudit ────────────────────────
         try:
@@ -3499,6 +3559,8 @@ class MasterOrchestrator:
             "REPLACEMENT",
             "emergency_close",         # system halt → exit @ entry_price (synthetic pnl)
             "close_emergency",         # TradeMonitor MAE — risk-engine intervention
+            "ORPHAN_CLOSE",            # closed before first monitoring cycle (never had live LTP)
+            "EOD_CLOSE",               # forced end-of-day flatten (currently dead code; exclude until wired)
             # (C) data repair
             "SYSTEM_CLEANUP",
         }

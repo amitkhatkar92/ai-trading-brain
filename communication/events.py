@@ -107,6 +107,7 @@ class EventType(str, Enum):
     CYCLE_STARTED            = "system.cycle.started"
     CYCLE_COMPLETE           = "system.cycle.complete"
     AGENT_ERROR              = "system.agent.error"
+    PREMARKET_REFINER_RUN    = "system.premarket_refiner.run"
 
 
 # ─────────────────────────────────────────────────────────────────────────────

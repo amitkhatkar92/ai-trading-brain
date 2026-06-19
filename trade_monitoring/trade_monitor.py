@@ -741,16 +741,39 @@ class TradeMonitor:
 
         return None
 
+    # Map internal action tokens → canonical lifecycle reasons stored in the journal.
+    # These strings are the ground truth consumed by EOD learning, Phase D shadow
+    # reports, and lifecycle analysis.  Human-readable log descriptions are kept
+    # separate (see _LOG_REASON_MAP below).
+    _CANONICAL_REASON: dict = {
+        "close_target":    "TARGET_HIT",
+        "close_sl":        "STOP_HIT",
+        "close_emergency": "close_emergency",   # system intervention — preserved as-is
+        "close_eod":       "EOD_CLOSE",
+        # adaptive_exit sub-reason is resolved at call time from _adaptive_reasons
+    }
+
     def _act(self, oid: str, order: OrderRecord, ltp: float, action: str):
-        reason_map = {
+        # ── Human-readable log description (never written to journal) ─────────
+        _log_reason_map = {
             "close_target":    f"Target hit at {ltp:.2f}",
             "close_sl":        f"Stop loss hit at {ltp:.2f}",
             "close_emergency": f"Emergency MAE at {ltp:.2f}",
             "close_eod":       "End of day close",
             "adaptive_exit":   f"Adaptive exit: {self._adaptive_reasons.get(oid, 'UNKNOWN')} at {ltp:.2f}",
         }
-        reason = reason_map.get(action, action)
-        log.info("[TradeMonitor] %s %s — %s", action.upper(), order.symbol, reason)
+        log.info("[TradeMonitor] %s %s — %s",
+                 action.upper(), order.symbol,
+                 _log_reason_map.get(action, action))
+
+        # ── Canonical journal reason (machine-readable, persisted to CSV) ─────
+        # adaptive_exit carries a sub-reason ("TIME_STALE" or "EARLY_LOSS")
+        # already stored in _adaptive_reasons.  Use it directly as the canonical
+        # label so EOD learning and Phase D reports can group by exit type.
+        if action == "adaptive_exit":
+            canonical_reason = self._adaptive_reasons.get(oid, "adaptive_exit")
+        else:
+            canonical_reason = self._CANONICAL_REASON.get(action, action)
 
         # Record in performance analytics layer
         try:
@@ -764,7 +787,7 @@ class TradeMonitor:
             log.debug("[TradeAnalytics] record failed (non-fatal): %s", _ae)
 
         if self._order_manager:
-            self._order_manager.close_position(oid, ltp, reason=action)
+            self._order_manager.close_position(oid, ltp, reason=canonical_reason)
 
     # ── LTPGuard threshold ────────────────────────────────────────────
     _LTP_GUARD_MAX_DEVIATION   = 0.20  # flag prices that deviate >20% from last known

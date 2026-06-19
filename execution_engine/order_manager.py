@@ -911,6 +911,31 @@ class OrderManager:
             )
         except Exception:
             pass
+        # ── Publish POSITION_CLOSED to EventBus (shadow-safe, fire-and-forget) ──
+        try:
+            from communication.event_bus import get_bus as _get_bus
+            from communication.events import EventType as _ET, SystemEvent as _SE
+            _pnl_pct = 0.0
+            if rec.entry_price > 0 and rec.quantity > 0:
+                _pnl_pct = round(pnl / (rec.entry_price * rec.quantity) * 100.0, 4)
+            _get_bus().publish(_SE(
+                event_type=_ET.POSITION_CLOSED,
+                source_agent="OrderManager",
+                payload={
+                    "order_id":    rec.order_id,
+                    "symbol":      rec.symbol,
+                    "direction":   rec.direction,
+                    "entry_price": rec.entry_price,
+                    "exit_price":  exit_price,
+                    "quantity":    rec.quantity,
+                    "pnl":         round(pnl, 2),
+                    "pnl_pct":     _pnl_pct,
+                    "strategy":    rec.strategy,
+                    "close_reason": reason,
+                },
+            ))
+        except Exception:
+            pass
         return True
 
     def close_all_positions(self):
@@ -946,7 +971,14 @@ class OrderManager:
                         log.debug("[OrderManager] emergency_close %s: no validated LTP — "
                                   "using entry %.2f", rec.symbol, _exit_px)
 
-                self.close_position(oid, _exit_px, reason="emergency_close")
+                # Distinguish positions that were never monitored this session
+                # (has_live_ltp=False, exit falls back to entry_price).
+                # ORPHAN_CLOSE is excluded from EOD learning (see _do_eod_learning
+                # _skip_reasons) so these synthetic zero-PnL rows never pollute
+                # Win Rate / Expectancy / Sharpe calculations.
+                _was_monitored = _pos is not None and getattr(_pos, "has_live_ltp", False)
+                _close_reason  = "emergency_close" if _was_monitored else "ORPHAN_CLOSE"
+                self.close_position(oid, _exit_px, reason=_close_reason)
 
     def get_portfolio(self) -> Portfolio:
         return self._portfolio

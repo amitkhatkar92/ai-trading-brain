@@ -52,6 +52,9 @@ _stub_module("config",
     ANGELONE_PASSWORD="", ANGELONE_TOTP_SECRET="",
     LOG_DIR=os.path.join(ROOT, "data", "logs"),
     LOG_LEVEL="DEBUG",
+    ATR_ZONE_MULTIPLIER=1.5,
+    MAX_RISK_PER_TRADE_PCT=0.0025,
+    MAX_CAPITAL_PER_TRADE_PCT=15.0,
 )
 
 # Broker stub

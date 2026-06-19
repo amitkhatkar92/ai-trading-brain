@@ -366,8 +366,49 @@ def fetch_scheduler_status() -> Dict[str, Any]:
         if len(r.get("started_at", "")) >= 16
     ]
 
+    # Also accept ct_events as evidence that a scheduled job ran
+    # (jobs like premarket_refiner don't create ct_cycles but do emit events)
+    event_rows = _query(
+        "SELECT ts FROM ct_events WHERE ts LIKE ?",
+        (today_str + "%",)
+    )
+    done_times.extend([
+        r["ts"][11:16] for r in event_rows
+        if len(r.get("ts", "")) >= 16
+    ])
+
+    today_weekday = now_dt.weekday()  # 0=Mon … 6=Sun
+
+    # Jobs that only run on specific days of the week.
+    # On any other day the guard inside the method returns immediately —
+    # that is correct behaviour, NOT a miss.
+    _WEEKEND_ONLY = {
+        "saturday_intelligence": {5},   # weekday 5 = Saturday
+        "sunday_intelligence":   {6},   # weekday 6 = Sunday
+    }
+    # premarket_refiner only applies on weekdays (Mon–Fri)
+    _WEEKDAY_ONLY = {"premarket_refiner"}
+
     cycles = []
     for name, hhmm in sorted(schedule.items(), key=lambda x: x[1]):
+        # -- Day-of-week relevance check --
+        if name in _WEEKEND_ONLY and today_weekday not in _WEEKEND_ONLY[name]:
+            # Weekend-only job on a non-weekend day → not applicable today
+            cycles.append({
+                "Scan":   name.replace("_", " ").title(),
+                "Time":   hhmm,
+                "Status": "🗓️ Weekend Only",
+            })
+            continue
+        if name in _WEEKDAY_ONLY and today_weekday >= 5:
+            # Weekday-only job on a weekend → not applicable
+            cycles.append({
+                "Scan":   name.replace("_", " ").title(),
+                "Time":   hhmm,
+                "Status": "🗓️ Weekday Only",
+            })
+            continue
+
         fired = any(
             abs(int(t.replace(":", "")) - int(hhmm.replace(":", ""))) <= 10
             for t in done_times
@@ -379,8 +420,8 @@ def fetch_scheduler_status() -> Dict[str, Any]:
         else:
             status = "⏳ Pending"
         cycles.append({
-            "Scan": name.replace("_", " ").title(),
-            "Time": hhmm,
+            "Scan":   name.replace("_", " ").title(),
+            "Time":   hhmm,
             "Status": status,
         })
 

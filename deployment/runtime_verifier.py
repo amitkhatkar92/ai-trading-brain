@@ -38,8 +38,10 @@ TRACKED_FILES: list[str] = [
     "notifications/telegram_bot.py",
     "notifications/notifier_manager.py",
     "data_feeds/data_feed_manager.py",
+    "data_feeds/dhan_feed.py",
     "data_feeds/yahoo_feed.py",
     "global_intelligence/global_data_ai.py",
+    "trade_monitoring/trade_monitor.py",
     "deployment/runtime_verifier.py",
 ]
 

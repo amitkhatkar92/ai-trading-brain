@@ -33,7 +33,7 @@ ACTIVE_BROKER = os.getenv("ACTIVE_BROKER", "zerodha")   # zerodha | dhan | angel
 # RISK PARAMETERS
 # ─────────────────────────────────────────────
 TOTAL_CAPITAL            = float(os.getenv("TOTAL_CAPITAL", 10_000_000))  # INR — ₹1Cr paper trading (increased from ₹10L for strategy validation coverage)
-MAX_RISK_PER_TRADE_PCT   = 0.01      # 1% of capital per trade
+MAX_RISK_PER_TRADE_PCT   = 0.0025    # 0.25% of capital per trade (calibrated OPS-02 2026-06-16; was 0.01)
 MAX_PORTFOLIO_RISK_PCT   = 0.08      # 8% total portfolio risk (INCREASED 5→8 to unlock execution)
 MAX_DRAWDOWN_PCT         = 0.10      # 10% drawdown → halt trading
 MIN_CONFIDENCE_SCORE     = 6.8       # Minimum Decision AI score to execute (INCREASED 6.2→6.8 to filter weak trades)
