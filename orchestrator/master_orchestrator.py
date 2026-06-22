@@ -3256,6 +3256,53 @@ class MasterOrchestrator:
         except Exception as _uga_exc:
             log.debug("[UniverseGenerationAudit] skipped: %s", _uga_exc)
 
+        # ── OIOS data refresh — ohlcv_daily + bhav_daily ─────────────────────
+        # Runs BEFORE the signal scan so Layer 1A/1B always read current data.
+        # Incremental: only fetches dates not yet in the database.
+        # bhav backfill: tries last 7 calendar days for any dates still missing.
+        # Non-critical: failure is logged; signal scan proceeds with stale data.
+        try:
+            from oios.db.connection import get_connection as _oios_dr_conn
+            from oios.data.ohlcv_fetcher import run_daily_fetch as _run_ohlcv
+            from oios.data.bhav_fetcher import (
+                run_daily_bhav_fetch as _run_bhav,
+                has_bhav_for_date as _has_bhav,
+            )
+            from datetime import date as _dr_date, timedelta as _dr_td
+            _dr_today = _dr_date.today().isoformat()
+            with _oios_dr_conn() as _dr_conn:
+                _dr_symbols = [
+                    r[0] for r in _dr_conn.execute(
+                        "SELECT symbol FROM universe_stocks WHERE is_active=1"
+                    ).fetchall()
+                ]
+                if _dr_symbols:
+                    # OHLCV — incremental fetch; lookback_days=90 ensures new
+                    # symbols get enough history for the 30-row scanner minimum.
+                    _ohlcv_res = _run_ohlcv(
+                        _dr_conn, _dr_symbols, _dr_today,
+                        lookback_days=90,
+                        inter_symbol_delay_s=0.1,
+                    )
+                    log.info(
+                        "[OIOS] ohlcv_daily refresh: ok=%d failed=%d rows_new=%d gaps=%d",
+                        len(_ohlcv_res.symbols_ok),
+                        len(_ohlcv_res.symbols_failed),
+                        _ohlcv_res.rows_inserted,
+                        len(_ohlcv_res.gaps_by_symbol),
+                    )
+                    # BHAV — backfill last 7 calendar days for any missing dates
+                    _bhav_rows = 0
+                    for _bhav_delta in range(7):
+                        _bhav_td = (_dr_date.today() - _dr_td(days=_bhav_delta)).isoformat()
+                        if not _has_bhav(_dr_conn, _bhav_td):
+                            _bhav_rows += _run_bhav(_dr_conn, _bhav_td)
+                    log.info("[OIOS] bhav_daily refresh: rows_inserted=%d", _bhav_rows)
+                else:
+                    log.info("[OIOS] universe_stocks empty — data refresh skipped.")
+        except Exception as _oios_dr_exc:
+            log.warning("[OIOS] Data refresh failed (non-critical): %s", _oios_dr_exc)
+
         # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
         # Shadow-safe: writes only to market_behavior.db; never touches the
