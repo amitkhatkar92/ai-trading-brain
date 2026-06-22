@@ -3256,6 +3256,65 @@ class MasterOrchestrator:
         except Exception as _uga_exc:
             log.debug("[UniverseGenerationAudit] skipped: %s", _uga_exc)
 
+        # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
+        # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
+        # Shadow-safe: writes only to market_behavior.db; never touches the
+        # execution engine, signals, risk control, or position sizing path.
+        try:
+            from oios.db.connection import get_connection as _oios_get_conn
+            from oios.scanners import layer_1a as _oios_l1a
+            from oios.scanners import layer_1b as _oios_l1b
+            from oios.scanners.signal_writer import write_scan_results as _oios_write
+            from datetime import date as _oios_date
+            _oios_scan_date = _oios_date.today().isoformat()
+            _oios_regime = "unknown"
+            if self._last_snapshot is not None:
+                _snap_r = self._last_snapshot.regime
+                _oios_regime = (
+                    _snap_r.value if hasattr(_snap_r, "value") else str(_snap_r)
+                ) or "unknown"
+            with _oios_get_conn() as _oios_conn:
+                _oios_symbols = [
+                    r[0] for r in _oios_conn.execute(
+                        "SELECT symbol FROM universe_stocks WHERE is_active=1"
+                    ).fetchall()
+                ]
+                if _oios_symbols:
+                    _oios_sector_map = dict(
+                        _oios_conn.execute(
+                            "SELECT symbol, sector FROM universe_stocks"
+                        ).fetchall()
+                    )
+                    # Layer 1A — Confirmation DNA scanner
+                    _oios_r1a = _oios_l1a.run_scan(
+                        _oios_conn, _oios_symbols, _oios_scan_date, _oios_regime
+                    )
+                    _oios_w1a = _oios_write(
+                        _oios_conn, _oios_r1a,
+                        birth_ttl_days=10,
+                        symbol_to_sector=_oios_sector_map,
+                    )
+                    # Layer 1B — Early Warning DNA scanner
+                    _oios_r1b = _oios_l1b.run_scan(
+                        _oios_conn, _oios_symbols, _oios_scan_date, _oios_regime
+                    )
+                    _oios_w1b = _oios_write(
+                        _oios_conn, _oios_r1b,
+                        birth_ttl_days=18,
+                        symbol_to_sector=_oios_sector_map,
+                    )
+                    log.info(
+                        "[OIOS] signal_births: 1A=%d 1B=%d  new_opps=%d  merged=%d  date=%s",
+                        _oios_w1a["written"], _oios_w1b["written"],
+                        _oios_w1a["new_opps"] + _oios_w1b["new_opps"],
+                        _oios_w1a["merged"]   + _oios_w1b["merged"],
+                        _oios_scan_date,
+                    )
+                else:
+                    log.info("[OIOS] universe_stocks empty — signal scan skipped.")
+        except Exception as _oios_scan_exc:
+            log.warning("[OIOS] Signal scan failed (non-critical): %s", _oios_scan_exc)
+
     def _run_premarket_refiner(self) -> None:
         """
         Phase G — Pre-market refinement.  Scheduled at 08:45 IST.
@@ -3687,6 +3746,20 @@ class MasterOrchestrator:
         else:
             log.info("[EOD-Learn] Processing %d closed trade(s) (in-memory + CSV).", len(trades))
         self.learning_engine.learn(trades)
+
+        # ── OIOS live_observations — ingest paper_trades.csv ─────────────────
+        # Runs every EOD after learning so enrichment can use today's outcomes.
+        # Non-critical: failure does not affect learning, risk, or notifications.
+        try:
+            from analysis.live_observation_collector import ingest_from_csv as _ingest_live_obs
+            _obs_result = _ingest_live_obs()
+            log.info(
+                "[OIOS] live_observations: new=%d processed=%d skipped=%d errors=%d",
+                _obs_result["new"], _obs_result["processed"],
+                _obs_result["skipped"], _obs_result["errors"],
+            )
+        except Exception as _live_obs_exc:
+            log.warning("[OIOS] live_observation ingest failed (non-critical): %s", _live_obs_exc)
 
         self.bus.publish(LearningEvent(
             event_type=EventType.LEARNING_CYCLE_COMPLETE,
@@ -4809,6 +4882,29 @@ class MasterOrchestrator:
         except Exception as _inv_eod_exc:
             log.debug("[InvalidationEffectivenessReport] Skipped: %s", _inv_eod_exc)
 
+        # ── OIOS market_leaders_daily — top winner/loser capture ─────────────
+        # Captures top-15 winners and top-15 losers from the active universe.
+        # Source: ohlcv_daily (populated by existing Phase A data feeds).
+        # Non-critical: failure does not affect EOD learning or notifications.
+        try:
+            from oios.db.connection import get_connection as _ml_oios_conn
+            from oios.phase_f.leader_capture import capture_daily_leaders as _cap_leaders
+            _ml_date = datetime.now().strftime("%Y-%m-%d")
+            _ml_regime = "unknown"
+            if self._last_snapshot is not None:
+                _snap_r2 = self._last_snapshot.regime
+                _ml_regime = (
+                    _snap_r2.value if hasattr(_snap_r2, "value") else str(_snap_r2)
+                ) or "unknown"
+            with _ml_oios_conn() as _ml_conn:
+                _ml_leaders = _cap_leaders(_ml_date, _ml_conn, regime=_ml_regime)
+            log.info(
+                "[OIOS] market_leaders_daily: captured=%d date=%s regime=%s",
+                len(_ml_leaders), _ml_date, _ml_regime,
+            )
+        except Exception as _ml_exc:
+            log.warning("[OIOS] market_leaders_daily capture failed (non-critical): %s", _ml_exc)
+
     # ──────────────────────────────────────────────────────────────────
     # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT
     # ──────────────────────────────────────────────────────────────────
@@ -5297,6 +5393,58 @@ class MasterOrchestrator:
         else:
             log.debug("[Orchestrator] Outside market session — cycle skipped.")
 
+    def _run_oios_weekly_research(self) -> None:
+        """
+        OIOS Phase F weekly differential research pipeline — runs on Saturday.
+
+        For each trading day in the past 7 calendar days that has
+        market_leaders_daily rows, runs in sequence:
+          1. feature_extractor.extract_features_batch()
+          2. control_population.build_controls_for_date()
+          3. differential_engine.compute_differentials()
+
+        Day-of-week guard: returns immediately on non-Saturday days.
+        Non-critical: failure does not affect trading engine or positions.
+        """
+        from datetime import timedelta
+        if datetime.now().weekday() != 5:   # 5 = Saturday
+            return
+        log.info("[OIOS] Saturday Phase F weekly research pipeline starting.")
+        try:
+            from oios.db.connection import get_connection as _wk_oios_conn
+            from oios.phase_f import feature_extractor as _wk_fe
+            from oios.phase_f import control_population as _wk_cp
+            from oios.phase_f import differential_engine as _wk_de
+            _wk_today = datetime.now().date()
+            _wk_processed = 0
+            with _wk_oios_conn() as _wk_conn:
+                for _wk_delta in range(7):
+                    _wk_td = (_wk_today - timedelta(days=_wk_delta)).isoformat()
+                    _wk_n_leaders = _wk_conn.execute(
+                        "SELECT COUNT(*) FROM market_leaders_daily WHERE trade_date=?",
+                        (_wk_td,),
+                    ).fetchone()[0]
+                    if _wk_n_leaders == 0:
+                        continue
+                    _wk_leaders = [
+                        dict(r) for r in _wk_conn.execute(
+                            "SELECT leader_id, symbol, trade_date, sector "
+                            "FROM market_leaders_daily WHERE trade_date=?",
+                            (_wk_td,),
+                        ).fetchall()
+                    ]
+                    _wk_fe.extract_features_batch(_wk_leaders, _wk_conn)
+                    _wk_cp.build_controls_for_date(_wk_td, _wk_conn)
+                    _wk_n_diff = _wk_de.compute_differentials(_wk_td, _wk_conn)
+                    log.info(
+                        "[OIOS] Differential research %s: leaders=%d diffs=%d",
+                        _wk_td, _wk_n_leaders, _wk_n_diff,
+                    )
+                    _wk_processed += 1
+            log.info("[OIOS] Weekly research complete: %d trading day(s) processed.", _wk_processed)
+        except Exception as _wk_exc:
+            log.warning("[OIOS] Weekly research failed (non-critical): %s", _wk_exc)
+
     def start_scheduler(self) -> None:
         """
         Start the full intraday scheduler:
@@ -5424,6 +5572,10 @@ class MasterOrchestrator:
         sched_lib.every().day.at(SCHEDULE["sunday_intelligence"]).do(
             self._run_sunday_intelligence
         )
+
+        # ── OIOS Phase F weekly research (Saturday 17:30 IST) ─────────────────
+        # Day-of-week guard inside the method; fires daily but no-ops Mon–Fri, Sun.
+        sched_lib.every().day.at("17:30").do(self._run_oios_weekly_research)
 
         # V2: position monitor + scanner event poll (every 5 min, market hours only)
         def _five_min_tasks():
