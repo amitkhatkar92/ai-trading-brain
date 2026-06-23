@@ -3303,6 +3303,38 @@ class MasterOrchestrator:
         except Exception as _oios_dr_exc:
             log.warning("[OIOS] Data refresh failed (non-critical): %s", _oios_dr_exc)
 
+        # ── OIOS market_leaders_daily — capture after OHLCV refresh ──────────
+        # Placed in the 16:45 IST post-market slot so today's closing prices are
+        # already written to ohlcv_daily before the capture runs.
+        # Uses MAX(trade_date) FROM ohlcv_daily — not datetime.now() — so the
+        # capture always runs against data actually present in the DB.
+        # Root-cause fix: the prior wiring at 15:35 (EOD learning) ran BEFORE
+        # the 16:45 OHLCV refresh, so _compute_returns() found no data for
+        # today's date and returned {} → captured=0 every day.
+        try:
+            from oios.db.connection import get_connection as _ml_oios_conn
+            from oios.phase_f.leader_capture import capture_daily_leaders as _cap_leaders
+            with _ml_oios_conn() as _ml_conn:
+                _ml_trade_date = _ml_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+                if _ml_trade_date:
+                    _ml_regime = "unknown"
+                    if self._last_snapshot is not None:
+                        _snap_r2 = self._last_snapshot.regime
+                        _ml_regime = (
+                            _snap_r2.value if hasattr(_snap_r2, "value") else str(_snap_r2)
+                        ) or "unknown"
+                    _ml_leaders = _cap_leaders(_ml_trade_date, _ml_conn, regime=_ml_regime)
+                    log.info(
+                        "[OIOS] market_leaders_daily: captured=%d date=%s regime=%s",
+                        len(_ml_leaders), _ml_trade_date, _ml_regime,
+                    )
+                else:
+                    log.info("[OIOS] market_leaders_daily: ohlcv_daily empty — skipped.")
+        except Exception as _ml_exc:
+            log.warning("[OIOS] market_leaders_daily capture failed (non-critical): %s", _ml_exc)
+
         # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
         # Shadow-safe: writes only to market_behavior.db; never touches the
@@ -4928,29 +4960,6 @@ class MasterOrchestrator:
             _git_eod().emit_session_summary()
         except Exception as _inv_eod_exc:
             log.debug("[InvalidationEffectivenessReport] Skipped: %s", _inv_eod_exc)
-
-        # ── OIOS market_leaders_daily — top winner/loser capture ─────────────
-        # Captures top-15 winners and top-15 losers from the active universe.
-        # Source: ohlcv_daily (populated by existing Phase A data feeds).
-        # Non-critical: failure does not affect EOD learning or notifications.
-        try:
-            from oios.db.connection import get_connection as _ml_oios_conn
-            from oios.phase_f.leader_capture import capture_daily_leaders as _cap_leaders
-            _ml_date = datetime.now().strftime("%Y-%m-%d")
-            _ml_regime = "unknown"
-            if self._last_snapshot is not None:
-                _snap_r2 = self._last_snapshot.regime
-                _ml_regime = (
-                    _snap_r2.value if hasattr(_snap_r2, "value") else str(_snap_r2)
-                ) or "unknown"
-            with _ml_oios_conn() as _ml_conn:
-                _ml_leaders = _cap_leaders(_ml_date, _ml_conn, regime=_ml_regime)
-            log.info(
-                "[OIOS] market_leaders_daily: captured=%d date=%s regime=%s",
-                len(_ml_leaders), _ml_date, _ml_regime,
-            )
-        except Exception as _ml_exc:
-            log.warning("[OIOS] market_leaders_daily capture failed (non-critical): %s", _ml_exc)
 
     # ──────────────────────────────────────────────────────────────────
     # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT
