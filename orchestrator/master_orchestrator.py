@@ -3335,6 +3335,49 @@ class MasterOrchestrator:
         except Exception as _ml_exc:
             log.warning("[OIOS] market_leaders_daily capture failed (non-critical): %s", _ml_exc)
 
+        # ── OIOS Phase F1.3 — feature extraction for today's leaders ─────────
+        # Runs immediately after leader capture so features are always available
+        # before control-population (Saturday) needs them for fingerprinting.
+        # Uses INSERT OR REPLACE — safe to re-run; Saturday weekly research will
+        # update features again with refined data but will never find 0 rows.
+        # Non-critical: failure does not affect trading engine or positions.
+        try:
+            from oios.db.connection import get_connection as _fe_oios_conn
+            from oios.phase_f import feature_extractor as _fe_mod
+            with _fe_oios_conn() as _fe_conn:
+                _fe_trade_date = _fe_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+                if _fe_trade_date:
+                    _fe_leaders = [
+                        dict(r) for r in _fe_conn.execute(
+                            "SELECT leader_id, symbol, trade_date, sector "
+                            "FROM market_leaders_daily WHERE trade_date=?",
+                            (_fe_trade_date,),
+                        ).fetchall()
+                    ]
+                    if _fe_leaders:
+                        _fe_mod.extract_features_batch(_fe_leaders, _fe_conn)
+                        # Verify row count
+                        _fe_rows = _fe_conn.execute(
+                            "SELECT COUNT(*) FROM market_leader_features "
+                            "WHERE leader_id IN ("
+                            "  SELECT leader_id FROM market_leaders_daily WHERE trade_date=?"
+                            ")",
+                            (_fe_trade_date,),
+                        ).fetchone()[0]
+                        log.info(
+                            "[OIOS] market_leader_features: date=%s leaders=%d features=%d",
+                            _fe_trade_date, len(_fe_leaders), _fe_rows,
+                        )
+                    else:
+                        log.info("[OIOS] market_leader_features: no leaders for %s — skipped.",
+                                 _fe_trade_date)
+                else:
+                    log.info("[OIOS] market_leader_features: ohlcv_daily empty — skipped.")
+        except Exception as _fe_exc:
+            log.warning("[OIOS] Feature extraction failed (non-critical): %s", _fe_exc)
+
         # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
         # Shadow-safe: writes only to market_behavior.db; never touches the
