@@ -3303,6 +3303,31 @@ class MasterOrchestrator:
         except Exception as _oios_dr_exc:
             log.warning("[OIOS] Data refresh failed (non-critical): %s", _oios_dr_exc)
 
+        # ── OIOS outcome_tracker — fill forward returns for historical leaders ─
+        # Runs daily after OHLCV refresh so each new trading day's close is
+        # immediately used to fill return_1d for yesterday's leaders, return_3d
+        # for leaders from 3 trading days ago, etc.
+        # Prerequisite for compute_differentials() — outcome_gap_* will be NULL
+        # unless these return values are populated first.
+        # Non-critical: failure does not affect trading engine or positions.
+        try:
+            from oios.db.connection import get_connection as _ot_daily_conn
+            from oios.phase_f.outcome_tracker import update_outcomes as _ot_daily_update
+            with _ot_daily_conn() as _ot_conn:
+                _ot_as_of = _ot_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+                if _ot_as_of:
+                    _ot_n = _ot_daily_update(_ot_as_of, _ot_conn)
+                    log.info(
+                        "[OIOS] outcome_tracker: updated=%d as_of=%s",
+                        _ot_n, _ot_as_of,
+                    )
+                else:
+                    log.info("[OIOS] outcome_tracker: ohlcv_daily empty — skipped.")
+        except Exception as _ot_daily_exc:
+            log.warning("[OIOS] outcome_tracker update failed (non-critical): %s", _ot_daily_exc)
+
         # ── OIOS market_leaders_daily — capture after OHLCV refresh ──────────
         # Placed in the 16:45 IST post-market slot so today's closing prices are
         # already written to ohlcv_daily before the capture runs.
@@ -5517,6 +5542,18 @@ class MasterOrchestrator:
             _wk_today = datetime.now().date()
             _wk_processed = 0
             with _wk_oios_conn() as _wk_conn:
+                # Update multi-horizon outcome returns ONCE before the per-date
+                # loop so compute_differentials() finds non-NULL returns and can
+                # produce meaningful outcome_gap_* values.
+                from oios.phase_f.outcome_tracker import update_outcomes as _wk_ot
+                _wk_as_of = _wk_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0] or _wk_today.isoformat()
+                _wk_ot_n = _wk_ot(_wk_as_of, _wk_conn)
+                log.info(
+                    "[OIOS] Weekly research: outcome_tracker updated=%d as_of=%s",
+                    _wk_ot_n, _wk_as_of,
+                )
                 for _wk_delta in range(7):
                     _wk_td = (_wk_today - timedelta(days=_wk_delta)).isoformat()
                     _wk_n_leaders = _wk_conn.execute(
