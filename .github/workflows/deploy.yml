@@ -60,7 +60,13 @@ jobs:
             # ═══ Docker rebuild + restart ══════════════════════════════════════
             touch /root/ai-trading-brain/.env
             docker compose build --no-cache ai-trading-brain 2>&1 | tail -5
-            docker compose up -d --force-recreate
+            # Stop and remove all containers cleanly before bringing them back up.
+            # Using `down` + `up` instead of `up --force-recreate` avoids the race
+            # condition where Docker reports "removal of container is already in
+            # progress" when --force-recreate tries to delete a container that is
+            # concurrently being removed, causing a non-zero exit and a failed deploy.
+            docker compose down --remove-orphans
+            docker compose up -d
 
             sleep 5
             docker ps --filter name=ai-trading-brain --format "table {{.Names}}\t{{.Status}}"
