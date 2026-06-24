@@ -60,7 +60,14 @@ jobs:
             # ═══ Docker rebuild + restart ══════════════════════════════════════
             touch /root/ai-trading-brain/.env
             docker compose build --no-cache ai-trading-brain 2>&1 | tail -5
-            docker compose up -d --force-recreate
+            # `down` tears down existing containers *and* the project network so
+            # that `up` can re-create the network before starting containers.
+            # Using --force-recreate alone does not manage the network lifecycle;
+            # if the network was removed (e.g. a previous `docker compose down`
+            # or manual `docker network rm`) the containers fail to start with:
+            #   "network ai-trading-brain_trading-network not found"
+            docker compose down --remove-orphans
+            docker compose up -d
 
             sleep 5
             docker ps --filter name=ai-trading-brain --format "table {{.Names}}\t{{.Status}}"
