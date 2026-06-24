@@ -3403,6 +3403,50 @@ class MasterOrchestrator:
         except Exception as _fe_exc:
             log.warning("[OIOS] Feature extraction failed (non-critical): %s", _fe_exc)
 
+        # ── OIOS control_population — build control cohort for today's leaders ─
+        # Runs after feature extraction so _compute_fingerprint() finds populated
+        # market_leader_features rows and builds meaningful similarity scores.
+        # Uses INSERT OR IGNORE — safe to re-run on restarts.
+        try:
+            from oios.db.connection import get_connection as _cp_daily_conn
+            from oios.phase_f.control_population import build_controls_for_date as _cp_daily_build
+            with _cp_daily_conn() as _cp_conn:
+                _cp_trade_date = _cp_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+                if _cp_trade_date:
+                    _cp_n = _cp_daily_build(_cp_trade_date, _cp_conn)
+                    log.info(
+                        "[OIOS] control_population: date=%s controls=%d",
+                        _cp_trade_date, _cp_n,
+                    )
+                else:
+                    log.info("[OIOS] control_population: ohlcv_daily empty — skipped.")
+        except Exception as _cp_daily_exc:
+            log.warning("[OIOS] control_population failed (non-critical): %s", _cp_daily_exc)
+
+        # ── OIOS differential_engine — compute winner-vs-control gaps ─────────
+        # Runs after control_population so pairs exist and after update_outcomes
+        # so return_* columns are non-NULL → outcome_gap_* will be populated.
+        # Uses INSERT OR REPLACE with deterministic ID — idempotent on restart.
+        try:
+            from oios.db.connection import get_connection as _de_daily_conn
+            from oios.phase_f.differential_engine import compute_differentials as _de_daily_diff
+            with _de_daily_conn() as _de_conn:
+                _de_trade_date = _de_conn.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+                if _de_trade_date:
+                    _de_n = _de_daily_diff(_de_trade_date, _de_conn)
+                    log.info(
+                        "[OIOS] differential_engine: date=%s differentials=%d",
+                        _de_trade_date, _de_n,
+                    )
+                else:
+                    log.info("[OIOS] differential_engine: ohlcv_daily empty — skipped.")
+        except Exception as _de_daily_exc:
+            log.warning("[OIOS] differential_engine failed (non-critical): %s", _de_daily_exc)
+
         # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
         # Shadow-safe: writes only to market_behavior.db; never touches the
