@@ -320,6 +320,10 @@ class MasterOrchestrator:
         self._last_cycle_report: dict = {}
         # Feed-degraded escalation counter (symbol → consecutive degraded cycles)
         self._feed_degraded_counts: dict = {}
+        # OIOS pipeline stage consecutive failure counters (stage_name → int).
+        # Telegram alert fires when a stage fails 3 consecutive daily runs.
+        # Resets to 0 on any successful run of that stage.
+        self._oios_fail_counts: dict = {}
         # Monitoring continuity: tracks last successful _do_monitor execution.
         # Used by FIX #3 blackout detection to emit [MonitoringGap] warnings.
         # P0: restored from data/monitor_state.json on startup so container
@@ -3344,6 +3348,23 @@ class MasterOrchestrator:
         except Exception as _oios_dr_exc:
             log.warning("[OIOS] Data refresh failed (non-critical): %s", _oios_dr_exc)
 
+        # ── OIOS pipeline: resolve trade_date ONCE for all downstream stages ──
+        # All 5 stages use the same date, eliminating any race between a
+        # mid-write OHLCV refresh and a downstream SELECT MAX query.
+        _oios_trade_date = None
+        try:
+            from oios.db.connection import get_connection as _oios_td_conn
+            with _oios_td_conn() as _oios_td_c:
+                _oios_trade_date = _oios_td_c.execute(
+                    "SELECT MAX(trade_date) FROM ohlcv_daily"
+                ).fetchone()[0]
+            if _oios_trade_date:
+                log.info("[OIOS] pipeline trade_date=%s", _oios_trade_date)
+            else:
+                log.info("[OIOS] pipeline: ohlcv_daily empty — all stages skipped.")
+        except Exception as _oios_td_exc:
+            log.warning("[OIOS] Could not resolve pipeline trade_date: %s", _oios_td_exc)
+
         # ── OIOS outcome_tracker — fill forward returns for historical leaders ─
         # Runs daily after OHLCV refresh so each new trading day's close is
         # immediately used to fill return_1d for yesterday's leaders, return_3d
@@ -3352,22 +3373,29 @@ class MasterOrchestrator:
         # unless these return values are populated first.
         # Non-critical: failure does not affect trading engine or positions.
         try:
-            from oios.db.connection import get_connection as _ot_daily_conn
-            from oios.phase_f.outcome_tracker import update_outcomes as _ot_daily_update
-            with _ot_daily_conn() as _ot_conn:
-                _ot_as_of = _ot_conn.execute(
-                    "SELECT MAX(trade_date) FROM ohlcv_daily"
-                ).fetchone()[0]
-                if _ot_as_of:
-                    _ot_n = _ot_daily_update(_ot_as_of, _ot_conn)
-                    log.info(
-                        "[OIOS] outcome_tracker: updated=%d as_of=%s",
-                        _ot_n, _ot_as_of,
-                    )
-                else:
-                    log.info("[OIOS] outcome_tracker: ohlcv_daily empty — skipped.")
+            if _oios_trade_date:
+                from oios.db.connection import get_connection as _ot_daily_conn
+                from oios.phase_f.outcome_tracker import update_outcomes as _ot_daily_update
+                with _ot_daily_conn() as _ot_conn:
+                    _ot_n = _ot_daily_update(_oios_trade_date, _ot_conn)
+                    log.info("[OIOS] outcome_tracker: updated=%d as_of=%s", _ot_n, _oios_trade_date)
+                self._oios_fail_counts["outcome_tracker"] = 0
+            else:
+                log.info("[OIOS] outcome_tracker: skipped (no trade_date).")
         except Exception as _ot_daily_exc:
             log.warning("[OIOS] outcome_tracker update failed (non-critical): %s", _ot_daily_exc)
+            _ot_cnt = self._oios_fail_counts.get("outcome_tracker", 0) + 1
+            self._oios_fail_counts["outcome_tracker"] = _ot_cnt
+            if _ot_cnt >= 3:
+                self._oios_fail_counts["outcome_tracker"] = 0
+                try:
+                    from notifications.notifier_manager import get_notifier as _oios_ntf
+                    _oios_ntf().send_alert(
+                        f"[OIOS] outcome_tracker failed 3 consecutive days.\n"
+                        f"Last error: {_ot_daily_exc}"
+                    )
+                except Exception:
+                    pass
 
         # ── OIOS market_leaders_daily — capture after OHLCV refresh ──────────
         # Placed in the 16:45 IST post-market slot so today's closing prices are
@@ -3378,28 +3406,38 @@ class MasterOrchestrator:
         # the 16:45 OHLCV refresh, so _compute_returns() found no data for
         # today's date and returned {} → captured=0 every day.
         try:
-            from oios.db.connection import get_connection as _ml_oios_conn
-            from oios.phase_f.leader_capture import capture_daily_leaders as _cap_leaders
-            with _ml_oios_conn() as _ml_conn:
-                _ml_trade_date = _ml_conn.execute(
-                    "SELECT MAX(trade_date) FROM ohlcv_daily"
-                ).fetchone()[0]
-                if _ml_trade_date:
-                    _ml_regime = "unknown"
-                    if self._last_snapshot is not None:
-                        _snap_r2 = self._last_snapshot.regime
-                        _ml_regime = (
-                            _snap_r2.value if hasattr(_snap_r2, "value") else str(_snap_r2)
-                        ) or "unknown"
-                    _ml_leaders = _cap_leaders(_ml_trade_date, _ml_conn, regime=_ml_regime)
+            if _oios_trade_date:
+                from oios.db.connection import get_connection as _ml_oios_conn
+                from oios.phase_f.leader_capture import capture_daily_leaders as _cap_leaders
+                _ml_regime = "unknown"
+                if self._last_snapshot is not None:
+                    _snap_r2 = self._last_snapshot.regime
+                    _ml_regime = (
+                        _snap_r2.value if hasattr(_snap_r2, "value") else str(_snap_r2)
+                    ) or "unknown"
+                with _ml_oios_conn() as _ml_conn:
+                    _ml_leaders = _cap_leaders(_oios_trade_date, _ml_conn, regime=_ml_regime)
                     log.info(
                         "[OIOS] market_leaders_daily: captured=%d date=%s regime=%s",
-                        len(_ml_leaders), _ml_trade_date, _ml_regime,
+                        len(_ml_leaders), _oios_trade_date, _ml_regime,
                     )
-                else:
-                    log.info("[OIOS] market_leaders_daily: ohlcv_daily empty — skipped.")
+                self._oios_fail_counts["leader_capture"] = 0
+            else:
+                log.info("[OIOS] market_leaders_daily: skipped (no trade_date).")
         except Exception as _ml_exc:
             log.warning("[OIOS] market_leaders_daily capture failed (non-critical): %s", _ml_exc)
+            _ml_cnt = self._oios_fail_counts.get("leader_capture", 0) + 1
+            self._oios_fail_counts["leader_capture"] = _ml_cnt
+            if _ml_cnt >= 3:
+                self._oios_fail_counts["leader_capture"] = 0
+                try:
+                    from notifications.notifier_manager import get_notifier as _oios_ntf
+                    _oios_ntf().send_alert(
+                        f"[OIOS] leader_capture failed 3 consecutive days.\n"
+                        f"Last error: {_ml_exc}"
+                    )
+                except Exception:
+                    pass
 
         # ── OIOS Phase F1.3 — feature extraction for today's leaders ─────────
         # Runs immediately after leader capture so features are always available
@@ -3449,44 +3487,60 @@ class MasterOrchestrator:
         # market_leader_features rows and builds meaningful similarity scores.
         # Uses INSERT OR IGNORE — safe to re-run on restarts.
         try:
-            from oios.db.connection import get_connection as _cp_daily_conn
-            from oios.phase_f.control_population import build_controls_for_date as _cp_daily_build
-            with _cp_daily_conn() as _cp_conn:
-                _cp_trade_date = _cp_conn.execute(
-                    "SELECT MAX(trade_date) FROM ohlcv_daily"
-                ).fetchone()[0]
-                if _cp_trade_date:
-                    _cp_n = _cp_daily_build(_cp_trade_date, _cp_conn)
-                    log.info(
-                        "[OIOS] control_population: date=%s controls=%d",
-                        _cp_trade_date, _cp_n,
-                    )
-                else:
-                    log.info("[OIOS] control_population: ohlcv_daily empty — skipped.")
+            if _oios_trade_date:
+                from oios.db.connection import get_connection as _cp_daily_conn
+                from oios.phase_f.control_population import build_controls_for_date as _cp_daily_build
+                with _cp_daily_conn() as _cp_conn:
+                    _cp_n = _cp_daily_build(_oios_trade_date, _cp_conn)
+                    log.info("[OIOS] control_population: date=%s controls=%d",
+                             _oios_trade_date, _cp_n)
+                self._oios_fail_counts["control_population"] = 0
+            else:
+                log.info("[OIOS] control_population: skipped (no trade_date).")
         except Exception as _cp_daily_exc:
             log.warning("[OIOS] control_population failed (non-critical): %s", _cp_daily_exc)
+            _cp_cnt = self._oios_fail_counts.get("control_population", 0) + 1
+            self._oios_fail_counts["control_population"] = _cp_cnt
+            if _cp_cnt >= 3:
+                self._oios_fail_counts["control_population"] = 0
+                try:
+                    from notifications.notifier_manager import get_notifier as _oios_ntf
+                    _oios_ntf().send_alert(
+                        f"[OIOS] control_population failed 3 consecutive days.\n"
+                        f"Last error: {_cp_daily_exc}"
+                    )
+                except Exception:
+                    pass
 
         # ── OIOS differential_engine — compute winner-vs-control gaps ─────────
         # Runs after control_population so pairs exist and after update_outcomes
         # so return_* columns are non-NULL → outcome_gap_* will be populated.
         # Uses INSERT OR REPLACE with deterministic ID — idempotent on restart.
         try:
-            from oios.db.connection import get_connection as _de_daily_conn
-            from oios.phase_f.differential_engine import compute_differentials as _de_daily_diff
-            with _de_daily_conn() as _de_conn:
-                _de_trade_date = _de_conn.execute(
-                    "SELECT MAX(trade_date) FROM ohlcv_daily"
-                ).fetchone()[0]
-                if _de_trade_date:
-                    _de_n = _de_daily_diff(_de_trade_date, _de_conn)
-                    log.info(
-                        "[OIOS] differential_engine: date=%s differentials=%d",
-                        _de_trade_date, _de_n,
-                    )
-                else:
-                    log.info("[OIOS] differential_engine: ohlcv_daily empty — skipped.")
+            if _oios_trade_date:
+                from oios.db.connection import get_connection as _de_daily_conn
+                from oios.phase_f.differential_engine import compute_differentials as _de_daily_diff
+                with _de_daily_conn() as _de_conn:
+                    _de_n = _de_daily_diff(_oios_trade_date, _de_conn)
+                    log.info("[OIOS] differential_engine: date=%s differentials=%d",
+                             _oios_trade_date, _de_n)
+                self._oios_fail_counts["differential_engine"] = 0
+            else:
+                log.info("[OIOS] differential_engine: skipped (no trade_date).")
         except Exception as _de_daily_exc:
             log.warning("[OIOS] differential_engine failed (non-critical): %s", _de_daily_exc)
+            _de_cnt = self._oios_fail_counts.get("differential_engine", 0) + 1
+            self._oios_fail_counts["differential_engine"] = _de_cnt
+            if _de_cnt >= 3:
+                self._oios_fail_counts["differential_engine"] = 0
+                try:
+                    from notifications.notifier_manager import get_notifier as _oios_ntf
+                    _oios_ntf().send_alert(
+                        f"[OIOS] differential_engine failed 3 consecutive days.\n"
+                        f"Last error: {_de_daily_exc}"
+                    )
+                except Exception:
+                    pass
 
         # ── OIOS Layer 1A + 1B signal scan — signal_births + opportunities ─────
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
