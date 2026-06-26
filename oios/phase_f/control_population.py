@@ -67,6 +67,19 @@ def build_controls_for_date(trade_date: str, conn: sqlite3.Connection) -> int:
     universe = _get_universe(conn)
     non_leaders = [s for s in universe if s not in already_leaders]
 
+    # Explicit degradation notice — bhav_daily is always empty on non-India VPS
+    # (NSE Akamai CDN blocks foreign IPs).  delivery_pct will default to
+    # bucket "?" for all symbols; fingerprint matching still works correctly.
+    _bhav_count = conn.execute(
+        "SELECT COUNT(*) FROM bhav_daily WHERE trade_date = ?", (trade_date,)
+    ).fetchone()[0]
+    if _bhav_count == 0:
+        log.info(
+            "[ControlPop] bhav_daily has 0 rows for %s — "
+            "delivery_pct will default to bucket '?' (non-India VPS or weekend).",
+            trade_date,
+        )
+
     if len(non_leaders) < MIN_CONTROLS:
         log.warning("[ControlPop] Universe too small to build controls (%d non-leaders)", len(non_leaders))
         return 0
