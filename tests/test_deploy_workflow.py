@@ -13,9 +13,12 @@ class TestDeployWorkflow(unittest.TestCase):
         down_cmd = "docker compose down --remove-orphans"
         up_cmd = "docker compose up -d --force-recreate"
 
-        self.assertIn(down_cmd, workflow)
-        self.assertIn(up_cmd, workflow)
-        self.assertLess(workflow.index(down_cmd), workflow.index(up_cmd))
+        down_pos = workflow.find(down_cmd)
+        up_pos = workflow.find(up_cmd)
+
+        self.assertGreaterEqual(down_pos, 0, f"Missing workflow command: {down_cmd}")
+        self.assertGreaterEqual(up_pos, 0, f"Missing workflow command: {up_cmd}")
+        self.assertLess(down_pos, up_pos)
 
 
 if __name__ == "__main__":
