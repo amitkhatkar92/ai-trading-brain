@@ -108,6 +108,18 @@ def extract_features(
     features["sector_rank"]   = _sector_rank(sector, trade_date, conn)
     features["sector_purity"] = _sector_purity(symbol, conn)
 
+    # ── Delivery data availability ────────────────────────────────────────────
+    # delivery_available = 1.0 when NSE bhav data was loaded for this date;
+    # 0.0 when the CDN blocked the fetch (non-India VPS, weekend, holiday).
+    # Models must treat delivery_pct as meaningful only when delivery_available == 1.0.
+    _bhav_row = conn.execute(
+        "SELECT delivery_pct FROM bhav_daily WHERE symbol = ? AND trade_date = ?",
+        (symbol, trade_date),
+    ).fetchone()
+    _delivery_val = float(_bhav_row[0]) if _bhav_row and _bhav_row[0] is not None else None
+    features["delivery_pct"]       = _delivery_val
+    features["delivery_available"] = 1.0 if _delivery_val is not None else 0.0
+
     # Persist
     _upsert_features(leader_id, features, now, conn)
     return features

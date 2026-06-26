@@ -163,13 +163,14 @@ def _compute_fingerprint(
     delivery = _get_delivery_pct(symbol[0] if symbol else "", trade_date, conn) if symbol else None
 
     return {
-        "theme_phase":      _get_feature(feat, "theme_phase_score"),
-        "sector_conviction": _get_feature(feat, "sector_conviction"),
-        "volume_ratio":     _get_feature(feat, "volume_ratio"),
-        "above_20dma":      _get_feature(feat, "above_20dma"),
-        "above_50dma":      _get_feature(feat, "above_50dma"),
-        "delivery_pct":     delivery,
-        "sector":           sector,
+        "theme_phase":        _get_feature(feat, "theme_phase_score"),
+        "sector_conviction":  _get_feature(feat, "sector_conviction"),
+        "volume_ratio":       _get_feature(feat, "volume_ratio"),
+        "above_20dma":        _get_feature(feat, "above_20dma"),
+        "above_50dma":        _get_feature(feat, "above_50dma"),
+        "delivery_pct":       delivery,
+        "delivery_available": 1.0 if delivery is not None else 0.0,
+        "sector":             sector,
     }
 
 
@@ -218,13 +219,14 @@ def _compute_fingerprint_for_symbol(
     delivery = _get_delivery_pct(symbol, trade_date, conn)
 
     return {
-        "theme_phase":       float(scd[1] and 1.0) if scd else None,
-        "sector_conviction": float(scd[0]) if scd and scd[0] else None,
-        "volume_ratio":      vol_ratio,
-        "above_20dma":       above_20,
-        "above_50dma":       above_50,
-        "delivery_pct":      delivery,
-        "sector":            sector,
+        "theme_phase":        float(scd[1] and 1.0) if scd else None,
+        "sector_conviction":  float(scd[0]) if scd and scd[0] else None,
+        "volume_ratio":       vol_ratio,
+        "above_20dma":        above_20,
+        "above_50dma":        above_50,
+        "delivery_pct":       delivery,
+        "delivery_available": 1.0 if delivery is not None else 0.0,
+        "sector":             sector,
     }
 
 
