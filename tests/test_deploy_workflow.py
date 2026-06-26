@@ -17,7 +17,7 @@ class TestDeployWorkflow(unittest.TestCase):
         )
 
         down_cmd = "docker compose down --remove-orphans"
-        up_cmd = "docker compose up -d --force-recreate"
+        up_cmd = "docker compose up -d --force-recreate --remove-orphans"
 
         self.assertIsNotNone(deploy_step_match, "Missing 'Deploy to VPS' workflow step")
         deploy_script = deploy_step_match.group("script")
@@ -28,6 +28,8 @@ class TestDeployWorkflow(unittest.TestCase):
         self.assertGreaterEqual(down_pos, 0, f"Missing workflow command: {down_cmd}")
         self.assertGreaterEqual(up_pos, 0, f"Missing workflow command: {up_cmd}")
         self.assertLess(down_pos, up_pos)
+        self.assertIn("max_deploy_attempts=3", deploy_script)
+        self.assertIn("until docker compose up -d --force-recreate --remove-orphans; do", deploy_script)
 
 
 if __name__ == "__main__":
