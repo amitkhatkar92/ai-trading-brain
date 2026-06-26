@@ -325,14 +325,16 @@ def _upsert_features(
     captured_at: str,
     conn: sqlite3.Connection,
 ) -> None:
+    from datetime import datetime as _dt
+    _updated_at = _dt.utcnow().isoformat(timespec="seconds")
     sql = """
         INSERT OR REPLACE INTO market_leader_features
-            (feature_id, leader_id, feature_name, feature_value, captured_at)
-        VALUES (?, ?, ?, ?, ?)
+            (feature_id, leader_id, feature_name, feature_value, captured_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
     """
     rows = []
     for name, value in features.items():
         fid = f"FT_{leader_id}_{name}"
-        rows.append((fid, leader_id, name, value, captured_at))
+        rows.append((fid, leader_id, name, value, captured_at, _updated_at))
     with conn:
         conn.executemany(sql, rows)

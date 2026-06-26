@@ -837,7 +837,8 @@ CREATE TABLE IF NOT EXISTS market_leader_features (
     leader_id           TEXT    NOT NULL,               -- → market_leaders_daily.leader_id
     feature_name        TEXT    NOT NULL,               -- e.g. "above_20dma", "volume_ratio"
     feature_value       REAL,                           -- numeric value; NULL if not computable
-    captured_at         TEXT    NOT NULL DEFAULT (datetime('now'))
+    captured_at         TEXT    NOT NULL DEFAULT (datetime('now')),
+    updated_at          TEXT                            -- ISO timestamp of last upsert
 );
 """
 MARKET_LEADER_FEATURES_IDX = [

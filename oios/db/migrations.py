@@ -162,6 +162,19 @@ def apply_phase_e1(conn=None) -> None:
             conn.close()
 
 
+def _add_column_if_missing(
+    conn: "sqlite3.Connection",
+    table: str,
+    column: str,
+    col_type: str,
+) -> None:
+    """Idempotent ALTER TABLE ADD COLUMN — no-op if column already exists."""
+    cols = {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+        log.info("[Migration] Added column %s.%s (%s).", table, column, col_type)
+
+
 def apply_phase_f(conn=None) -> None:
     """
     Create all Phase F tables on top of Phase E1.
@@ -189,6 +202,9 @@ def apply_phase_f(conn=None) -> None:
         _run_ddl(conn, PHASE_E0_DDL, "Phase E0 (idempotent)")
         _run_ddl(conn, PHASE_E1_DDL, "Phase E1 (idempotent)")
         _run_ddl(conn, PHASE_F_DDL,  "Phase F")
+        # Column migrations for existing databases (idempotent — no-op if column exists)
+        with conn:
+            _add_column_if_missing(conn, "market_leader_features", "updated_at", "TEXT")
     finally:
         if _owns_conn:
             conn.close()
