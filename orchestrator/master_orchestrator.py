@@ -3156,6 +3156,13 @@ class MasterOrchestrator:
                 "— skipping drawdown halt-check this cycle to prevent false emergency_close.",
                 _guard_corr, _syms_count,
             )
+            # LTP corruption at batch scale is a structural data failure — mark session dirty.
+            try:
+                from learning_system.strategy_performance_tracker import get_stability_ledger
+                get_stability_ledger().flag_session_issue(
+                    f"BATCH_CORRUPTION_FREEZE: {_guard_corr}/{_syms_count} symbols corrupted")
+            except Exception:
+                pass
             self.bus.publish(RiskEvent(
                 event_type=EventType.PORTFOLIO_UPDATED,
                 source_agent="TradeMonitor",
@@ -5886,6 +5893,14 @@ class MasterOrchestrator:
                     sched_lib.run_pending()
                 except Exception as _exc:
                     log.error("[Scheduler] Exception in run_pending — continuing: %s", _exc)
+                    # Flag session dirty — any unhandled slot exception (including
+                    # order_manager mid-trade crashes) must reset the stability streak.
+                    try:
+                        from learning_system.strategy_performance_tracker import get_stability_ledger
+                        get_stability_ledger().flag_session_issue(
+                            f"SCHEDULER_EXCEPTION: {type(_exc).__name__}: {_exc}")
+                    except Exception:
+                        pass
                 _heartbeat_counter += 1
                 # Log heartbeat + publish event every 5 min (20 × 15s)
                 if _heartbeat_counter >= 20:

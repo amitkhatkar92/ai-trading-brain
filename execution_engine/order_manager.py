@@ -3273,6 +3273,15 @@ class OrderManager:
                     "[OrderManager] \U0001f9f9 Expired %d orphaned OPEN row(s) -> SESSION_EXPIRED. "
                     "CSV is now clean.", expired,
                 )
+                # SESSION_EXPIRED at startup means stale carry positions were force-closed.
+                # This alters P&L records and should prevent the stability streak from
+                # advancing — the session is structurally affected.
+                try:
+                    from learning_system.strategy_performance_tracker import get_stability_ledger
+                    get_stability_ledger().flag_session_issue(
+                        f"JOURNAL_RESTORE_EXPIRED: {expired} position(s) force-closed at startup")
+                except Exception:
+                    pass
 
             # Persist restore diagnostics for orchestrator + health monitors.
             # monitoring_gap_seconds and post-restore reconciliation fields are
