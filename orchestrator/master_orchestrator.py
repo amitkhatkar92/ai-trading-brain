@@ -383,6 +383,23 @@ class MasterOrchestrator:
         global _ORCH_INSTANCE
         _ORCH_INSTANCE = self
 
+        # Bootstrap: write universe seed if data/nifty500_universe.json is absent.
+        # The scheduled Monday 08:30 rebuild owns the file on an ongoing basis; this
+        # one-time write on startup ensures coverage between deploy and the first
+        # scheduled rebuild (e.g. fresh VPS, wiped volume, mid-week first deploy).
+        # Uses the same _write_universe_json() that the weekly scheduler calls.
+        try:
+            from pathlib import Path as _Path_u
+            _uf = _Path_u(__file__).parent.parent / "data" / "nifty500_universe.json"
+            if not _uf.exists():
+                from opportunity_engine.market_scanner import _write_universe_json
+                if _write_universe_json():
+                    log.info("[UniverseBootstrap] data/nifty500_universe.json written on first startup.")
+                else:
+                    log.warning("[UniverseBootstrap] Universe seed write failed — scanner will use 230-symbol builtin fallback.")
+        except Exception as _ub_exc:
+            log.warning("[UniverseBootstrap] Could not write universe seed: %s", _ub_exc)
+
     # ──────────────────────────────────────────────────────────────────
     # EDA SETUP
     # ──────────────────────────────────────────────────────────────────
