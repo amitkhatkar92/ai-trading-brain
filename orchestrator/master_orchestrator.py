@@ -322,7 +322,21 @@ class MasterOrchestrator:
         self._feed_degraded_counts: dict = {}
         # Monitoring continuity: tracks last successful _do_monitor execution.
         # Used by FIX #3 blackout detection to emit [MonitoringGap] warnings.
+        # P0: restored from data/monitor_state.json on startup so container
+        # restarts during market hours don't silently hide monitoring gaps.
         self._last_monitor_ts: Optional[datetime] = None
+        try:
+            import json as _json_mts_init
+            _mts_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'monitor_state.json')
+            with open(_mts_path) as _mts_f:
+                _mts_saved = _json_mts_init.load(_mts_f).get('last_monitor_ts')
+                if _mts_saved:
+                    self._last_monitor_ts = datetime.fromisoformat(_mts_saved)
+                    log.info('[Monitor] Restored _last_monitor_ts=%s from disk.', _mts_saved)
+        except FileNotFoundError:
+            pass  # first run — no state file yet
+        except Exception as _mts_exc:
+            log.debug('[Monitor] Could not restore monitor timestamp: %s', _mts_exc)
         # Counts cycles where open positions existed but the price feed was empty.
         # Incremented in _do_monitor; reset to 0 on any successful check_all().
         self._missed_monitor_cycles: int = 0
@@ -3148,6 +3162,7 @@ class MasterOrchestrator:
             self._last_monitor_ts = _now_ts   # FIX: update before early return so
                                               # subsequent cycles don't see a stale
                                               # timestamp and fire false gap alerts.
+            self._persist_monitor_ts(_now_ts) # P0: persist to survive restart
             return
 
         self.bus.publish(RiskEvent(
@@ -3171,6 +3186,24 @@ class MasterOrchestrator:
 
         # ── FIX #3: Record successful monitor timestamp ────────────────
         self._last_monitor_ts = _now_ts
+        self._persist_monitor_ts(_now_ts)  # P0: persist to survive restart
+
+    def _persist_monitor_ts(self, ts: datetime) -> None:
+        """Atomically write _last_monitor_ts to data/monitor_state.json.
+
+        Called every time _last_monitor_ts is updated (both the normal path and
+        the BATCH_CORRUPTION_FREEZE early-return path).  Failures are silent —
+        persistence is best-effort; monitoring logic is never blocked by I/O.
+        """
+        try:
+            import json as _json_mts
+            _mts_path = os.path.join(os.path.dirname(__file__), '..', 'data', 'monitor_state.json')
+            _tmp = _mts_path + '.tmp'
+            with open(_tmp, 'w') as _f:
+                _json_mts.dump({'last_monitor_ts': ts.isoformat()}, _f)
+            os.replace(_tmp, _mts_path)   # atomic on POSIX and Windows (Python 3.3+)
+        except Exception as _mts_exc:
+            log.debug('[Monitor] Could not persist monitor timestamp: %s', _mts_exc)
 
     def run_eod_learning(self) -> None:
         """End-of-day: feed outcomes back into the Learning Engine via TaskQueue."""
