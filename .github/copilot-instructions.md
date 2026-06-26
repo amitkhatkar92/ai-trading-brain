@@ -131,6 +131,41 @@ Full cycle:          172ms  ✅  HEALTHY
 
 ---
 
+## Deployment Rule — MANDATORY after every code change
+
+**Every code modification must be followed by a full deploy cycle. No exceptions.**
+Local, VPS, and container must always run identical code.
+
+### Steps (run in order, do not skip)
+
+```powershell
+# 1 — Commit all changed files
+git add <files>
+git commit -m "<message>"
+
+# 2 — Push to origin
+git push origin main
+
+# 3 — Deploy to VPS (single command)
+ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && git pull origin main && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
+```
+
+### Definition of done
+The deploy is complete **only** when `docker compose ps` shows **both** containers `Up … (healthy)`:
+```
+ai-trading-brain          Up N seconds (healthy)
+trading-dashboard         Up N seconds (healthy)
+```
+
+If either container is not healthy — **stop, diagnose with `docker logs ai-trading-brain`, fix, redeploy before continuing.**
+
+### Why
+- The `data/` volume is persistent (`./data:/app/data`) — runtime files survive restarts
+- `docker compose build --no-cache` ensures the new Python source is baked in, not cached
+- A partial deploy (local committed, VPS not updated) is a split-brain state and must never persist
+
+---
+
 ## Protected Modules (edit only with explicit instruction)
 
 These modules are stable and load-bearing. They may evolve, but only when the
