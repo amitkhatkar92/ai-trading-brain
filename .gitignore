@@ -45,7 +45,9 @@ build/
 # ═══════════════════════════════════════════════════════════════════════════
 # Sensitive Data: Logs, Database, Trade History
 # ═══════════════════════════════════════════════════════════════════════════
-data/
+data/*
+# Exception: static universe seed must ship in Docker image
+!data/nifty500_universe.json
 logs/
 simulation_logs/
 audit_out.txt

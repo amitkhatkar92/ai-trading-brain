@@ -3859,13 +3859,13 @@ class MasterOrchestrator:
     def _run_weekly_universe_rebuild(self) -> None:
         """
         Fix 7 — Rebuild nifty500_universe.json every Monday at 08:30 IST.
-        Runs the Phase D market_scanner in universe-rebuild-only mode so the
-        source pool for the 16:45 IST post-market scan is never more than
-        one week stale.
+        Writes the 230-symbol universe seed to disk via _write_universe_json().
+        The seed is the authoritative source; NSE direct is unreachable from
+        the VPS (Akamai block), so the embedded list is used until a live
+        fetch is wired in.
 
         Guard: only runs on Mondays (weekday == 0).  If the existing file is
-        less than 24 hours old the rebuild is skipped (e.g. if today's 16:45
-        scan already refreshed it).
+        less than 24 hours old the rebuild is skipped.
         """
         if datetime.now().weekday() != 0:   # 0 = Monday
             return
@@ -3884,13 +3884,13 @@ class MasterOrchestrator:
                     log.info("[UniverseRebuild] nifty500_universe.json is only %.1fh old — skipping.", age_h)
                     return
 
-            log.info("[UniverseRebuild] Monday 08:30 — rebuilding nifty500_universe.json...")
-            from opportunity_engine.market_scanner import run_scan
-            success = run_scan()
+            log.info("[UniverseRebuild] Monday 08:30 — writing universe seed (230 symbols)...")
+            from opportunity_engine.market_scanner import _write_universe_json
+            success = _write_universe_json()
             if success:
-                log.info("[UniverseRebuild] Universe rebuild complete — nifty500_universe.json refreshed.")
+                log.info("[UniverseRebuild] Universe rebuild complete — nifty500_universe.json written.")
             else:
-                log.warning("[UniverseRebuild] Universe rebuild returned failure — previous file retained.")
+                log.warning("[UniverseRebuild] Universe write failed — previous file retained.")
         except Exception as exc:
             log.error("[UniverseRebuild] Crashed: %s", exc, exc_info=True)
 
