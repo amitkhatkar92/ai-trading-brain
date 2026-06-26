@@ -3075,11 +3075,14 @@ class MasterOrchestrator:
             self._missed_monitor_cycles = 0
 
         # ── Pass live prices to trade monitor so SL/target use real prices ──
+        _check_all_ok = False   # FIX: initialise here so corruption-freeze guard
+                                # can read it even when _live_pf is empty, preventing
+                                # stale _corrected_symbols from a prior cycle from
+                                # spuriously triggering the freeze.
         if _live_pf:
             log.debug("[Monitor] Passing %d live prices to check_all: %s",
                       len(_live_pf),
                       {s: round(p, 2) for s, p in _live_pf.items()})
-            _check_all_ok = False
             try:
                 self.trade_monitor.check_all(_live_pf, degraded_symbols=_degraded_syms)
                 _check_all_ok = True
@@ -3127,7 +3130,9 @@ class MasterOrchestrator:
         # the feed is broken.  This prevents a false emergency_close from firing.
         _guard_corr  = self.trade_monitor.get_guard_correction_count()
         _syms_count  = len(self.trade_monitor.get_resolved_prices())
-        if _guard_corr > 0 and _syms_count > 0 and (_guard_corr / _syms_count) > 0.5:
+        # FIX: gate on _check_all_ok so stale _corrected_symbols from a prior
+        # cycle (when _live_pf was empty this cycle) cannot trigger the freeze.
+        if _check_all_ok and _guard_corr > 0 and _syms_count > 0 and (_guard_corr / _syms_count) > 0.5:
             log.warning(
                 "[Monitor] ⚠ BATCH CORRUPTION FREEZE: %d/%d symbols corrected by LTPGuard "
                 "— skipping drawdown halt-check this cycle to prevent false emergency_close.",
@@ -3140,6 +3145,9 @@ class MasterOrchestrator:
                          "open_positions": len(portfolio.positions),
                          "data_quality": "CORRUPTED_BATCH_FROZEN"},
             ))
+            self._last_monitor_ts = _now_ts   # FIX: update before early return so
+                                              # subsequent cycles don't see a stale
+                                              # timestamp and fire false gap alerts.
             return
 
         self.bus.publish(RiskEvent(
