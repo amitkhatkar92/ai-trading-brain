@@ -60,7 +60,12 @@ jobs:
             # ═══ Docker rebuild + restart ══════════════════════════════════════
             touch /root/ai-trading-brain/.env
             docker compose build --no-cache ai-trading-brain 2>&1 | tail -5
-            docker compose up -d --force-recreate
+            # --remove-orphans cleans up containers whose IDs no longer match
+            # docker-compose state (e.g. manually removed containers) which
+            # causes --force-recreate to fail with "No such container".
+            # Explicit down + up avoids that stale-reference error entirely.
+            docker compose down --remove-orphans
+            docker compose up -d
 
             sleep 5
             docker ps --filter name=ai-trading-brain --format "table {{.Names}}\t{{.Status}}"
