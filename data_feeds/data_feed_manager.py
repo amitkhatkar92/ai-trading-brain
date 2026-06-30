@@ -1041,21 +1041,22 @@ class DataFeedManager:
             "hangseng_level":  q("HANGSENG"),
             "hangseng_change": chg("HANGSENG"),
             # Currencies
-            "usdinr":          (self.dhan.get_ltp("USDINR") if self.dhan.is_live else 0)
-                               or q("USDINR") or 83.5,
             "usdinr_rate":     (self.dhan.get_ltp("USDINR") if self.dhan.is_live else 0)
-                               or q("USDINR") or 83.5,   # GlobalSnapshot field name
-            "dxy":             q("DXY"),
+                               or q("USDINR") or 83.5,
+            "usdinr_change":   chg("USDINR"),
+            "dxy_level":       q("DXY"),          # was "dxy" — field name fix
+            "dxy_change":      chg("DXY"),
             "eurusd":          q("EURUSD"),
             # Commodities
             "gold_price":      q("GOLD"),
             "gold_change":     chg("GOLD"),
             "crude_wti":       q("CRUDE_WTI"),
+            "crude_wti_change": chg("CRUDE_WTI"),  # was "crude_change" — field name fix
             "crude_brent":     q("CRUDE_BRENT"),
-            "crude_change":    chg("CRUDE_WTI"),
+            "crude_brent_change": chg("CRUDE_BRENT"),
             # Vol / Bonds
-            "vix":             q("VIX"),
-            "us_10y_yield":    q("US10Y"),
+            "cboe_vix":        q("VIX"),          # was "vix" — field name fix
+            "us10y_yield":     q("US10Y"),         # was "us_10y_yield" — field name fix
             # India — prefer DhanFeed (has real VIX + USDINR); fallback to yfinance/NSE
             "india_vix":       (self.dhan.get_ltp("INDIAVIX") if self.dhan.is_live else 0)
                                or (self.nse.get_quote("INDIAVIX").ltp

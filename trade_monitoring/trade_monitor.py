@@ -857,18 +857,26 @@ class TradeMonitor:
                                 self._resolved_prices[symbol] = cached
                                 self._corrected_symbols.add(symbol)
                                 return cached
-                        # Step 2 — no independent confirmation; freeze at last good
-                        log.warning(
-                            "[LTPGuard] Corrected abnormal price for %s: "
-                            "feed=%.2f vs last_known=%.2f (%.0f%% deviation) "
-                            "— using last known good.",
-                            symbol, candidate, baseline, deviation * 100,
-                        )
-                        log.warning(
-                            "[DataGuard] Using fallback price for %s — live data unavailable "
-                            "(feed=%.2f flagged; fallback=%.2f).",
-                            symbol, candidate, baseline,
-                        )
+                        # Step 2 — no independent confirmation; freeze at last good.
+                        # Log WARNING only on first correction; subsequent cycles log DEBUG
+                        # to avoid flooding the log when the feed is persistently bad.
+                        if symbol not in self._corrected_symbols:
+                            log.warning(
+                                "[LTPGuard] Corrected abnormal price for %s: "
+                                "feed=%.2f vs last_known=%.2f (%.0f%% deviation) "
+                                "— using last known good.",
+                                symbol, candidate, baseline, deviation * 100,
+                            )
+                            log.warning(
+                                "[DataGuard] Using fallback price for %s — live data unavailable "
+                                "(feed=%.2f flagged; fallback=%.2f).",
+                                symbol, candidate, baseline,
+                            )
+                        else:
+                            log.debug(
+                                "[LTPGuard] %s still corrected: feed=%.2f → %.2f (%.0f%% dev)",
+                                symbol, candidate, baseline, deviation * 100,
+                            )
                         self._dg_update_stale(order.order_id, symbol, baseline)
                         # Record validated (frozen) price for portfolio sync
                         self._resolved_prices[symbol] = baseline

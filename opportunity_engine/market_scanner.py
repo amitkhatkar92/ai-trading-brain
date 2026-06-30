@@ -144,7 +144,7 @@ def run_scan(universe_path: Optional[str] = None) -> bool:
 
     # Log which specific symbols failed — helps diagnose coverage gaps
     if failed_symbols:
-        log.debug(
+        log.warning(
             "[ScannerCoverage] Failed symbols (%d): %s",
             len(failed_symbols),
             ", ".join(failed_symbols[:40]) + ("..." if len(failed_symbols) > 40 else ""),

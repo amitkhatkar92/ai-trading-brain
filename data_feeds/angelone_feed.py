@@ -181,6 +181,7 @@ class AngelOneFeed(BaseFeed):
         self._session_ts: Optional[datetime] = None   # when session was created
         self._lock       = threading.RLock()
         self._last_reconnect_attempt: Optional[datetime] = None  # rate-limit reconnects
+        self._credentials_configured: Optional[bool] = None       # None = unknown; False = definitely absent
 
         # token cache: bare_symbol → (exchange, tradingsymbol, symboltoken)
         self._token_cache: Dict[str, Tuple[str, str, str]] = {}
@@ -244,6 +245,7 @@ class AngelOneFeed(BaseFeed):
             )
             if not all([ANGELONE_API_KEY, ANGELONE_CLIENT_ID,
                         ANGELONE_PASSWORD, ANGELONE_TOTP_SECRET]):
+                self._credentials_configured = False
                 log.info("[AngelOneFeed] Credentials not configured — feed inactive.")
                 return
 
@@ -273,6 +275,10 @@ class AngelOneFeed(BaseFeed):
         """Re-authenticate if session is stale (>50 min old) or disconnected. Returns True if live."""
         # If disconnected, attempt one reconnect (rate-limited to once per 5 min)
         if not self._connected or self._smart is None:
+            # Skip reconnect entirely when we already know credentials are absent.
+            # No point retrying every 5 min — credentials won't appear on their own.
+            if self._credentials_configured is False:
+                return False
             _now = datetime.now()
             _since_last = (
                 (_now - self._last_reconnect_attempt).total_seconds()

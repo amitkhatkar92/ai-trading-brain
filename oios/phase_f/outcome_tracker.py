@@ -26,7 +26,7 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 log = logging.getLogger(__name__)
@@ -206,7 +206,7 @@ def _write_outcome(
     outcome_class: str,
     conn: sqlite3.Connection,
 ) -> None:
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     with conn:
         conn.execute("""
             INSERT INTO market_leader_outcomes
@@ -242,7 +242,7 @@ def _update_control_outcomes(as_of_date: str, conn: sqlite3.Connection) -> int:
     """, (as_of_date,)).fetchall()
 
     updated = 0
-    now = datetime.utcnow().isoformat(timespec="seconds")
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
     for ctrl in controls:
         cid, sym, td = ctrl[0], ctrl[1], ctrl[2]
         returns = _compute_forward_returns(sym, td, as_of_date, conn)

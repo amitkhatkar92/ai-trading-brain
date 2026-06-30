@@ -255,6 +255,8 @@ class DhanFeed(BaseFeed):
         self._token_issued_at:  Optional[float] = None   # Unix timestamp
         # Token warning governance — fire once at ≤30 min, suppress after that
         self._token_warn_sent: bool = False
+        self._token_expired_alerted: bool = False   # governs per-hour expiry log
+        self._token_last_expiry_log: float = 0.0    # monotonic ts of last expiry ERROR
         # Circuit breaker: count consecutive data-API failures (401/failure)
         self._dhan_consecutive_failures: int = 0
         self._DHAN_CIRCUIT_OPEN_AFTER:   int = 5   # trips after N consecutive failures
@@ -351,16 +353,34 @@ class DhanFeed(BaseFeed):
         rem_h = rem_s / 3600
         rem_m = int(rem_s / 60)
         if rem_s <= 0:
-            msg = (
-                "[DhanAuthState] ⛔ TOKEN EXPIRED — Dhan feed will fail. "
-                "Send /token <new_token> via Telegram to hot-swap."
-            )
-            log.error(msg)
-            if notifier:
-                try:
-                    notifier.send_alert(f"⛔ <b>Dhan token EXPIRED.</b> Send /token &lt;new_token&gt; now.")
-                except Exception:
-                    pass
+            # Governed expiry log: ERROR once immediately, then INFO reminder every hour.
+            # Prevents flooding the log with TOKEN EXPIRED every 4 min all weekend.
+            _now_mono = time.monotonic()
+            _since_last_log = _now_mono - self._token_last_expiry_log
+            if not self._token_expired_alerted:
+                # First detection — ERROR + Telegram
+                log.error(
+                    "[DhanAuthState] ⛔ TOKEN EXPIRED — Dhan feed will fail. "
+                    "Send /token <new_token> via Telegram to hot-swap."
+                )
+                if notifier:
+                    try:
+                        notifier.send_alert(
+                            "⛔ <b>Dhan token EXPIRED.</b> "
+                            "Send /token &lt;new_token&gt; now to restore live data."
+                        )
+                    except Exception:
+                        pass
+                self._token_expired_alerted = True
+                self._token_last_expiry_log = _now_mono
+            elif _since_last_log >= 3600:  # hourly reminder at DEBUG
+                log.debug(
+                    "[DhanAuthState] token still expired (%.0fh since first alert) "
+                    "— awaiting /token hot-swap.",
+                    (time.monotonic() - self._token_last_expiry_log + _since_last_log) / 3600,
+                )
+                self._token_last_expiry_log = _now_mono
+            return
         elif rem_s <= 1800:   # ≤30 min — governed single warning
             if not self._token_warn_sent:
                 log.warning(
