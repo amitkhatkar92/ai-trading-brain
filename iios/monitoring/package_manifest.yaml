@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.monitoring
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.monitoring"
+version: "0.1.0"
+purpose: "Layer 17 ControlTower observability -- SystemMonitor, per-layer latency tracking, SQLite telemetry, EventBus"
+architecture_reference: "IIOS-ARC-001 Layer 17, IIOS-CIS-001 Section 10.3"
+layer: "LAYER-17"
+owner: "Platform"
+wave: 7
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "system_monitor"
+  - "telemetry_writer"
+  - "cycle_monitor"
+  - "latency_tracker"
+  - "health_aggregator"
+  - "alert_router"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.observability"
+  - "iios.database"
