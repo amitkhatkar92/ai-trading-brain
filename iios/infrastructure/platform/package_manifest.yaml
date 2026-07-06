@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.infrastructure.platform
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.platform"
+version: "0.1.0"
+purpose: "Group E -- Clock, Scheduler, Timer, UUID, File, Resource services (INFRA-CLK-001 through RSR-001)"
+architecture_reference: "IIOS-CIS-001 Group E"
+layer: "INFRA-GROUP-E"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "clock_service"
+  - "scheduler_service"
+  - "timer_service"
+  - "uuid_service"
+  - "file_service"
+  - "resource_service"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

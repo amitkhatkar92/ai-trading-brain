@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.infrastructure.lifecycle
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.lifecycle"
+version: "0.1.0"
+purpose: "Group B -- Service Registry, Component Registry, Lifecycle Manager, Startup Manager, Shutdown Manager (INFRA-SRV-001 through SHD-001)"
+architecture_reference: "IIOS-CIS-001 Group B"
+layer: "INFRA-GROUP-B"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "service_registry"
+  - "component_registry"
+  - "lifecycle_manager"
+  - "startup_manager"
+  - "shutdown_manager"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

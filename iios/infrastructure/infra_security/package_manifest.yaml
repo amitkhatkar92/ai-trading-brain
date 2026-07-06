@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.infrastructure.infra_security
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.infra_security"
+version: "0.1.0"
+purpose: "Group D -- Identity, Authentication, Authorization, Secrets, Encryption, Certificate services (INFRA-IDN-001 through CRT-001)"
+architecture_reference: "IIOS-CIS-001 Group D"
+layer: "INFRA-GROUP-D"
+owner: "Security"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "identity_service"
+  - "auth_service"
+  - "authz_service"
+  - "secrets_service"
+  - "encryption_service"
+  - "certificate_service"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

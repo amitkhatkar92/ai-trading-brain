@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.infrastructure.operations
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.operations"
+version: "0.1.0"
+purpose: "Group G -- Recovery, Exception, Retry, CircuitBreaker, FeatureFlag, Version, Migration, Certification (INFRA-RCV-001 through CST-001)"
+architecture_reference: "IIOS-CIS-001 Group G"
+layer: "INFRA-GROUP-G"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "recovery_service"
+  - "exception_service"
+  - "retry_service"
+  - "circuit_breaker"
+  - "feature_flag_service"
+  - "version_service"
+  - "migration_service"
+  - "certification_service"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

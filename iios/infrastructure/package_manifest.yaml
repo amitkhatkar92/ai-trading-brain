@@ -1,0 +1,20 @@
+﻿# Package Manifest: iios.infrastructure
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure"
+version: "0.1.0"
+purpose: "All 46 IIOS infrastructure services across 7 functional groups (A through G)"
+architecture_reference: "IIOS-CIS-001"
+layer: "INFRASTRUCTURE"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "container"
+  - "service_registry"
+  - "component_registry"
+dependencies:
+  - "iios.core"
+  - "iios.config"

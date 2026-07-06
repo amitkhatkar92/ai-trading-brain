@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.infrastructure.communication
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.communication"
+version: "0.1.0"
+purpose: "Group F -- EventBus, MessageBus, Notification, Cache, Storage services (INFRA-EVT-001 through STG-001)"
+architecture_reference: "IIOS-CIS-001 Group F"
+layer: "INFRA-GROUP-F"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "event_bus"
+  - "message_bus"
+  - "notification_service"
+  - "cache_service"
+  - "storage_service"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

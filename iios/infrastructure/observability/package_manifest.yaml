@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.infrastructure.observability
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.observability"
+version: "0.1.0"
+purpose: "Group C -- Health, Diagnostics, Monitoring, Logging, Metrics, Tracing, Audit services (INFRA-HLT-001 through AUD-001)"
+architecture_reference: "IIOS-CIS-001 Group C"
+layer: "INFRA-GROUP-C"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "health_service"
+  - "diagnostics_service"
+  - "monitoring_service"
+  - "logging_service"
+  - "metrics_service"
+  - "tracing_service"
+  - "audit_service"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.configuration"

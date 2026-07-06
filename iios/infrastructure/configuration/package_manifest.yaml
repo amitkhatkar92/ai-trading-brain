@@ -1,0 +1,21 @@
+﻿# Package Manifest: iios.infrastructure.configuration
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.infrastructure.configuration"
+version: "0.1.0"
+purpose: "Group A -- Configuration Service, Environment Service, DI Container (INFRA-CFG-001, ENV-001, DI-001)"
+architecture_reference: "IIOS-CIS-001 Group A"
+layer: "INFRA-GROUP-A"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "config_service"
+  - "env_service"
+  - "di_container"
+  - "di_registration"
+dependencies:
+  - "iios.core"
+  - "iios.config"
