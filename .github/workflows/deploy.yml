@@ -40,15 +40,16 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           command_timeout: 10m
           script: |
-            set -e
+            # pipefail: treat pipe failures (e.g. failed docker build piped to
+            # tail) as errors.  Without this, "docker compose build | tail -5"
+            # hides a failed build and the script continues with a broken image.
+            set -eo pipefail
             cd /root/ai-trading-brain
             echo "=== git sync ==="
             # --force bypasses the compare-and-swap ref check that causes:
             # "cannot lock ref 'refs/remotes/origin/main': is at A but expected B"
             # This happens when a previous manual SSH deploy advanced the ref and
             # GitHub Actions then tries to fetch expecting the older SHA.
-            # git remote prune (the alternative) only removes deleted-branch refs
-            # and does NOT fix a ref that exists at the wrong SHA.
             git fetch --force origin main
             git reset --hard origin/main
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
@@ -57,13 +58,23 @@ jobs:
             rm -f /root/ai-trading-brain/data/trading_engine.pid
             echo "[ pid    ] ✅ stale locks cleared"
 
-            # ═══ Docker rebuild + restart ══════════════════════════════════════
+            # ═══ Docker rebuild ════════════════════════════════════════════════
             touch /root/ai-trading-brain/.env
-            docker compose build --no-cache ai-trading-brain 2>&1 | tail -5
-            docker compose down --remove-orphans
-            docker compose up -d --force-recreate
+            # Log full build output to a temp file so it is visible on failure.
+            docker compose build --no-cache ai-trading-brain > /tmp/build.log 2>&1 \
+              || { echo "❌ Docker build FAILED — last 30 lines:"; tail -30 /tmp/build.log; exit 1; }
+            echo "[ build  ] ✅ image built"
+            tail -3 /tmp/build.log
 
-            sleep 5
-            docker ps --filter name=ai-trading-brain --format "table {{.Names}}\t{{.Status}}"
+            # ═══ Container cleanup (handles both compose-managed and manually
+            #     created containers to prevent "name already in use" errors)
+            docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
+            docker compose down --remove-orphans 2>/dev/null || true
+            echo "[ clean  ] ✅ old containers removed"
+
+            # ═══ Start fresh ═══════════════════════════════════════════════════
+            docker compose up -d
+            sleep 8
+            docker compose ps
             echo "✅ Deployment complete — $(git rev-parse --short HEAD) live"
 
