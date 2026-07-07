@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.knowledge.observations
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge.observations"
+version: "0.1.0"
+purpose: "Observation types, freshness rules, ObservationEngine -- implements IIOS-OON-001"
+architecture_reference: "IIOS-OON-001, IIOS-FCR-001 Part II.6"
+layer: "KNOWLEDGE-OBSERVATIONS"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "price_observations"
+  - "market_observations"
+  - "global_observations"
+  - "opportunity_observations"
+  - "observation_engine"
+  - "freshness_tracker"
+dependencies:
+  - "iios.core"
+  - "iios.knowledge.ontology"

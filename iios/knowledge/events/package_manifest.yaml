@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.knowledge.events
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge.events"
+version: "0.1.0"
+purpose: "Event type definitions and EventCatalog -- implements Event Ontology IIOS-EVN-001"
+architecture_reference: "IIOS-EVN-001, IIOS-FCR-001 Part II.5"
+layer: "KNOWLEDGE-EVENTS"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "system_events"
+  - "market_events"
+  - "trading_events"
+  - "knowledge_events"
+  - "operational_events"
+  - "event_catalog"
+dependencies:
+  - "iios.core"
+  - "iios.knowledge.ontology"

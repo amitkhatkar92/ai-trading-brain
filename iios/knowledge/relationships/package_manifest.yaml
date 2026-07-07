@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.knowledge.relationships
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge.relationships"
+version: "0.1.0"
+purpose: "Relationship type definitions and RelationshipEngine -- implements Relationship Ontology IIOS-RON-001"
+architecture_reference: "IIOS-RON-001, IIOS-FCR-001 Part II.4"
+layer: "KNOWLEDGE-RELATIONSHIPS"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "market_relationships"
+  - "strategy_relationships"
+  - "trading_relationships"
+  - "knowledge_relationships"
+  - "relationship_engine"
+  - "relationship_validator"
+dependencies:
+  - "iios.core"
+  - "iios.knowledge.entities"

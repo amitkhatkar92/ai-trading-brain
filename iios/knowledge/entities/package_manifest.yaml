@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.knowledge.entities
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge.entities"
+version: "0.1.0"
+purpose: "Entity type definitions and EntityRegistry -- implements Entity Ontology IIOS-EON-001"
+architecture_reference: "IIOS-EON-001, IIOS-FCR-001 Part II.3"
+layer: "KNOWLEDGE-ENTITIES"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "market_entities"
+  - "strategy_entities"
+  - "trading_entities"
+  - "system_entities"
+  - "knowledge_entities"
+  - "entity_registry"
+dependencies:
+  - "iios.core"
+  - "iios.knowledge.ontology"

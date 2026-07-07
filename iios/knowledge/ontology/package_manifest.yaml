@@ -1,0 +1,21 @@
+﻿# Package Manifest: iios.knowledge.ontology
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge.ontology"
+version: "0.1.0"
+purpose: "Base ontological framework -- MasterKnowledgeArchitecture, KnowledgeItem schema, confidence levels (IIOS-MKA-001)"
+architecture_reference: "IIOS-MKA-001, IIOS-FCR-001 Part II.1"
+layer: "KNOWLEDGE-ONTOLOGY"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "knowledge_item"
+  - "confidence_levels"
+  - "knowledge_domain"
+  - "knowledge_lifecycle"
+  - "provenance"
+dependencies:
+  - "iios.core"

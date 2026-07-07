@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.knowledge
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.knowledge"
+version: "0.1.0"
+purpose: "Knowledge base -- stores, validates, retrieves, and manages all IIOS knowledge items with confidence tracking"
+architecture_reference: "IIOS-MKA-001, IIOS-KON-001"
+layer: "KNOWLEDGE"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "knowledge_store"
+  - "knowledge_item"
+  - "knowledge_validator"
+  - "knowledge_manager"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.shared"
