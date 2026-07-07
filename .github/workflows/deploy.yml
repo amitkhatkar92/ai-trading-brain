@@ -1,9 +1,7 @@
 name: Deploy Trading Brain to VPS
 
 on:
-  push:
-    branches: [main]
-  workflow_dispatch:   # allow manual trigger from GitHub UI
+  workflow_dispatch:   # manual trigger only — auto-deploy is done via Copilot SSH
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
