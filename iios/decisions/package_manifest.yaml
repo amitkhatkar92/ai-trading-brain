@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.decisions
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.decisions"
+version: "0.1.0"
+purpose: "Layer 10: DebateAndDecision -- 5-agent debate framework and DecisionEngine (DECISION_THRESHOLD=6.5)"
+architecture_reference: "IIOS-ARC-001 Layer 10, IIOS-DON-001"
+layer: "LAYER-10"
+owner: "Platform"
+wave: 5
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "debate_orchestrator"
+  - "decision_engine"
+  - "agent_scorer"
+  - "trade_decision"
+  - "decision_record"
+  - "debate_agent_base"
+dependencies:
+  - "iios.core"
+  - "iios.agents"
+  - "iios.risk"
+  - "iios.infrastructure"
