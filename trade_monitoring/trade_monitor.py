@@ -657,20 +657,26 @@ class TradeMonitor:
          • Trade is ≥ GUARD_R in profit at any point (strong runner — let it run)
          • Trade is within 10% of its fixed target (already managed by trail)
         """
-        entry   = order.entry_price
-        sl      = order.stop_loss
-        target  = order.target
-        is_long = order.direction == "BUY"
-        risk    = abs(entry - sl) if sl else 0.0
-
-        if risk == 0:
+        # ── DataGuard stale-price suppression ──────────────────────────────
+        # If the DataGuard has detected that this symbol's price has not moved
+        # for ≥_DATAGAURD_STALE_CYCLES consecutive monitoring cycles (i.e. the
+        # feed is returning the same value repeatedly — holiday, data outage, or
+        # trading halt), suppress adaptive exits (EARLY_LOSS / TIME_STALE) for
+        # this cycle.
+        # Rationale: a stale price does NOT confirm a genuine loss — the market
+        # may simply be closed.  Genuine stop-loss hits still fire through
+        # _evaluate() which is called before this method.
+        _dg_stale = self._dg_stale_count.get(oid, 0)
+        if _dg_stale >= self._DATAGAURD_STALE_CYCLES:
+            log.warning(
+                "[DataGuard] Suppressing adaptive exit for %s — price %.2f unchanged "
+                "for %d consecutive cycles (possible holiday/data outage). "
+                "EARLY_LOSS/TIME_STALE BLOCKED this cycle.",
+                order.symbol, ltp, _dg_stale,
+            )
             return None
 
-        unrealised = (ltp - entry) if is_long else (entry - ltp)
-        r_multiple = unrealised / risk
-        peak_r     = self._peak_r.get(oid, 0.0)
-
-        # Guardrail: trade was ever a strong runner → hands off
+        entry   = order.entry_price
         if peak_r >= _AE_GUARD_R:
             return None
 
