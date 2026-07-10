@@ -80,54 +80,54 @@ def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
 # or whenever Phase D market_scanner is not yet active.
 _BASE_WATCHLIST: List[Dict[str, Any]] = [
 # ── Base watchlist ─────────────────────────────────────────────────────────
-    # base_ltp refreshed 2026-05-29 from yfinance live close prices
+    # base_ltp refreshed 2026-07-10 from yfinance live close prices
     # ATR_ANCHORED = 20d range diverged >40% from ATR(14); levels rebuilt from real ATR
-    {"symbol": "RELIANCE    ", "base_ltp":  1335.60, "resistance":  1403.28, "support":  1267.92, "volume_ratio": 0.9, "rsi":  41.0, "adv_crore":  2073},  # ATR_ANCHORED
-    {"symbol": "HDFCBANK    ", "base_ltp":   756.85, "resistance":   796.55, "support":   749.60, "volume_ratio": 1.2, "rsi":  41.4, "adv_crore":  2604},
-    {"symbol": "ICICIBANK   ", "base_ltp":  1280.10, "resistance":  1291.80, "support":  1235.60, "volume_ratio": 0.9, "rsi":  51.5, "adv_crore":  2122},
-    {"symbol": "TATASTEEL   ", "base_ltp":   212.30, "resistance":   221.13, "support":   207.01, "volume_ratio": 0.9, "rsi":  51.0, "adv_crore":   608},
-    {"symbol": "INFY        ", "base_ltp":  1201.40, "resistance":  1273.17, "support":  1129.63, "volume_ratio": 0.7, "rsi":  53.7, "adv_crore":  1274},  # ATR_ANCHORED
-    {"symbol": "BANKBARODA  ", "base_ltp":   269.95, "resistance":   272.25, "support":   259.95, "volume_ratio": 0.8, "rsi":  52.8, "adv_crore":   296},
-    {"symbol": "LT          ", "base_ltp":  4105.60, "resistance":  4293.48, "support":  3917.72, "volume_ratio": 0.7, "rsi":  66.3, "adv_crore":   944},  # ATR_ANCHORED
-    {"symbol": "COALINDIA   ", "base_ltp":   463.75, "resistance":   481.45, "support":   454.05, "volume_ratio": 3.7, "rsi":  56.3, "adv_crore":   787},
-    {"symbol": "HCLTECH     ", "base_ltp":  1180.80, "resistance":  1200.50, "support":  1124.00, "volume_ratio": 0.5, "rsi":  41.5, "adv_crore":   314},
-    {"symbol": "SBIN        ", "base_ltp":   967.90, "resistance":  1019.56, "support":   916.24, "volume_ratio": 0.6, "rsi":  39.0, "adv_crore":  1681},  # ATR_ANCHORED
-    {"symbol": "AXISBANK    ", "base_ltp":  1299.40, "resistance":  1311.20, "support":  1237.90, "volume_ratio": 0.9, "rsi":  53.5, "adv_crore":   769},
-    {"symbol": "ONGC        ", "base_ltp":   267.80, "resistance":   286.41, "support":   249.19, "volume_ratio": 1.1, "rsi":  30.7, "adv_crore":   460},  # ATR_ANCHORED
-    {"symbol": "KOTAKBANK   ", "base_ltp":   390.75, "resistance":   392.85, "support":   371.35, "volume_ratio": 0.5, "rsi":  59.2, "adv_crore":   701},
-    {"symbol": "BHARTIARTL  ", "base_ltp":  1834.10, "resistance":  1930.88, "support":  1737.32, "volume_ratio": 1.2, "rsi":  45.4, "adv_crore":  1822},  # ATR_ANCHORED
-    {"symbol": "ITC         ", "base_ltp":   289.10, "resistance":   300.99, "support":   277.21, "volume_ratio": 1.4, "rsi":  35.9, "adv_crore":   548},  # ATR_ANCHORED
-    {"symbol": "BAJAJFINSV  ", "base_ltp":  1804.40, "resistance":  1836.10, "support":  1728.10, "volume_ratio": 0.5, "rsi":  55.1, "adv_crore":   157},
-    {"symbol": "HINDALCO    ", "base_ltp":  1145.80, "resistance":  1222.74, "support":  1068.86, "volume_ratio": 1.1, "rsi":  68.4, "adv_crore":   530},  # ATR_ANCHORED
-    {"symbol": "ULTRACEMCO  ", "base_ltp": 11676.00, "resistance": 12146.00, "support": 11368.00, "volume_ratio": 0.8, "rsi":  50.0, "adv_crore":   314},
-    {"symbol": "TECHM       ", "base_ltp":  1486.10, "resistance":  1584.38, "support":  1387.82, "volume_ratio": 0.8, "rsi":  58.5, "adv_crore":   289},  # ATR_ANCHORED
-    {"symbol": "NTPC        ", "base_ltp":   393.00, "resistance":   402.15, "support":   388.30, "volume_ratio": 1.1, "rsi":  50.1, "adv_crore":   324},
+    {"symbol": "RELIANCE    ", "base_ltp":  1307.80, "resistance":  1332.70, "support":  1275.90, "volume_ratio": 1.1, "rsi":  49.8, "adv_crore":  1744},
+    {"symbol": "HDFCBANK    ", "base_ltp":   824.95, "resistance":   862.57, "support":   787.33, "volume_ratio": 1.0, "rsi":  67.9, "adv_crore":  2844},  # ATR_ANCHORED
+    {"symbol": "ICICIBANK   ", "base_ltp":  1401.20, "resistance":  1464.79, "support":  1337.61, "volume_ratio": 0.9, "rsi":  62.8, "adv_crore":  1659},  # ATR_ANCHORED
+    {"symbol": "TATASTEEL   ", "base_ltp":   191.19, "resistance":   200.42, "support":   181.96, "volume_ratio": 0.8, "rsi":  44.6, "adv_crore":   524},  # ATR_ANCHORED
+    {"symbol": "INFY        ", "base_ltp":  1068.00, "resistance":  1149.73, "support":   986.27, "volume_ratio": 0.7, "rsi":  48.0, "adv_crore":  1496},  # ATR_ANCHORED
+    {"symbol": "BANKBARODA  ", "base_ltp":   250.95, "resistance":   268.71, "support":   233.19, "volume_ratio": 1.2, "rsi":  38.1, "adv_crore":   340},  # ATR_ANCHORED
+    {"symbol": "LT          ", "base_ltp":  3945.80, "resistance":  4131.65, "support":  3759.95, "volume_ratio": 1.4, "rsi":  38.6, "adv_crore":   832},  # ATR_ANCHORED
+    {"symbol": "COALINDIA   ", "base_ltp":   429.30, "resistance":   455.75, "support":   428.95, "volume_ratio": 0.7, "rsi":  34.4, "adv_crore":   259},
+    {"symbol": "HCLTECH     ", "base_ltp":  1164.10, "resistance":  1253.89, "support":  1074.31, "volume_ratio": 0.7, "rsi":  56.6, "adv_crore":   494},  # ATR_ANCHORED
+    {"symbol": "SBIN        ", "base_ltp":  1036.00, "resistance":  1051.60, "support":  1015.30, "volume_ratio": 1.0, "rsi":  56.5, "adv_crore":  1058},
+    {"symbol": "AXISBANK    ", "base_ltp":  1323.70, "resistance":  1383.43, "support":  1296.60, "volume_ratio": 0.9, "rsi":  46.7, "adv_crore":   768},
+    {"symbol": "ONGC        ", "base_ltp":   244.96, "resistance":   248.20, "support":   233.10, "volume_ratio": 1.0, "rsi":  45.1, "adv_crore":   387},
+    {"symbol": "KOTAKBANK   ", "base_ltp":   377.60, "resistance":   397.65, "support":   357.55, "volume_ratio": 1.3, "rsi":  38.3, "adv_crore":   676},  # ATR_ANCHORED
+    {"symbol": "BHARTIARTL  ", "base_ltp":  1920.40, "resistance":  1931.10, "support":  1841.10, "volume_ratio": 1.2, "rsi":  59.6, "adv_crore":  1232},
+    {"symbol": "ITC         ", "base_ltp":   281.75, "resistance":   292.50, "support":   280.65, "volume_ratio": 1.3, "rsi":  36.8, "adv_crore":   347},
+    {"symbol": "BAJAJFINSV  ", "base_ltp":  1916.00, "resistance":  2018.06, "support":  1813.94, "volume_ratio": 1.1, "rsi":  68.4, "adv_crore":   239},  # ATR_ANCHORED
+    {"symbol": "HINDALCO    ", "base_ltp":   967.45, "resistance":  1008.94, "support":   934.82, "volume_ratio": 1.0, "rsi":  41.1, "adv_crore":   630},
+    {"symbol": "ULTRACEMCO  ", "base_ltp": 11711.00, "resistance": 11723.00, "support": 11253.00, "volume_ratio": 0.8, "rsi":  58.5, "adv_crore":   259},
+    {"symbol": "TECHM       ", "base_ltp":  1454.80, "resistance":  1454.80, "support":  1327.70, "volume_ratio": 0.6, "rsi":  57.6, "adv_crore":   344},
+    {"symbol": "NTPC        ", "base_ltp":   344.55, "resistance":   360.99, "support":   328.11, "volume_ratio": 1.0, "rsi":  29.7, "adv_crore":   465},  # ATR_ANCHORED
 ]
 
 # ── Extended watchlist (activated by ODM when density is low) ─────────────
 # Represents a wider NIFTY200/500 universe.
 _EXTENDED_WATCHLIST: List[Dict[str, Any]] = [
 # ── Extended watchlist ─────────────────────────────────────────────────────────
-    # base_ltp refreshed 2026-05-29 from yfinance live close prices
+    # base_ltp refreshed 2026-07-10 from yfinance live close prices
     # ATR_ANCHORED = 20d range diverged >40% from ATR(14); levels rebuilt from real ATR
-    {"symbol": "HINDUNILVR  ", "base_ltp":  2173.50, "resistance":  2327.40, "support":  2173.50, "volume_ratio": 1.0, "rsi":  39.4, "adv_crore":   294},
-    {"symbol": "ASIANPAINT  ", "base_ltp":  2681.60, "resistance":  2822.13, "support":  2541.07, "volume_ratio": 0.6, "rsi":  70.2, "adv_crore":   264},  # ATR_ANCHORED
-    {"symbol": "BAJFINANCE  ", "base_ltp":   924.80, "resistance":   979.74, "support":   869.86, "volume_ratio": 0.9, "rsi":  49.1, "adv_crore":   597},  # ATR_ANCHORED
-    {"symbol": "MARUTI      ", "base_ltp": 13254.00, "resistance": 13770.00, "support": 12956.00, "volume_ratio": 0.7, "rsi":  49.5, "adv_crore":   467},
-    {"symbol": "SUNPHARMA   ", "base_ltp":  1841.60, "resistance":  1905.80, "support":  1808.30, "volume_ratio": 0.6, "rsi":  56.1, "adv_crore":   446},
-    {"symbol": "WIPRO       ", "base_ltp":   204.99, "resistance":   217.06, "support":   192.92, "volume_ratio": 1.9, "rsi":  59.0, "adv_crore":   474},  # ATR_ANCHORED
-    {"symbol": "POWERGRID   ", "base_ltp":   295.05, "resistance":   311.83, "support":   278.27, "volume_ratio": 0.8, "rsi":  38.3, "adv_crore":   287},  # ATR_ANCHORED
-    {"symbol": "DIVISLAB    ", "base_ltp":  6745.00, "resistance":  6921.50, "support":  6502.50, "volume_ratio": 0.6, "rsi":  55.8, "adv_crore":   236},
-    {"symbol": "TITAN       ", "base_ltp":  4118.30, "resistance":  4366.45, "support":  3870.15, "volume_ratio": 0.5, "rsi":  40.1, "adv_crore":   597},  # ATR_ANCHORED
-    {"symbol": "DRREDDY     ", "base_ltp":  1316.40, "resistance":  1336.70, "support":  1265.30, "volume_ratio": 0.5, "rsi":  54.3, "adv_crore":   307},
-    {"symbol": "ADANIENT    ", "base_ltp":  2949.30, "resistance":  3176.27, "support":  2722.33, "volume_ratio": 1.2, "rsi":  80.1, "adv_crore":   781},  # ATR_ANCHORED
-    {"symbol": "TATACONSUM  ", "base_ltp":  1197.50, "resistance":  1264.24, "support":  1130.76, "volume_ratio": 0.6, "rsi":  57.0, "adv_crore":   323},  # ATR_ANCHORED
-    {"symbol": "NESTLEIND   ", "base_ltp":  1430.00, "resistance":  1486.10, "support":  1406.50, "volume_ratio": 0.7, "rsi":  56.0, "adv_crore":   231},
-    {"symbol": "HAVELLS     ", "base_ltp":  1197.50, "resistance":  1262.61, "support":  1184.99, "volume_ratio": 1.1, "rsi":  40.4, "adv_crore":    82},
-    {"symbol": "PIDILITIND  ", "base_ltp":  1468.20, "resistance":  1542.25, "support":  1394.15, "volume_ratio": 0.5, "rsi":  59.6, "adv_crore":   153},  # ATR_ANCHORED
-    {"symbol": "GRASIM      ", "base_ltp":  3145.70, "resistance":  3312.54, "support":  2978.86, "volume_ratio": 0.6, "rsi":  75.6, "adv_crore":   295},  # ATR_ANCHORED
-    {"symbol": "JSWSTEEL    ", "base_ltp":  1294.70, "resistance":  1309.30, "support":  1252.30, "volume_ratio": 0.8, "rsi":  57.9, "adv_crore":   224},
-    {"symbol": "ADANIPORTS  ", "base_ltp":  1815.60, "resistance":  1920.20, "support":  1711.00, "volume_ratio": 0.7, "rsi":  68.6, "adv_crore":   515},  # ATR_ANCHORED
+    {"symbol": "HINDUNILVR  ", "base_ltp":  2150.60, "resistance":  2210.60, "support":  2118.20, "volume_ratio": 1.1, "rsi":  47.7, "adv_crore":   342},
+    {"symbol": "ASIANPAINT  ", "base_ltp":  2677.80, "resistance":  2754.90, "support":  2635.70, "volume_ratio": 0.9, "rsi":  48.9, "adv_crore":   341},
+    {"symbol": "BAJFINANCE  ", "base_ltp":  1020.50, "resistance":  1079.33, "support":   961.67, "volume_ratio": 1.0, "rsi":  64.4, "adv_crore":   888},  # ATR_ANCHORED
+    {"symbol": "MARUTI      ", "base_ltp": 13854.00, "resistance": 14665.27, "support": 13042.73, "volume_ratio": 0.9, "rsi":  52.2, "adv_crore":   790},  # ATR_ANCHORED
+    {"symbol": "SUNPHARMA   ", "base_ltp":  1935.50, "resistance":  2014.42, "support":  1856.58, "volume_ratio": 1.5, "rsi":  73.7, "adv_crore":   355},  # ATR_ANCHORED
+    {"symbol": "WIPRO       ", "base_ltp":   175.46, "resistance":   185.50, "support":   165.42, "volume_ratio": 0.7, "rsi":  39.8, "adv_crore":   386},  # ATR_ANCHORED
+    {"symbol": "POWERGRID   ", "base_ltp":   283.10, "resistance":   292.25, "support":   279.70, "volume_ratio": 0.8, "rsi":  42.6, "adv_crore":   262},
+    {"symbol": "DIVISLAB    ", "base_ltp":  6836.00, "resistance":  6857.50, "support":  6545.50, "volume_ratio": 1.0, "rsi":  58.1, "adv_crore":   217},
+    {"symbol": "TITAN       ", "base_ltp":  4584.40, "resistance":  4811.25, "support":  4357.55, "volume_ratio": 1.3, "rsi":  70.4, "adv_crore":   403},  # ATR_ANCHORED
+    {"symbol": "DRREDDY     ", "base_ltp":  1244.30, "resistance":  1331.31, "support":  1157.29, "volume_ratio": 2.5, "rsi":  33.9, "adv_crore":   317},  # ATR_ANCHORED
+    {"symbol": "ADANIENT    ", "base_ltp":  3157.30, "resistance":  3212.10, "support":  2942.50, "volume_ratio": 1.1, "rsi":  59.2, "adv_crore":   644},
+    {"symbol": "TATACONSUM  ", "base_ltp":  1111.90, "resistance":  1131.30, "support":  1075.60, "volume_ratio": 0.8, "rsi":  47.6, "adv_crore":   182},
+    {"symbol": "NESTLEIND   ", "base_ltp":  1455.20, "resistance":  1466.65, "support":  1368.12, "volume_ratio": 0.9, "rsi":  60.5, "adv_crore":   251},
+    {"symbol": "HAVELLS     ", "base_ltp":  1188.40, "resistance":  1225.00, "support":  1156.10, "volume_ratio": 2.4, "rsi":  51.4, "adv_crore":   115},
+    {"symbol": "PIDILITIND  ", "base_ltp":  1598.50, "resistance":  1622.30, "support":  1566.70, "volume_ratio": 0.7, "rsi":  59.4, "adv_crore":   121},
+    {"symbol": "GRASIM      ", "base_ltp":  3213.60, "resistance":  3213.60, "support":  3080.20, "volume_ratio": 1.1, "rsi":  59.6, "adv_crore":   188},
+    {"symbol": "JSWSTEEL    ", "base_ltp":  1245.40, "resistance":  1289.10, "support":  1209.25, "volume_ratio": 0.9, "rsi":  49.6, "adv_crore":   169},
+    {"symbol": "ADANIPORTS  ", "base_ltp":  1828.10, "resistance":  1883.20, "support":  1776.10, "volume_ratio": 0.7, "rsi":  51.7, "adv_crore":   373},
 ]
 
 
@@ -1214,7 +1214,11 @@ def _live_watchlist(extended: bool = False) -> List[Dict[str, Any]]:
         vol_jitter = round(s["volume_ratio"] + rng.uniform(-0.2, 0.2), 2)
         rsi_jitter = round(s["rsi"]          + rng.uniform(-2,   2),   1)
         rows.append({
-            "symbol":       s["symbol"],
+            # Strip trailing spaces: watchlist entries are column-aligned with
+            # padding (e.g. "ITC         "). Without stripping these propagate
+            # into OrderRecord.symbol, order IDs, and InstrumentRegistry lookups,
+            # silently bypassing the SL Integrity Gate for all scanner symbols.
+            "symbol":       s["symbol"].strip(),
             "ltp":          live_ltp,
             "resistance":   s["resistance"],
             "support":      s["support"],

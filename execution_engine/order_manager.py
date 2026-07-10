@@ -63,6 +63,13 @@ REENTRY_MAX_RETRIES    = 2    # maximum re-placements per expired signal
 REENTRY_PRICE_BAND_PCT = 0.50 # ±% band from entry_price to accept re-entry
                                # set to 0.0 to skip the price-proximity check
 
+# ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────────────
+# Block fresh entries into the same symbol for this many hours after an
+# EARLY_LOSS adaptive exit.  Prevents same-session re-entry on a proven
+# losing setup (ASIANPAINT/DRREDDY pattern seen Jun–Jul 2026).
+# Genuine SL hits, targets, SESSION_EXPIRED do NOT trigger this cooldown.
+_EARLY_LOSS_COOLDOWN_H = 24.0  # hours
+
 # ── Entry Zone ─────────────────────────────────────────────────────────────────
 # Instead of placing at the exact signal price, the zone-adjusted price is
 # slightly more aggressive (toward market) to improve fill probability:
@@ -610,6 +617,26 @@ class OrderManager:
                 )
                 return None
 
+        # ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────
+        # After an EARLY_LOSS adaptive exit, block fresh entries for the same
+        # symbol for _EARLY_LOSS_COOLDOWN_H hours.  This prevents the pattern
+        # where the scanner re-identifies the same setup the next morning on a
+        # stock that already proved it wasn't working (e.g. ASIANPAINT Jun 30
+        # EARLY_LOSS → re-entry Jul 1 09:45, DRREDDY Jun 24 → Jun 25).
+        # Exempt: same-symbol swap replacements (position management, not new thesis)
+        if not _is_same_symbol_swap:
+            _prev_close = _RECENT_CLOSE_TIMES.get(signal.symbol.strip())
+            if _prev_close is not None:
+                _prev_reason = _prev_close.get("reason", "")
+                _gap_h = (datetime.now() - _prev_close["time"]).total_seconds() / 3600
+                if _prev_reason == "EARLY_LOSS" and _gap_h < _EARLY_LOSS_COOLDOWN_H:
+                    log.info(
+                        "[EarlyLossCooldown] BLOCKED %s — EARLY_LOSS exit %.1fh ago "
+                        "(cooldown=%.0fh). Suppressing re-entry on losing setup.",
+                        signal.symbol.strip(), _gap_h, _EARLY_LOSS_COOLDOWN_H,
+                    )
+                    return None
+
         # ── Late-day entry control (institutional rule) ───────────────────────
         # Before 13:30         → normal (6.5 floor enforced by DecisionEngine)
         # 13:30 – 14:30        → minimum score 7.0 required (higher conviction)
@@ -901,10 +928,11 @@ class OrderManager:
         _isl  = rec.initial_stop_loss if rec.initial_stop_loss > 0 else rec.stop_loss
         _risk = abs(rec.entry_price - _isl) * rec.quantity
         _r    = round(pnl / _risk, 3) if _risk > 0 else 0.0
-        _RECENT_CLOSE_TIMES[rec.symbol] = {
+        _RECENT_CLOSE_TIMES[rec.symbol.strip()] = {
             "time":      rec.closed_at,
             "r":         _r,
             "direction": rec.direction,
+            "reason":    reason,   # canonical exit reason (EARLY_LOSS, STOP_HIT, etc.)
         }
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
