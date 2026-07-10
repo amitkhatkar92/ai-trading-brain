@@ -66,14 +66,21 @@ jobs:
             echo "[ build  ] ✅ image built"
             tail -3 /tmp/build.log
 
-            # ═══ Container cleanup (handles both compose-managed and manually
-            #     created containers to prevent "name already in use" errors)
-            docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
+            # ═══ Container cleanup ════════════════════════════════════════════
+            # Run compose down FIRST so the compose lifecycle properly stops
+            # containers (which pauses Docker's restart policy) before we force-
+            # remove any stragglers.  Reversing this order races with
+            # restart: unless-stopped / restart: always — Docker can re-create a
+            # same-named container between "docker rm -f" and "docker compose up",
+            # causing the "container name already in use" conflict error.
             docker compose down --remove-orphans 2>/dev/null || true
+            docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
             echo "[ clean  ] ✅ old containers removed"
 
             # ═══ Start fresh ═══════════════════════════════════════════════════
-            docker compose up -d
+            # --force-recreate ensures existing containers (if any slipped through
+            # cleanup) are replaced rather than reused.
+            docker compose up --force-recreate -d
             sleep 8
             docker compose ps
             echo "✅ Deployment complete — $(git rev-parse --short HEAD) live"
