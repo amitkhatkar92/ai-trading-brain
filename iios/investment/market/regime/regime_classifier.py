@@ -4,7 +4,7 @@ Abstract base class and default rule-based regime classifier.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional, TYPE_CHECKING
 
 from iios.investment.market.market_constants import (
     BreadthCondition,
@@ -13,6 +13,9 @@ from iios.investment.market.market_constants import (
     VolatilityLevel,
 )
 from iios.investment.market.market_state.market_snapshot import MarketSnapshot
+
+if TYPE_CHECKING:
+    pass
 
 
 class RegimeClassifier(ABC):
@@ -118,3 +121,43 @@ class DefaultRegimeClassifier(RegimeClassifier):
             return MarketRegime.CONTRACTION, 0.65
 
         return MarketRegime.UNKNOWN, 0.30
+
+
+class StructureBasedClassifier(RegimeClassifier):
+    """
+    Classifier that uses MarketStructureSnapshot for richer classification.
+    Delegates to RegimeDetector internally.
+
+    Converts RegimeType → MarketRegime for compatibility with RegimeClassifier interface.
+    """
+
+    @property
+    def classifier_id(self) -> str:
+        return "structure_based"
+
+    @property
+    def name(self) -> str:
+        return "Structure-Based Regime Classifier"
+
+    def __init__(self) -> None:
+        from iios.investment.market.regime.regime_detector import RegimeDetector
+        self._detector = RegimeDetector()
+
+    def classify(
+        self,
+        snapshot: "MarketSnapshot",
+        history: list["MarketSnapshot"],
+    ) -> tuple[MarketRegime, float]:
+        """Falls back to DefaultRegimeClassifier (no structure snapshot available)."""
+        return DefaultRegimeClassifier().classify(snapshot, history)
+
+    def classify_from_structure(
+        self,
+        structure_snapshot: "Any",
+        market_snapshot: "Any | None" = None,
+    ) -> tuple[MarketRegime, float, "Any"]:
+        """Primary method: returns (MarketRegime, confidence, RegimeType)."""
+        from iios.investment.market.regime.models import regime_type_to_market_regime
+        obs = self._detector.observe(structure_snapshot, market_snapshot)
+        primary, secondary, confidence = self._detector.detect(obs)
+        return regime_type_to_market_regime(primary), confidence, primary
