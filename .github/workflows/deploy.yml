@@ -83,15 +83,21 @@ jobs:
             tail -3 /tmp/build.log
 
             # ═══ Container cleanup ════════════════════════════════════════════
-            # ORDER MATTERS: compose down FIRST so Docker's own lifecycle stops
-            # the containers gracefully before the restart policy fires.
-            # If docker rm -f runs first, the restart daemon immediately re-creates
-            # a same-named container (new ID) before compose down runs — then
-            # compose up -d hits "container name already in use".
+            # 1. Disable restart policies FIRST — Docker daemon re-creates a
+            #    container with the same name the instant rm -f removes it when
+            #    restart=always/unless-stopped is set, causing "container name
+            #    already in use" on the subsequent compose up.
+            docker update --restart=no ai-trading-brain trading-dashboard 2>/dev/null || true
+            # 2. Stop containers gracefully so the (now-disabled) restart daemon
+            #    never fires during the subsequent remove.
+            docker stop ai-trading-brain trading-dashboard 2>/dev/null || true
+            # 3. Compose down removes stopped containers and the shared network.
             docker compose down --remove-orphans 2>/dev/null || true
-            # Belt-and-suspenders: remove any container that survived (e.g. ones
-            # created outside compose with conflicting names).
+            # 4. Belt-and-suspenders: remove any container that survived.
             docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
+            # 5. Explicitly remove the network in case compose down skipped it
+            #    (happens when containers were started outside this compose project).
+            docker network rm ai-trading-brain_trading-network 2>/dev/null || true
             echo "[ clean  ] ✅ old containers removed"
 
             # ═══ Start fresh ═══════════════════════════════════════════════════
