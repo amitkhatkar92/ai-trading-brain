@@ -5,6 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:   # allow manual trigger from GitHub UI
 
+# Prevent concurrent deploys — cancel any in-progress run when a newer push
+# arrives, and serialise runs for the same branch so two deploys never race
+# on the VPS simultaneously.
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
@@ -58,6 +65,15 @@ jobs:
             rm -f /root/ai-trading-brain/data/trading_engine.pid
             echo "[ pid    ] ✅ stale locks cleared"
 
+            # ═══ Disk cleanup — prevent accumulated images filling the disk ═══
+            # Remove all images not referenced by a running container, plus all
+            # dangling build cache.  This runs BEFORE the build so the new image
+            # always has room to land.  Running containers are never removed.
+            docker image prune -af  2>/dev/null || true
+            docker builder prune -af 2>/dev/null || true
+            DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
+            echo "[ disk   ] ✅ free space after prune: ${DISK_FREE}"
+
             # ═══ Docker rebuild ════════════════════════════════════════════════
             touch /root/ai-trading-brain/.env
             # Log full build output to a temp file so it is visible on failure.
@@ -84,4 +100,10 @@ jobs:
             sleep 8
             docker compose ps
             echo "✅ Deployment complete — $(git rev-parse --short HEAD) live"
+
+            # ═══ Post-deploy cleanup — remove images superseded by this build ═
+            # The newly built image is now in use; prune everything else.
+            docker image prune -af 2>/dev/null || true
+            DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
+            echo "[ disk   ] ✅ disk free after deploy: ${DISK_FREE}"
 
