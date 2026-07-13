@@ -83,16 +83,31 @@ jobs:
             tail -3 /tmp/build.log
 
             # ═══ Container cleanup ════════════════════════════════════════════
-            # ORDER MATTERS: compose down FIRST so Docker's own lifecycle stops
-            # the containers gracefully before the restart policy fires.
-            # If docker rm -f runs first, the restart daemon immediately re-creates
-            # a same-named container (new ID) before compose down runs — then
-            # compose up -d hits "container name already in use".
+            # ORDER MATTERS to avoid two race conditions:
+            #
+            # Race 1 — "container name already in use":
+            #   If we docker rm -f first, Docker's restart=always/unless-stopped
+            #   policy immediately spawns a NEW container with the same name
+            #   before compose up runs → name collision.
+            #   Fix: disable the restart policy FIRST so the daemon can no
+            #   longer re-create the container after we stop it.
+            #
+            # Race 2 — "network ai-trading-brain_trading-network already exists":
+            #   Happens when containers were started outside the compose project
+            #   scope, so compose down doesn't own the network.
+            #   Fix: explicit docker network rm after compose down.
+            #
+            # Step 1 — Strip restart policy so daemon won't re-create
+            docker update --restart=no ai-trading-brain trading-dashboard 2>/dev/null || true
+            # Step 2 — Gracefully stop (no re-create fires — policy is now "no")
+            docker stop ai-trading-brain trading-dashboard 2>/dev/null || true
+            # Step 3 — Compose down: removes stopped containers + owned networks
             docker compose down --remove-orphans 2>/dev/null || true
-            # Belt-and-suspenders: remove any container that survived (e.g. ones
-            # created outside compose with conflicting names).
+            # Step 4 — Belt-and-suspenders: remove any container that survived
             docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
-            echo "[ clean  ] ✅ old containers removed"
+            # Step 5 — Explicit network removal for networks compose down skipped
+            docker network rm ai-trading-brain_trading-network 2>/dev/null || true
+            echo "[ clean  ] ✅ old containers and network removed"
 
             # ═══ Start fresh ═══════════════════════════════════════════════════
             # --force-recreate: replace any container that somehow survived cleanup
