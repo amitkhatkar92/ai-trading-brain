@@ -86,32 +86,35 @@ jobs:
             # ORDER MATTERS to avoid two race conditions:
             #
             # Race 1 — "container name already in use":
-            #   If we docker rm -f first, Docker's restart=always/unless-stopped
-            #   policy immediately spawns a NEW container with the same name
-            #   before compose up runs → name collision.
-            #   Fix: disable the restart policy FIRST so the daemon can no
-            #   longer re-create the container after we stop it.
+            #   Docker's restart=unless-stopped can spawn a new container
+            #   before compose up runs.  Disable restart policy FIRST.
             #
-            # Race 2 — "network ai-trading-brain_trading-network already exists":
-            #   Happens when containers were started outside the compose project
-            #   scope, so compose down doesn't own the network.
-            #   Fix: explicit docker network rm after compose down.
+            # Race 2 — "network already exists":
+            #   docker rm -f removes containers but Docker's endpoint registry
+            #   takes a moment to propagate the unregistration.  A network rm
+            #   immediately after rm -f can still see "active endpoints" and
+            #   fail silently.  Fix: sleep 3 + explicit force-disconnect.
             #
             # Step 1 — Strip restart policy so daemon won't re-create
             docker update --restart=no ai-trading-brain trading-dashboard 2>/dev/null || true
-            # Step 2 — Gracefully stop (no re-create fires — policy is now "no")
-            docker stop ai-trading-brain trading-dashboard 2>/dev/null || true
-            # Step 3 — Compose down: removes stopped containers + owned networks
-            docker compose down --remove-orphans 2>/dev/null || true
-            # Step 4 — Belt-and-suspenders: remove any container that survived
+            # Step 2 — Compose teardown (manages stop + remove + owned network)
+            #          Show tail so failures are visible in GA log
+            docker compose down --remove-orphans 2>&1 | tail -10 || true
+            # Step 3 — Belt-and-suspenders: remove any container that survived
             docker rm -f ai-trading-brain trading-dashboard 2>/dev/null || true
-            # Step 5 — Explicit network removal for networks compose down skipped
+            # Step 4 — Wait for Docker daemon to settle endpoint unregistration
+            sleep 3
+            # Step 5 — Force-disconnect any ghost endpoints, then remove network
+            docker network disconnect -f ai-trading-brain_trading-network ai-trading-brain 2>/dev/null || true
+            docker network disconnect -f ai-trading-brain_trading-network trading-dashboard 2>/dev/null || true
             docker network rm ai-trading-brain_trading-network 2>/dev/null || true
             echo "[ clean  ] ✅ old containers and network removed"
 
             # ═══ Start fresh ═══════════════════════════════════════════════════
-            # --force-recreate: replace any container that somehow survived cleanup
-            docker compose up -d --force-recreate
+            # --remove-orphans: clean any containers from a previous compose
+            # config that are no longer in the current one.
+            # --force-recreate: last resort — recreate even if config unchanged.
+            docker compose up -d --remove-orphans --force-recreate
             sleep 8
             docker compose ps
             echo "✅ Deployment complete — $(git rev-parse --short HEAD) live"
