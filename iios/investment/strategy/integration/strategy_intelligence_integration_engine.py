@@ -1,0 +1,322 @@
+"""iios/investment/strategy/integration/strategy_intelligence_integration_engine.py
+
+Strategy Intelligence Integration & Validation Engine — main facade.
+
+This engine is the SINGLE orchestration, validation, QA, and publishing layer
+for all Strategy Intelligence.  It:
+  - Integrates outputs from every Strategy Intelligence Engine
+  - Validates consistency
+  - Detects and resolves conflicting intelligence
+  - Measures completeness and confidence
+  - Publishes one canonical StrategySnapshot
+
+Downstream components (Decision Layer, Portfolio AI, Execution Layer, IIOS)
+MUST consume ONLY the StrategySnapshot produced here.
+
+INVARIANT: this engine NEVER independently calculates strategy evaluation,
+opportunities, portfolio state, risk, learning, migration, or debate results.
+It integrates pre-computed intelligence from those engines.
+"""
+from __future__ import annotations
+
+import asyncio
+import logging
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional
+
+from iios.investment.strategy.integration.aggregation_state import (
+    IntelligenceUpdate,
+    make_update,
+)
+from iios.investment.strategy.integration.strategy_intelligence_aggregator import (
+    StrategyIntelligenceAggregator,
+)
+from iios.investment.strategy.integration.consistency_validator import ConsistencyValidator
+from iios.investment.strategy.integration.conflict_engine import ConflictEngine
+from iios.investment.strategy.integration.strategy_quality import QualityFramework, QualityReport
+from iios.investment.strategy.integration.strategy_confidence import ConfidenceCalculator
+from iios.investment.strategy.integration.strategy_summary import build_strategy_summary
+from iios.investment.strategy.integration.strategy_snapshot import (
+    StrategySnapshot,
+    build_snapshot,
+)
+from iios.investment.strategy.integration.snapshot_cache import SnapshotCache
+from iios.investment.strategy.integration.strategy_statistics import StrategyStatisticsTracker
+from iios.investment.strategy.integration.quality_history import QualityHistory
+from iios.investment.strategy.integration.quality_statistics import QualityStatisticsTracker
+from iios.investment.strategy.integration.health_monitor import HealthMonitor, HealthMonitorConfig
+from iios.investment.strategy.integration.validation_report import ValidationReport
+from iios.investment.strategy.integration.conflict_classifier import Conflict
+from iios.investment.strategy.integration.integration_events import (
+    IntegrationEventBus,
+    IntegrationEvent,
+)
+from iios.investment.strategy.integration.integration_constants import (
+    IntegrationEventType,
+    IntegrationStatus,
+)
+
+_log = logging.getLogger(__name__)
+
+
+class StrategyIntelligenceIntegrationEngine:
+    """
+    Single orchestration and publishing facade for all Strategy Intelligence.
+
+    Usage (async):
+        engine = StrategyIntelligenceIntegrationEngine()
+        await engine.submit_update(update)
+        snapshot = await engine.get_snapshot("STRAT-001")
+
+    Usage (sync / non-async context):
+        engine = StrategyIntelligenceIntegrationEngine()
+        engine.submit_update_sync(update)
+        snapshot = engine.get_snapshot_sync("STRAT-001")
+    """
+
+    def __init__(
+        self,
+        aggregator:           Optional[StrategyIntelligenceAggregator] = None,
+        consistency_validator: Optional[ConsistencyValidator]           = None,
+        conflict_engine:      Optional[ConflictEngine]                  = None,
+        quality_framework:    Optional[QualityFramework]                = None,
+        confidence_calculator: Optional[ConfidenceCalculator]          = None,
+        snapshot_cache:       Optional[SnapshotCache]                   = None,
+        stats_tracker:        Optional[StrategyStatisticsTracker]       = None,
+        quality_history:      Optional[QualityHistory]                  = None,
+        quality_stats:        Optional[QualityStatisticsTracker]        = None,
+        event_bus:            Optional[IntegrationEventBus]             = None,
+        health_monitor:       Optional[HealthMonitor]                   = None,
+        health_config:        Optional[HealthMonitorConfig]             = None,
+    ) -> None:
+        self._aggregator       = aggregator      or StrategyIntelligenceAggregator()
+        self._validator        = consistency_validator or ConsistencyValidator(
+            aggregation_engine=self._aggregator._engine,
+        )
+        self._conflict_engine  = conflict_engine or ConflictEngine()
+        self._quality          = quality_framework or QualityFramework(
+            aggregation_engine=self._aggregator._engine,
+        )
+        self._confidence       = confidence_calculator or ConfidenceCalculator()
+        self._cache            = snapshot_cache or SnapshotCache()
+        self._stats            = stats_tracker  or StrategyStatisticsTracker()
+        self._q_history        = quality_history or QualityHistory()
+        self._q_stats          = quality_stats   or QualityStatisticsTracker()
+        self._event_bus        = event_bus       or IntegrationEventBus()
+        self._status           = IntegrationStatus.INITIALIZING
+        self._health: HealthMonitor = health_monitor or HealthMonitor(
+            aggregator=self._aggregator,
+            config=health_config or HealthMonitorConfig(),
+        )
+
+    # ================================================================
+    # Async core API
+    # ================================================================
+
+    async def start(self) -> None:
+        """Start the background health monitor."""
+        await self._health.start()
+        self._status = IntegrationStatus.HEALTHY
+        self._event_bus.emit_simple(
+            IntegrationEventType.ENGINE_STARTED,
+            strategy_id="system",
+            payload={"status": self._status.value},
+            source="StrategyIntelligenceIntegrationEngine",
+        )
+        _log.info("StrategyIntelligenceIntegrationEngine started.")
+
+    async def stop(self) -> None:
+        """Stop background monitors cleanly."""
+        await self._health.stop()
+        self._status = IntegrationStatus.FAILED
+        self._event_bus.emit_simple(
+            IntegrationEventType.ENGINE_STOPPED,
+            strategy_id="system",
+            payload={"status": self._status.value},
+            source="StrategyIntelligenceIntegrationEngine",
+        )
+        _log.info("StrategyIntelligenceIntegrationEngine stopped.")
+
+    async def submit_update(self, update: IntelligenceUpdate) -> None:
+        """
+        Accept a new intelligence update from any source engine.
+        Invalidates the cached snapshot for the strategy so the next
+        get_snapshot() call rebuilds it.
+        """
+        self._aggregator.submit(update)
+        self._stats.record_update(update)
+        self._health.record_seen(update.source)
+        self._cache.invalidate(update.strategy_id)
+
+        self._event_bus.emit_simple(
+            IntegrationEventType.UPDATE_RECEIVED,
+            strategy_id=update.strategy_id,
+            payload={"source": update.source.value, "update_id": update.update_id},
+            source=update.source.value,
+        )
+
+    async def get_snapshot(self, strategy_id: str) -> Optional[StrategySnapshot]:
+        """
+        Return the latest canonical StrategySnapshot for a strategy.
+        Rebuilds from aggregated intelligence if the cache was invalidated.
+        """
+        cached = self._cache.get(strategy_id)
+        if cached is not None:
+            return cached
+
+        state = self._aggregator.state(strategy_id)
+        if state is None:
+            return None
+
+        return await self._build_and_cache(strategy_id, state)
+
+    async def get_snapshot_batch(
+        self,
+        strategy_ids: List[str],
+    ) -> Dict[str, Optional[StrategySnapshot]]:
+        coros = [self.get_snapshot(sid) for sid in strategy_ids]
+        results = await asyncio.gather(*coros)
+        return dict(zip(strategy_ids, results))
+
+    # ================================================================
+    # Sync wrappers
+    # ================================================================
+
+    def submit_update_sync(self, update: IntelligenceUpdate) -> None:
+        asyncio.run(self.submit_update(update))
+
+    def get_snapshot_sync(self, strategy_id: str) -> Optional[StrategySnapshot]:
+        return asyncio.run(self.get_snapshot(strategy_id))
+
+    # ================================================================
+    # Internal snapshot builder
+    # ================================================================
+
+    async def _build_and_cache(
+        self,
+        strategy_id: str,
+        state,
+    ) -> StrategySnapshot:
+        # 1 — validate consistency
+        self._status = IntegrationStatus.VALIDATING
+        validation: ValidationReport = self._validator.validate(state)
+
+        # 2 — detect / resolve conflicts
+        resolved_conflicts, unresolved_conflicts = self._conflict_engine.process(state)
+        all_active: List[Conflict] = (
+            self._conflict_engine.active_conflicts(strategy_id)
+        )
+
+        # 3 — compute quality, confidence, freshness
+        quality: QualityReport = self._quality.compute(
+            strategy_id, state, all_active
+        )
+        self._q_history.record(quality)
+        self._q_stats.record(quality)
+
+        freshness = self._aggregator._engine.freshness_score(strategy_id)
+        completeness = self._aggregator.completeness(strategy_id)
+
+        conf_components = self._confidence.compute(
+            state=state,
+            active_conflicts=all_active,
+            completeness=completeness,
+            freshness_score=freshness,
+        )
+
+        # 4 — build summary
+        intelligence_score = (
+            quality.overall_score * 0.60
+            + conf_components.final_confidence * 0.40
+        )
+        summary = build_strategy_summary(
+            state=state,
+            overall_score=intelligence_score,
+            completeness=completeness,
+            active_conflicts=len(all_active),
+        )
+
+        # 5 — build snapshot
+        snapshot = build_snapshot(
+            state=state,
+            summary=summary,
+            validation_report=validation,
+            active_conflicts=all_active,
+            intelligence_score=intelligence_score,
+            quality_score=quality.overall_score,
+            confidence_score=conf_components.final_confidence,
+            freshness_score=freshness,
+        )
+
+        # 6 — cache, stats, events
+        self._cache.set(snapshot)
+        self._stats.record_snapshot(strategy_id, len(all_active))
+
+        self._status = IntegrationStatus.PUBLISHING
+        self._event_bus.emit_simple(
+            IntegrationEventType.SNAPSHOT_PUBLISHED,
+            strategy_id=strategy_id,
+            payload={
+                "snapshot_id":        snapshot.snapshot_id,
+                "intelligence_score": snapshot.intelligence_score,
+                "quality_score":      snapshot.quality_score,
+                "status":             snapshot.status.value,
+            },
+            source="StrategyIntelligenceIntegrationEngine",
+        )
+        self._status = IntegrationStatus.HEALTHY
+        return snapshot
+
+    # ================================================================
+    # Query API (Task 8)
+    # ================================================================
+
+    def get_current_snapshot(self, strategy_id: str) -> Optional[StrategySnapshot]:
+        return self._cache.get(strategy_id)
+
+    def get_quality_report(self, strategy_id: str) -> Optional[QualityReport]:
+        rpts = self._q_history.for_strategy(strategy_id)
+        return rpts[-1] if rpts else None
+
+    def get_active_conflicts(self, strategy_id: str) -> List[Conflict]:
+        return self._conflict_engine.active_conflicts(strategy_id)
+
+    def get_confidence_score(self, strategy_id: str) -> Optional[float]:
+        snap = self._cache.get(strategy_id)
+        return snap.confidence_score if snap else None
+
+    def get_validation_report(self, strategy_id: str) -> Optional[ValidationReport]:
+        snap = self._cache.get(strategy_id)
+        return snap.validation_report if snap else None
+
+    def get_engine_health(self):
+        return self._health.get_health()
+
+    def known_strategies(self) -> List[str]:
+        return self._aggregator.known_strategies()
+
+    def stats(self) -> Dict[str, Any]:
+        return {
+            "status":          self._status.value,
+            "known_strategies": len(self.known_strategies()),
+            "cache_size":      self._cache.size(),
+            "quality_stats":   self._q_stats.summary().to_dict(),
+            "aggregator_stats": self._aggregator.stats(),
+            "health":          self._health.snapshot_dict(),
+        }
+
+    # ================================================================
+    # Properties
+    # ================================================================
+
+    @property
+    def event_bus(self) -> IntegrationEventBus:
+        return self._event_bus
+
+    @property
+    def aggregator(self) -> StrategyIntelligenceAggregator:
+        return self._aggregator
+
+    @property
+    def status(self) -> IntegrationStatus:
+        return self._status
