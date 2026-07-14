@@ -53,12 +53,19 @@ jobs:
             set -eo pipefail
             cd /root/ai-trading-brain
             echo "=== git sync ==="
-            # --force bypasses the compare-and-swap ref check that causes:
-            # "cannot lock ref 'refs/remotes/origin/main': is at A but expected B"
-            # This happens when a previous manual SSH deploy advanced the ref and
-            # GitHub Actions then tries to fetch expecting the older SHA.
-            git fetch --force origin main
-            git reset --hard origin/main
+            # Delete the remote-tracking ref before every fetch.
+            # Rationale: when a manual SSH deploy has already advanced
+            # refs/remotes/origin/main to the new SHA, "git fetch --force"
+            # still performs a CAS (compare-and-swap) lock check: it reads the
+            # current value, then tries to lock with that value as "expected".
+            # If the ref was already updated out-of-band, the CAS fails with:
+            #   "cannot lock ref '...': is at <new> but expected <old>"
+            # --force only suppresses the non-fast-forward guard, NOT the CAS.
+            # Solution: delete the ref so git fetch creates it fresh (no CAS
+            # check), then reset to FETCH_HEAD to avoid using the tracking ref.
+            git update-ref -d refs/remotes/origin/main 2>/dev/null || true
+            git fetch origin main
+            git reset --hard FETCH_HEAD
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
 
             # ═══ Remove stale PID locks ════════════════════════════════════════
