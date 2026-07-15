@@ -13,11 +13,12 @@ those are the responsibility of the upstream engines.
 """
 from __future__ import annotations
 
-import asyncio
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Dict, List, Optional
+
+from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
+from iios.common.async_exec.execution_classifier import WorkloadType
 
 from iios.investment.market.integration.aggregation_engine import KNOWN_ENGINES
 from iios.investment.market.integration.conflict_engine import ConflictEngine
@@ -102,8 +103,6 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
         self.on_low_quality: Optional[Callable[[float], None]] = None
         self.on_conflict:    Optional[Callable[[int], None]] = None
 
-        self._executor: Optional[ThreadPoolExecutor] = None
-
     # ── primary update ────────────────────────────────────────────────────────
 
     def update(self, bundle: IntelligenceBundle) -> MarketIntelligenceSnapshot:
@@ -162,10 +161,13 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
     # ── async update ──────────────────────────────────────────────────────────
 
     async def async_update(self, bundle: IntelligenceBundle) -> MarketIntelligenceSnapshot:
-        loop = asyncio.get_event_loop()
-        if self._executor is None:
-            self._executor = ThreadPoolExecutor(max_workers=1)
-        return await loop.run_in_executor(self._executor, lambda: self.update(bundle))
+        return await _get_exec_manager().execute(
+            self.update,
+            bundle,
+            workload_type = WorkloadType.IO_BOUND,
+            operation     = "market.async_update",
+            engine_id     = self.SYSTEM_ID,
+        )
 
     # ── convenience bundle builder ────────────────────────────────────────────
 

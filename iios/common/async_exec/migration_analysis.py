@@ -108,27 +108,27 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
         engine_id               = "iios:market:intelligence:integration",
         file_path               = "iios/investment/market/integration/market_intelligence_integration_engine.py",
         has_native_async        = True,
-        has_own_executor        = True,
+        has_own_executor        = False,
         has_daemon_loop         = False,
         methods                 = [
             AsyncMethodProfile(
                 name            = "async_update",
-                current_pattern = "run_in_executor",
+                current_pattern = "async_execution_manager",
                 workload        = WorkloadType.IO_BOUND,
-                standardize_to  = "use_async_executor",
+                standardize_to  = "migrated",
                 notes           = (
-                    "Creates a new ThreadPoolExecutor(max_workers=1) on each call. "
-                    "Replace with AsyncExecutor.run_in_thread() to reuse the managed pool."
+                    "MIGRATED (TD-001): Uses AsyncExecutionManager.execute() with "
+                    "WorkloadType.IO_BOUND. Per-call ThreadPoolExecutor removed."
                 ),
             ),
         ],
         workload_classification = WorkloadType.IO_BOUND,
-        recommended_action      = "standardize_with_async_executor",
-        migration_complexity    = "low",
+        recommended_action      = "no_change",
+        migration_complexity    = "none",
         rationale               = (
-            "Engine has one async method that creates its own executor per call. "
-            "Switch to AsyncExecutionManager.execute() to reuse the shared thread pool "
-            "and gain automatic metrics and timeout enforcement."
+            "MIGRATED (TD-001): async_update() now routes through the shared "
+            "AsyncExecutionManager thread pool. Per-call ThreadPoolExecutor eliminated. "
+            "Automatic metrics, timeout enforcement, and cancellation are active."
         ),
     ),
 
@@ -154,7 +154,7 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
         engine_id               = "iios:strategy:intelligence:integration",
         file_path               = "iios/investment/strategy/integration/strategy_intelligence_integration_engine.py",
         has_native_async        = True,
-        has_own_executor        = True,
+        has_own_executor        = False,
         has_daemon_loop         = True,
         methods                 = [
             AsyncMethodProfile(
@@ -169,7 +169,7 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
                 current_pattern = "coroutine",
                 workload        = WorkloadType.IO_BOUND,
                 standardize_to  = "keep_native_async",
-                notes           = "Native coroutine. Sync wrapper uses asyncio.run() — risk of loop conflict.",
+                notes           = "Native coroutine. Sync wrapper now uses execute_sync().",
             ),
             AsyncMethodProfile(
                 name            = "get_snapshot_batch",
@@ -180,21 +180,21 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
             ),
             AsyncMethodProfile(
                 name            = "get_snapshot_sync",
-                current_pattern = "asyncio.run",
+                current_pattern = "async_execution_manager",
                 workload        = WorkloadType.SYNC_WRAPPER,
-                standardize_to  = "use_execute_sync",
+                standardize_to  = "migrated",
                 notes           = (
-                    "Calls asyncio.run(get_snapshot()). "
-                    "Replace with AsyncExecutionManager.execute_sync() to prevent "
-                    "RuntimeError if called from within a running event loop."
+                    "MIGRATED (TD-001): Replaced asyncio.run(get_snapshot()) with "
+                    "AsyncExecutionManager.execute_sync(). RuntimeError on nested loops "
+                    "now raises a clear diagnostic message."
                 ),
             ),
             AsyncMethodProfile(
                 name            = "submit_update_sync",
-                current_pattern = "asyncio.run",
+                current_pattern = "async_execution_manager",
                 workload        = WorkloadType.SYNC_WRAPPER,
-                standardize_to  = "use_execute_sync",
-                notes           = "Same asyncio.run() risk as get_snapshot_sync.",
+                standardize_to  = "migrated",
+                notes           = "MIGRATED (TD-001): Replaced asyncio.run() with execute_sync().",
             ),
             AsyncMethodProfile(
                 name            = "_build_and_cache",
@@ -205,14 +205,12 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
             ),
         ],
         workload_classification = WorkloadType.MIXED,
-        recommended_action      = "standardize_with_async_executor",
-        migration_complexity    = "medium",
+        recommended_action      = "no_change",
+        migration_complexity    = "none",
         rationale               = (
-            "Most complex async surface in the platform. The daemon-thread event loop "
-            "pattern is intentional and correct for maintaining persistent async state. "
-            "The sync wrappers that call asyncio.run() should be replaced with "
-            "AsyncExecutionManager.execute_sync() to guard against 'cannot run nested "
-            "event loop' errors. The native async public API should remain unchanged."
+            "MIGRATED (TD-001): sync wrappers submit_update_sync() and get_snapshot_sync() "
+            "now use AsyncExecutionManager.execute_sync(). The daemon-thread event loop "
+            "for the health monitor is unchanged. The native async public API is unchanged."
         ),
     ),
 
@@ -226,24 +224,24 @@ PLATFORM_ASYNC_PROFILES: Dict[str, EngineAsyncProfile] = {
         methods                 = [
             AsyncMethodProfile(
                 name            = "integrate",
-                current_pattern = "run_in_executor",
-                workload        = WorkloadType.CPU_BOUND,
-                standardize_to  = "use_async_executor",
+                current_pattern = "async_execution_manager",
+                workload        = WorkloadType.IO_BOUND,
+                standardize_to  = "migrated",
                 notes           = (
-                    "Uses asyncio.TaskGroup for parallel sub-tasks and delegates "
-                    "CPU-bound scoring to run_in_executor(None) — correct pattern. "
-                    "Replace run_in_executor(None) with AsyncExecutor.run_in_thread() "
-                    "to use the managed pool instead of the default loop executor."
+                    "MIGRATED (TD-001): Uses AsyncExecutionManager.execute() with "
+                    "WorkloadType.IO_BOUND (thread pool) via a lambda closure. "
+                    "Process pool is not viable here — lambda closures are not picklable "
+                    "and integrate_sync() holds a threading.RLock."
                 ),
             ),
         ],
-        workload_classification = WorkloadType.CPU_BOUND,
-        recommended_action      = "standardize_with_async_executor",
-        migration_complexity    = "low",
+        workload_classification = WorkloadType.IO_BOUND,
+        recommended_action      = "no_change",
+        migration_complexity    = "none",
         rationale               = (
-            "Engine correctly uses asyncio.TaskGroup for concurrency. The run_in_executor "
-            "call should use the managed AsyncExecutor rather than the loop's default executor "
-            "for consistent pool sizing and metrics visibility."
+            "MIGRATED (TD-001): integrate() now routes through the shared "
+            "AsyncExecutionManager instead of loop.run_in_executor(None). "
+            "Consistent pool sizing and metrics visibility are now active."
         ),
     ),
 

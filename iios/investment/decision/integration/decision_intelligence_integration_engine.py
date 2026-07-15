@@ -13,12 +13,14 @@ and publish one canonical DecisionIntelligenceSnapshot.
 """
 from __future__ import annotations
 
-import asyncio
 import threading
 import time
 from collections import deque
 from datetime import datetime, timezone
 from typing import Any, Deque, Dict, List, Optional
+
+from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
+from iios.common.async_exec.execution_classifier import WorkloadType
 
 from iios.investment.decision.confidence.confidence_snapshot import ConfidenceSnapshot
 from iios.investment.decision.evidence.evidence_snapshot import EvidenceSnapshot
@@ -301,9 +303,7 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
         committee:      Optional[Any]                 = None,
         recommendation: Optional[Any]                 = None,
     ) -> DecisionIntelligenceSnapshot:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(
-            None,
+        return await _get_exec_manager().execute(
             lambda: self.integrate_sync(
                 decision_id    = decision_id,
                 subject_id     = subject_id,
@@ -317,6 +317,9 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
                 committee      = committee,
                 recommendation = recommendation,
             ),
+            workload_type = WorkloadType.IO_BOUND,
+            operation     = "decision.integrate",
+            engine_id     = self.SYSTEM_ID,
         )
 
     # ── Individual snapshot submission API ────────────────────────────────────

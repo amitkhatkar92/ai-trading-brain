@@ -22,8 +22,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import threading
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
+
+from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
 
 from iios.investment.strategy.integration.aggregation_state import (
     IntelligenceUpdate,
@@ -234,10 +235,20 @@ class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
     # ================================================================
 
     def submit_update_sync(self, update: IntelligenceUpdate) -> None:
-        asyncio.run(self.submit_update(update))
+        _get_exec_manager().execute_sync(
+            self.submit_update,
+            update,
+            operation = "strategy.submit_update_sync",
+            engine_id = self.SYSTEM_ID,
+        )
 
     def get_snapshot_sync(self, strategy_id: str) -> Optional[StrategySnapshot]:
-        return asyncio.run(self.get_snapshot(strategy_id))
+        return _get_exec_manager().execute_sync(
+            self.get_snapshot,
+            strategy_id,
+            operation = "strategy.get_snapshot_sync",
+            engine_id = self.SYSTEM_ID,
+        )
 
     # ================================================================
     # Internal snapshot builder
