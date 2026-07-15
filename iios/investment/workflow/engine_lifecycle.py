@@ -38,7 +38,6 @@ Usage::
 """
 from __future__ import annotations
 
-import logging
 import threading
 import time
 from dataclasses import dataclass, field
@@ -46,7 +45,11 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Callable, Dict, FrozenSet, List, Optional
 
-_log = logging.getLogger(__name__)
+from iios.common.logging.logging_manager import get_logger as _get_iios_logger
+from iios.common.logging.audit_logger import get_audit_logger as _get_audit_logger
+
+_log = _get_iios_logger(__name__, engine_id="iios:lifecycle")
+_audit = _get_audit_logger(__name__, engine_id="iios:lifecycle", component="engine_lifecycle")
 
 
 # ── Enumerations ──────────────────────────────────────────────────────────────
@@ -421,13 +424,22 @@ class LifecycleController:
         self._event_history.append(evt)
         if len(self._event_history) > self._MAX_EVENT_HISTORY:
             self._event_history = self._event_history[-self._MAX_EVENT_HISTORY:]
+        # Emit structured audit record for every lifecycle transition
+        try:
+            _audit.log_lifecycle_event(
+                engine_id  = self._engine_id,
+                from_state = evt.from_state.value if evt.from_state else "",
+                to_state   = evt.to_state.value if evt.to_state else "",
+                version    = self._engine_version,
+            )
+        except Exception:  # noqa: BLE001  — never crash the dispatch loop
+            pass
         for cb in list(self._callbacks):
             try:
                 cb(evt)
             except Exception:
                 _log.exception(
-                    "[%s] Lifecycle callback raised an exception; ignoring.",
-                    self._engine_id,
+                    f"[{self._engine_id}] Lifecycle callback raised an exception; ignoring.",
                 )
 
 
@@ -565,8 +577,7 @@ class LifecycleAwareMixin:
                 self._on_stop()
             except Exception:
                 _log.exception(
-                    "[%s] _on_stop raised during restart; continuing.",
-                    self.SYSTEM_ID or type(self).__name__,
+                    f"[{self.SYSTEM_ID or type(self).__name__}] _on_stop raised during restart; continuing.",
                 )
             lc.transition(EngineState.RESTARTING)
         elif state in (EngineState.STOPPED, EngineState.FAILED):
@@ -635,8 +646,7 @@ class LifecycleAwareMixin:
                 self._on_stop()
             except Exception:
                 _log.exception(
-                    "[%s] _on_stop raised during shutdown; continuing.",
-                    self.SYSTEM_ID or type(self).__name__,
+                    f"[{self.SYSTEM_ID or type(self).__name__}] _on_stop raised during shutdown; continuing.",
                 )
         self._on_shutdown()
         lc.transition(EngineState.SHUTDOWN)
