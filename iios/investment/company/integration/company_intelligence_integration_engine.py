@@ -29,8 +29,10 @@ from iios.investment.company.integration.health_monitor import HealthMonitor
 from iios.investment.company.integration.quality_history import QualityHistory
 from iios.investment.company.integration.validation_report import ValidationReport
 
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
-class CompanyIntelligenceIntegrationEngine:
+
+class CompanyIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """
     Single orchestration, validation, quality assurance, and publishing layer
     for all Company Intelligence in IIOS.
@@ -54,8 +56,11 @@ class CompanyIntelligenceIntegrationEngine:
     - population_size()
     """
 
+    VERSION   = "1.0.0"
+    SYSTEM_ID = "iios:company:intelligence:integration"
+
     def __init__(self) -> None:
-        self._global_lock   = threading.RLock()
+        self._global_lock    = threading.RLock()
         # Per-ticker locks and state
         self._ticker_locks:  Dict[str, threading.RLock] = {}
         self._states:        Dict[str, AggregationState] = {}

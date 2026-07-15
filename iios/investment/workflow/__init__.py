@@ -1,6 +1,19 @@
 """iios/investment/workflow/__init__.py"""
 from __future__ import annotations
 
+from iios.investment.workflow.engine_lifecycle import (
+    EngineState,
+    LifecycleAwareMixin,
+    LifecycleController,
+    LifecycleError,
+    LifecycleEvent,
+    LifecycleEventType,
+    LifecycleStatus,
+    InvalidTransitionError,
+    EngineAlreadyRunningError,
+    EngineNotRunningError,
+    EngineShutdownError,
+)
 from iios.investment.workflow.institutional_investment_workflow import (
     InstitutionalInvestmentWorkflow,
     InstitutionalWorkflowOrchestrator,
@@ -30,6 +43,18 @@ from iios.investment.workflow.workflow_types import (
 )
 
 __all__ = [
+    # Lifecycle framework
+    "EngineState",
+    "LifecycleAwareMixin",
+    "LifecycleController",
+    "LifecycleError",
+    "LifecycleEvent",
+    "LifecycleEventType",
+    "LifecycleStatus",
+    "InvalidTransitionError",
+    "EngineAlreadyRunningError",
+    "EngineNotRunningError",
+    "EngineShutdownError",
     # Core abstract base
     "InvestmentWorkflow",
     "NoOpWorkflow",

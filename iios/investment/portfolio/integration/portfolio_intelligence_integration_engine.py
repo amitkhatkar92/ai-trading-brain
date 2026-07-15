@@ -58,6 +58,7 @@ from iios.investment.portfolio.integration.quality_statistics import (
 from iios.investment.portfolio.integration.validation_report import (
     ConsistencyValidationReport,
 )
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
 
 class _SnapshotStore:
@@ -89,7 +90,7 @@ class _SnapshotStore:
             return list(self._store.keys())
 
 
-class PortfolioIntelligenceIntegrationEngine:
+class PortfolioIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """
     Single orchestration and publishing layer for all Portfolio Intelligence.
 
@@ -99,7 +100,8 @@ class PortfolioIntelligenceIntegrationEngine:
     Does NOT independently calculate any of the above.
     """
 
-    VERSION = "1.0.0"
+    VERSION   = "1.0.0"
+    SYSTEM_ID = "iios:portfolio:intelligence:integration"
 
     def __init__(
         self,
@@ -133,13 +135,23 @@ class PortfolioIntelligenceIntegrationEngine:
 
     # ── Lifecycle ──────────────────────────────────────────────────────────────
 
-    def start(self) -> None:
+    def _on_start(self) -> None:
+        """Hook: set internal running flag."""
         with self._lock:
             self._running = True
 
-    def stop(self) -> None:
+    def _on_stop(self) -> None:
+        """Hook: clear internal running flag."""
         with self._lock:
             self._running = False
+
+    def start(self) -> None:
+        """Start the engine (lifecycle + internal running flag)."""
+        super().start()
+
+    def stop(self) -> None:
+        """Stop the engine (lifecycle + internal running flag)."""
+        super().stop()
 
     @property
     def is_running(self) -> bool:

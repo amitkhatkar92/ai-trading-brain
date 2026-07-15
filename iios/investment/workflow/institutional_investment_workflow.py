@@ -54,6 +54,7 @@ from iios.investment.workflow.workflow_types import (
     WORKFLOW_VERSION,
     WorkflowStage,
 )
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
 _log = logging.getLogger(__name__)
 
@@ -270,7 +271,7 @@ class InstitutionalInvestmentWorkflow(InvestmentWorkflow):
 
 # ── Orchestrator ────────────────────────────────────────────────────────────────
 
-class InstitutionalWorkflowOrchestrator:
+class InstitutionalWorkflowOrchestrator(LifecycleAwareMixin):
     """
     Standalone orchestrator for the IIOS Intelligence Pipeline.
 
@@ -287,7 +288,8 @@ class InstitutionalWorkflowOrchestrator:
     It performs no domain intelligence computation itself.
     """
 
-    VERSION = WORKFLOW_VERSION
+    VERSION   = WORKFLOW_VERSION
+    SYSTEM_ID = "iios:workflow:institutional"
 
     def __init__(
         self,

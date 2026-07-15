@@ -63,9 +63,10 @@ from iios.investment.decision.integration.quality_statistics import (
     QualityStatisticsTracker,
 )
 from iios.investment.decision.integration.validation_report import ValidationReport
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
 
-class DecisionIntelligenceIntegrationEngine:
+class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """
     Single orchestration layer for all Decision Intelligence.
 
@@ -83,6 +84,9 @@ class DecisionIntelligenceIntegrationEngine:
         async with asyncio.TaskGroup() as tg:
             snap = await engine.integrate(...)
     """
+
+    VERSION   = "1.0.0"
+    SYSTEM_ID = "iios:decision:intelligence:integration"
 
     def __init__(self) -> None:
         self._lock          = threading.RLock()
@@ -108,15 +112,25 @@ class DecisionIntelligenceIntegrationEngine:
 
     # ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    def start(self) -> None:
+    def _on_start(self) -> None:
+        """Hook: set internal IntegrationStatus to READY."""
         self._health.set_status(IntegrationStatus.READY)
         with self._lock:
             self._status = IntegrationStatus.READY
 
-    def stop(self) -> None:
+    def _on_stop(self) -> None:
+        """Hook: set internal IntegrationStatus to STOPPED."""
         self._health.set_status(IntegrationStatus.STOPPED)
         with self._lock:
             self._status = IntegrationStatus.STOPPED
+
+    def start(self) -> None:
+        """Start the integration engine (lifecycle + internal status update)."""
+        super().start()
+
+    def stop(self) -> None:
+        """Stop the integration engine (lifecycle + internal status update)."""
+        super().stop()
 
     # ── Primary synchronous entry point ───────────────────────────────────────
 

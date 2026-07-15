@@ -50,10 +50,12 @@ from iios.investment.market.integration.models import (
 from iios.investment.market.integration.quality_history import QualityHistory
 from iios.investment.market.integration.snapshot_history import SnapshotHistory
 
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+
 log = logging.getLogger(__name__)
 
 
-class MarketIntelligenceIntegrationEngine:
+class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """Single orchestration and validation layer for all Market Intelligence.
 
     Downstream IIOS components (TechnicalAnalystAI, FundamentalAnalystAI,
@@ -66,6 +68,9 @@ class MarketIntelligenceIntegrationEngine:
     - New consistency rules: engine.add_rule(ConsistencyRule(...))
     - New callbacks: engine.on_snapshot / on_alert / on_update
     """
+
+    VERSION   = "1.0.0"
+    SYSTEM_ID = "iios:market:intelligence:integration"
 
     def __init__(
         self,

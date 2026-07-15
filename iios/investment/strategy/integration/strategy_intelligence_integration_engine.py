@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any, Dict, List, Optional
 
@@ -56,10 +57,12 @@ from iios.investment.strategy.integration.integration_constants import (
     IntegrationStatus,
 )
 
+from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+
 _log = logging.getLogger(__name__)
 
 
-class StrategyIntelligenceIntegrationEngine:
+class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """
     Single orchestration and publishing facade for all Strategy Intelligence.
 
@@ -73,6 +76,9 @@ class StrategyIntelligenceIntegrationEngine:
         engine.submit_update_sync(update)
         snapshot = engine.get_snapshot_sync("STRAT-001")
     """
+
+    VERSION   = "1.0.0"
+    SYSTEM_ID = "iios:strategy:intelligence:integration"
 
     def __init__(
         self,
@@ -108,34 +114,79 @@ class StrategyIntelligenceIntegrationEngine:
             aggregator=self._aggregator,
             config=health_config or HealthMonitorConfig(),
         )
+        # Background thread coordination
+        self._health_loop: "asyncio.AbstractEventLoop | None" = None
+        self._health_loop_lock = threading.Lock()
+
+    # ================================================================
+    # Lifecycle
+    # ================================================================
+
+    def _on_start(self) -> None:
+        """Start the background health monitor in a persistent daemon thread."""
+        started_event = threading.Event()
+
+        def _run() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            with self._health_loop_lock:
+                self._health_loop = loop
+            started_event.set()
+            try:
+                loop.run_until_complete(self._health.start())
+                loop.run_forever()
+            finally:
+                # Clean up pending tasks before closing
+                pending = asyncio.all_tasks(loop)
+                for task in pending:
+                    task.cancel()
+                if pending:
+                    loop.run_until_complete(asyncio.gather(*pending, return_exceptions=True))
+                loop.close()
+                with self._health_loop_lock:
+                    self._health_loop = None
+
+        t = threading.Thread(target=_run, daemon=True, name="strategy-health-monitor")
+        t.start()
+        started_event.wait(timeout=5.0)
+        self._set_status(IntegrationStatus.HEALTHY)
+        self._event_bus.emit_simple(
+            IntegrationEventType.ENGINE_STARTED,
+            strategy_id="system",
+            payload={"status": IntegrationStatus.HEALTHY.value},
+            source="StrategyIntelligenceIntegrationEngine",
+        )
+        _log.info("StrategyIntelligenceIntegrationEngine started (health monitor in background).")
+
+    def _on_stop(self) -> None:
+        """Stop the health monitor loop gracefully."""
+        with self._health_loop_lock:
+            loop = self._health_loop
+
+        if loop is not None and loop.is_running():
+            async def _stop_and_exit() -> None:
+                try:
+                    await self._health.stop()
+                except Exception:
+                    pass
+                loop.stop()
+
+            asyncio.run_coroutine_threadsafe(_stop_and_exit(), loop)
+        self._set_status(IntegrationStatus.FAILED)
+        self._event_bus.emit_simple(
+            IntegrationEventType.ENGINE_STOPPED,
+            strategy_id="system",
+            payload={"status": IntegrationStatus.FAILED.value},
+            source="StrategyIntelligenceIntegrationEngine",
+        )
+        _log.info("StrategyIntelligenceIntegrationEngine stopped.")
+
+    def _set_status(self, s: IntegrationStatus) -> None:
+        self._status = s
 
     # ================================================================
     # Async core API
     # ================================================================
-
-    async def start(self) -> None:
-        """Start the background health monitor."""
-        await self._health.start()
-        self._status = IntegrationStatus.HEALTHY
-        self._event_bus.emit_simple(
-            IntegrationEventType.ENGINE_STARTED,
-            strategy_id="system",
-            payload={"status": self._status.value},
-            source="StrategyIntelligenceIntegrationEngine",
-        )
-        _log.info("StrategyIntelligenceIntegrationEngine started.")
-
-    async def stop(self) -> None:
-        """Stop background monitors cleanly."""
-        await self._health.stop()
-        self._status = IntegrationStatus.FAILED
-        self._event_bus.emit_simple(
-            IntegrationEventType.ENGINE_STOPPED,
-            strategy_id="system",
-            payload={"status": self._status.value},
-            source="StrategyIntelligenceIntegrationEngine",
-        )
-        _log.info("StrategyIntelligenceIntegrationEngine stopped.")
 
     async def submit_update(self, update: IntelligenceUpdate) -> None:
         """

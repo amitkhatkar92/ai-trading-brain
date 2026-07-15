@@ -33,15 +33,21 @@ class TestEngineLifecycle:
         eng.stop()
         assert eng.health().integration_status == IntegrationStatus.STOPPED
 
-    def test_double_start_safe(self):
+    def test_double_start_raises(self):
+        """Lifecycle framework raises on duplicate start."""
+        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         eng = DecisionIntelligenceIntegrationEngine()
         eng.start()
-        eng.start()
+        with pytest.raises(EngineAlreadyRunningError):
+            eng.start()
         eng.stop()
 
-    def test_stop_without_start_safe(self):
+    def test_stop_without_start_raises(self):
+        """Lifecycle framework raises when stopping a non-running engine."""
+        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
         eng = DecisionIntelligenceIntegrationEngine()
-        eng.stop()
+        with pytest.raises(EngineNotRunningError):
+            eng.stop()
 
     def test_run_before_start_raises(self, _rich_pipeline):
         eng = DecisionIntelligenceIntegrationEngine()
