@@ -49,6 +49,7 @@ from iios.common.logging.logging_manager import get_logger as _get_iios_logger
 from iios.common.logging.audit_logger import get_audit_logger as _get_audit_logger
 from iios.common.errors.error_context import ErrorContext, bind_error_context
 from iios.common.errors.error_manager import get_error_manager as _get_error_manager
+from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
 
 _log = _get_iios_logger(__name__, engine_id="iios:lifecycle")
 _audit = _get_audit_logger(__name__, engine_id="iios:lifecycle", component="engine_lifecycle")
@@ -534,7 +535,13 @@ class LifecycleAwareMixin:
         )
         try:
             with bind_error_context(_start_ctx):
-                self._on_start()
+                _engine_id = self.SYSTEM_ID or type(self).__name__
+                _get_exec_manager().execute_sync(
+                    self._on_start,
+                    timeout_sec = 60.0,
+                    operation   = "engine.start",
+                    engine_id   = _engine_id,
+                )
             lc.transition(EngineState.RUNNING)
         except Exception as exc:
             _get_error_manager().report_failure(self.SYSTEM_ID or type(self).__name__, exc)
@@ -564,7 +571,13 @@ class LifecycleAwareMixin:
         )
         try:
             with bind_error_context(_err_ctx):
-                self._on_stop()
+                _engine_id = self.SYSTEM_ID or type(self).__name__
+                _get_exec_manager().execute_sync(
+                    self._on_stop,
+                    timeout_sec = 30.0,
+                    operation   = "engine.stop",
+                    engine_id   = _engine_id,
+                )
             lc.transition(EngineState.STOPPED)
         except Exception as exc:
             _get_error_manager().report_failure(self.SYSTEM_ID or type(self).__name__, exc)
