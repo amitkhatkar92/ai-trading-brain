@@ -62,6 +62,8 @@ from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
 from iios.common.logging.logging_manager import get_logger
 from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.errors.error_context import ErrorContext
 
 _log = get_logger(__name__, engine_id="iios:portfolio:intelligence:integration")
 _audit = get_audit_logger(
@@ -221,6 +223,14 @@ class PortfolioIntelligenceIntegrationEngine(LifecycleAwareMixin):
             snapshot  = self._build_snapshot(portfolio_id)
             succeeded = True
         except Exception as exc:
+            _get_err_mgr().report_failure(
+                self.SYSTEM_ID, exc,
+                ErrorContext(
+                    engine_id = self.SYSTEM_ID,
+                    operation = "integrate",
+                    stage     = "portfolio_intelligence_integration",
+                ),
+            )
             _log.exception(
                 "PortfolioIntelligenceIntegrationEngine.integrate failed",
                 context={"portfolio_id": portfolio_id},

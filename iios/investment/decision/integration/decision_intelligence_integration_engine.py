@@ -69,6 +69,8 @@ from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
 from iios.common.logging.logging_manager import get_logger
 from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.errors.error_context import ErrorContext
 
 _log = get_logger(__name__, engine_id="iios:decision:intelligence:integration")
 _audit = get_audit_logger(
@@ -180,6 +182,11 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
                 if stype and not subject_type: subject_type = stype
                 break
 
+        _err_ctx = ErrorContext(
+            engine_id = self.SYSTEM_ID,
+            operation = "integrate_sync",
+            stage     = "decision_intelligence_integration",
+        )
         try:
             # 1 — Aggregate all upstream snapshots
             agg_state = self._aggregator._engine.create(
@@ -300,7 +307,8 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
 
             return di_snap
 
-        except Exception:
+        except Exception as exc:
+            _get_err_mgr().report_failure(self.SYSTEM_ID, exc, _err_ctx)
             _log.exception(
                 "DecisionIntelligenceIntegrationEngine.integrate_sync failed",
                 context={"decision_id": decision_id},

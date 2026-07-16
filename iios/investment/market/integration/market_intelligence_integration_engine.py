@@ -20,6 +20,8 @@ from iios.common.async_exec.async_execution_manager import get_execution_manager
 from iios.common.async_exec.execution_classifier import WorkloadType
 from iios.common.logging.logging_manager import get_logger
 from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.errors.error_context import ErrorContext, bind_error_context
 
 from iios.investment.market.integration.aggregation_engine import KNOWN_ENGINES
 from iios.investment.market.integration.conflict_engine import ConflictEngine
@@ -126,8 +128,17 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
     # ── primary update ────────────────────────────────────────────────────────
 
     def update(self, bundle: IntelligenceBundle) -> MarketIntelligenceSnapshot:
-        with self._lock:
-            return self._process(bundle)
+        with bind_error_context(ErrorContext(
+            engine_id = self.SYSTEM_ID,
+            operation = "update",
+            stage     = "market_intelligence_integration",
+        )):
+            try:
+                with self._lock:
+                    return self._process(bundle)
+            except Exception as exc:
+                _get_err_mgr().report_failure(self.SYSTEM_ID, exc)
+                raise
 
     def _process(self, bundle: IntelligenceBundle) -> MarketIntelligenceSnapshot:
         self._n_bars += 1
@@ -284,17 +295,20 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
         if self.on_snapshot:
             try:
                 self.on_snapshot(snap)
-            except Exception:
+            except Exception as _cb_exc:
                 _log.exception("on_snapshot callback error")
+                _get_err_mgr().report_failure(self.SYSTEM_ID, _cb_exc)
 
         if self.on_low_quality and snap.quality.overall < 50.0:
             try:
                 self.on_low_quality(snap.quality.overall)
-            except Exception:
+            except Exception as _cb_exc:
                 _log.exception("on_low_quality callback error")
+                _get_err_mgr().report_failure(self.SYSTEM_ID, _cb_exc)
 
         if self.on_conflict and snap.conflicts.total > 0:
             try:
                 self.on_conflict(snap.conflicts.total)
-            except Exception:
+            except Exception as _cb_exc:
                 _log.exception("on_conflict callback error")
+                _get_err_mgr().report_failure(self.SYSTEM_ID, _cb_exc)

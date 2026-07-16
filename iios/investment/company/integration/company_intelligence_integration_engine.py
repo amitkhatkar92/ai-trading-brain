@@ -13,6 +13,8 @@ from typing import Any, Dict, List, Optional
 
 from iios.common.logging.logging_manager import get_logger
 from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.errors.error_context import ErrorContext
 
 from iios.investment.company.integration.aggregation_engine import AggregationEngine
 from iios.investment.company.integration.aggregation_history import AggregationHistory
@@ -279,7 +281,18 @@ class CompanyIntelligenceIntegrationEngine(LifecycleAwareMixin):
         self._merge_metadata(ticker, metadata)
 
         with self._ticker_lock(ticker):
-            return self._evaluate(ticker)
+            try:
+                return self._evaluate(ticker)
+            except Exception as exc:
+                _get_err_mgr().report_failure(
+                    self.SYSTEM_ID, exc,
+                    ErrorContext(
+                        engine_id = self.SYSTEM_ID,
+                        operation = "update",
+                        stage     = "company_intelligence_integration",
+                    ),
+                )
+                raise
 
     def integrate(
         self,
@@ -320,7 +333,18 @@ class CompanyIntelligenceIntegrationEngine(LifecycleAwareMixin):
                 self._health.on_engine_update(engine_name)
 
         with self._ticker_lock(ticker):
-            return self._evaluate(ticker)
+            try:
+                return self._evaluate(ticker)
+            except Exception as exc:
+                _get_err_mgr().report_failure(
+                    self.SYSTEM_ID, exc,
+                    ErrorContext(
+                        engine_id = self.SYSTEM_ID,
+                        operation = "integrate",
+                        stage     = "company_intelligence_integration",
+                    ),
+                )
+                raise
 
     # ── Snapshot queries ──────────────────────────────────────────────────────
 

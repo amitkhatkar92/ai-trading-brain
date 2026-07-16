@@ -26,6 +26,8 @@ from typing import Any, Dict, List, Optional
 from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
 from iios.common.logging.logging_manager import get_logger
 from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.errors.error_context import ErrorContext, bind_error_context
 
 from iios.investment.strategy.integration.aggregation_state import (
     IntelligenceUpdate,
@@ -178,8 +180,8 @@ class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
             async def _stop_and_exit() -> None:
                 try:
                     await self._health.stop()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    _log.warning("Health monitor failed to stop cleanly.", exc=exc)
                 loop.stop()
 
             asyncio.run_coroutine_threadsafe(_stop_and_exit(), loop)
@@ -249,20 +251,38 @@ class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
     # ================================================================
 
     def submit_update_sync(self, update: IntelligenceUpdate) -> None:
-        _get_exec_manager().execute_sync(
-            self.submit_update,
-            update,
-            operation = "strategy.submit_update_sync",
+        with bind_error_context(ErrorContext(
             engine_id = self.SYSTEM_ID,
-        )
+            operation = "submit_update_sync",
+            stage     = "strategy_intelligence_integration",
+        )):
+            try:
+                _get_exec_manager().execute_sync(
+                    self.submit_update,
+                    update,
+                    operation = "strategy.submit_update_sync",
+                    engine_id = self.SYSTEM_ID,
+                )
+            except Exception as exc:
+                _get_err_mgr().report_failure(self.SYSTEM_ID, exc)
+                raise
 
     def get_snapshot_sync(self, strategy_id: str) -> Optional[StrategySnapshot]:
-        return _get_exec_manager().execute_sync(
-            self.get_snapshot,
-            strategy_id,
-            operation = "strategy.get_snapshot_sync",
+        with bind_error_context(ErrorContext(
             engine_id = self.SYSTEM_ID,
-        )
+            operation = "get_snapshot_sync",
+            stage     = "strategy_intelligence_integration",
+        )):
+            try:
+                return _get_exec_manager().execute_sync(
+                    self.get_snapshot,
+                    strategy_id,
+                    operation = "strategy.get_snapshot_sync",
+                    engine_id = self.SYSTEM_ID,
+                )
+            except Exception as exc:
+                _get_err_mgr().report_failure(self.SYSTEM_ID, exc)
+                raise
 
     # ================================================================
     # Internal snapshot builder
