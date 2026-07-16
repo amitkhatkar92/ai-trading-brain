@@ -1,79 +1,115 @@
-"""iios/execution/brokers/broker_factory.py"""
+"""iios/execution/brokers/broker_factory.py
+==================================================
+BrokerFactory — builds BrokerMetadata and registers brokers.
+
+IIOS v1.0: logging, audit, error handling.
+
+C6 Execution Intelligence — Phase 1, Module 3
+"""
 from __future__ import annotations
 
-import logging
+import uuid
 from typing import Any
 
-from iios.execution.brokers.broker_exceptions import AdapterLoadFailedError
-from iios.execution.brokers.core.base_broker_adapter import (
-    BaseBrokerAdapter,
-    BrokerAdapterConfig,
-)
-from iios.execution.brokers.models.broker_metadata import BrokerMetadata
+from iios.common.errors.error_context import ErrorContext
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.logging.logging_manager import get_logger
 
-logger = logging.getLogger(__name__)
+from .constants import (
+    ACTOR_FACTORY,
+    FACTORY_SYSTEM_ID,
+    VERSION,
+    BrokerCapabilityCode,
+    BrokerMode,
+    Exchange,
+    ProductType,
+    TimeInForce,
+)
+from .exceptions import BrokerFactoryError
+from .broker_metadata import BrokerMetadata, RateLimitSpec
+
+_log   = get_logger(__name__, engine_id=FACTORY_SYSTEM_ID)
+_audit = get_audit_logger(__name__, engine_id=FACTORY_SYSTEM_ID,
+                          component="BrokerFactory")
 
 
 class BrokerFactory:
     """
-    Constructs adapter instances from metadata or config objects.
+    Constructs BrokerMetadata objects for broker registration.
 
-    Acts as a higher-level wrapper over AdapterFactory; also maintains
-    a metadata catalogue for registered brokers.
+    Stateless — no mutable state beyond an optional catalogue for quick
+    lookup by broker_id.
     """
 
     def __init__(self) -> None:
-        self._metadata: dict[str, BrokerMetadata]                       = {}
-        self._classes:  dict[str, type[BaseBrokerAdapter]]              = {}
-
-    # ── Class registration ────────────────────────────────────────────────────
-
-    def register_class(
-        self,
-        broker_id:     str,
-        adapter_class: type[BaseBrokerAdapter],
-        metadata:      BrokerMetadata | None = None,
-    ) -> None:
-        self._classes[broker_id] = adapter_class
-        if metadata:
-            self._metadata[broker_id] = metadata
-        logger.debug("BrokerFactory: registered class for '%s'", broker_id)
+        self._catalogue: dict[str, BrokerMetadata] = {}
 
     # ── Creation ──────────────────────────────────────────────────────────────
 
-    def create(
+    def create_metadata(
         self,
-        broker_id: str,
-        config:    BrokerAdapterConfig | None = None,
-        **kwargs:  Any,
-    ) -> BaseBrokerAdapter:
-        adapter_class = self._classes.get(broker_id)
-        if adapter_class is None:
-            raise AdapterLoadFailedError(
-                f"No class registered in BrokerFactory for '{broker_id}'",
-                "BAF-021",
-            )
-        resolved_config = config or BrokerAdapterConfig(broker_id=broker_id, **kwargs)
-        try:
-            adapter = adapter_class(resolved_config)
-            logger.info("BrokerFactory: created %s", broker_id)
-            return adapter
-        except Exception as exc:
-            raise AdapterLoadFailedError(
-                f"Failed to create adapter '{broker_id}': {exc}",
-                "BAF-021",
-            ) from exc
+        *,
+        broker_id:           str,
+        broker_name:         str,
+        broker_version:      str = "1.0.0",
+        supported_modes:     frozenset[BrokerMode]           | None = None,
+        supported_exchanges: frozenset[Exchange]             | None = None,
+        supported_products:  frozenset[ProductType]          | None = None,
+        supported_tif:       frozenset[TimeInForce]          | None = None,
+        capabilities:        frozenset[BrokerCapabilityCode] | None = None,
+        rate_limit:          RateLimitSpec | None = None,
+        description:         str = "",
+        homepage:            str = "",
+        contact:             str = "",
+        metadata:            dict[str, Any] | None = None,
+    ) -> BrokerMetadata:
+        """Build and return a BrokerMetadata object."""
+        if not broker_id or not broker_id.strip():
+            raise BrokerFactoryError("broker_id must not be empty.")
+        if not broker_name or not broker_name.strip():
+            raise BrokerFactoryError("broker_name must not be empty.")
 
-    # ── Metadata ──────────────────────────────────────────────────────────────
+        bm = BrokerMetadata(
+            broker_id           = broker_id,
+            broker_name         = broker_name,
+            broker_version      = broker_version,
+            supported_modes     = supported_modes     or frozenset({BrokerMode.PAPER}),
+            supported_exchanges = supported_exchanges or frozenset(),
+            supported_products  = supported_products  or frozenset(),
+            supported_tif       = supported_tif       or frozenset(),
+            capabilities        = capabilities        or frozenset(),
+            rate_limit          = rate_limit          or RateLimitSpec(),
+            description         = description,
+            homepage            = homepage,
+            contact             = contact,
+            metadata            = metadata or {},
+        )
+        self._catalogue[broker_id] = bm
+        _log.info("BrokerFactory: metadata created.", broker_id=broker_id)
+        _audit.log_workflow_event(
+            FACTORY_SYSTEM_ID, "create_metadata", "METADATA_CREATED",
+            actor=ACTOR_FACTORY, broker_id=broker_id,
+        )
+        return bm
 
-    def get_metadata(self, broker_id: str) -> BrokerMetadata | None:
-        return self._metadata.get(broker_id)
+    # ── Catalogue ─────────────────────────────────────────────────────────────
 
-    def all_metadata(self) -> list[BrokerMetadata]:
-        return list(self._metadata.values())
+    def get(self, broker_id: str) -> BrokerMetadata | None:
+        return self._catalogue.get(broker_id)
 
     def has(self, broker_id: str) -> bool:
-        return broker_id in self._classes
+        return broker_id in self._catalogue
+
+    def all_metadata(self) -> list[BrokerMetadata]:
+        return list(self._catalogue.values())
 
     def registered_broker_ids(self) -> list[str]:
-        return list(self._classes.keys())
+        return list(self._catalogue.keys())
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def gen_broker_id(prefix: str = "broker") -> str:
+        """Generate a unique broker ID."""
+        return f"{prefix}-{uuid.uuid4().hex[:8]}"

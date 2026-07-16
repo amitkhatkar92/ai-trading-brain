@@ -1,252 +1,256 @@
 """iios/execution/brokers/broker_manager.py
+==================================================
+BrokerManager — IIOS v1.0 facade that owns the BrokerRegistry
+and BrokerFactory.
 
-Top-level orchestrator.  Combines AdapterRegistry + BrokerRegistry +
-BrokerFactory + BrokerMonitor into a single coherent API.
+This is the primary entry point for the Broker Abstraction Layer.
+It manages broker registration, health queries, and statistics
+aggregation. It does NOT perform any network I/O.
+
+IIOS v1.0: LifecycleAwareMixin, logging, audit, error handling.
+
+C6 Execution Intelligence — Phase 1, Module 3
 """
 from __future__ import annotations
 
-import logging
 import threading
 import time
-from typing import Any
+from typing import Any, Callable
 
-from iios.execution.brokers.broker_constants import DEFAULT_MAX_BROKERS
-from iios.execution.brokers.broker_exceptions import (
-    BrokerManagerNotInitializedError,
-    BrokerNotConnectedError,
-    BrokerNotFoundError,
-)
-from iios.execution.brokers.broker_factory import BrokerFactory
-from iios.execution.brokers.broker_registry import BrokerRegistry
-from iios.execution.brokers.connection.connection_health import ConnectionHealth
-from iios.execution.brokers.core.base_broker_adapter import (
-    BaseBrokerAdapter,
-    BrokerAdapterConfig,
-)
-from iios.execution.brokers.core.broker_request import BrokerRequest
-from iios.execution.brokers.core.broker_response import BrokerResponse
-from iios.execution.brokers.models.broker_metadata import BrokerMetadata
-from iios.execution.brokers.models.broker_statistics import BrokerStatistics
-from iios.execution.brokers.monitoring.broker_monitor import BrokerMonitor
+from iios.common.errors.error_context import ErrorContext
+from iios.common.errors.error_manager import get_error_manager as _get_err_mgr
+from iios.common.logging.audit_logger import get_audit_logger
+from iios.common.logging.logging_manager import get_logger
+from iios.investment.workflow.engine_lifecycle import EngineState, LifecycleAwareMixin
 
-logger = logging.getLogger(__name__)
+from .constants import (
+    ACTOR_MANAGER,
+    ACTOR_SYSTEM,
+    DEFAULT_MAX_BROKERS,
+    MANAGER_SYSTEM_ID,
+    VERSION,
+    BrokerCapabilityCode,
+    BrokerConnectionState,
+    BrokerMode,
+    Exchange,
+    ProductType,
+    TimeInForce,
+)
+from .exceptions import BrokerNotRunningError
+from .broker_metadata import BrokerMetadata, RateLimitSpec
+from .broker_capabilities import BrokerCapabilities
+from .broker_health import BrokerHealthRecord
+from .broker_statistics import BrokerStatistics, RegistryStatistics
+from .broker_registry import BrokerRegistry, BrokerRecord
+from .broker_factory import BrokerFactory
+from .broker_events import BrokerEvent
+from .broker_validation import BrokerValidator, BrokerValidationResult
+
+_log   = get_logger(__name__, engine_id=MANAGER_SYSTEM_ID)
+_audit = get_audit_logger(__name__, engine_id=MANAGER_SYSTEM_ID,
+                          component="BrokerManager")
 
 _manager_lock: threading.Lock = threading.Lock()
-_manager_instance: BrokerManager | None = None
+_manager_instance: "BrokerManager | None" = None
 
 
-class BrokerManager:
+class BrokerManager(LifecycleAwareMixin):
     """
-    Primary entry point for all broker operations.
+    IIOS v1.0 facade for the Broker Abstraction Layer.
+
+    Owns:
+      - BrokerRegistry  — stores BrokerRecord objects
+      - BrokerFactory   — builds BrokerMetadata objects
+      - BrokerValidator — stateless validation
 
     Responsibilities:
-    - Register / unregister adapter classes
-    - Load / unload live adapter instances
-    - Route async calls (place_order, fetch_positions, …) to the correct adapter
-    - Monitor adapter health
-    - Maintain per-adapter statistics
+      - Register / unregister broker metadata
+      - Query capabilities, health, and statistics
+      - Add / remove event listeners
+      - Provide the stable public API surface for M3
     """
 
-    def __init__(
-        self,
-        broker_registry: BrokerRegistry | None = None,
-        broker_factory:  BrokerFactory  | None = None,
-        broker_monitor:  BrokerMonitor  | None = None,
-    ) -> None:
-        self._registry  = broker_registry or BrokerRegistry()
-        self._factory   = broker_factory  or BrokerFactory()
-        self._monitor   = broker_monitor  or BrokerMonitor()
-        self._statistics: dict[str, BrokerStatistics] = {}
-        self._lock      = threading.RLock()
+    SYSTEM_ID = MANAGER_SYSTEM_ID
+    VERSION   = VERSION
+
+    def __init__(self, max_brokers: int = DEFAULT_MAX_BROKERS) -> None:
+        self._registry  = BrokerRegistry(max_brokers=max_brokers)
+        self._factory   = BrokerFactory()
+        self._validator = BrokerValidator()
+        self._started_at: float = 0.0
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    def _on_start(self) -> None:
+        self._registry.start()
         self._started_at = time.time()
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION
+        )
+        _log.info("BrokerManager started.")
 
-    # ── Adapter class management ──────────────────────────────────────────────
+    def _on_stop(self) -> None:
+        if self._registry.is_running:
+            self._registry.stop()
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION
+        )
+        _log.info("BrokerManager stopped.")
 
-    def register_adapter_class(
+    @property
+    def is_running(self) -> bool:
+        return self.lifecycle_state() == EngineState.RUNNING
+
+    def _assert_running(self) -> None:
+        if not self.is_running:
+            raise BrokerNotRunningError(
+                "BrokerManager must be started before use."
+            )
+
+    # ── Broker registration ───────────────────────────────────────────────────
+
+    def register(
         self,
-        broker_id:     str,
-        adapter_class: type[BaseBrokerAdapter],
-        version:       str           = "1.0.0",
-        metadata:      BrokerMetadata | None = None,
-    ) -> None:
-        self._factory.register_class(broker_id, adapter_class, metadata)
-        logger.info("BrokerManager: registered adapter class '%s'", broker_id)
-
-    # ── Adapter instance lifecycle ────────────────────────────────────────────
-
-    def load_adapter(
-        self,
-        broker_id: str,
-        config:    BrokerAdapterConfig | None = None,
+        metadata:  BrokerMetadata,
         overwrite: bool = False,
-    ) -> BaseBrokerAdapter:
-        adapter = self._factory.create(broker_id, config)
-        self._registry.register(adapter, overwrite=overwrite)
-        with self._lock:
-            self._statistics[broker_id] = BrokerStatistics(broker_id=broker_id)
-        self._monitor.register(adapter)
-        logger.info("BrokerManager: loaded adapter '%s'", broker_id)
-        return adapter
+    ) -> BrokerRecord:
+        """Register a broker by its metadata."""
+        self._assert_running()
+        validation = self._validator.validate_metadata(metadata)
+        if not validation:
+            raise from_validation(validation)
+        record = self._registry.register(metadata, overwrite=overwrite)
+        _log.info("BrokerManager: broker registered.",
+                  broker_id=metadata.broker_id)
+        return record
 
-    def unload_adapter(self, broker_id: str) -> None:
+    def unregister(self, broker_id: str) -> None:
+        """Remove a broker from the registry."""
+        self._assert_running()
         self._registry.unregister(broker_id)
-        self._monitor.unregister(broker_id)
-        with self._lock:
-            self._statistics.pop(broker_id, None)
-        logger.info("BrokerManager: unloaded adapter '%s'", broker_id)
 
-    def get_adapter(self, broker_id: str) -> BaseBrokerAdapter:
+    def create_and_register(
+        self,
+        *,
+        broker_id:           str,
+        broker_name:         str,
+        broker_version:      str = "1.0.0",
+        supported_modes:     frozenset[BrokerMode]           | None = None,
+        supported_exchanges: frozenset[Exchange]             | None = None,
+        supported_products:  frozenset[ProductType]          | None = None,
+        supported_tif:       frozenset[TimeInForce]          | None = None,
+        capabilities:        frozenset[BrokerCapabilityCode] | None = None,
+        rate_limit:          RateLimitSpec | None = None,
+        description:         str = "",
+        overwrite:           bool = False,
+    ) -> BrokerRecord:
+        """Convenience: create metadata via factory then register."""
+        self._assert_running()
+        metadata = self._factory.create_metadata(
+            broker_id           = broker_id,
+            broker_name         = broker_name,
+            broker_version      = broker_version,
+            supported_modes     = supported_modes,
+            supported_exchanges = supported_exchanges,
+            supported_products  = supported_products,
+            supported_tif       = supported_tif,
+            capabilities        = capabilities,
+            rate_limit          = rate_limit,
+            description         = description,
+        )
+        return self.register(metadata, overwrite=overwrite)
+
+    # ── Queries ───────────────────────────────────────────────────────────────
+
+    def get_record(self, broker_id: str) -> BrokerRecord:
+        self._assert_running()
         return self._registry.get(broker_id)
 
-    def list_broker_ids(self) -> list[str]:
+    def get_metadata(self, broker_id: str) -> BrokerMetadata:
+        self._assert_running()
+        return self._registry.get_metadata(broker_id)
+
+    def get_capabilities(self, broker_id: str) -> BrokerCapabilities:
+        self._assert_running()
+        return self._registry.get_capabilities(broker_id)
+
+    def get_health(self, broker_id: str) -> BrokerHealthRecord | None:
+        self._assert_running()
+        return self._registry.get_health(broker_id)
+
+    def get_statistics(self, broker_id: str) -> BrokerStatistics:
+        self._assert_running()
+        return self._registry.get_statistics(broker_id)
+
+    def all_broker_ids(self) -> list[str]:
+        self._assert_running()
         return self._registry.all_broker_ids()
 
-    def has_adapter(self, broker_id: str) -> bool:
-        return self._registry.has(broker_id)
+    def contains(self, broker_id: str) -> bool:
+        self._assert_running()
+        return self._registry.contains(broker_id)
 
-    # ── Connection ────────────────────────────────────────────────────────────
-
-    async def connect(
-        self,
-        broker_id:   str,
-        credentials: dict[str, Any] = {},
-    ) -> BrokerResponse:
-        adapter = self._get_or_raise(broker_id)
-        t0 = time.time()
-        response = await adapter.connect()
-        if response.success and credentials:
-            response = await adapter.authenticate(credentials)
-        self._record(broker_id, response.success, (time.time() - t0) * 1_000)
-        return response
-
-    async def disconnect(self, broker_id: str) -> BrokerResponse:
-        adapter = self._get_or_raise(broker_id)
-        t0      = time.time()
-        response = await adapter.disconnect()
-        self._record(broker_id, response.success, (time.time() - t0) * 1_000)
-        return response
-
-    # ── Orders ────────────────────────────────────────────────────────────────
-
-    async def place_order(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "place_order", request)
-
-    async def modify_order(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "modify_order", request)
-
-    async def cancel_order(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "cancel_order", request)
-
-    async def fetch_order(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_order", request)
-
-    async def fetch_orders(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_orders", request)
-
-    # ── Portfolio ─────────────────────────────────────────────────────────────
-
-    async def fetch_positions(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_positions", request)
-
-    async def fetch_holdings(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_holdings", request)
-
-    async def fetch_balance(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_balance", request)
-
-    async def fetch_margin(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_margin", request)
-
-    async def fetch_trades(
-        self, broker_id: str, request: BrokerRequest
-    ) -> BrokerResponse:
-        return await self._dispatch(broker_id, "fetch_trades", request)
+    def count(self) -> int:
+        self._assert_running()
+        return self._registry.count()
 
     # ── Health ────────────────────────────────────────────────────────────────
 
-    async def health_check(self, broker_id: str) -> ConnectionHealth:
-        return await self._monitor.check_health_async(broker_id)
+    def record_health_update(
+        self,
+        broker_id:    str,
+        is_healthy:   bool,
+        latency_ms:   float = 0.0,
+        error_message: str  = "",
+    ) -> None:
+        self._assert_running()
+        self._registry.record_health_update(
+            broker_id, is_healthy,
+            latency_ms=latency_ms,
+            error_message=error_message,
+        )
 
-    async def health_check_all(self) -> dict[str, ConnectionHealth]:
-        return await self._monitor.check_all_async()
+    def set_connection_state(
+        self,
+        broker_id: str,
+        state:     BrokerConnectionState,
+    ) -> None:
+        self._assert_running()
+        self._registry.set_connection_state(broker_id, state)
 
     # ── Statistics ────────────────────────────────────────────────────────────
 
-    def get_statistics(self, broker_id: str) -> BrokerStatistics | None:
-        with self._lock:
-            return self._statistics.get(broker_id)
+    def statistics(self) -> RegistryStatistics:
+        self._assert_running()
+        return self._registry.statistics()
 
-    def all_statistics(self) -> dict[str, dict[str, Any]]:
-        with self._lock:
-            return {bid: s.to_dict() for bid, s in self._statistics.items()}
+    # ── Listeners ─────────────────────────────────────────────────────────────
 
-    def summary(self) -> dict[str, Any]:
-        with self._lock:
-            return {
-                "broker_count": self._registry.size(),
-                "broker_ids":   self._registry.all_broker_ids(),
-                "uptime_sec":   round(time.time() - self._started_at, 1),
-                "statistics":   {
-                    bid: s.to_dict() for bid, s in self._statistics.items()
-                },
-            }
+    def add_listener(self, fn: Callable[[BrokerEvent], None]) -> None:
+        self._registry.add_listener(fn)
 
-    # ── Internal helpers ──────────────────────────────────────────────────────
+    def remove_listener(self, fn: Callable[[BrokerEvent], None]) -> None:
+        self._registry.remove_listener(fn)
 
-    def _get_or_raise(self, broker_id: str) -> BaseBrokerAdapter:
-        return self._registry.get(broker_id)
+    # ── Validation helpers ────────────────────────────────────────────────────
 
-    async def _dispatch(
-        self,
-        broker_id: str,
-        method:    str,
-        request:   BrokerRequest,
-    ) -> BrokerResponse:
-        adapter = self._get_or_raise(broker_id)
-        fn      = getattr(adapter, method)
-        t0      = time.time()
-        response = await fn(request)
-        self._record(broker_id, response.success, (time.time() - t0) * 1_000)
-        return response
+    def validate_metadata(self, metadata: BrokerMetadata) -> BrokerValidationResult:
+        return self._validator.validate_metadata(metadata)
 
-    def _record(
-        self, broker_id: str, success: bool, latency_ms: float
-    ) -> None:
-        with self._lock:
-            stats = self._statistics.get(broker_id)
-            if stats:
-                stats.record_request(success, latency_ms)
+    # ── Internal ──────────────────────────────────────────────────────────────
+
+    @property
+    def uptime_sec(self) -> float:
+        if self._started_at == 0.0:
+            return 0.0
+        return time.time() - self._started_at
 
 
-# ── Singleton ─────────────────────────────────────────────────────────────────
+# ── Helper ────────────────────────────────────────────────────────────────────
 
-def get_broker_manager() -> BrokerManager:
-    global _manager_instance
-    with _manager_lock:
-        if _manager_instance is None:
-            _manager_instance = BrokerManager()
-    return _manager_instance
-
-
-def reset_broker_manager() -> None:
-    global _manager_instance
-    with _manager_lock:
-        _manager_instance = None
+def from_validation(result: BrokerValidationResult) -> Exception:
+    from .exceptions import BrokerValidationError
+    return BrokerValidationError(
+        "Broker metadata validation failed.",
+        errors=result.errors,
+    )
