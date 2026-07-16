@@ -20,11 +20,12 @@ It integrates pre-computed intelligence from those engines.
 from __future__ import annotations
 
 import asyncio
-import logging
 import threading
 from typing import Any, Dict, List, Optional
 
 from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
+from iios.common.logging.logging_manager import get_logger
+from iios.common.logging.audit_logger import get_audit_logger
 
 from iios.investment.strategy.integration.aggregation_state import (
     IntelligenceUpdate,
@@ -60,7 +61,12 @@ from iios.investment.strategy.integration.integration_constants import (
 
 from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
-_log = logging.getLogger(__name__)
+_log = get_logger(__name__, engine_id="iios:strategy:intelligence:integration")
+_audit = get_audit_logger(
+    __name__,
+    engine_id = "iios:strategy:intelligence:integration",
+    component = "StrategyIntelligenceIntegrationEngine",
+)
 
 
 class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
@@ -158,6 +164,10 @@ class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
             source="StrategyIntelligenceIntegrationEngine",
         )
         _log.info("StrategyIntelligenceIntegrationEngine started (health monitor in background).")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION,
+            health_monitor="background_daemon_started",
+        )
 
     def _on_stop(self) -> None:
         """Stop the health monitor loop gracefully."""
@@ -181,6 +191,10 @@ class StrategyIntelligenceIntegrationEngine(LifecycleAwareMixin):
             source="StrategyIntelligenceIntegrationEngine",
         )
         _log.info("StrategyIntelligenceIntegrationEngine stopped.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION,
+            health_monitor="background_daemon_stopped",
+        )
 
     def _set_status(self, s: IntegrationStatus) -> None:
         self._status = s

@@ -67,6 +67,16 @@ from iios.investment.decision.integration.quality_statistics import (
 from iios.investment.decision.integration.validation_report import ValidationReport
 from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
+from iios.common.logging.logging_manager import get_logger
+from iios.common.logging.audit_logger import get_audit_logger
+
+_log = get_logger(__name__, engine_id="iios:decision:intelligence:integration")
+_audit = get_audit_logger(
+    __name__,
+    engine_id = "iios:decision:intelligence:integration",
+    component = "DecisionIntelligenceIntegrationEngine",
+)
+
 
 class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
     """
@@ -119,12 +129,20 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
         self._health.set_status(IntegrationStatus.READY)
         with self._lock:
             self._status = IntegrationStatus.READY
+        _log.info("DecisionIntelligenceIntegrationEngine ready.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION,
+        )
 
     def _on_stop(self) -> None:
         """Hook: set internal IntegrationStatus to STOPPED."""
         self._health.set_status(IntegrationStatus.STOPPED)
         with self._lock:
             self._status = IntegrationStatus.STOPPED
+        _log.info("DecisionIntelligenceIntegrationEngine stopped.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION,
+        )
 
     def start(self) -> None:
         """Start the integration engine (lifecycle + internal status update)."""
@@ -283,6 +301,10 @@ class DecisionIntelligenceIntegrationEngine(LifecycleAwareMixin):
             return di_snap
 
         except Exception:
+            _log.exception(
+                "DecisionIntelligenceIntegrationEngine.integrate_sync failed",
+                context={"decision_id": decision_id},
+            )
             self._stats.record_failure()
             self._health.record_failure()
             raise

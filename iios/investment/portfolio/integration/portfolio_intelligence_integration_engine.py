@@ -60,6 +60,16 @@ from iios.investment.portfolio.integration.validation_report import (
 )
 from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
+from iios.common.logging.logging_manager import get_logger
+from iios.common.logging.audit_logger import get_audit_logger
+
+_log = get_logger(__name__, engine_id="iios:portfolio:intelligence:integration")
+_audit = get_audit_logger(
+    __name__,
+    engine_id = "iios:portfolio:intelligence:integration",
+    component = "PortfolioIntelligenceIntegrationEngine",
+)
+
 
 class _SnapshotStore:
     """Thread-safe bounded per-portfolio snapshot store."""
@@ -139,11 +149,19 @@ class PortfolioIntelligenceIntegrationEngine(LifecycleAwareMixin):
         """Hook: set internal running flag."""
         with self._lock:
             self._running = True
+        _log.info("PortfolioIntelligenceIntegrationEngine started.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION,
+        )
 
     def _on_stop(self) -> None:
         """Hook: clear internal running flag."""
         with self._lock:
             self._running = False
+        _log.info("PortfolioIntelligenceIntegrationEngine stopped.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION,
+        )
 
     def start(self) -> None:
         """Start the engine (lifecycle + internal running flag)."""
@@ -203,6 +221,10 @@ class PortfolioIntelligenceIntegrationEngine(LifecycleAwareMixin):
             snapshot  = self._build_snapshot(portfolio_id)
             succeeded = True
         except Exception as exc:
+            _log.exception(
+                "PortfolioIntelligenceIntegrationEngine.integrate failed",
+                context={"portfolio_id": portfolio_id},
+            )
             snapshot = self._fallback_snapshot(portfolio_id, error=str(exc))
         finally:
             dur_ms = (time.monotonic() - t0) * 1000

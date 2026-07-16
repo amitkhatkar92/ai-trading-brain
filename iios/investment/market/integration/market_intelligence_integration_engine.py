@@ -13,12 +13,13 @@ those are the responsibility of the upstream engines.
 """
 from __future__ import annotations
 
-import logging
 import threading
 from typing import Callable, Dict, List, Optional
 
 from iios.common.async_exec.async_execution_manager import get_execution_manager as _get_exec_manager
 from iios.common.async_exec.execution_classifier import WorkloadType
+from iios.common.logging.logging_manager import get_logger
+from iios.common.logging.audit_logger import get_audit_logger
 
 from iios.investment.market.integration.aggregation_engine import KNOWN_ENGINES
 from iios.investment.market.integration.conflict_engine import ConflictEngine
@@ -53,7 +54,12 @@ from iios.investment.market.integration.snapshot_history import SnapshotHistory
 
 from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
 
-log = logging.getLogger(__name__)
+_log = get_logger(__name__, engine_id="iios:market:intelligence:integration")
+_audit = get_audit_logger(
+    __name__,
+    engine_id = "iios:market:intelligence:integration",
+    component = "MarketIntelligenceIntegrationEngine",
+)
 
 
 class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
@@ -102,6 +108,20 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
         self.on_snapshot:    Optional[Callable[[MarketIntelligenceSnapshot], None]] = None
         self.on_low_quality: Optional[Callable[[float], None]] = None
         self.on_conflict:    Optional[Callable[[int], None]] = None
+
+    # ── lifecycle hooks ───────────────────────────────────────────────────────
+
+    def _on_start(self) -> None:
+        _log.info("MarketIntelligenceIntegrationEngine started.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION,
+        )
+
+    def _on_stop(self) -> None:
+        _log.info("MarketIntelligenceIntegrationEngine stopped.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION,
+        )
 
     # ── primary update ────────────────────────────────────────────────────────
 
@@ -265,16 +285,16 @@ class MarketIntelligenceIntegrationEngine(LifecycleAwareMixin):
             try:
                 self.on_snapshot(snap)
             except Exception:
-                log.exception("on_snapshot callback error")
+                _log.exception("on_snapshot callback error")
 
         if self.on_low_quality and snap.quality.overall < 50.0:
             try:
                 self.on_low_quality(snap.quality.overall)
             except Exception:
-                log.exception("on_low_quality callback error")
+                _log.exception("on_low_quality callback error")
 
         if self.on_conflict and snap.conflicts.total > 0:
             try:
                 self.on_conflict(snap.conflicts.total)
             except Exception:
-                log.exception("on_conflict callback error")
+                _log.exception("on_conflict callback error")

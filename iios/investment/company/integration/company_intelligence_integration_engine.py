@@ -11,6 +11,9 @@ import threading
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
+from iios.common.logging.logging_manager import get_logger
+from iios.common.logging.audit_logger import get_audit_logger
+
 from iios.investment.company.integration.aggregation_engine import AggregationEngine
 from iios.investment.company.integration.aggregation_history import AggregationHistory
 from iios.investment.company.integration.aggregation_state import AggregationState
@@ -30,6 +33,13 @@ from iios.investment.company.integration.quality_history import QualityHistory
 from iios.investment.company.integration.validation_report import ValidationReport
 
 from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+
+_log = get_logger(__name__, engine_id="iios:company:intelligence:integration")
+_audit = get_audit_logger(
+    __name__,
+    engine_id = "iios:company:intelligence:integration",
+    component = "CompanyIntelligenceIntegrationEngine",
+)
 
 
 class CompanyIntelligenceIntegrationEngine(LifecycleAwareMixin):
@@ -74,7 +84,19 @@ class CompanyIntelligenceIntegrationEngine(LifecycleAwareMixin):
         self._history        = AggregationHistory()
         self._quality_history = QualityHistory()
         self._health         = HealthMonitor()
+    # ── Lifecycle hooks ─────────────────────────────────────────────────
 
+    def _on_start(self) -> None:
+        _log.info("CompanyIntelligenceIntegrationEngine started.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "STOPPED", "RUNNING", self.VERSION,
+        )
+
+    def _on_stop(self) -> None:
+        _log.info("CompanyIntelligenceIntegrationEngine stopped.")
+        _audit.log_lifecycle_event(
+            self.SYSTEM_ID, "RUNNING", "STOPPED", self.VERSION,
+        )
     # ── Private helpers ───────────────────────────────────────────────────────
 
     def _get_or_create_state(self, ticker: str) -> AggregationState:
