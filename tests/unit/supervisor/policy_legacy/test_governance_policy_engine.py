@@ -35,7 +35,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.policy import (
+from iios.supervisor.policy_legacy import (
     # enumerations
     ConditionOperator,
     ConflictResolutionStrategy,
@@ -1385,16 +1385,16 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_importable(self):
-        import iios.supervisor.policy as module
+        import iios.supervisor.policy_legacy as module
         for name in module.__all__:
             assert hasattr(module, name), f"Missing export: {name}"
 
     def test_engine_in_all(self):
-        import iios.supervisor.policy as module
+        import iios.supervisor.policy_legacy as module
         assert "GovernancePolicyEngine" in module.__all__
 
     def test_factory_in_all(self):
-        import iios.supervisor.policy as module
+        import iios.supervisor.policy_legacy as module
         assert "GovernancePolicyFactory" in module.__all__
 
 

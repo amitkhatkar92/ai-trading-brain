@@ -1,8 +1,11 @@
 """
-iios.supervisor.policy — AI Governance Policy Framework
-========================================================
+iios.supervisor.policy_legacy — AI Governance Policy Framework (superseded draft)
+==================================================================================
 
-Public surface for the C13 AI Governance Policy Framework.
+This package is the original M3 Policy Framework implementation for C13.
+It has been superseded by ``iios.supervisor.policies`` (AIGovernancePolicy* naming).
+Retained for historical reference; the canonical M3 layer is ``supervisor/policies/``.
+
 All stable exports are listed in ``__all__``.
 """
 from .constants import (
