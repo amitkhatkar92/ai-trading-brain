@@ -69,7 +69,7 @@ class ExecutionCoordinator:
             resp, ctx = self._pipeline.run(exec_request)
             last_ctx_ref[0] = ctx
             if not resp.succeeded:
-                raise RuntimeError(resp.error_message or "execution failed")
+                raise RuntimeError(resp.error or "execution failed")
             return resp, ctx
 
         last_ctx_ref: list = [None]
@@ -167,10 +167,20 @@ class ExecutionRuntime(AILifecycleAwareMixin):
         Execute an AI request through the full runtime pipeline.
 
         Returns (AIResponse, ExecutionContext). Never raises.
+
+        Raises
+        ------
+        RuntimeError
+            If the runtime has not been initialized/started, or has been stopped.
         """
         if self._coordinator is None:
             raise RuntimeError(
                 "ExecutionRuntime.execute() called before initialize()/start()"
+            )
+        if not self.is_ai_running:
+            raise RuntimeError(
+                f"ExecutionRuntime.execute() called in state "
+                f"{self.lifecycle_state.value!r} -- runtime must be RUNNING"
             )
         return self._coordinator.execute(exec_request)
 
