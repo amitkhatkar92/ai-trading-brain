@@ -272,6 +272,7 @@ class MemoryKnowledgeGateway(AILifecycleAwareMixin):
         return {
             "system_id":       self.SYSTEM_ID,
             "version":         self.VERSION,
+            "is_running":      self._started_at is not None,
             "memory_entries":  c.memory_manager.count(),
             "knowledge_items": c.knowledge_manager.count(),
             "graph_nodes":     c.knowledge_graph.node_count(),
