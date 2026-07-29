@@ -63,8 +63,13 @@ class LearningEvaluationGateway(AILifecycleAwareMixin):
         gateway.stop()
     """
 
-    SYSTEM_ID: str = SYSTEM_ID
-    VERSION:   str = VERSION
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A7"
+    MODULE_NAME: str = "Learning & Evaluation"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "Model evaluation, quality benchmarking and adaptive learning"
+    STATUS     : str = "stable"
 
     def __init__(self) -> None:
         super().__init__()

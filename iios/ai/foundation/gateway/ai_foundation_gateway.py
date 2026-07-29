@@ -87,8 +87,13 @@ class AIFoundationGateway(AILifecycleAwareMixin):
         Defaults to a :class:`LocalAIEventBus` instance.
     """
 
-    SYSTEM_ID: str = "iios:ai:foundation:gateway"
-    VERSION:   str = VERSION
+    SYSTEM_ID  : str = "iios:ai:foundation:gateway"
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A1"
+    MODULE_NAME: str = "AI Foundation"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "AI Platform foundation — lifecycle management, provider abstraction, events, configuration"
+    STATUS     : str = "stable"
 
     def __init__(
         self,

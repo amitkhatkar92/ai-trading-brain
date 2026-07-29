@@ -76,11 +76,15 @@ class AIPolicyAlreadyExistsError(AIPolicyException):
         super().__init__(message, code="AI-1312")
 
 
-class AIPolicyViolationError(AIPolicyException):
-    """Raised when a policy is violated (AI-1313)."""
+class AIGovernanceRuleViolationError(AIPolicyException):
+    """Raised when a governance policy rule is violated (AI-1313)."""
 
     def __init__(self, message: str = "Policy violated") -> None:
         super().__init__(message, code="AI-1313")
+
+
+# Backward-compatible alias (deprecated — use AIGovernanceRuleViolationError)
+AIPolicyViolationError = AIGovernanceRuleViolationError
 
 
 class AIPolicyEvaluationError(AIPolicyException):

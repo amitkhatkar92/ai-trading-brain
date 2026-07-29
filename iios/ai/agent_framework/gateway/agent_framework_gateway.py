@@ -72,8 +72,13 @@ class AgentFrameworkGateway(AILifecycleAwareMixin):
         result = gw.assign_task(task)
     """
 
-    SYSTEM_ID: str = "iios:ai:agent_framework:gateway"
-    VERSION:   str = "1.0.0"
+    SYSTEM_ID  : str = "iios:ai:agent_framework:gateway"
+    VERSION    : str = "1.0.0"
+    MODULE_ID  : str = "A5"
+    MODULE_NAME: str = "Agent Framework"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "AI agent lifecycle, task execution and coordination framework"
+    STATUS     : str = "stable"
 
     def __init__(
         self,

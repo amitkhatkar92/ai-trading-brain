@@ -60,8 +60,13 @@ class MemoryKnowledgeGateway(AILifecycleAwareMixin):
         items = gw.search_knowledge("NIFTY analysis", top_k=5)
     """
 
-    SYSTEM_ID: str = "iios:ai:memory_knowledge:gateway"
-    VERSION:   str = "1.0.0"
+    SYSTEM_ID  : str = "iios:ai:memory_knowledge:gateway"
+    VERSION    : str = "1.0.0"
+    MODULE_ID  : str = "A4"
+    MODULE_NAME: str = "Memory & Knowledge"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "Agent memory storage and knowledge base management"
+    STATUS     : str = "stable"
 
     def __init__(
         self, container: Optional[MemoryKnowledgeContainer] = None

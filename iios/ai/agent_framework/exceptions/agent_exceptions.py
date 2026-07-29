@@ -187,22 +187,22 @@ class AIRegistrationFailedError(AIRegistryException):
 # Permission errors  AI-1040–AI-1042
 # ---------------------------------------------------------------------------
 
-class AIPermissionException(AIAgentException):
-    """Base exception for permission operations (AI-1040)."""
+class AIAgentPermissionException(AIAgentException):
+    """Base exception for agent permission operations (AI-1040)."""
 
     def __init__(self, message: str = "Permission error", code: str = "AI-1040") -> None:
         super().__init__(message, code=code)
 
 
-class AIPermissionDeniedError(AIPermissionException):
-    """Access denied — insufficient permission level (AI-1041)."""
+class AIAgentPermissionDeniedError(AIAgentPermissionException):
+    """Access denied — insufficient agent permission level (AI-1041)."""
 
     def __init__(self, resource: str = "", required: str = "") -> None:
         detail = f" (resource={resource!r}, required={required!r})" if resource else ""
         super().__init__(f"Permission denied{detail}", code="AI-1041")
 
 
-class AIPermissionNotFoundError(AIPermissionException):
+class AIPermissionNotFoundError(AIAgentPermissionException):
     """No permission entry found for this resource (AI-1042)."""
 
     def __init__(self, resource: str = "") -> None:
@@ -223,7 +223,7 @@ class AIRoleException(AIAgentException):
         super().__init__(message, code=code)
 
 
-class AIRoleNotFoundError(AIRoleException):
+class AIAgentRoleNotFoundError(AIRoleException):
     """Requested agent role does not exist (AI-1051)."""
 
     def __init__(self, role_id: str = "") -> None:
@@ -237,15 +237,25 @@ class AIRoleNotFoundError(AIRoleException):
 # Policy errors  AI-1060–AI-1061
 # ---------------------------------------------------------------------------
 
-class AIPolicyException(AIAgentException):
+class AIAgentPolicyException(AIAgentException):
     """Base exception for agent policy operations (AI-1060)."""
 
     def __init__(self, message: str = "Policy error", code: str = "AI-1060") -> None:
         super().__init__(message, code=code)
 
 
-class AIAgentPolicyViolationError(AIPolicyException):
+class AIAgentPolicyViolationError(AIAgentPolicyException):
     """An agent policy was violated (AI-1061)."""
 
     def __init__(self, message: str = "Agent policy violation") -> None:
         super().__init__(message, code="AI-1061")
+
+
+# ---------------------------------------------------------------------------
+# Backward-compatible aliases (deprecated — use agent-prefixed canonical names)
+# ---------------------------------------------------------------------------
+
+AIPermissionException   = AIAgentPermissionException
+AIPermissionDeniedError = AIAgentPermissionDeniedError
+AIRoleNotFoundError     = AIAgentRoleNotFoundError
+AIPolicyException       = AIAgentPolicyException

@@ -174,7 +174,7 @@ class AITaskSchedulerException(AIOrchestrationException):
         super().__init__(message, code=code)
 
 
-class AITaskNotFoundError(AITaskSchedulerException):
+class AISchedulerTaskNotFoundError(AITaskSchedulerException):
     """Scheduled task not found (AI-1541)."""
 
     def __init__(self, message: str = "Task not found") -> None:
@@ -195,11 +195,16 @@ class AITaskDependencyError(AITaskSchedulerException):
         super().__init__(message, code="AI-1543")
 
 
-class AITaskExecutionError(AITaskSchedulerException):
+class AISchedulerTaskExecutionError(AITaskSchedulerException):
     """Task execution failed (AI-1544)."""
 
     def __init__(self, message: str = "Task execution failed") -> None:
         super().__init__(message, code="AI-1544")
+
+
+# Backward-compatible aliases (deprecated — use scheduler-prefixed canonical names)
+AITaskNotFoundError  = AISchedulerTaskNotFoundError
+AITaskExecutionError = AISchedulerTaskExecutionError
 
 
 # ── Resource exceptions (AI-1550 – AI-1553) ───────────────────────────────────

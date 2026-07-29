@@ -22,12 +22,17 @@ from ..registry.model_registry  import AIModelRegistry
 class ModelManagementSnapshot:
     """Immutable snapshot of the A2 Model Management module's state."""
     snapshot_id:          str
-    taken_at:             float
+    captured_at:          float
     model_count:          int
     enabled_model_count:  int
     healthy_model_count:  int
     total_versions:       int
     events_published:     int
+
+    @property
+    def taken_at(self) -> float:  # pragma: no cover  # deprecated alias
+        """Deprecated: use captured_at."""
+        return self.captured_at
 
     @classmethod
     def capture(
@@ -39,7 +44,7 @@ class ModelManagementSnapshot:
         models = registry.list_all()
         return cls(
             snapshot_id         = str(uuid.uuid4()),
-            taken_at            = time.time(),
+            captured_at         = time.time(),
             model_count         = len(models),
             enabled_model_count = sum(1 for m in models if m.enabled),
             healthy_model_count = sum(

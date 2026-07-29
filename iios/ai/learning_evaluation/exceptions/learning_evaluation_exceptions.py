@@ -195,10 +195,14 @@ class AIQualityAssessmentError(AIQualityException):
         super().__init__(message, code="AI-1232")
 
 
-class AIValidationException(AIQualityException):
+class AIQualityValidationException(AIQualityException):
     """Validation pipeline error (AI-1233)."""
     def __init__(self, message: str = "Validation error") -> None:
         super().__init__(message, code="AI-1233")
+
+
+# Backward-compatible alias (deprecated — use AIQualityValidationException)
+AIValidationException = AIQualityValidationException
 
 
 # ---------------------------------------------------------------------------

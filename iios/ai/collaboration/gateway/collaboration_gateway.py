@@ -55,8 +55,13 @@ class CollaborationGateway(AILifecycleAwareMixin):
         gw.stop()
     """
 
-    SYSTEM_ID: str = SYSTEM_ID
-    VERSION:   str = VERSION
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A6"
+    MODULE_NAME: str = "Collaboration Framework"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "Multi-agent debate, consensus and collaboration coordination"
+    STATUS     : str = "stable"
 
     def __init__(self) -> None:
         self._container: Optional[CollaborationContainer] = None

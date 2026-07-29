@@ -40,6 +40,7 @@ from ..validation.validation_result import ValidationResult
 _log = get_logger(__name__)
 
 SYSTEM_ID = "iios:ai:prompt_context:gateway"
+VERSION   = "1.0.0"
 
 
 class PromptContextGateway(AILifecycleAwareMixin):
@@ -62,8 +63,13 @@ class PromptContextGateway(AILifecycleAwareMixin):
         result = gw.compose_prompt("greeting", {"name": "Trader"}, context=ctx)
     """
 
-    SYSTEM_ID: str = "iios:ai:prompt_context:gateway"
-    VERSION:   str = "1.0.0"
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A3"
+    MODULE_NAME: str = "Prompt & Context"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "Prompt template management, context assembly and validation"
+    STATUS     : str = "stable"
 
     def __init__(self, container: Optional[PromptContextContainer] = None) -> None:
         self._container: PromptContextContainer   = container or PromptContextContainer()

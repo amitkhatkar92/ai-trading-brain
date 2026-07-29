@@ -48,8 +48,13 @@ class GovernanceGateway(AILifecycleAwareMixin):
         gw.stop()
     """
 
-    SYSTEM_ID: str = SYSTEM_ID
-    VERSION:   str = VERSION
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A8"
+    MODULE_NAME: str = "Governance"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "Policy governance, permission enforcement and audit logging"
+    STATUS     : str = "stable"
 
     def __init__(self) -> None:
         super().__init__()

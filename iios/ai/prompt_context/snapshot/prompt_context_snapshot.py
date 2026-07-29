@@ -22,11 +22,16 @@ from ..registry.prompt_registry import PromptRegistry
 class PromptContextSnapshot:
     """Immutable snapshot of the A3 Prompt & Context Platform's state."""
     snapshot_id:             str
-    taken_at:                float
+    captured_at:             float
     template_count:          int
     enabled_template_count:  int
     total_versions:          int
     events_published:        int
+
+    @property
+    def taken_at(self) -> float:  # pragma: no cover  # deprecated alias
+        """Deprecated: use captured_at."""
+        return self.captured_at
 
     @classmethod
     def capture(
@@ -39,7 +44,7 @@ class PromptContextSnapshot:
         enabled_count  = sum(1 for t in templates if t.enabled)
         return cls(
             snapshot_id            = str(uuid.uuid4()),
-            taken_at                = time.time(),
+            captured_at             = time.time(),
             template_count          = len(templates),
             enabled_template_count  = enabled_count,
             total_versions          = total_versions,

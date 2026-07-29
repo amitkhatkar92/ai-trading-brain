@@ -63,8 +63,13 @@ class CapabilityGateway(AILifecycleAwareMixin):
         gw.stop()
     """
 
-    SYSTEM_ID: str = SYSTEM_ID
-    VERSION:   str = VERSION
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A9"
+    MODULE_NAME: str = "Capability Management"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "AI capability registry, skill management and quota enforcement"
+    STATUS     : str = "stable"
 
     def __init__(self) -> None:
         super().__init__()

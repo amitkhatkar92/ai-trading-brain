@@ -21,13 +21,18 @@ from ..memory.memory_manager       import MemoryManager
 class MemoryKnowledgeSnapshot:
     """Immutable snapshot of A4 Memory & Knowledge Platform state."""
     snapshot_id:        str
-    taken_at:           float
+    captured_at:        float
     memory_count:       int
     knowledge_count:    int
     collection_count:   int
     graph_node_count:   int
     graph_rel_count:    int
     events_published:   int
+
+    @property
+    def taken_at(self) -> float:  # pragma: no cover  # deprecated alias
+        """Deprecated: use captured_at."""
+        return self.captured_at
 
     @classmethod
     def capture(
@@ -39,7 +44,7 @@ class MemoryKnowledgeSnapshot:
     ) -> "MemoryKnowledgeSnapshot":
         return cls(
             snapshot_id      = str(uuid.uuid4()),
-            taken_at         = time.time(),
+            captured_at      = time.time(),
             memory_count     = memory_manager.count(),
             knowledge_count  = knowledge_manager.count(),
             collection_count = len(knowledge_manager.list_collections()),

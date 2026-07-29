@@ -34,7 +34,12 @@ class AgentSnapshot:
     tasks_completed: int
     tasks_failed:    int
     avg_exec_ms:     float
-    taken_at:        float
+    captured_at:     float
+
+    @property
+    def taken_at(self) -> float:  # pragma: no cover  # deprecated alias
+        """Deprecated: use captured_at."""
+        return self.captured_at
 
 
 @dataclass(frozen=True)
@@ -46,13 +51,18 @@ class AgentFrameworkSnapshot:
     """
 
     snapshot_id:          str
-    taken_at:             float
+    captured_at:          float
     total_agents:         int
     active_agents:        int
     total_tasks_completed: int
     total_tasks_failed:   int
     events_published:     int
     agent_snapshots:      FrozenSet[AgentSnapshot]
+
+    @property
+    def taken_at(self) -> float:  # pragma: no cover  # deprecated alias
+        """Deprecated: use captured_at."""
+        return self.captured_at
 
     @classmethod
     def capture(
@@ -83,7 +93,7 @@ class AgentFrameworkSnapshot:
                 tasks_completed = m.tasks_completed,
                 tasks_failed    = m.tasks_failed,
                 avg_exec_ms     = m.avg_execution_ms,
-                taken_at        = time.time(),
+                captured_at     = time.time(),
             )
             agent_snaps.append(snap)
             total_completed += m.tasks_completed
@@ -93,7 +103,7 @@ class AgentFrameworkSnapshot:
 
         return cls(
             snapshot_id           = str(uuid.uuid4()),
-            taken_at              = time.time(),
+            captured_at           = time.time(),
             total_agents          = len(agents),
             active_agents         = active_count,
             total_tasks_completed = total_completed,

@@ -33,6 +33,7 @@ from __future__ import annotations
 
 from .health_coordinator         import HealthCoordinator
 from .iios_bootstrap             import IIOSBootstrap
+from .gateway_protocol           import GatewayProtocol
 from .platform_lifecycle_manager import PlatformLifecycleManager
 from .platform_registry          import PlatformRegistry, PlatformRegistryError
 from .platform_types             import (
@@ -53,6 +54,8 @@ __resolves__ = "R-001"
 __all__ = [
     # Entry point
     "IIOSBootstrap",
+    # Protocol
+    "GatewayProtocol",
     # Lifecycle
     "PlatformLifecycleManager",
     # Registry

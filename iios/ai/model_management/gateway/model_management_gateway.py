@@ -39,6 +39,7 @@ from ..snapshot.model_management_snapshot     import ModelManagementSnapshot
 _log = get_logger(__name__)
 
 SYSTEM_ID = "iios:ai:model_management:gateway"
+VERSION   = "1.0.0"
 
 
 class ModelManagementGateway(AILifecycleAwareMixin):
@@ -63,8 +64,13 @@ class ModelManagementGateway(AILifecycleAwareMixin):
         decision = gw.route_request(ctx)
     """
 
-    SYSTEM_ID: str = "iios:ai:model_management:gateway"
-    VERSION:   str = "1.0.0"
+    SYSTEM_ID  : str = SYSTEM_ID
+    VERSION    : str = VERSION
+    MODULE_ID  : str = "A2"
+    MODULE_NAME: str = "Model Management"
+    API_VERSION: str = "v1"
+    DESCRIPTION: str = "AI model registry, routing, capability management and health monitoring"
+    STATUS     : str = "stable"
 
     def __init__(self, container: Optional[ModelManagementContainer] = None) -> None:
         self._container:  ModelManagementContainer = container or ModelManagementContainer()
