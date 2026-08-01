@@ -573,6 +573,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
     """
     global _LAST_PREPARED_STATS, _INVALIDATED_THIS_CYCLE
     _INVALIDATED_THIS_CYCLE.clear()
+    _pu_t0 = time.monotonic()  # P1 diagnostic
     try:
         from config import USE_PREPARED_UNIVERSE
         if not USE_PREPARED_UNIVERSE:
@@ -587,7 +588,9 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
             return []
 
         from opportunity_engine.candidate_store import CandidateStore
+        _pu_t_rd0 = time.monotonic()  # P1 diagnostic
         candidates = CandidateStore.read()
+        _pu_t_read_ms = (time.monotonic() - _pu_t_rd0) * 1000  # P1 diagnostic
         if candidates is None:
             # Patch 5 — escalation tracking
             count = CandidateStore.record_stale_fallback()
@@ -638,6 +641,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
         except ImportError:
             _compute_lc = None
 
+        _pu_t_lp0 = time.monotonic()  # P1 diagnostic
         rows: List[Dict[str, Any]] = []
         for c in candidates:
             # Validate required fields before adding to live pipeline
@@ -782,6 +786,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
                 "data_trust_score": round(_trust_score, 2), # Patch 7: observational only
             })
 
+        _pu_t_loop_ms = (time.monotonic() - _pu_t_lp0) * 1000  # P1 diagnostic
         if expired_count:
             log.debug("[PreparedWatchlist] Dropped %d candidates with expired valid_until_utc.", expired_count)
 
@@ -824,6 +829,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
         # In-memory score adjustment for this cycle’s sector re-ranking priority.
         # Uses single worst-applicable decay rule (no stacking).
         # Store file is unchanged — only affects evaluation order within this cycle.
+        _pu_t_dc0 = time.monotonic()  # P1 diagnostic
         _decay_log: List[str] = []
         with _RSI_CACHE_LOCK:
             _rsi_snap_d = dict(_RSI_CACHE)
@@ -869,6 +875,14 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
             _lc_dist = dict(_LCC(r.get("_lifecycle_state", "ACTIVE") for r in rows))
             log.debug("[LifecycleDistribution] %s total=%d", _lc_dist, len(rows))
 
+        log.info(  # P1 diagnostic
+            "[OELatencyProfilePU] total_ms=%.0f  store_read_ms=%.0f"
+            "  candidate_loop_ms=%.0f  conviction_decay_ms=%.0f"
+            "  n_candidates=%d  n_rows=%d",
+            (time.monotonic() - _pu_t0) * 1000, _pu_t_read_ms,
+            _pu_t_loop_ms, (time.monotonic() - _pu_t_dc0) * 1000,
+            len(candidates) if candidates else 0, len(rows),
+        )
         # Patch 5 — reset fallback counter on success
         CandidateStore.record_prepared_success()
 
@@ -1256,7 +1270,9 @@ class EquityScannerAI:
         # ── Phase E: merge prepared universe with static watchlist ───────────
         # Prepared candidates (from market_scanner.py) take priority;
         # static symbols fill any gap. LTPs are refreshed for prepared candidates.
+        _sc_t0 = time.monotonic()  # P1 diagnostic
         prepared   = _prepared_watchlist()
+        _sc_t1 = time.monotonic()  # P1 diagnostic — after prepared universe
 
         # Priority 4 (RankingInstabilityAudit): initialised here so they're
         # always defined regardless of whether `if len(prepared) > 0` fires.
@@ -1344,6 +1360,7 @@ class EquityScannerAI:
             fallback_used=(len(prepared) == 0),
             watchlist_total=len(watchlist),
         )
+        _sc_t2 = time.monotonic()  # P1 diagnostic — after setup (3 JSON reads done)
 
         # V2 — Event-driven mini rescan: evaluate trigger conditions post-cycle
         _lp_s = _LAST_PREPARED_STATS
@@ -1355,6 +1372,7 @@ class EquityScannerAI:
             log.info("[EquityScannerAI] ODM %s — scanning %d stocks (extended universe).",
                      odm_tier, len(watchlist))
 
+        _sc_t3 = time.monotonic()  # P1 diagnostic — scanner AI loop start
         signals: List[TradeSignal] = []
         # Rejection reason counters
         _r: dict = {}
@@ -1410,6 +1428,7 @@ class EquityScannerAI:
                 getattr(snapshot.regime, "value", snapshot.regime),
             )
 
+        _sc_t4 = time.monotonic()  # P1 diagnostic — after scanner AI loop
         _regime_str = getattr(snapshot.regime, "value", str(snapshot.regime))
         _no_setup_detail = "  ".join(
             f"{k}={v}" for k, v in sorted(_r.items()) if k != "signal_found"
@@ -1473,6 +1492,7 @@ class EquityScannerAI:
         # Step 1 — UNIVERSAL BASELINE: build enrichment for ALL store candidates
         # Step 2 — SCAN OVERRIDE: refine prepared candidates with live scan data
         # Step 3 — INVALIDATION: mark this cycle's invalidated candidates
+        _sc_t5 = time.monotonic()  # P1 diagnostic — enrichment start (4th JSON read)
         try:
             from opportunity_engine.candidate_store import CandidateStore as _CS_enrich
             from datetime import datetime as _dt_enrich, timezone as _tz_enrich
@@ -1746,6 +1766,7 @@ class EquityScannerAI:
 
         except Exception as _enrich_err:
             log.debug("[EnrichedCandidateWrite] Enrichment persistence skipped: %s", _enrich_err)
+        _sc_t6 = time.monotonic()  # P1 diagnostic — after enrichment
 
         # ── Phase H — Hybrid exploration budget ──────────────────────────────
         # When USE_HYBRID_EXPLORATION is True and safe mode is NOT active,
@@ -1822,6 +1843,18 @@ class EquityScannerAI:
         except Exception as _hex_err:
             log.debug("[HybridExploration] Skipped: %s", _hex_err)
 
+        log.info(  # P1 diagnostic
+            "[OELatencyProfile] total=%.0fms  pu=%.0fms  setup=%.0fms"
+            "  scanner=%.0fms  enrichment=%.0fms  phase_h=%.0fms"
+            "  n_watchlist=%d  n_prepared=%d  n_signals=%d",
+            (time.monotonic() - _sc_t0) * 1000,
+            (_sc_t1 - _sc_t0) * 1000,
+            (_sc_t2 - _sc_t1) * 1000,
+            (_sc_t4 - _sc_t3) * 1000,
+            (_sc_t6 - _sc_t5) * 1000,
+            (time.monotonic() - _sc_t6) * 1000,
+            len(watchlist), len(prepared), len(signals),
+        )
         return signals
 
     def as_agent_output(self, snapshot: MarketSnapshot) -> AgentOutput:
