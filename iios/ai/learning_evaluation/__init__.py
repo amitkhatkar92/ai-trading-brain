@@ -27,3 +27,5 @@ A7 Learning & Evaluation Platform — Phase 3, Module 7
 """
 
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

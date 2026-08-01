@@ -34,6 +34,7 @@ from ..events.learning_evaluation_events            import (
     LearningRecordedEvent,
     QualityAssessedEvent,
 )
+from ..evaluation.evaluation_session                import EvaluationSession
 from ..exceptions.learning_evaluation_exceptions    import (
     AIEvaluationSessionNotFoundError,
 )
@@ -96,7 +97,7 @@ class LearningEvaluationGateway(AILifecycleAwareMixin):
 
     # ── evaluation ────────────────────────────────────────────────────────────
 
-    def create_session(self, metadata: EvaluationMetadata):
+    def create_session(self, metadata: EvaluationMetadata) -> EvaluationSession:
         """Create and register a new evaluation session."""
         session = self._c.evaluation_manager.create_session(metadata)
         self._c.event_bus.publish(
@@ -137,7 +138,7 @@ class LearningEvaluationGateway(AILifecycleAwareMixin):
             )
         )
 
-    def get_session(self, session_id: str):
+    def get_session(self, session_id: str) -> EvaluationSession:
         return self._c.evaluation_manager.get_session(session_id)
 
     def list_sessions(self, status: Optional[EvaluationStatus] = None) -> list:

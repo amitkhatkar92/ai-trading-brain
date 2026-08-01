@@ -39,3 +39,5 @@ A3 Prompt & Context Platform -- Phase 3, Module 3
 from __future__ import annotations
 
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

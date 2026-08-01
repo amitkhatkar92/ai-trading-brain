@@ -47,9 +47,11 @@ from .platform_types             import (
 from .shutdown_coordinator       import ShutdownCoordinator
 from .startup_coordinator        import CircularDependencyError, StartupCoordinator
 
-__version__  = "1.0.0"
-__status__   = "implemented"
-__resolves__ = "R-001"
+__version__    = "1.0.0"
+__status__     = "implemented"
+__resolves__   = "R-001"
+FREEZE_VERSION = "1.0.0"
+FREEZE_DATE    = "2026-08-01"
 
 __all__ = [
     # Entry point

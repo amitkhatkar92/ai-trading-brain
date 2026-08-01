@@ -33,3 +33,5 @@ from __future__ import annotations
 from .gateway.ai_foundation_gateway import AIFoundationGateway
 
 __all__ = ["AIFoundationGateway"]
+
+__version__ = "1.0.0"

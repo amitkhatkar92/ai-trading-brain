@@ -20,3 +20,5 @@ A4 does NOT import from A2 or A3.
 """
 
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

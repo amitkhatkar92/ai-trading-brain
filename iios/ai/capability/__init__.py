@@ -28,3 +28,5 @@ M6  container/    DI root · gateway/ public entry point
 A9 Enterprise Capability Platform — Phase 3, Module 9
 """
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

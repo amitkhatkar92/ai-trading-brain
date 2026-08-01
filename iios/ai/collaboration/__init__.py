@@ -21,3 +21,5 @@ Error-code range: AI-1100 – AI-1199
 A6 Multi-Agent Collaboration Framework — Phase 3, Module 6
 """
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

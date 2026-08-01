@@ -20,3 +20,5 @@ Error-code range: AI-1000 – AI-1099
 A5 AI Agent Framework — Phase 3, Module 5
 """
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"

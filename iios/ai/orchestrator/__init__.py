@@ -31,3 +31,5 @@ M6  container/       DI root · gateway/ public entry point
 A10 Enterprise AI Orchestrator — Phase 3, Module 10
 """
 VERSION = "1.0.0"
+
+__version__ = "1.0.0"
