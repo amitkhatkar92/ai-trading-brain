@@ -43,6 +43,13 @@ _PRICE_CACHE_LOCK  = _threading.Lock()   # guards _PRICE_CACHE / _PRICE_CACHE_TS
 _PRICE_REFRESH_RUNNING = _threading.Event()  # prevents duplicate refresh threads
 _PRICE_CACHE_READY = _threading.Event()      # set once cache is first populated; stays set
 
+# ── P1 cycle-scoped telemetry counters (reset each scan() call) ─────────────
+_OE_CYCLE_SEQ: List[int] = [0]   # [0] = monotonic cycle counter; mutable, no global needed
+_oe_io_counters: Dict[str, int] = {
+    "json_reads": 0, "file_reads": 0,
+    "ltp_cache_hits": 0, "ltp_cache_misses": 0,
+}
+
 # ── Priority 2 (FallbackContaminationAudit): feed source provenance cache ───
 # Updated in sync with _PRICE_CACHE by _do_fetch_prices().
 # symbol → "DHAN" | "YAHOO" | "CACHE" | "SIM" | "" (unknown)
@@ -591,6 +598,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
         _pu_t_rd0 = time.monotonic()  # P1 diagnostic
         candidates = CandidateStore.read()
         _pu_t_read_ms = (time.monotonic() - _pu_t_rd0) * 1000  # P1 diagnostic
+        _oe_io_counters["json_reads"] += 1
         if candidates is None:
             # Patch 5 — escalation tracking
             count = CandidateStore.record_stale_fallback()
@@ -889,6 +897,7 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
         # Patch 1 — update stats for health heartbeat
         _LAST_PREPARED_STATS = {
             "prepared_count":    len(rows),
+            "raw_candidates":    len(candidates),
             "expired_count":     expired_count,
             "invalidated_count": _invalidated_count,   # V2
             "fallback_used":     False,
@@ -946,6 +955,7 @@ def _check_safe_mode_triggers(prepared: list) -> None:
     _store_age_h = 999.0  # default: treat as old when unreadable
     try:
         from opportunity_engine.candidate_store import CandidateStore as _CSa
+        _oe_io_counters["json_reads"] += 1
         _ctx = _CSa.read_context()
         if _ctx and _ctx.get("prepared_at"):
             _pa = _sm_dt.fromisoformat(_ctx["prepared_at"].replace("Z", "+00:00"))
@@ -981,6 +991,7 @@ def _check_safe_mode_triggers(prepared: list) -> None:
     # Trigger 3: corrupted/incomplete premarket refresh past market open
     try:
         from opportunity_engine.candidate_store import CandidateStore as _CS
+        _oe_io_counters["json_reads"] += 1
         context = _CS.read_context()
         if context and not context.get("premarket_refresh_complete", True):
             # Past 09:30 IST (04:00 UTC) without premarket completion → degraded
@@ -1063,6 +1074,7 @@ def _emit_prepared_universe_health(
             from opportunity_engine.candidate_store import CandidateStore, STORE_FILE
             import json as _json
             if STORE_FILE.exists():
+                _oe_io_counters["file_reads"] += 1
                 _payload = _json.loads(STORE_FILE.read_text(encoding="utf-8"))
                 _stats = _payload.get("scanner_stats", {})
                 coverage_pct = float(_stats.get("coverage_pct", 0.0))
@@ -1267,6 +1279,11 @@ class EquityScannerAI:
         extra_strats    = getattr(odm_directive, 'extra_strategies',  [])
         odm_tier        = getattr(odm_directive, 'tier', 'NORMAL')
 
+        _OE_CYCLE_SEQ[0] += 1
+        _oe_cycle_id = _OE_CYCLE_SEQ[0]
+        _oe_ts = datetime.now().strftime("%H:%M:%S")
+        _oe_io_counters.update(json_reads=0, file_reads=0, ltp_cache_hits=0, ltp_cache_misses=0)
+
         # ── Phase E: merge prepared universe with static watchlist ───────────
         # Prepared candidates (from market_scanner.py) take priority;
         # static symbols fill any gap. LTPs are refreshed for prepared candidates.
@@ -1312,6 +1329,9 @@ class EquityScannerAI:
                 cached_ltp = _PRICE_CACHE.get(row["symbol"], 0.0)
                 if cached_ltp > 0:
                     row["ltp"] = cached_ltp
+                    _oe_io_counters["ltp_cache_hits"] += 1
+                else:
+                    _oe_io_counters["ltp_cache_misses"] += 1
 
             # ── Fix 6: Re-rank prepared candidates by live sector rotation ────
             # Candidates in sectors currently receiving inflow move to the front
@@ -1503,6 +1523,7 @@ class EquityScannerAI:
             # (includes expired, previously-invalidated, and non-prepared candidates)
             try:
                 _all_store_raw = _CS_enrich.read() or []
+                _oe_io_counters["json_reads"] += 1
                 _now_e = _dt_enrich.now(_tz_enrich.utc)
                 for _raw_c in _all_store_raw:
                     _sym_e = _raw_c.get("symbol", "")
@@ -1767,6 +1788,7 @@ class EquityScannerAI:
         except Exception as _enrich_err:
             log.debug("[EnrichedCandidateWrite] Enrichment persistence skipped: %s", _enrich_err)
         _sc_t6 = time.monotonic()  # P1 diagnostic — after enrichment
+        _n_signals_pre_phase_h = len(signals)
 
         # ── Phase H — Hybrid exploration budget ──────────────────────────────
         # When USE_HYBRID_EXPLORATION is True and safe mode is NOT active,
@@ -1844,16 +1866,25 @@ class EquityScannerAI:
             log.debug("[HybridExploration] Skipped: %s", _hex_err)
 
         log.info(  # P1 diagnostic
-            "[OELatencyProfile] total=%.0fms  pu=%.0fms  setup=%.0fms"
+            "[OELatencyProfile] cycle=%d  ts=%s"
+            "  total=%.0fms  pu=%.0fms  setup=%.0fms"
             "  scanner=%.0fms  enrichment=%.0fms  phase_h=%.0fms"
-            "  n_watchlist=%d  n_prepared=%d  n_signals=%d",
+            "  n_universe=%d  n_filtered=%d  n_ranked=%d"
+            "  n_scanner_signals=%d  n_pre_phase_h=%d  n_final=%d"
+            "  json_reads=%d  file_reads=%d  ltp_hits=%d  ltp_misses=%d",
+            _oe_cycle_id, _oe_ts,
             (time.monotonic() - _sc_t0) * 1000,
             (_sc_t1 - _sc_t0) * 1000,
             (_sc_t2 - _sc_t1) * 1000,
             (_sc_t4 - _sc_t3) * 1000,
             (_sc_t6 - _sc_t5) * 1000,
             (time.monotonic() - _sc_t6) * 1000,
-            len(watchlist), len(prepared), len(signals),
+            _LAST_PREPARED_STATS.get("raw_candidates", len(prepared)),
+            len(prepared),
+            len(watchlist),
+            _r.get("signal_found", 0), _n_signals_pre_phase_h, len(signals),
+            _oe_io_counters["json_reads"], _oe_io_counters["file_reads"],
+            _oe_io_counters["ltp_cache_hits"], _oe_io_counters["ltp_cache_misses"],
         )
         return signals
 

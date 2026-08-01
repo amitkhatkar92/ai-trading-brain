@@ -84,6 +84,8 @@ class OptionsOpportunityAI:
 
     def __init__(self) -> None:
         self._feed: OptionsFeed = get_options_feed()
+        self._http_calls: int = 0
+        self._dte_fallback: int = 0
         log.info("[OptionsOpportunityAI] Initialised — live data feed ready.")
 
     # ── Public interface ───────────────────────────────────────────────
@@ -94,6 +96,9 @@ class OptionsOpportunityAI:
         Returns an empty list when market conditions are unfavourable.
         """
         signals: List[TradeSignal] = []
+        self._http_calls = 0
+        self._dte_fallback = 0
+        _symbols_scanned = 0
 
         for symbol in OPTIONS_SYMBOLS:
             try:
@@ -120,6 +125,7 @@ class OptionsOpportunityAI:
                 except Exception:
                     pass  # capability check unavailable — proceed normally
 
+                _symbols_scanned += 1
                 sig = self._scan_symbol(symbol, snapshot)
                 if sig and sig.confidence >= MIN_CONFIDENCE:
                     signals.append(sig)
@@ -143,6 +149,11 @@ class OptionsOpportunityAI:
             "[OptionsOpportunityAI] Scan complete — %d signal(s) emitted.",
             len(signals),
         )
+        log.info(
+            "[OEOptionsProfile] symbols_scanned=%d  http_calls=%d  dte_fallback=%d"
+            "  signals=%d",
+            _symbols_scanned, self._http_calls, self._dte_fallback, len(signals),
+        )
         return signals
 
     # ── Per-instrument ─────────────────────────────────────────────────
@@ -151,6 +162,7 @@ class OptionsOpportunityAI:
         self, symbol: str, snapshot: MarketSnapshot
     ) -> Optional[TradeSignal]:
         chain = self._feed.get_chain(symbol, dte_target=20)
+        self._http_calls += 1
         if chain is None:
             log.debug("[OptionsOpportunityAI] No chain for %s.", symbol)
             return None
@@ -180,6 +192,8 @@ class OptionsOpportunityAI:
                 symbol, chain.dte, MIN_DTE_ENTRY,
             )
             chain = self._feed.get_chain(symbol, dte_target=21)
+            self._http_calls += 1
+            self._dte_fallback += 1
             if chain is None or chain.dte < MIN_DTE_ENTRY:
                 log.info(
                     "[OptionsOpportunityAI] %s — no expiry with DTE≥%d available; skipping.",
