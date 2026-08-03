@@ -8,6 +8,7 @@ Exports:
     GapDetector            — scientific knowledge gap detection engine (Phase 2A)
     RoadmapManager         — scientific research prioritization engine (Phase 2B)
     EvidenceValidator      — scientific quality gate engine (Phase 2C)
+    StudyPlanner           — scientific experiment design engine (Phase 2D)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -15,6 +16,24 @@ from .cross_study_synthesizer import CrossStudySynthesizer
 from .gap_detector import GapDetector
 from .roadmap_manager import RoadmapManager
 from .evidence_validator import EvidenceValidator
+from .study_planner import StudyPlanner
+from .study_planner_models import (
+    ApprovalClass,
+    DatasetRequirement,
+    ExecutionEstimate,
+    PlanningStatistics,
+    PlanStatus,
+    RiskClass,
+    StudyDependency,
+    StudyPlan,
+    StudyPlannerConfig,
+    StudyPlannerError,
+    StudyPlanNotFoundError,
+    StudyPortfolio,
+    StudyTask,
+    StudyType,
+    ValidationPlan,
+)
 from .evidence_validator_models import (
     EvidenceQualityScore,
     EvidenceValidation,
