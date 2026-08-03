@@ -109,6 +109,29 @@ class MLSConfig:
     dna_winner_labels: tuple = ("TOP_5PCT", "TOP_10PCT")
     dna_loser_labels:  tuple = ("BOTTOM_5PCT", "BOTTOM_10PCT")
 
+    # ── Phase 4: DNAConsensusEngine ───────────────────────────────────────────
+    # Lifecycle gates
+    consensus_institutional_min_count: int   = 10    # evidence_count >= → INSTITUTIONAL
+    consensus_institutional_min_score: float = 0.60  # consensus_score >= → INSTITUTIONAL
+    consensus_retirement_absent_days:  int   = 30    # absent calendar days → RETIRED
+    # Drift
+    consensus_drift_threshold:         float = 0.30  # drift magnitude >= → significant
+    consensus_drift_window:            int   = 7     # rolling window (days) for drift
+    # Confidence trend
+    consensus_trend_window:            int   = 7     # OLS window for slope
+    consensus_trend_declining_slope:   float = 0.05  # |slope| > this → significant
+    # Stability gates
+    consensus_stability_min_rep_freq:  float = 0.50
+    consensus_stability_min_temporal:  float = 0.50
+    consensus_stability_min_regime:    float = 0.40
+    # Consensus score weights — must sum to 1.0
+    consensus_w_replication:  float = 0.25
+    consensus_w_temporal:     float = 0.20
+    consensus_w_regime:       float = 0.20
+    consensus_w_sector:       float = 0.15
+    consensus_w_confidence:   float = 0.10
+    consensus_w_persistence:  float = 0.10
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
