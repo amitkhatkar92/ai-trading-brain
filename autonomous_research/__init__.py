@@ -7,12 +7,26 @@ Exports:
     CrossStudySynthesizer  — cross-study knowledge synthesis engine (Phase 1.3)
     GapDetector            — scientific knowledge gap detection engine (Phase 2A)
     RoadmapManager         — scientific research prioritization engine (Phase 2B)
+    EvidenceValidator      — scientific quality gate engine (Phase 2C)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
 from .cross_study_synthesizer import CrossStudySynthesizer
 from .gap_detector import GapDetector
 from .roadmap_manager import RoadmapManager
+from .evidence_validator import EvidenceValidator
+from .evidence_validator_models import (
+    EvidenceQualityScore,
+    EvidenceValidation,
+    EvidenceValidatorConfig,
+    EvidenceValidatorError,
+    GateResult,
+    GateStatus,
+    ValidationOutcome,
+    ValidationStatistics,
+    ValidationSubjectNotFoundError,
+    ValidationSummary,
+)
 from .gap_models import (
     DetectionError,
     GapCategory,
@@ -139,4 +153,16 @@ __all__ = [
     "RoadmapStatistics",
     "RoadmapManagerError",
     "RoadmapBuildError",
+    # Phase 2C
+    "EvidenceValidator",
+    "EvidenceValidatorConfig",
+    "EvidenceValidation",
+    "EvidenceQualityScore",
+    "GateResult",
+    "GateStatus",
+    "ValidationOutcome",
+    "ValidationStatistics",
+    "ValidationSummary",
+    "EvidenceValidatorError",
+    "ValidationSubjectNotFoundError",
 ]
