@@ -2,11 +2,13 @@
 autonomous_research — ARS Phase 1 package.
 
 Exports:
-    KnowledgeProvider    — unified read-only knowledge access layer (Phase 1.1)
-    HypothesisRegistry   — scientific hypothesis store (Phase 1.2)
+    KnowledgeProvider      — unified read-only knowledge access layer (Phase 1.1)
+    HypothesisRegistry     — scientific hypothesis store (Phase 1.2)
+    CrossStudySynthesizer  — cross-study knowledge synthesis engine (Phase 1.3)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
+from .cross_study_synthesizer import CrossStudySynthesizer
 from .hypothesis_models import (
     DecisionEvent,
     DuplicateHypothesisError,
@@ -76,6 +78,8 @@ __all__ = [
     "VALID_TRANSITIONS",
     "OPEN_STATUSES",
     "RegistryError",
+    # Phase 1.3
+    "CrossStudySynthesizer",
     "HypothesisNotFoundError",
     "DuplicateHypothesisError",
     "InvalidTransitionError",
