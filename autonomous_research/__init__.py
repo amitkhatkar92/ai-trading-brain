@@ -6,11 +6,13 @@ Exports:
     HypothesisRegistry     — scientific hypothesis store (Phase 1.2)
     CrossStudySynthesizer  — cross-study knowledge synthesis engine (Phase 1.3)
     GapDetector            — scientific knowledge gap detection engine (Phase 2A)
+    RoadmapManager         — scientific research prioritization engine (Phase 2B)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
 from .cross_study_synthesizer import CrossStudySynthesizer
 from .gap_detector import GapDetector
+from .roadmap_manager import RoadmapManager
 from .gap_models import (
     DetectionError,
     GapCategory,
@@ -21,6 +23,20 @@ from .gap_models import (
     GapStatistics,
     GapStatus,
     KnowledgeGap,
+)
+from .roadmap_models import (
+    KnowledgeGainEstimate,
+    ResearchCostEstimate,
+    ResearchDebt,
+    ResearchPortfolio,
+    ResearchRoadmap,
+    RoadmapBuildError,
+    RoadmapEntry,
+    RoadmapEntryStatus,
+    RoadmapManagerConfig,
+    RoadmapManagerError,
+    RoadmapStatistics,
+    StudyCategory,
 )
 from .hypothesis_models import (
     DecisionEvent,
@@ -109,4 +125,18 @@ __all__ = [
     "GapStatistics",
     "GapDetectorError",
     "DetectionError",
+    # Phase 2B
+    "RoadmapManager",
+    "RoadmapManagerConfig",
+    "StudyCategory",
+    "RoadmapEntry",
+    "RoadmapEntryStatus",
+    "KnowledgeGainEstimate",
+    "ResearchCostEstimate",
+    "ResearchDebt",
+    "ResearchPortfolio",
+    "ResearchRoadmap",
+    "RoadmapStatistics",
+    "RoadmapManagerError",
+    "RoadmapBuildError",
 ]
