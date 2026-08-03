@@ -1,14 +1,27 @@
 """
-autonomous_research — ARS Phase 1 package.
+autonomous_research — ARS package.
 
 Exports:
     KnowledgeProvider      — unified read-only knowledge access layer (Phase 1.1)
     HypothesisRegistry     — scientific hypothesis store (Phase 1.2)
     CrossStudySynthesizer  — cross-study knowledge synthesis engine (Phase 1.3)
+    GapDetector            — scientific knowledge gap detection engine (Phase 2A)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
 from .cross_study_synthesizer import CrossStudySynthesizer
+from .gap_detector import GapDetector
+from .gap_models import (
+    DetectionError,
+    GapCategory,
+    GapDetectionReport,
+    GapDetectorConfig,
+    GapDetectorError,
+    GapSeverity,
+    GapStatistics,
+    GapStatus,
+    KnowledgeGap,
+)
 from .hypothesis_models import (
     DecisionEvent,
     DuplicateHypothesisError,
@@ -85,4 +98,15 @@ __all__ = [
     "InvalidTransitionError",
     "InvalidEvidenceError",
     "RegistryValidationError",
+    # Phase 2A
+    "GapDetector",
+    "GapDetectorConfig",
+    "GapCategory",
+    "GapSeverity",
+    "GapStatus",
+    "KnowledgeGap",
+    "GapDetectionReport",
+    "GapStatistics",
+    "GapDetectorError",
+    "DetectionError",
 ]
