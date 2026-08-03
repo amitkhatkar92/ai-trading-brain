@@ -97,6 +97,18 @@ class MLSConfig:
     # Regime alignment (feature: mom_5d for bull/bear, iv_rank for volatile)
     regime_mom_threshold: float = 0.0   # mom_5d > this -> aligned in BULL regime
 
+    # ── Phase 3: DNADiscoveryEngine ───────────────────────────────────────────
+    # Discovery gates
+    dna_min_group_size:      int   = 2     # min members in winner/loser group to run analysis
+    dna_min_effect_size:     float = 0.30  # min |Cohen's d| to report a characteristic
+    dna_min_spearman:        float = 0.15  # min |Spearman r| for monotonic evidence
+    dna_interaction_amplify: float = 0.30  # joint effect / best_individual - 1 >= this
+    dna_bootstrap_samples:   int   = 200   # bootstrap CI resamples
+
+    # Performance populations used as winner / loser groups
+    dna_winner_labels: tuple = ("TOP_5PCT", "TOP_10PCT")
+    dna_loser_labels:  tuple = ("BOTTOM_5PCT", "BOTTOM_10PCT")
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
