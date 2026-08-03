@@ -61,6 +61,42 @@ class MLSConfig:
     # ── Storage ────────────────────────────────────────────────────────────
     snapshot_retention_days: int = 90
 
+    # ── Phase 2: PopulationClassifier ─────────────────────────────────────
+    # Performance — exclusive percentile fractions (from each end)
+    perf_top1_frac:  float = 0.01  # fraction assigned to TOP_1PCT
+    perf_top5_frac:  float = 0.05  # fraction assigned to TOP_5PCT (exclusive)
+    perf_top10_frac: float = 0.10  # fraction assigned to TOP_10PCT (exclusive)
+    perf_bot10_frac: float = 0.10  # fraction assigned to BOTTOM_10PCT (exclusive)
+    perf_bot5_frac:  float = 0.05  # fraction assigned to BOTTOM_5PCT (exclusive)
+    perf_bot1_frac:  float = 0.01  # fraction assigned to BOTTOM_1PCT
+
+    # Sector relative (feature: sector_strength, range 0-1)
+    sector_winner_threshold: float = 0.65
+    sector_loser_threshold:  float = 0.35
+
+    # Liquidity (feature: liquidity_score, range 0-1)
+    liquidity_high_threshold: float = 0.70
+    liquidity_low_threshold:  float = 0.30
+
+    # Volatility (feature: hist_vol_5d, range ~0.05-0.30)
+    vol_high_threshold: float = 0.20
+    vol_low_threshold:  float = 0.10
+
+    # Market cap proxy (feature: liquidity_score as proxy, range 0-1)
+    mktcap_large_threshold: float = 0.70
+    mktcap_small_threshold: float = 0.35
+
+    # Volume expansion (feature: volume_ratio_raw, range ~0.8-3.0)
+    vol_expansion_ratio:   float = 1.50   # >= this -> EXPANDING
+    vol_contraction_ratio: float = 0.90   # <= this -> CONTRACTING
+
+    # Relative strength (feature: rsi, range 5-95)
+    rs_strong_rsi: float = 65.0
+    rs_weak_rsi:   float = 35.0
+
+    # Regime alignment (feature: mom_5d for bull/bear, iv_rank for volatile)
+    regime_mom_threshold: float = 0.0   # mom_5d > this -> aligned in BULL regime
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
