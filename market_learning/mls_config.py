@@ -152,6 +152,32 @@ class MLSConfig:
     pmci_high_similarity_threshold:   float = 0.70
     pmci_low_similarity_threshold:    float = 0.30
 
+    # ── Phase 5A: MCIEngine ───────────────────────────────────────────────────
+    # Context dimension weights — must sum to 1.0
+    mcie_w_regime:          float = 0.20   # regime clarity / strength
+    mcie_w_volatility:      float = 0.15   # VIX-based volatility environment
+    mcie_w_liquidity:       float = 0.15   # institutional flow + breadth
+    mcie_w_participation:   float = 0.12   # market-breadth participation
+    mcie_w_sector:          float = 0.12   # sector rotation quality
+    mcie_w_institutional:   float = 0.10   # FII/DII institutional activity
+    mcie_w_global:          float = 0.10   # global sentiment alignment
+    mcie_w_risk:            float = 0.06   # PCR + VIX combined risk
+    # VIX scoring thresholds
+    mcie_vix_low:           float = 15.0   # VIX ≤ this → score 0.90
+    mcie_vix_medium:        float = 20.0   # VIX ≤ this → score 0.70
+    mcie_vix_high:          float = 30.0   # VIX ≤ this → score 0.40
+    mcie_vix_extreme:       float = 40.0   # VIX ≤ this → score 0.20
+    # PCR balanced zone (both ends inclusive)
+    mcie_pcr_balanced_lo:   float = 0.80
+    mcie_pcr_balanced_hi:   float = 1.20
+    # Component drift detection threshold
+    mcie_drift_threshold:   float = 0.10   # |delta| ≥ this → component is drifting
+    # Context score classification
+    mcie_high_context_threshold: float = 0.65
+    mcie_low_context_threshold:  float = 0.35
+    # In-memory history buffer size
+    mcie_max_history_size: int = 100
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
