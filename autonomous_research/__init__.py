@@ -11,6 +11,9 @@ Exports:
     StudyPlanner           — scientific experiment design engine (Phase 2D)
     ResearchCoordinator    — operational research orchestrator (Phase 3A)
     RCConfig               — ResearchCoordinator configuration (Phase 3A)
+    ScientificDirector     — apex scientific authority (Phase 3C)
+    SDConfig               — ScientificDirector configuration (Phase 3C)
+    ScientificJournal      — structured scientific memory (Phase 3C)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -209,6 +212,30 @@ __all__ = [
     "STAGE_SYNTHESIS",
     "STAGE_REPOSITORY",
     "STAGE_REPORT",
+    # Phase 3C — ScientificDirector
+    "ScientificDirector",
+    "SDConfig",
+    "ScientificJournal",
+    "JournalEntry",
+    "DecisionClass",
+    "DecisionType",
+    "ReviewType",
+    "SDError",
+    "SDHealth",
+    "SDObservationError",
+    "ScientificDecision",
+    "ScientificHealth",
+    "ScientificObservation",
+    "ScientificReasoning",
+    "ScientificRecommendation",
+    "ScientificReview",
+    "ScientificRoadmap",
+    "SignificanceLevel",
+    "UrgencyLevel",
+    "make_decision_id",
+    "make_observation_id",
+    "make_recommendation_id",
+    "make_review_id",
 ]
 from .research_coordinator import ResearchCoordinator
 from .rc_config import RCConfig
@@ -233,4 +260,29 @@ from .rc_models import (
     STAGE_SYNTHESIS,
     STAGE_REPOSITORY,
     STAGE_REPORT,
+)
+# Phase 3C — ScientificDirector (apex scientific authority)
+from .scientific_director import ScientificDirector
+from .sd_config import SDConfig
+from .scientific_journal import ScientificJournal, JournalEntry
+from .sd_models import (
+    DecisionClass,
+    DecisionType,
+    ReviewType,
+    SDError,
+    SDHealth,
+    SDObservationError,
+    ScientificDecision,
+    ScientificHealth,
+    ScientificObservation,
+    ScientificReasoning,
+    ScientificRecommendation,
+    ScientificReview,
+    ScientificRoadmap,
+    SignificanceLevel,
+    UrgencyLevel,
+    make_decision_id,
+    make_observation_id,
+    make_recommendation_id,
+    make_review_id,
 )
