@@ -232,6 +232,11 @@ class MLSConfig:
     idr_min_confidence_active:   float = 0.0    # min confidence to include in list_active
     idr_default_operator:        str   = "system"
 
+    # ── R-001: PlatformIntelligenceGateway ────────────────────────────────────
+    pig_high_threshold:   float = 0.70   # CA-PMCI >= this -> HIGH quality signal
+    pig_medium_threshold: float = 0.45   # CA-PMCI >= this -> MEDIUM quality signal
+    pig_low_threshold:    float = 0.30   # CA-PMCI <= this -> LOW quality signal
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)

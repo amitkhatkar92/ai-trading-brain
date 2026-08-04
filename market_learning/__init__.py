@@ -10,6 +10,7 @@ MLS Phase 5A: MCIEngine.
 MLS Phase 5A.1: CDSEngine.
 MLS Phase 5B: CAPMCIEngine.
 R-013: IDRRepository.
+R-001 Phase 1: PlatformIntelligenceGateway.
 
 Exports:
     MarketObserver        — observation layer (Phase 1)
@@ -172,6 +173,17 @@ from .idr_models import (
     IDRVersionError,
     InstitutionalDNA,
 )
+from .pig_gateway import PlatformIntelligenceGateway
+from .pig_models import (
+    PlatformConfidence,
+    PlatformEvidence,
+    PlatformGatewayError,
+    PlatformGatewayInputError,
+    PlatformGatewayStatistics,
+    PlatformGatewaySymbolNotFoundError,
+    PlatformIntelligence,
+    PlatformRecommendationContext,
+)
 
 __all__ = [
     # engines
@@ -281,4 +293,14 @@ __all__ = [
     "IDRNotFoundError",
     "IDRVersionError",
     "InstitutionalDNA",
+    # R-001 — PlatformIntelligenceGateway
+    "PlatformIntelligenceGateway",
+    "PlatformConfidence",
+    "PlatformEvidence",
+    "PlatformGatewayError",
+    "PlatformGatewayInputError",
+    "PlatformGatewayStatistics",
+    "PlatformGatewaySymbolNotFoundError",
+    "PlatformIntelligence",
+    "PlatformRecommendationContext",
 ]
