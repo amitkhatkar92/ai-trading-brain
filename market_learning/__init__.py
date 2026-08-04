@@ -192,6 +192,25 @@ from .pig_integration import (
     pig_build_vote,
     pig_enrich_signals,
 )
+from .amls import AutonomousMarketLearningScheduler
+from .amls_config import AMLSConfig
+from .amls_models import (
+    ALL_STAGES,
+    STAGE_SNAPSHOT,
+    STAGE_CLASSIFY,
+    STAGE_DISCOVER,
+    STAGE_CONSENSUS,
+    STAGE_IDR_SYNC,
+    STAGE_PIG_REFRESH,
+    STAGE_REPORT,
+    MLSPipelineRun,
+    PipelineFailure,
+    PipelineHealth,
+    PipelineStage,
+    PipelineState,
+    PipelineStatistics,
+    PipelineTelemetry,
+)
 
 __all__ = [
     # engines
@@ -318,4 +337,22 @@ __all__ = [
     "PIGTradingAdapter",
     "pig_build_vote",
     "pig_enrich_signals",
+    # MLS Phase 6 — AMLS
+    "AutonomousMarketLearningScheduler",
+    "AMLSConfig",
+    "ALL_STAGES",
+    "STAGE_SNAPSHOT",
+    "STAGE_CLASSIFY",
+    "STAGE_DISCOVER",
+    "STAGE_CONSENSUS",
+    "STAGE_IDR_SYNC",
+    "STAGE_PIG_REFRESH",
+    "STAGE_REPORT",
+    "MLSPipelineRun",
+    "PipelineFailure",
+    "PipelineHealth",
+    "PipelineStage",
+    "PipelineState",
+    "PipelineStatistics",
+    "PipelineTelemetry",
 ]
