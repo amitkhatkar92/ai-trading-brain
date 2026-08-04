@@ -128,6 +128,11 @@ Full cycle:          172ms  ✅  HEALTHY
 | `execution_engine/order_manager.py` | Explicit `PAPER_TRADING` check; persistent CSV journal at `data/paper_trades.csv` | No |
 | `main.py` | Dynamic date (was hardcoded); removed shadowing `_dt` local import | No |
 | `orchestrator/master_orchestrator.py` | `_do_monitor`: index symbols (NIFTY/BANKNIFTY) exempt from `.NS` suffix — use bare names so `GLOBAL_SYMBOL_MAP` routes to `^NSEI`/`^NSEBANK`; `_do_eod_learning`: recovers CSV-closed trades from today to handle post-restart zero-count; strategy attribute lookup fixed (`strategy` over `strategy_name`) | No |
+| `autonomous_research/rc_models.py` | NEW — Pure data models for ResearchCoordinator: `ResearchStage`, `ResearchRun`, `ResearchTelemetry`, `ResearchSummary`, `RCStatus`, `ResearchHealth`, `ResearchStageState`, stage constants | N/A |
+| `autonomous_research/rc_config.py` | NEW — `RCConfig` dataclass with per-stage toggles and `dry_run` | N/A |
+| `autonomous_research/research_coordinator.py` | NEW — `ResearchCoordinator`: 8-stage pipeline orchestrator (study_plan → replay → validation → evidence → knowledge → synthesis → repository → report) | N/A |
+| `autonomous_research/__init__.py` | Added RC exports: `ResearchCoordinator`, `RCConfig`, all RC models and constants | No |
+| `test_rc.py` | NEW — 190/190 tests (T001–T190) | N/A |
 
 ---
 

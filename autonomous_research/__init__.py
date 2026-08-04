@@ -9,6 +9,8 @@ Exports:
     RoadmapManager         — scientific research prioritization engine (Phase 2B)
     EvidenceValidator      — scientific quality gate engine (Phase 2C)
     StudyPlanner           — scientific experiment design engine (Phase 2D)
+    ResearchCoordinator    — operational research orchestrator (Phase 3A)
+    RCConfig               — ResearchCoordinator configuration (Phase 3A)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -184,4 +186,51 @@ __all__ = [
     "ValidationSummary",
     "EvidenceValidatorError",
     "ValidationSubjectNotFoundError",
+    # Phase 3A — ResearchCoordinator
+    "ResearchCoordinator",
+    "RCConfig",
+    "ResearchHealth",
+    "ResearchRun",
+    "ResearchStage",
+    "ResearchStageState",
+    "ResearchSummary",
+    "ResearchTelemetry",
+    "RCStatus",
+    "RCError",
+    "RCStageError",
+    "make_rc_run_id",
+    "RC_ALL_STAGES",
+    "RC_ALWAYS_RUN",
+    "STAGE_STUDY_PLAN",
+    "STAGE_REPLAY",
+    "STAGE_VALIDATION",
+    "STAGE_EVIDENCE",
+    "STAGE_KNOWLEDGE",
+    "STAGE_SYNTHESIS",
+    "STAGE_REPOSITORY",
+    "STAGE_REPORT",
 ]
+from .research_coordinator import ResearchCoordinator
+from .rc_config import RCConfig
+from .rc_models import (
+    ResearchHealth,
+    ResearchRun,
+    ResearchStage,
+    ResearchStageState,
+    ResearchSummary,
+    ResearchTelemetry,
+    RCStatus,
+    RCError,
+    RCStageError,
+    make_rc_run_id,
+    RC_ALL_STAGES,
+    RC_ALWAYS_RUN,
+    STAGE_STUDY_PLAN,
+    STAGE_REPLAY,
+    STAGE_VALIDATION,
+    STAGE_EVIDENCE,
+    STAGE_KNOWLEDGE,
+    STAGE_SYNTHESIS,
+    STAGE_REPOSITORY,
+    STAGE_REPORT,
+)
