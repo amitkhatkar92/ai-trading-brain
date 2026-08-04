@@ -195,6 +195,7 @@ from .pig_integration import (
 from .amls import AutonomousMarketLearningScheduler
 from .amls_config import AMLSConfig
 from .amls_models import (
+
     ALL_STAGES,
     STAGE_SNAPSHOT,
     STAGE_CLASSIFY,
@@ -210,6 +211,20 @@ from .amls_models import (
     PipelineState,
     PipelineStatistics,
     PipelineTelemetry,
+)
+from .dre_engine import DNAReinforcementEngine
+from .dre_config import DREConfig
+from .dre_models import (
+    DNAReinforcement,
+    DNAConfidenceUpdate,
+    DNAReinforcementHistory,
+    DREError,
+    DREInputError,
+    DREProcessingError,
+    OutcomeQuality,
+    ReinforcementEvidence,
+    ReinforcementStatistics,
+    ReinforcementType,
 )
 
 __all__ = [
@@ -355,4 +370,17 @@ __all__ = [
     "PipelineState",
     "PipelineStatistics",
     "PipelineTelemetry",
+    # O-002 — DNA Reinforcement Engine
+    "DNAReinforcementEngine",
+    "DREConfig",
+    "DNAReinforcement",
+    "DNAConfidenceUpdate",
+    "DNAReinforcementHistory",
+    "DREError",
+    "DREInputError",
+    "DREProcessingError",
+    "OutcomeQuality",
+    "ReinforcementEvidence",
+    "ReinforcementStatistics",
+    "ReinforcementType",
 ]
