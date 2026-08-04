@@ -7,6 +7,7 @@ MLS Phase 3: DNADiscoveryEngine.
 MLS Phase 4: DNAConsensusEngine.
 MLS Phase 5: PMCIEngine.
 MLS Phase 5A: MCIEngine.
+MLS Phase 5A.1: CDSEngine.
 MLS Phase 5B: CAPMCIEngine.
 
 Exports:
@@ -39,6 +40,11 @@ Phase 5 models:
 
 Phase 5A models:
     MarketContext, ContextComponent, ContextHistory, ContextDrift, ContextStatistics
+
+Phase 5A.1 models:
+    ContextualDNAScore, DNAContextContribution, DNAContextEvidence, DNAContextSimilarity,
+    DNAContextProfile, DNAContextHistory, CDSLibraryResult, DNAContextStatistics,
+    DNARelevance, ContextStabilityLabel
 
 Phase 5B models:
     CAPMCIResult, CAPMCIStatistics, ContextAdjustment
@@ -125,6 +131,21 @@ from .mcie_models import (
     MCIEError,
     MCIEInputError,
 )
+from .cds_engine import CDSEngine
+from .cds_models import (
+    CDSError,
+    CDSInputError,
+    CDSLibraryResult,
+    ContextStabilityLabel,
+    ContextualDNAScore,
+    DNAContextContribution,
+    DNAContextEvidence,
+    DNAContextHistory,
+    DNAContextProfile,
+    DNAContextSimilarity,
+    DNAContextStatistics,
+    DNARelevance,
+)
 from .ca_pmci_engine import CAPMCIEngine
 from .ca_pmci_models import (
     CAPMCIError,
@@ -209,6 +230,20 @@ __all__ = [
     "MarketContext",
     "MCIEError",
     "MCIEInputError",
+    # Phase 5A.1
+    "CDSEngine",
+    "CDSError",
+    "CDSInputError",
+    "CDSLibraryResult",
+    "ContextStabilityLabel",
+    "ContextualDNAScore",
+    "DNAContextContribution",
+    "DNAContextEvidence",
+    "DNAContextHistory",
+    "DNAContextProfile",
+    "DNAContextSimilarity",
+    "DNAContextStatistics",
+    "DNARelevance",
     # Phase 5B
     "CAPMCIEngine",
     "CAPMCIError",

@@ -178,6 +178,36 @@ class MLSConfig:
     # In-memory history buffer size
     mcie_max_history_size: int = 100
 
+    # ── Phase 5A.1: CDSEngine ─────────────────────────────────────────────────
+    # CDS dimension weights — must sum to 1.0
+    cds_w_regime:         float = 0.20
+    cds_w_sector:         float = 0.15
+    cds_w_volatility:     float = 0.15
+    cds_w_breadth:        float = 0.12
+    cds_w_liquidity:      float = 0.10
+    cds_w_institutional:  float = 0.10
+    cds_w_global:         float = 0.08
+    cds_w_freshness:      float = 0.05
+    cds_w_stability:      float = 0.03
+    cds_w_historical:     float = 0.02
+    # Relevance thresholds
+    cds_highly_relevant:  float = 0.75
+    cds_relevant:         float = 0.55
+    cds_neutral:          float = 0.40
+    cds_weak:             float = 0.25
+    cds_irrelevant:       float = 0.10
+    # Freshness decay window (days)
+    cds_freshness_days:   int   = 30
+    # In-memory context history size
+    cds_max_history_size: int   = 200
+    # Top-N historical analogues returned per query
+    cds_top_analogues:    int   = 5
+    # Context stability change thresholds — based on (1 - stability)
+    cds_stable_threshold:            float = 0.05
+    cds_changing_threshold:          float = 0.15
+    cds_rapidly_changing_threshold:  float = 0.25
+    cds_unstable_threshold:          float = 0.35
+
     # ── Phase 5B: CAPMCIEngine ────────────────────────────────────────────────
     # Context adjustment weights (max contribution per dimension = ±weight)
     ca_pmci_w_regime:       float = 0.15   # regime match max adjustment
