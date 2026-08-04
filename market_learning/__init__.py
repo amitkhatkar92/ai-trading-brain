@@ -184,6 +184,14 @@ from .pig_models import (
     PlatformIntelligence,
     PlatformRecommendationContext,
 )
+from .pig_integration import (
+    PIGCallRecord,
+    PIGInfluencePolicy,
+    PIGTelemetry,
+    PIGTradingAdapter,
+    pig_build_vote,
+    pig_enrich_signals,
+)
 
 __all__ = [
     # engines
@@ -303,4 +311,11 @@ __all__ = [
     "PlatformGatewaySymbolNotFoundError",
     "PlatformIntelligence",
     "PlatformRecommendationContext",
+    # R-001 Phase 2 — PIG Integration
+    "PIGCallRecord",
+    "PIGInfluencePolicy",
+    "PIGTelemetry",
+    "PIGTradingAdapter",
+    "pig_build_vote",
+    "pig_enrich_signals",
 ]

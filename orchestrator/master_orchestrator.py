@@ -284,6 +284,18 @@ class MasterOrchestrator:
         self.perf_tracker        = StrategyPerformanceTracker()
         # ── Q3: Regime → Strategy best-fit map (meta-learning mechanism 2)
         self.regime_strategy_map = RegimeStrategyMap()
+        # ── R-001 Phase 2: Platform Intelligence Gateway adapter ──────────────
+        try:
+            from market_learning.pig_integration import PIGTradingAdapter, PIGInfluencePolicy
+            from market_learning.mls_config import MLSConfig as _MLSConfig
+            _pig_cfg = _MLSConfig()
+            self.pig_adapter: Optional[PIGTradingAdapter] = PIGTradingAdapter(
+                policy=PIGInfluencePolicy.from_config(_pig_cfg),
+                config=_pig_cfg,
+            )
+        except Exception as _pig_init_exc:
+            log.warning("[Orchestrator] PIG adapter not loaded: %s", _pig_init_exc)
+            self.pig_adapter = None
         # ── Daily AI Self-Evaluation ──────────────────────────────
         self.self_evaluator      = DailyAISelfEvaluator()
 
@@ -1550,6 +1562,16 @@ class MasterOrchestrator:
         equity_signals  = self.equity_scanner.scan(snapshot, odm_directive=odm_directive)
         _t1 = _t.monotonic()
 
+        # R-001 Phase 2 Part 1: enrich equity signal conviction with institutional DNA
+        if self.pig_adapter is not None and equity_signals:
+            try:
+                from market_learning.pig_integration import pig_enrich_signals
+                equity_signals = pig_enrich_signals(
+                    equity_signals, self.pig_adapter, snapshot, self.pig_adapter._policy,
+                )
+            except Exception as _pig_oe:
+                log.debug("[PIG] Opportunity enrichment error: %s", _pig_oe)
+
         options_signals = self.options_opportunity.scan(snapshot)
         _t2 = _t.monotonic()
 
@@ -2497,6 +2519,35 @@ class MasterOrchestrator:
         """Run debate + decision for one signal.  Returns a summary row if trade executed."""
         log.info("── Layer 6–7: Debate & Decision for %s ──", signal.symbol)
         votes    = self.debate_system.run(signal, snapshot)
+
+        # R-001 Phase 2 Part 2: inject institutional DNA vote when PIG is available
+        _pig_pi = None
+        if self.pig_adapter is not None:
+            try:
+                from market_learning.pig_integration import pig_build_vote
+                _pig_pi = self.pig_adapter.query(signal.symbol, signal, snapshot)
+                if _pig_pi is not None:
+                    _pig_vote = pig_build_vote(_pig_pi, self.pig_adapter._policy)
+                    if _pig_vote is not None:
+                        votes = list(votes) + [_pig_vote]
+                        # Part 3 explainability: structured log with all 7 required fields
+                        log.info(
+                            "[PIGExplainability] symbol=%s raw_pmci=%.3f ca_pmci=%.3f "
+                            "cds=%.3f inst_confidence=%.3f evidence=%d "
+                            "dna_match=%.3f ctx_match=%.3f vote_score=%.2f",
+                            signal.symbol,
+                            float(getattr(_pig_pi, "raw_pmci", 0.0)),
+                            float(getattr(_pig_pi, "ca_pmci", 0.0)),
+                            float(getattr(_pig_pi, "cds_score", 0.0)),
+                            float(getattr(_pig_pi, "institutional_confidence", 0.0)),
+                            int(getattr(_pig_pi, "evidence_count", 0)),
+                            float(getattr(_pig_pi, "winner_dna_match", 0.0)),
+                            float(getattr(_pig_pi, "context_score", 0.0)),
+                            _pig_vote.score,
+                        )
+            except Exception as _pig_de:
+                log.debug("[PIG] Decision vote error for %s: %s", signal.symbol, _pig_de)
+
         decision = self.decision_engine.decide(signal, votes, snapshot)
 
         # ── Market Truth Governance ─────────────────────────────────────────

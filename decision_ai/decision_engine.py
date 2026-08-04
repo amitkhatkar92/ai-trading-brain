@@ -42,6 +42,8 @@ AGENT_WEIGHTS = {
     "RiskDebateAI":       0.25,
     "SentimentAI":        0.15,
     "RegimeDebateAI":     0.10,
+    # R-001 Phase 2: institutional DNA voice (additive; only present when PIG has data)
+    "InstitutionalDNAAI": 0.08,
 }
 
 

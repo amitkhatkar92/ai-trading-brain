@@ -237,6 +237,15 @@ class MLSConfig:
     pig_medium_threshold: float = 0.45   # CA-PMCI >= this -> MEDIUM quality signal
     pig_low_threshold:    float = 0.30   # CA-PMCI <= this -> LOW quality signal
 
+    # ── R-001 Phase 2: PIG integration influence policy ──────────────────────
+    pig_vote_weight:               float = 0.08   # DecisionEngine weight for InstitutionalDNAAI
+    pig_min_ca_pmci_for_vote:      float = 0.30   # min CA-PMCI to cast a vote; below → silent
+    pig_max_conviction_boost:      float = 1.0    # max additive boost to TradeSignal.confidence
+    pig_min_ca_pmci_for_boost:     float = 0.30   # min CA-PMCI to apply opportunity boost
+    pig_opportunity_boost_enabled: bool  = True   # enable Opportunity Engine enrichment
+    pig_decision_vote_enabled:     bool  = True   # enable Decision Engine vote injection
+    pig_telemetry_enabled:         bool  = True   # emit [PIGTelemetry] log lines
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
