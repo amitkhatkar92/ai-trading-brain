@@ -5,6 +5,7 @@ MLS Phase 1: MarketObserver.
 MLS Phase 2: PopulationClassifier.
 MLS Phase 3: DNADiscoveryEngine.
 MLS Phase 4: DNAConsensusEngine.
+MLS Phase 5: PMCIEngine.
 
 Exports:
     MarketObserver        — observation layer (Phase 1)
@@ -30,6 +31,9 @@ Phase 4 models:
     ConsensusDNA, ConsensusLibrary, ConsensusLevel, ConsensusState,
     ConfidenceEvolution, ConfidencePoint, DriftReport, DriftMeasurement,
     DriftType, DNAStability, ConsensusStatistics
+
+Phase 5 models:
+    PMCIResult, PMCIComponent, PMCIEvidence, PMCIBreakdown, PMCIStatistics
 
 Exceptions:
     TemporalContractViolation, MarketObserverError, SnapshotNotFoundError,
@@ -93,6 +97,16 @@ from .dna_consensus_models import (
     DriftType,
     ConsensusLibraryNotFoundError,
 )
+from .pmci_engine import PMCIEngine
+from .pmci_models import (
+    PMCIBreakdown,
+    PMCIComponent,
+    PMCIError,
+    PMCIEvidence,
+    PMCIInputError,
+    PMCIResult,
+    PMCIStatistics,
+)
 
 __all__ = [
     # engines
@@ -100,6 +114,7 @@ __all__ = [
     "PopulationClassifier",
     "DNADiscoveryEngine",
     "DNAConsensusEngine",
+    "PMCIEngine",
     "MLSConfig",
     # Phase 1
     "DailyMarketSnapshot",
@@ -148,4 +163,13 @@ __all__ = [
     "DriftReport",
     "DriftType",
     "ConsensusLibraryNotFoundError",
+    # Phase 5
+    "PMCIEngine",
+    "PMCIBreakdown",
+    "PMCIComponent",
+    "PMCIError",
+    "PMCIEvidence",
+    "PMCIInputError",
+    "PMCIResult",
+    "PMCIStatistics",
 ]

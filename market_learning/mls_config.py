@@ -132,6 +132,26 @@ class MLSConfig:
     consensus_w_confidence:   float = 0.10
     consensus_w_persistence:  float = 0.10
 
+    # ── Phase 5: PMCIEngine ────────────────────────────────────────────────────
+    # Positive component weights — must sum to 1.0
+    pmci_w_winner:    float = 0.35   # winner DNA alignment
+    pmci_w_evidence:  float = 0.20   # evidence strength (avg consensus_score)
+    pmci_w_regime:    float = 0.15   # cross-regime stability
+    pmci_w_sector:    float = 0.10   # cross-sector stability
+    pmci_w_trend:     float = 0.07   # confidence evolution (improving fraction)
+    pmci_w_freshness: float = 0.06   # DNA freshness (recency decay)
+    pmci_w_coverage:  float = 0.05   # knowledge coverage fraction
+    pmci_w_neutral:   float = 0.02   # neutral DNA alignment
+    # Loser penalty — applied as a discount on positive score (not in sum-to-1)
+    pmci_w_loser:     float = 0.25
+    # Freshness decay window
+    pmci_freshness_days:              int   = 30
+    # Feature alignment midpoint (assumes [0,1]-normalised features)
+    pmci_feature_midpoint:            float = 0.50
+    # Similarity classification thresholds
+    pmci_high_similarity_threshold:   float = 0.70
+    pmci_low_similarity_threshold:    float = 0.30
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
