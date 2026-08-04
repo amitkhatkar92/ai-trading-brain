@@ -9,6 +9,7 @@ MLS Phase 5: PMCIEngine.
 MLS Phase 5A: MCIEngine.
 MLS Phase 5A.1: CDSEngine.
 MLS Phase 5B: CAPMCIEngine.
+R-013: IDRRepository.
 
 Exports:
     MarketObserver        — observation layer (Phase 1)
@@ -48,6 +49,10 @@ Phase 5A.1 models:
 
 Phase 5B models:
     CAPMCIResult, CAPMCIStatistics, ContextAdjustment
+
+R-013 IDR models:
+    InstitutionalDNA, DNARevision, DNAEvidence, DNAHistory, DNAContext,
+    DNARepositoryStatistics
 
 Exceptions:
     TemporalContractViolation, MarketObserverError, SnapshotNotFoundError,
@@ -154,6 +159,19 @@ from .ca_pmci_models import (
     CAPMCIStatistics,
     ContextAdjustment,
 )
+from .idr_repository import IDRRepository
+from .idr_models import (
+    DNAContext,
+    DNAEvidence,
+    DNAHistory,
+    DNARepositoryStatistics,
+    DNARevision,
+    IDRError,
+    IDRIntegrityError,
+    IDRNotFoundError,
+    IDRVersionError,
+    InstitutionalDNA,
+)
 
 __all__ = [
     # engines
@@ -251,4 +269,16 @@ __all__ = [
     "CAPMCIResult",
     "CAPMCIStatistics",
     "ContextAdjustment",
+    # R-013 — IDRRepository
+    "IDRRepository",
+    "DNAContext",
+    "DNAEvidence",
+    "DNAHistory",
+    "DNARepositoryStatistics",
+    "DNARevision",
+    "IDRError",
+    "IDRIntegrityError",
+    "IDRNotFoundError",
+    "IDRVersionError",
+    "InstitutionalDNA",
 ]

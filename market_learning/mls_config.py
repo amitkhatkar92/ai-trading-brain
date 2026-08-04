@@ -222,6 +222,16 @@ class MLSConfig:
     ca_pmci_high_threshold: float = 0.70   # CA-PMCI ≥ this → high similarity
     ca_pmci_low_threshold:  float = 0.30   # CA-PMCI ≤ this → low similarity
 
+    # ── R-013: IDRRepository ──────────────────────────────────────────────────
+    idr_schema_version:          int   = 1      # current DB schema version
+    idr_max_evidence_per_dna:    int   = 500    # soft cap on evidence records per DNA
+    idr_max_history_per_dna:     int   = 1000   # soft cap on history points per DNA
+    idr_max_context_per_dna:     int   = 200    # soft cap on context snapshots per DNA
+    idr_backup_on_schema_change: bool  = True   # auto-backup before schema migration
+    idr_wal_mode:                bool  = True   # enable WAL journal mode
+    idr_min_confidence_active:   float = 0.0    # min confidence to include in list_active
+    idr_default_operator:        str   = "system"
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)
