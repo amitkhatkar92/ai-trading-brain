@@ -1,0 +1,1388 @@
+{
+  "universe": "NIFTY500",
+  "version": "1.0",
+  "description": "Bootstrapped from static universe on 2026-08-04",
+  "last_updated": "2026-08-04",
+  "constituents": [
+    {
+      "symbol": "RELIANCE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HDFCBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ICICIBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INFY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TCS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HCLTECH",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WIPRO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TECHM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AXISBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KOTAKBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SBIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BHARTIARTL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATASTEEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HINDALCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "JSWSTEEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ONGC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "COALINDIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NTPC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "POWERGRID",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ITC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NESTLEIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BAJFINANCE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HDFCLIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SBILIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MARUTI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATAMOTORS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "M&M",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "EICHERMOT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HEROMOTOCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DRREDDY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DIVISLAB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CIPLA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ASIANPAINT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TITAN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GRASIM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ADANIENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ADANIPORTS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATACONSUM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INDUSINDBK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BRITANNIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BPCL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TRENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "APOLLOHOSP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SHRIRAMFIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BANKBARODA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CANBK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PNB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "IDFCFIRSTB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "FEDERALBNK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BAJAJ-AUTO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TVSMOTORS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BOSCHLTD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MOTHERSON",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ZOMATO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NYKAA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PAYTM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "POLICYBZR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DMART",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VEDL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NMDC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SAIL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HINDZINC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NAUKRI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MPHASIS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LTIM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PERSISTENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "COFORGE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HAVELLS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VOLTAS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CROMPTON",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GODREJCP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DABUR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MARICO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "COLPAL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "EMAMILTD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PIDILITIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SRF",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AAVAS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MUTHOOTFIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CHOLAFIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MAXHEALTH",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "FORTIS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LALPATHLAB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "METROPOLIS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TORNTPHARM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AUROPHARMA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BIOCON",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LUPIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GLAND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LTTS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KPITTECH",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATACOMM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DLF",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GODREJPROP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "OBEROIRLTY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SIEMENS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ABB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CUMMINSIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "THERMAX",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HAL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "COCHINSHIP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NHPC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TORNTPOWER",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CESC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ADANIGREEN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATAPOWER",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ASHOKLEY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BHARATFORG",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "EXIDEIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TIINDIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BALKRISIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MRF",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "APOLLOTYRE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ZYDUSLIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ALKEM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "IPCA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ABBOTINDIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SANOFI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "IPCALAB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INDIANB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BANKINDIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "UCOBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "J&KBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KARURVYSYA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DCBBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "RBLBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HDFCAMC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MIRAE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ICICIGI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ICICIPRULI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NIACL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "STAR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PNBHOUSING",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LICHSGFIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CANFINHOME",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HOMEFIRST",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "IRFC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PFC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "REC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SOLARINDS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MAZDOCK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BHEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "IRCTC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CONCOR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "APLAPOLLO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "JINDALSTEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATACHEM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DEEPAKNTR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PIIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "UPL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ATUL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NAVINFLUOR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CLEAN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VINATI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "FINPIPE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ASTRAL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUPREMEIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KAYNES",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DIXON",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AMBER",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VGUARD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WHIRLPOOL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BLUESTAR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SYMPHONY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KANSAINER",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INDIGO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SPICEJET",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GMRAIRPORT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ZEEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUNTV",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PVR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INOXWIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUZLON",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CRISIL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BSE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MCX",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CDSL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ANGELONE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MOTILALOFS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LICI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "POLYCAB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "FINOLEX",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KEI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GMMPFAUDLR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KALYANKJIL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VEDANT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SHOPPERSSTOP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PCJEWELLER",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SENCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "JUBLFOOD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DEVYANI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WESTLIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "EASEMYTRIP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MAHINDCIE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WABCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUPRAJIT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ENDURANCE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MINDA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GABRIEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ESCORTS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "FORCEMOT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUNDRMFAST",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VSTIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ELGIEQUIP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KSBBLTD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GRINDWELL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CRAFTSMAN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HUDCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INDIAGRID",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KPRMILL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WELSPUNIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "VARDHACRLC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PAGEIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "RAYMOND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KKALPATAARU",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "PRESTIGE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BRIGADE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MACROTECH",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUNTECKRLTY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NUVOCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AMBUJACEM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ACCLTD",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "JKCEMENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "RAMCOCEM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    }
+  ]
+}

@@ -14,6 +14,8 @@ Exports:
     ScientificDirector     — apex scientific authority (Phase 3C)
     SDConfig               — ScientificDirector configuration (Phase 3C)
     ScientificJournal      — structured scientific memory (Phase 3C)
+    PointInTimeUniverseEngine — historical universe provider (R-006)
+    PTUEConfig             — PTUE configuration (R-006)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -236,6 +238,23 @@ __all__ = [
     "make_observation_id",
     "make_recommendation_id",
     "make_review_id",
+    # R-006 — PointInTimeUniverseEngine
+    "PointInTimeUniverseEngine",
+    "PTUEConfig",
+    "Constituent",
+    "UniverseVersion",
+    "HistoricalUniverse",
+    "UniverseStatistics",
+    "CoverageReport",
+    "PTUEError",
+    "UniverseNotFoundError",
+    "InvalidDateError",
+    "UNIVERSE_NIFTY500",
+    "UNIVERSE_NIFTY100",
+    "UNIVERSE_NIFTY50",
+    "SOURCE_HISTORY_FILE",
+    "SOURCE_STATIC_FALLBACK",
+    "SOURCE_EMPTY",
 ]
 from .research_coordinator import ResearchCoordinator
 from .rc_config import RCConfig
@@ -285,4 +304,23 @@ from .sd_models import (
     make_observation_id,
     make_recommendation_id,
     make_review_id,
+)
+# R-006 — Point-in-Time Universe Engine
+from .ptue import PointInTimeUniverseEngine
+from .ptue_config import PTUEConfig
+from .ptue_models import (
+    Constituent,
+    CoverageReport,
+    HistoricalUniverse,
+    InvalidDateError,
+    PTUEError,
+    SOURCE_EMPTY,
+    SOURCE_HISTORY_FILE,
+    SOURCE_STATIC_FALLBACK,
+    UNIVERSE_NIFTY100,
+    UNIVERSE_NIFTY50,
+    UNIVERSE_NIFTY500,
+    UniverseNotFoundError,
+    UniverseStatistics,
+    UniverseVersion,
 )

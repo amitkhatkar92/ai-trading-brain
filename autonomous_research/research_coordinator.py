@@ -101,6 +101,7 @@ class ResearchCoordinator:
         knowledge_provider=None,
         synthesizer=None,
         idr=None,
+        ptue=None,
         config: Optional[RCConfig] = None,
     ) -> None:
         self._planner             = planner
@@ -109,6 +110,7 @@ class ResearchCoordinator:
         self._knowledge_provider  = knowledge_provider
         self._synthesizer         = synthesizer
         self._idr                 = idr
+        self._ptue                = ptue
         self._config              = config or RCConfig()
         self._lock                = threading.Lock()
         self._history: List[Dict[str, Any]] = []
@@ -119,13 +121,14 @@ class ResearchCoordinator:
         self._last_successful_id: Optional[str] = None
         self._load_history()
         log.info(
-            "[RC] Initialised. planner=%s hyp=%s ev=%s kp=%s synth=%s idr=%s dry_run=%s",
+            "[RC] Initialised. planner=%s hyp=%s ev=%s kp=%s synth=%s idr=%s ptue=%s dry_run=%s",
             planner  is not None,
             hypothesis_registry is not None,
             evidence_validator  is not None,
             knowledge_provider  is not None,
             synthesizer         is not None,
             idr                 is not None,
+            ptue                is not None,
             self._config.dry_run,
         )
 
@@ -537,16 +540,41 @@ class ResearchCoordinator:
                 except Exception:
                     related_studies = []
 
+            # ── PTUE: resolve the point-in-time universe for this replay ────
+            ptue_universe = None
+            ptue_date     = None
+            ptue_source   = "NONE"
+            if self._ptue:
+                ptue_date = _resolve_replay_date(study_plan)
+                if ptue_date:
+                    try:
+                        ptue_universe = self._ptue.get_universe(ptue_date)
+                        ptue_source   = ptue_universe.source
+                        ctx["ptue_universe_date"]       = ptue_date
+                        ctx["ptue_universe_name"]       = ptue_universe.universe_name
+                        ctx["ptue_universe_symbols"]    = ptue_universe.symbols
+                        ctx["ptue_universe_count"]      = ptue_universe.effective_count
+                        ctx["ptue_universe_source"]     = ptue_source
+                        ctx["ptue_universe_is_fallback"]= ptue_universe.is_fallback
+                        ctx["ptue_universe_coverage"]   = ptue_universe.coverage
+                    except Exception as ptue_exc:
+                        log.warning("[RC] PTUE lookup failed for date %s: %s", ptue_date, ptue_exc)
+
             ctx["replay_ran"]           = True
             ctx["replay_studies_found"] = len(related_studies)
 
             stage.meta = {
                 "replay_summary_available": replay_summary is not None,
                 "related_studies":          len(related_studies),
+                "ptue_date":                ptue_date,
+                "ptue_source":              ptue_source,
+                "ptue_count":               ptue_universe.effective_count if ptue_universe else 0,
+                "ptue_is_fallback":         ptue_universe.is_fallback if ptue_universe else None,
             }
             stage.output_summary = (
                 f"Replay context loaded. related_studies={len(related_studies)} "
-                f"replay_summary={'yes' if replay_summary else 'none'}"
+                f"replay_summary={'yes' if replay_summary else 'none'} "
+                f"ptue={ptue_date or 'none'}({ptue_source})"
             )
             return self._succeed(stage)
         except Exception as exc:
@@ -749,10 +777,19 @@ class ResearchCoordinator:
     def _exec_report(self, ctx: Dict[str, Any], plan_id: str, study_type: str) -> ResearchStage:
         stage = self._begin(STAGE_REPORT)
         try:
+            ptue_line = (
+                f"  ptue_universe:          {ctx.get('ptue_universe_name', 'N/A')} "
+                f"date={ctx.get('ptue_universe_date', 'N/A')} "
+                f"count={ctx.get('ptue_universe_count', 0)} "
+                f"source={ctx.get('ptue_universe_source', 'NONE')} "
+                f"fallback={ctx.get('ptue_universe_is_fallback', 'N/A')} "
+                f"coverage={ctx.get('ptue_universe_coverage', 0.0):.2f}"
+            )
             lines = [
                 f"ResearchCoordinator report — plan={plan_id} type={study_type}",
                 f"  plan_validated:         {ctx.get('plan_validated', False)}",
                 f"  replay_ran:             {ctx.get('replay_ran', False)} ({ctx.get('replay_studies_found', 0)} studies)",
+                ptue_line,
                 f"  validation_outcome:     {ctx.get('validation_outcome', 'N/A')}",
                 f"  evidence_integrated:    {ctx.get('evidence_integrated', False)}",
                 f"  knowledge_snapshot:     {ctx.get('knowledge_snapshot_taken', False)} ({ctx.get('findings_count', 0)} findings)",
@@ -762,6 +799,7 @@ class ResearchCoordinator:
             stage.output_summary = " | ".join([
                 f"plan={'ok' if ctx.get('plan_validated') else 'skip'}",
                 f"replay={'ok' if ctx.get('replay_ran') else 'skip'}",
+                f"ptue={ctx.get('ptue_universe_date', 'none')}",
                 f"val={ctx.get('validation_outcome', 'N/A')}",
                 f"ev={'ok' if ctx.get('evidence_integrated') else 'skip'}",
                 f"kp={'ok' if ctx.get('knowledge_snapshot_taken') else 'skip'}",
@@ -919,3 +957,23 @@ class ResearchCoordinator:
             telemetry=tel,
             health=ResearchHealth(d.get("health", ResearchHealth.NO_DATA.value)),
         )
+
+
+# ─── PTUE integration helper ─────────────────────────────────────────────────
+
+def _resolve_replay_date(study_plan: Any) -> Optional[str]:
+    """Extract the replay start date from a StudyPlan's dataset requirements.
+
+    Returns the ISO date string of the first dataset requirement's start date,
+    or None if no date can be determined.
+    """
+    try:
+        reqs = getattr(study_plan, "dataset_requirements", None) or []
+        if reqs:
+            first_req = reqs[0]
+            date_start = getattr(first_req, "date_start", None)
+            if date_start and isinstance(date_start, str) and len(date_start) == 10:
+                return date_start
+    except Exception:
+        pass
+    return None

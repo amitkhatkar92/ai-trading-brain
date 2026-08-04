@@ -1,0 +1,308 @@
+{
+  "universe": "NIFTY50",
+  "version": "1.0",
+  "description": "Bootstrapped from static universe on 2026-08-04",
+  "last_updated": "2026-08-04",
+  "constituents": [
+    {
+      "symbol": "RELIANCE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HDFCBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ICICIBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INFY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TCS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HCLTECH",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "WIPRO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TECHM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "LT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "AXISBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "KOTAKBANK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SBIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BHARTIARTL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATASTEEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HINDALCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "JSWSTEEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ONGC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "COALINDIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NTPC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "POWERGRID",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ITC",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HINDUNILVR",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "NESTLEIND",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BAJFINANCE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BAJAJFINSV",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HDFCLIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SBILIFE",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "MARUTI",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATAMOTORS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "M&M",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "EICHERMOT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "HEROMOTOCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SUNPHARMA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DRREDDY",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "DIVISLAB",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "CIPLA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ASIANPAINT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TITAN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "GRASIM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ULTRACEMCO",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ADANIENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "ADANIPORTS",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TATACONSUM",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "INDUSINDBK",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BRITANNIA",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BPCL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "TRENT",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "BEL",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "APOLLOHOSP",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    },
+    {
+      "symbol": "SHRIRAMFIN",
+      "effective_from": "2020-01-01",
+      "effective_to": null,
+      "reason": "INITIAL"
+    }
+  ]
+}
