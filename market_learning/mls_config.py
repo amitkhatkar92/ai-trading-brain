@@ -178,6 +178,20 @@ class MLSConfig:
     # In-memory history buffer size
     mcie_max_history_size: int = 100
 
+    # ── Phase 5B: CAPMCIEngine ────────────────────────────────────────────────
+    # Context adjustment weights (max contribution per dimension = ±weight)
+    ca_pmci_w_regime:       float = 0.15   # regime match max adjustment
+    ca_pmci_w_volatility:   float = 0.10   # volatility match max adjustment
+    ca_pmci_w_sector:       float = 0.10   # sector match max adjustment
+    ca_pmci_w_stability:    float = 0.07   # context stability max adjustment
+    ca_pmci_w_freshness:    float = 0.05   # DNA freshness max adjustment
+    # Adjustment bounds
+    ca_pmci_max_single_adj: float = 0.15   # per-adjustment clamp ceiling
+    ca_pmci_max_total_adj:  float = 0.30   # total adjustment clamp ceiling
+    # Classification thresholds
+    ca_pmci_high_threshold: float = 0.70   # CA-PMCI ≥ this → high similarity
+    ca_pmci_low_threshold:  float = 0.30   # CA-PMCI ≤ this → low similarity
+
     def config_hash(self) -> str:
         """SHA-256[:16] of canonical JSON config — used in audit trail."""
         raw = json.dumps(dataclasses.asdict(self), sort_keys=True)

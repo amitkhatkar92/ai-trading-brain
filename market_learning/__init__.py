@@ -7,6 +7,7 @@ MLS Phase 3: DNADiscoveryEngine.
 MLS Phase 4: DNAConsensusEngine.
 MLS Phase 5: PMCIEngine.
 MLS Phase 5A: MCIEngine.
+MLS Phase 5B: CAPMCIEngine.
 
 Exports:
     MarketObserver        — observation layer (Phase 1)
@@ -38,6 +39,9 @@ Phase 5 models:
 
 Phase 5A models:
     MarketContext, ContextComponent, ContextHistory, ContextDrift, ContextStatistics
+
+Phase 5B models:
+    CAPMCIResult, CAPMCIStatistics, ContextAdjustment
 
 Exceptions:
     TemporalContractViolation, MarketObserverError, SnapshotNotFoundError,
@@ -121,6 +125,14 @@ from .mcie_models import (
     MCIEError,
     MCIEInputError,
 )
+from .ca_pmci_engine import CAPMCIEngine
+from .ca_pmci_models import (
+    CAPMCIError,
+    CAPMCIInputError,
+    CAPMCIResult,
+    CAPMCIStatistics,
+    ContextAdjustment,
+)
 
 __all__ = [
     # engines
@@ -130,6 +142,7 @@ __all__ = [
     "DNAConsensusEngine",
     "PMCIEngine",
     "MCIEngine",
+    "CAPMCIEngine",
     "MLSConfig",
     # Phase 1
     "DailyMarketSnapshot",
@@ -196,4 +209,11 @@ __all__ = [
     "MarketContext",
     "MCIEError",
     "MCIEInputError",
+    # Phase 5B
+    "CAPMCIEngine",
+    "CAPMCIError",
+    "CAPMCIInputError",
+    "CAPMCIResult",
+    "CAPMCIStatistics",
+    "ContextAdjustment",
 ]
