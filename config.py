@@ -354,6 +354,12 @@ NSE_HOLIDAYS: frozenset = frozenset({
 })
 
 
+# ─────────────────────────────────────────────
+# MLS Phase 6 — Autonomous Market Learning Scheduler
+# ─────────────────────────────────────────────
+AMLS_ENABLED: bool = True   # set False to disable without any behaviour change
+
+
 def is_nse_holiday(d: "_dt.date | None" = None) -> bool:
     """Return True if *d* (default: today) is a weekend or in the NSE holiday list."""
     _d = d or _dt.date.today()

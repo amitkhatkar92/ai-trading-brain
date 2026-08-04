@@ -296,6 +296,20 @@ class MasterOrchestrator:
         except Exception as _pig_init_exc:
             log.warning("[Orchestrator] PIG adapter not loaded: %s", _pig_init_exc)
             self.pig_adapter = None
+        # ── MLS Phase 6: Autonomous Market Learning Scheduler ────────────
+        try:
+            from market_learning.amls import AutonomousMarketLearningScheduler as _AMLS
+            from config import AMLS_ENABLED as _amls_enabled
+            if _amls_enabled:
+                self.amls = _AMLS(pig_adapter=self.pig_adapter)
+                log.info("[Orchestrator] AMLS ready (pig_adapter=%s)",
+                         self.pig_adapter is not None)
+            else:
+                self.amls = None
+                log.info("[Orchestrator] AMLS disabled (AMLS_ENABLED=False)")
+        except Exception as _amls_init_exc:
+            log.warning("[Orchestrator] AMLS not loaded: %s", _amls_init_exc)
+            self.amls = None
         # ── Daily AI Self-Evaluation ──────────────────────────────
         self.self_evaluator      = DailyAISelfEvaluator()
 
@@ -5242,6 +5256,27 @@ class MasterOrchestrator:
             _git_eod().emit_session_summary()
         except Exception as _inv_eod_exc:
             log.debug("[InvalidationEffectivenessReport] Skipped: %s", _inv_eod_exc)
+
+        # ── MLS Phase 6: Autonomous Market Learning Scheduler ─────────────
+        # Invoked exactly once per EOD cycle, after all production learning
+        # completes. Failure never aborts the EOD workflow.
+        try:
+            if getattr(self, "amls", None) is not None:
+                _amls_run = self.amls.run_pipeline()
+                _amls_tel = _amls_run.telemetry
+                log.info(
+                    "[AMLS] state=%s duration_ms=%.0f pipeline_version=phase6 "
+                    "dna_updates=%s repository_updates=%d pig_refresh=%s",
+                    _amls_run.state.value,
+                    _amls_run.total_duration_ms or 0.0,
+                    _amls_tel.dna_updated if _amls_tel else False,
+                    _amls_tel.repository_writes if _amls_tel else 0,
+                    _amls_tel.gateway_refreshed if _amls_tel else False,
+                )
+            else:
+                log.debug("[AMLS] Scheduler not available — skipping EOD pipeline.")
+        except Exception as _amls_eod_exc:
+            log.warning("[AMLS] EOD pipeline failed (non-critical): %s", _amls_eod_exc)
 
     # ──────────────────────────────────────────────────────────────────
     # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT
