@@ -296,19 +296,21 @@ class MasterOrchestrator:
         except Exception as _pig_init_exc:
             log.warning("[Orchestrator] PIG adapter not loaded: %s", _pig_init_exc)
             self.pig_adapter = None
-        # ── MLS Phase 6: Autonomous Market Learning Scheduler ────────────
+        # ── MarketLearningCoordinator (owns AMLS + DRE, resolves O-ADD-001) ──
         try:
+            from market_learning.market_learning_coordinator import MarketLearningCoordinator as _MLC
             from market_learning.amls import AutonomousMarketLearningScheduler as _AMLS
+            from market_learning.dre_engine import DNAReinforcementEngine as _DRE
             from config import AMLS_ENABLED as _amls_enabled
-            if _amls_enabled:
-                self.amls = _AMLS(pig_adapter=self.pig_adapter)
-                log.info("[Orchestrator] AMLS ready (pig_adapter=%s)",
-                         self.pig_adapter is not None)
-            else:
-                self.amls = None
-                log.info("[Orchestrator] AMLS disabled (AMLS_ENABLED=False)")
-        except Exception as _amls_init_exc:
-            log.warning("[Orchestrator] AMLS not loaded: %s", _amls_init_exc)
+            _amls_inst = _AMLS(pig_adapter=self.pig_adapter) if _amls_enabled else None
+            _dre_inst  = _DRE()
+            self.mlc  = _MLC(amls=_amls_inst, dre=_dre_inst, pig_adapter=self.pig_adapter)
+            self.amls = _amls_inst   # backward-compat alias
+            log.info("[Orchestrator] MarketLearningCoordinator ready (amls=%s dre=%s pig=%s)",
+                     _amls_inst is not None, True, self.pig_adapter is not None)
+        except Exception as _mlc_init_exc:
+            log.warning("[Orchestrator] MarketLearningCoordinator not loaded: %s", _mlc_init_exc)
+            self.mlc  = None
             self.amls = None
         # ── Daily AI Self-Evaluation ──────────────────────────────
         self.self_evaluator      = DailyAISelfEvaluator()
@@ -5257,26 +5259,27 @@ class MasterOrchestrator:
         except Exception as _inv_eod_exc:
             log.debug("[InvalidationEffectivenessReport] Skipped: %s", _inv_eod_exc)
 
-        # ── MLS Phase 6: Autonomous Market Learning Scheduler ─────────────
-        # Invoked exactly once per EOD cycle, after all production learning
-        # completes. Failure never aborts the EOD workflow.
+        # ── MarketLearningCoordinator — EOD learning pipeline ─────────────
+        # MLC owns AMLS + DRE + IDR refresh + PIG refresh (resolves O-ADD-001).
+        # Invoked once per EOD cycle. Failure never aborts the workflow.
         try:
-            if getattr(self, "amls", None) is not None:
-                _amls_run = self.amls.run_pipeline()
-                _amls_tel = _amls_run.telemetry
+            if getattr(self, "mlc", None) is not None:
+                _mlc_run = self.mlc.run_learning_pipeline(trades=trades)
+                _mlc_tel = _mlc_run.telemetry
                 log.info(
-                    "[AMLS] state=%s duration_ms=%.0f pipeline_version=phase6 "
-                    "dna_updates=%s repository_updates=%d pig_refresh=%s",
-                    _amls_run.state.value,
-                    _amls_run.total_duration_ms or 0.0,
-                    _amls_tel.dna_updated if _amls_tel else False,
-                    _amls_tel.repository_writes if _amls_tel else 0,
-                    _amls_tel.gateway_refreshed if _amls_tel else False,
+                    "[MLC] health=%s duration_ms=%.0f "
+                    "dna_updated=%s idr_writes=%d pig_refresh=%s dre_reinforced=%d",
+                    _mlc_run.health.value,
+                    _mlc_run.total_duration_ms or 0.0,
+                    _mlc_tel.dna_updated       if _mlc_tel else False,
+                    _mlc_tel.repository_updates if _mlc_tel else 0,
+                    _mlc_tel.gateway_refresh   if _mlc_tel else False,
+                    _mlc_tel.dna_reinforced    if _mlc_tel else 0,
                 )
             else:
-                log.debug("[AMLS] Scheduler not available — skipping EOD pipeline.")
-        except Exception as _amls_eod_exc:
-            log.warning("[AMLS] EOD pipeline failed (non-critical): %s", _amls_eod_exc)
+                log.debug("[MLC] MarketLearningCoordinator not available — skipping EOD pipeline.")
+        except Exception as _mlc_eod_exc:
+            log.warning("[MLC] EOD pipeline failed (non-critical): %s", _mlc_eod_exc)
 
     # ──────────────────────────────────────────────────────────────────
     # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT

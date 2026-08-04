@@ -215,6 +215,7 @@ from .amls_models import (
 from .dre_engine import DNAReinforcementEngine
 from .dre_config import DREConfig
 from .dre_models import (
+
     DNAReinforcement,
     DNAConfidenceUpdate,
     DNAReinforcementHistory,
@@ -226,6 +227,19 @@ from .dre_models import (
     ReinforcementStatistics,
     ReinforcementType,
 )
+from .mlc_config import MLCConfig
+from .mlc_models import (
+    LearningHealth,
+    LearningRun,
+    LearningSummary,
+    LearningStage,
+    LearningStageStatus,
+    LearningStageType,
+    LearningTelemetry,
+    MLCError,
+    MLCStageError,
+)
+from .market_learning_coordinator import MarketLearningCoordinator
 
 __all__ = [
     # engines
@@ -383,4 +397,16 @@ __all__ = [
     "ReinforcementEvidence",
     "ReinforcementStatistics",
     "ReinforcementType",
+    # MarketLearningCoordinator
+    "MarketLearningCoordinator",
+    "MLCConfig",
+    "LearningHealth",
+    "LearningRun",
+    "LearningSummary",
+    "LearningStage",
+    "LearningStageStatus",
+    "LearningStageType",
+    "LearningTelemetry",
+    "MLCError",
+    "MLCStageError",
 ]
