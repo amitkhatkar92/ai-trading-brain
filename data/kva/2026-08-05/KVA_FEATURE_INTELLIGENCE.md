@@ -13,7 +13,7 @@
 
 ### Which features are stable vs unstable across regimes?
 
-**Answer:** Most stable features across regimes (low variance): pcr_bullish(var=0.00000), event_count(var=0.00000), sector_flow_count(var=0.00000), regime_volatile(var=0.00000), mom_1d(var=0.00001). Most unstable (high variance): regime_bear(var=0.22222), vix_low(var=0.22222), regime_range(var=0.22222), regime_bull(var=0.22222), vix_high(var=0.22222).
+**Answer:** Most stable features across regimes (low variance): regime_volatile(var=0.00000), event_count(var=0.00000), pcr_bullish(var=0.00000), sector_flow_count(var=0.00000), mom_1d(var=0.00001). Most unstable (high variance): regime_range(var=0.22222), regime_bull(var=0.22222), vix_low(var=0.22222), regime_bear(var=0.22222), vix_high(var=0.22222).
 
 ### What hidden feature interactions drive edge performance?
 

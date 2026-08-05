@@ -52,3 +52,4 @@
 | C8 Failure Knowledge | 62.7 | PASS WITH OBSERVATIONS | Systematic post-mortem analysis framework not yet implemente |
 | C9 Reasoning Assessment | 66.6 | PASS WITH OBSERVATIONS | No major gaps |
 | C10 Scientific Integrity | 73.7 | PASS WITH OBSERVATIONS | Only 3 studies — more research cycles needed for replication |
+| C11 Emergent Intelligence | 72.8 | PASS WITH OBSERVATIONS | No major gaps |

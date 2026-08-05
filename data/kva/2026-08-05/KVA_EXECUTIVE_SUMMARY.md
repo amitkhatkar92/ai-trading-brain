@@ -7,9 +7,9 @@
 
 ## Certification: `PASS WITH OBSERVATIONS`
 
-**Certificate ID:** `KVA-A4E2F0E09D`  
-**Start:** 2026-08-05T15:47:47.714  
-**Finish:** 2026-08-05T15:47:47.976  
+**Certificate ID:** `KVA-6E76E78105`  
+**Start:** 2026-08-05T15:58:19.968  
+**Finish:** 2026-08-05T15:58:20.424  
 
 ## Knowledge Scorecard
 
@@ -17,12 +17,12 @@
 |-----------|-------|--------|
 | Institutional Knowledge Score | 54.3 | **PASS WITH OBSERVATIONS** |
 | DNA Quality Score | 85.7 | **PASS** |
-| Scientific Confidence | 69.4 | **PASS WITH OBSERVATIONS** |
+| Scientific Confidence | 70.2 | **PASS** |
 | Research Coverage | 30.0 | **FAIL** |
-| Knowledge Completeness | 63.4 | **PASS WITH OBSERVATIONS** |
-| Knowledge Explainability | 84.0 | **PASS** |
+| Knowledge Completeness | 64.2 | **PASS WITH OBSERVATIONS** |
+| Knowledge Explainability | 85.3 | **PASS** |
 | Reasoning Quality | 66.6 | **PASS WITH OBSERVATIONS** |
-| **Overall Rating** | 64.3 | **PASS WITH OBSERVATIONS** |
+| **Overall Rating** | 64.6 | **PASS WITH OBSERVATIONS** |
 
 ## Category Results
 
@@ -38,6 +38,7 @@
 | C8 Failure Knowledge | 62.7 | **PASS WITH OBSERVATIONS** | IDR: 0 retired DNA records. HypothesisRegistry: 0 hypotheses (0 rejected yet — s... |
 | C9 Reasoning Assessment | 66.6 | **PASS WITH OBSERVATIONS** | Current regime (as of 2026-04-02): range_market (confidence=0.18). Historical an... |
 | C10 Scientific Integrity | 73.7 | **PASS WITH OBSERVATIONS** | 259/259 edges (100%) have traceable entry conditions. All winner DNA (9 records)... |
+| C11 Emergent Intelligence | 72.8 | **PASS WITH OBSERVATIONS** | Most statistically surprising edge: EDG_MOMENT_100_EE0005 — "IF mom_5d > 0.006 A... |
 
 ## Knowledge Inputs
 
@@ -74,12 +75,12 @@
 
 **Q5:** Knowledge that changed through time: 133 edges show DECAYING status — their predictive power weakened. Regime confidence trends suggest market was predominantly RANGE_MARKET in recent period.
 
-**Q6:** IIOS can explain 259/259 edges with human-readable descriptions. Winner DNA explained via feature conditions and lift. Scientific integrity score: 84/100.
+**Q6:** IIOS can explain 259/259 edges with human-readable descriptions. Winner DNA explained via feature conditions and lift. Scientific integrity score: 85/100.
 
 **Q7:** 259/259 edges traced to raw entry conditions. All 9 winner DNA traced to study002a.
 
 **Q8:** IIOS has developed PARTIAL institutional knowledge. Evidence: 259 validated edges, 9 winner DNA, 3 scientific studies, 500 labelled feature records, 30-day live replay.
 
-**Q9:** IIOS is READY for knowledge-driven decision making. Score: 64.3/100. Primary blockers: (1) IDR empty, (2) loser DNA minimal.
+**Q9:** IIOS is READY for knowledge-driven decision making. Score: 64.6/100. Primary blockers: (1) IDR empty, (2) loser DNA minimal.
 
 **Q10:** ScientificDirector should study next: (1) Systematic loser DNA discovery (5-year underperformers), (2) Full HKAP 2015-2026 run, (3) Regime-conditional DNA validation, (4) Sector rotation cycle mapping, (5) Feature interaction mining (2+ feature combinations).
