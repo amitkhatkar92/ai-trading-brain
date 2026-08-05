@@ -47,13 +47,13 @@ CONTRADICTED: 'High-support edges are more reliable.' Low-support (n=10-19) avg 
 | Feature | Solo r | Solo Predictive Power | Role in Edges |
 |---------|--------|----------------------|---------------|
 | adx_score | 0.0000 | **WEAK** | Synergy amplifier |
-| rsi_norm | 0.0000 | **WEAK** | Synergy amplifier |
-| bb_position | 0.0000 | **WEAK** | Synergy amplifier |
-| hist_vol_20d | 0.0000 | **WEAK** | Synergy amplifier |
-| volume_ratio_raw | 0.0000 | **WEAK** | Synergy amplifier |
-| iv_rank | 0.0000 | **WEAK** | Synergy amplifier |
 | mom_10d | 0.0000 | **WEAK** | Synergy amplifier |
+| volume_ratio | 0.0000 | **WEAK** | Synergy amplifier |
 | gap_pct | 0.0000 | **WEAK** | Synergy amplifier |
+| volume_ratio_raw | 0.0000 | **WEAK** | Synergy amplifier |
+| mom_20d | 0.0000 | **WEAK** | Synergy amplifier |
+| rsi_norm | 0.0000 | **WEAK** | Synergy amplifier |
+| hist_vol_5d | 0.0000 | **WEAK** | Synergy amplifier |
 
 **Finding:** 'adx_score' (solo r=0.0000 — near-zero individual predictive power) becomes powerful in multi-condition edges: EDG_COMPOS_92_EE0002(oos=88.2%) combined with [breadth, global_bias, hist_vol_20d]; EDG_COMPOS_93_EE0003(oos=88.2%) combined with [breadth, global_bias, hist_vol_20d]. Total synergy-only features identified: 22.
 
@@ -80,7 +80,7 @@ Extreme selectivity is the strategy, not a limitation. Only 6 of 286 signals (2.
 *Evidence source: re001a / replay trades_approved_pct*
 
 ### Lesson 5
-Sector conviction is the most reliable precursor of winners. 'sect_conviction' is the top winner DNA feature (avg confidence=0.672 across 2 winner patterns). Verify sector supports the trade before entry.
+Sector conviction is the most reliable precursor of winners. 'sect_conviction' is the top winner DNA feature (avg confidence=0.672 across 8 winner patterns). Verify sector supports the trade before entry.
 
 *Evidence source: study002a / winner DNA analysis (2021-2025)*
 

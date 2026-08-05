@@ -9,21 +9,12 @@
 
 | Priority | Area | Gap | Recommendation |
 |----------|------|-----|----------------|
-| **HIGH** | HypothesisRegistry | No hypotheses registered — SD needs to generate hypotheses f | See recommendations |
-| **HIGH** | IDR | IDR has 0 DNA records — run full AMLS pipeline to populate | See recommendations |
-| **HIGH** | Loser Knowledge | Loser DNA corpus critically small (1 record) — systematic lo | See recommendations |
-| **HIGH** | Loser Knowledge | No cross-year loser validation possible with current data | See recommendations |
-| **HIGH** | Loser Knowledge | Only 1 loser DNA records — loser study required | See recommendations |
 | **MEDIUM** | DNA Knowledge | DNA contradiction mapping needs systematic IKN population | See recommendations |
 | **MEDIUM** | Discovery Knowledge | 17 promising edges need more support (n<20) | See recommendations |
 | **MEDIUM** | Failure Knowledge | Systematic post-mortem analysis framework not yet implemente | See recommendations |
 | **MEDIUM** | Failure Knowledge | Retired DNA documentation is minimal — needs structured less | See recommendations |
-| **MEDIUM** | Research Coverage | Only 3 studies — expand to 2015-2026 HKAP | See recommendations |
-| **MEDIUM** | Scientific Integrity | Only 3 studies — more research cycles needed for replication | See recommendations |
 | **MEDIUM** | Sector Intelligence | Limited sector diversity in feature records — expand univers | See recommendations |
-| **MEDIUM** | Winner DNA | Only 9 winner DNA — more discovery cycles needed | See recommendations |
-| **MEDIUM** | Winner Knowledge | Only 9 winner DNA records — more study cycles needed | See recommendations |
-| **LOW** | IKN | 3 orphan nodes in IKN — connect to study network | See recommendations |
+| **LOW** | IKN | 23 orphan nodes in IKN — connect to study network | See recommendations |
 
 ## Research Roadmap
 
@@ -42,8 +33,8 @@
 
 | Category | Score | Status | Key Gap |
 |----------|-------|--------|---------|
-| C1 Winner Knowledge | 68.0 | PASS WITH OBSERVATIONS | Only 9 winner DNA records — more study cycles needed |
-| C2 Loser Knowledge | 36.3 | FAIL | Loser DNA corpus critically small (1 record) — systematic lo |
+| C1 Winner Knowledge | 68.5 | PASS WITH OBSERVATIONS | No major gaps |
+| C2 Loser Knowledge | 74.8 | PASS WITH OBSERVATIONS | No major gaps |
 | C3 DNA Knowledge | 58.6 | PASS WITH OBSERVATIONS | DNA contradiction mapping needs systematic IKN population |
 | C4 Market Behaviour | 71.6 | PASS WITH OBSERVATIONS | No major gaps |
 | C5 Sector Intelligence | 59.6 | PASS WITH OBSERVATIONS | Limited sector diversity in feature records — expand univers |
@@ -51,5 +42,5 @@
 | C7 Discovery Knowledge | 68.7 | PASS WITH OBSERVATIONS | 17 promising edges need more support (n<20) |
 | C8 Failure Knowledge | 62.7 | PASS WITH OBSERVATIONS | Systematic post-mortem analysis framework not yet implemente |
 | C9 Reasoning Assessment | 66.6 | PASS WITH OBSERVATIONS | No major gaps |
-| C10 Scientific Integrity | 73.7 | PASS WITH OBSERVATIONS | Only 3 studies — more research cycles needed for replication |
+| C10 Scientific Integrity | 73.7 | PASS WITH OBSERVATIONS | No major gaps |
 | C11 Emergent Intelligence | 72.8 | PASS WITH OBSERVATIONS | No major gaps |

@@ -5,32 +5,32 @@
 **Version:** 1.0.0  
 
 
-**Category Score:** 36.3/100  
+**Category Score:** 74.8/100  
 
 ### Why do stocks underperform?
 
-**Answer:** Loser conditions identified: avg_conviction(n=3), atr_14(n=2)
+**Answer:** 51 loser DNA records from 2 studies. Top conditions: mom_5d(n=22), sector_flow_count(n=17), mom_20d(n=17), volume_spike(n=7), event_count(n=7)
 
-**Confidence:** 0.55  
-**Score:** 33.0/100
+**Confidence:** 0.80  
+**Score:** 79.0/100
 
 ### What DNA consistently predicts failure?
 
-**Answer:** 5 edges show OOS win rate < 40%. Worst: volume_spike > 0.000 → 59% hit rate
+**Answer:** 5 edges show OOS win rate < 40%. Worst: volume_spike > 0.000 → 59% hit rate. IDR loser DNA reinforces these failure conditions: 15 records.
 
-**Confidence:** 0.65  
-**Score:** 49.6/100
+**Confidence:** 0.85  
+**Score:** 77.2/100
 
 ### Which loser DNA survived all years?
 
-**Answer:** Loser DNA corpus is small (1 records). Cross-year loser validation requires additional HKAP cycles. Current finding: 1 loser DNA recorded from study002a (2021-2025).
+**Answer:** IDR loser DNA: 15 records from Study-003 (2021-2025). Cross-year validation pending — KMP Hypothesis H-CRITICAL-001. Earliest loser DNA covers 5-year period (2021-2025). Statistical derivation: 51 patterns analysed.
 
-**Confidence:** 0.20  
-**Score:** 26.2/100
+**Confidence:** 0.70  
+**Score:** 68.1/100
 
 ## Gap Assessment
 
-- Loser DNA records: **1** (critically insufficient)
+- Loser DNA records: **36** (critically insufficient)
 - Action required: systematic loser study using HKAP underperformer cohort
 - Without loser knowledge, IIOS cannot reason about asymmetric risk
 

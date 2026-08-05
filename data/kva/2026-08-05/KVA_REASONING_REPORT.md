@@ -19,13 +19,13 @@
 
 ### Can every knowledge claim be traced to evidence?
 
-**Answer:** 259/259 edges (100%) have traceable entry conditions. All winner DNA (9 records) traced to study002a (2021-2025). IKN SUPPORTED_BY relationships: 1.
+**Answer:** 259/259 edges (100%) have traceable entry conditions. All winner DNA (36 records) traced to study002a (2021-2025). IKN SUPPORTED_BY relationships: 1.
 
 **Confidence:** 0.75
 
 ### Is knowledge replicated across multiple studies?
 
-**Answer:** 3 studies contributed findings: re001a=1, study002=1, study002a=22. Walk-forward consistency ≥ 0.6: 138/259 edges (53%).
+**Answer:** 5 studies contributed findings: re001a=1, study002=1, study002a=22, ars_study_003=52, ars_study_h001=30. Walk-forward consistency ≥ 0.6: 138/259 edges (53%).
 
 **Confidence:** 0.70
 

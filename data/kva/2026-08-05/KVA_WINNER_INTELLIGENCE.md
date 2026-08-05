@@ -5,16 +5,16 @@
 **Version:** 1.0.0  
 
 
-**Category Score:** 68.0/100  
+**Category Score:** 68.5/100  
 
 ### What characteristics consistently precede winners?
 
-**Answer:** 7 distinct features found in winner conditions. Top: sect_conviction(conf=0.67,cnt=2), close_pos(conf=0.54,cnt=3), sect_part5d(conf=0.51,cnt=2), atr_14(conf=0.46,cnt=9), mom_5d(conf=0.46,cnt=8)
+**Answer:** 7 distinct features found in winner conditions. Top: sect_conviction(conf=0.67,cnt=8), close_pos(conf=0.54,cnt=12), sect_part5d(conf=0.51,cnt=8), atr_14(conf=0.46,cnt=36), mom_5d(conf=0.46,cnt=32)
 
 **Confidence:** 0.53  
-**Evidence:** 9 winner DNA records from study002a  
+**Evidence:** 36 winner DNA records from study002a  
 **Studies:** study002a  
-**Score:** 67.2/100
+**Score:** 68.4/100
 
 ### Which characteristics became stronger over time?
 
@@ -47,15 +47,42 @@
 | study002a.winner_dna.6 | 0.3064 | 1.29 |
 | study002a.winner_dna.7 | 0.3258 | 1.3721 |
 | study002a.winner_dna.8 | 0.2727 | 1.1484 |
+| ars_study_003.winner_dna.0 | 0.6111 | 2.5733 |
+| ars_study_003.winner_dna.1 | 0.7333 | 3.088 |
+| ars_study_003.winner_dna.2 | 0.5556 | 2.3394 |
+| ars_study_003.winner_dna.3 | 0.619 | 2.6067 |
+| ars_study_003.winner_dna.4 | 0.395 | 1.6631 |
+| ars_study_003.winner_dna.5 | 0.3599 | 1.5156 |
+| ars_study_003.winner_dna.6 | 0.3064 | 1.29 |
+| ars_study_003.winner_dna.7 | 0.3258 | 1.3721 |
+| ars_study_003.winner_dna.8 | 0.2727 | 1.1484 |
+| ars_study_003.winner_dna.9 | 0.6111 | 2.5733 |
+| ars_study_003.winner_dna.10 | 0.7333 | 3.088 |
+| ars_study_003.winner_dna.11 | 0.5556 | 2.3394 |
+| ars_study_003.winner_dna.12 | 0.619 | 2.6067 |
+| ars_study_003.winner_dna.13 | 0.395 | 1.6631 |
+| ars_study_003.winner_dna.14 | 0.3599 | 1.5156 |
+| ars_study_003.winner_dna.15 | 0.3064 | 1.29 |
+| ars_study_003.winner_dna.16 | 0.3258 | 1.3721 |
+| ars_study_003.winner_dna.17 | 0.2727 | 1.1484 |
+| ars_study_003.winner_dna.18 | 0.6111 | 2.5733 |
+| ars_study_003.winner_dna.19 | 0.7333 | 3.088 |
+| ars_study_003.winner_dna.20 | 0.5556 | 2.3394 |
+| ars_study_003.winner_dna.21 | 0.619 | 2.6067 |
+| ars_study_003.winner_dna.22 | 0.395 | 1.6631 |
+| ars_study_003.winner_dna.23 | 0.3599 | 1.5156 |
+| ars_study_003.winner_dna.24 | 0.3064 | 1.29 |
+| ars_study_003.winner_dna.25 | 0.3258 | 1.3721 |
+| ars_study_003.winner_dna.26 | 0.2727 | 1.1484 |
 
 ## Winner Conditions
 
 | Feature | Avg Confidence | Occurrence |
 |---------|----------------|------------|
-| sect_conviction | 0.6722 | 2 |
-| close_pos | 0.5382 | 3 |
-| sect_part5d | 0.5070 | 2 |
-| atr_14 | 0.4643 | 9 |
-| mom_5d | 0.4618 | 8 |
-| intra_range | 0.4505 | 18 |
-| avg_conviction | 0.3332 | 2 |
+| sect_conviction | 0.6722 | 8 |
+| close_pos | 0.5382 | 12 |
+| sect_part5d | 0.5070 | 8 |
+| atr_14 | 0.4643 | 36 |
+| mom_5d | 0.4618 | 32 |
+| intra_range | 0.4505 | 72 |
+| avg_conviction | 0.3332 | 8 |

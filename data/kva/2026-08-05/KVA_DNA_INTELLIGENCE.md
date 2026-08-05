@@ -17,7 +17,7 @@
 
 ### Which DNA evolved?
 
-**Answer:** IKN records 1 EVOLVED_TO relationships. Total DNA nodes in IKN: 2. DNA evolution tracking is operational through IKN versioning.
+**Answer:** IKN records 1 EVOLVED_TO relationships. Total DNA nodes in IKN: 22. DNA evolution tracking is operational through IKN versioning.
 
 ### Which DNA contradicts another DNA?
 
