@@ -1,0 +1,565 @@
+{
+  "study": "ars_study_irp002",
+  "study_id": "ars_study_irp002",
+  "executed_at": "2026-08-06T10:29:30",
+  "hypothesis_id": "IRP-002",
+  "n_observations": 500,
+  "date_range": {
+    "start": "2025-01-01",
+    "end": "2026-12-31"
+  },
+  "description": "IRP-002 Symmetric Cross-Year DNA Validation \u2014 Winner DNA vs Loser DNA",
+  "stage4_winner_dna": {
+    "dna_patterns": [
+      {
+        "pattern_id": "W01",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range <= 0.0432",
+          "intra_range <= 0.005",
+          "mom_5d > -0.0606",
+          "sect_conviction > 0.0507"
+        ],
+        "train_lift": 2.7056,
+        "test_lift": 2.5733
+      },
+      {
+        "pattern_id": "W02",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range <= 0.0432",
+          "intra_range > 0.005",
+          "close_pos > 0.9868",
+          "sect_conviction > 0.5001"
+        ],
+        "train_lift": 2.6981,
+        "test_lift": 3.088
+      },
+      {
+        "pattern_id": "W03",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range > 0.0432",
+          "mom_5d > -0.0651",
+          "close_pos > 0.9964",
+          "mom_5d > 0.0548"
+        ],
+        "train_lift": 2.5619,
+        "test_lift": 2.3394
+      },
+      {
+        "pattern_id": "W04",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range > 0.0593",
+          "sect_part5d <= 0.0516"
+        ],
+        "train_lift": 2.0821,
+        "test_lift": 2.6067
+      },
+      {
+        "pattern_id": "W05",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range > 0.0593",
+          "sect_part5d > 0.0516"
+        ],
+        "train_lift": 1.7433,
+        "test_lift": 1.6631
+      },
+      {
+        "pattern_id": "W06",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range <= 0.0593",
+          "avg_conviction > 0.0002"
+        ],
+        "train_lift": 1.491,
+        "test_lift": 1.5156
+      },
+      {
+        "pattern_id": "W07",
+        "conditions": [
+          "atr_14 <= 0.0289",
+          "intra_range > 0.0242",
+          "intra_range > 0.0385",
+          "avg_conviction <= 0.172",
+          "intra_range > 0.0532"
+        ],
+        "train_lift": 1.4668,
+        "test_lift": 1.29
+      },
+      {
+        "pattern_id": "W08",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range > 0.0432",
+          "mom_5d > -0.0651",
+          "close_pos <= 0.9964",
+          "intra_range > 0.0687"
+        ],
+        "train_lift": 1.3988,
+        "test_lift": 1.3721
+      },
+      {
+        "pattern_id": "W09",
+        "conditions": [
+          "atr_14 > 0.0289",
+          "intra_range <= 0.0432",
+          "intra_range <= 0.005",
+          "mom_5d <= -0.0606"
+        ],
+        "train_lift": 1.3104,
+        "test_lift": 1.1484
+      }
+    ]
+  },
+  "stage5_loser_dna": {
+    "loser_dna_patterns": []
+  },
+  "stage3_ranking": {
+    "full_ranking": [],
+    "method": "IRP-002 method review"
+  },
+  "irp002_validation": {
+    "training_year": "2025",
+    "validation_year": "2026",
+    "winner_patterns_tested": 9,
+    "individual_validated": 0,
+    "individual_partial": 10,
+    "individual_rejected": 3,
+    "individual_nodata": 11,
+    "winner_avg_lift": 1.085854023590229,
+    "loser_avg_lift": 1.0496,
+    "lift_delta": 0.03625402359022889,
+    "winner_survival": 0.7692307692307693,
+    "loser_survival": 0.8333333333333334,
+    "individual_results": [
+      {
+        "condition": "intra_range <= 0.0432",
+        "feature": "intra_range",
+        "pattern_id": "W01",
+        "method": "feature_match",
+        "hr_train": 0.3112244897959184,
+        "hr_valid": 0.34507042253521125,
+        "lift_valid": 1.026995305164319,
+        "stability": 0.9019158683881716,
+        "chi_sq_p": 1.0,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range <= 0.005",
+        "feature": "intra_range",
+        "pattern_id": "W01",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "mom_5d > -0.0606",
+        "feature": "mom_5d",
+        "pattern_id": "W01",
+        "method": "feature_match",
+        "hr_train": 0.32105263157894737,
+        "hr_valid": 0.3485915492957746,
+        "lift_valid": 1.0374748490945673,
+        "stability": 0.9209994683678895,
+        "chi_sq_p": 0.2207426059730465,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "sect_conviction > 0.0507",
+        "feature": "sect_conviction",
+        "pattern_id": "W01",
+        "method": "feature_match",
+        "hr_train": 0.3235294117647059,
+        "hr_valid": 0.3684210526315789,
+        "lift_valid": 1.0964912280701753,
+        "stability": 0.8781512605042018,
+        "chi_sq_p": 0.6944621864423564,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range > 0.005",
+        "feature": "intra_range",
+        "pattern_id": "W02",
+        "method": "feature_match",
+        "hr_train": 0.3076923076923077,
+        "hr_valid": 0.3593220338983051,
+        "lift_valid": 1.0694108151735269,
+        "stability": 0.8563134978229319,
+        "chi_sq_p": 0.6827073267243948,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "close_pos > 0.9868",
+        "feature": "close_pos",
+        "pattern_id": "W02",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "sect_conviction > 0.5001",
+        "feature": "sect_conviction",
+        "pattern_id": "W02",
+        "method": "feature_match",
+        "hr_train": 0.3225806451612903,
+        "hr_valid": 0.3170731707317073,
+        "lift_valid": 0.9436701509872241,
+        "stability": 0.9829268292682927,
+        "chi_sq_p": 0.9460220526865692,
+        "verdict": "REJECTED"
+      },
+      {
+        "condition": "intra_range > 0.0432",
+        "feature": "intra_range",
+        "pattern_id": "W03",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "mom_5d > -0.0651",
+        "feature": "mom_5d",
+        "pattern_id": "W03",
+        "method": "feature_match",
+        "hr_train": 0.3177083333333333,
+        "hr_valid": 0.35294117647058826,
+        "lift_valid": 1.050420168067227,
+        "stability": 0.9001736111111109,
+        "chi_sq_p": 0.41634906452001474,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "close_pos > 0.9964",
+        "feature": "close_pos",
+        "pattern_id": "W03",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "mom_5d > 0.0548",
+        "feature": "mom_5d",
+        "pattern_id": "W03",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "mom_5d <= -0.0651",
+        "feature": "mom_5d",
+        "pattern_id": "W04",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "intra_range > 0.0593",
+        "feature": "intra_range",
+        "pattern_id": "W04",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "sect_part5d <= 0.0516",
+        "feature": "sect_part5d",
+        "pattern_id": "W04",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "sect_part5d > 0.0516",
+        "feature": "sect_part5d",
+        "pattern_id": "W05",
+        "method": "feature_match",
+        "hr_train": 0.3112244897959184,
+        "hr_valid": 0.3623693379790941,
+        "lift_valid": 1.0784801725568276,
+        "stability": 0.8588598901098901,
+        "chi_sq_p": 1.0,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range <= 0.0593",
+        "feature": "intra_range",
+        "pattern_id": "W06",
+        "method": "feature_match",
+        "hr_train": 0.3112244897959184,
+        "hr_valid": 0.3488372093023256,
+        "lift_valid": 1.0382059800664452,
+        "stability": 0.8921768707482993,
+        "chi_sq_p": 1.0,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "avg_conviction > 0.0002",
+        "feature": "avg_conviction",
+        "pattern_id": "W06",
+        "method": "feature_match",
+        "hr_train": 0.3112244897959184,
+        "hr_valid": 0.3593220338983051,
+        "lift_valid": 1.0694108151735269,
+        "stability": 0.8661436272622257,
+        "chi_sq_p": 1.0,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range > 0.0242",
+        "feature": "intra_range",
+        "pattern_id": "W07",
+        "method": "feature_match",
+        "hr_train": 0.2,
+        "hr_valid": 0.3963963963963964,
+        "lift_valid": 1.1797511797511797,
+        "stability": 0.5045454545454546,
+        "chi_sq_p": 0.37945315249227296,
+        "verdict": "REJECTED"
+      },
+      {
+        "condition": "intra_range > 0.0385",
+        "feature": "intra_range",
+        "pattern_id": "W07",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "avg_conviction <= 0.172",
+        "feature": "avg_conviction",
+        "pattern_id": "W07",
+        "method": "feature_match",
+        "hr_train": 0.3709677419354839,
+        "hr_valid": 0.4326923076923077,
+        "lift_valid": 1.2877747252747251,
+        "stability": 0.857347670250896,
+        "chi_sq_p": 0.2878104013889844,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range > 0.0532",
+        "feature": "intra_range",
+        "pattern_id": "W07",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "close_pos <= 0.9964",
+        "feature": "close_pos",
+        "pattern_id": "W08",
+        "method": "feature_match",
+        "hr_train": 0.3112244897959184,
+        "hr_valid": 0.3519736842105263,
+        "lift_valid": 1.0475407268170425,
+        "stability": 0.8842265878313942,
+        "chi_sq_p": 1.0,
+        "verdict": "PARTIALLY_VALIDATED"
+      },
+      {
+        "condition": "intra_range > 0.0687",
+        "feature": "intra_range",
+        "pattern_id": "W08",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "stability": 0.0,
+        "chi_sq_p": 1.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "condition": "mom_5d <= -0.0606",
+        "feature": "mom_5d",
+        "pattern_id": "W09",
+        "method": "feature_match",
+        "hr_train": 0.0,
+        "hr_valid": 0.4,
+        "lift_valid": 1.1904761904761905,
+        "stability": 0.0,
+        "chi_sq_p": 0.2207426059730465,
+        "verdict": "REJECTED"
+      }
+    ],
+    "compound_results": [
+      {
+        "pattern_id": "W01",
+        "conditions_available": [
+          "intra_range <= 0.0432",
+          "intra_range <= 0.005",
+          "mom_5d > -0.0606",
+          "sect_conviction > 0.0507"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W02",
+        "conditions_available": [
+          "intra_range <= 0.0432",
+          "intra_range > 0.005",
+          "close_pos > 0.9868",
+          "sect_conviction > 0.5001"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W03",
+        "conditions_available": [
+          "intra_range > 0.0432",
+          "mom_5d > -0.0651",
+          "close_pos > 0.9964",
+          "mom_5d > 0.0548"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W04",
+        "conditions_available": [
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range > 0.0593",
+          "sect_part5d <= 0.0516"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W05",
+        "conditions_available": [
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range > 0.0593",
+          "sect_part5d > 0.0516"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W06",
+        "conditions_available": [
+          "intra_range > 0.0432",
+          "mom_5d <= -0.0651",
+          "intra_range <= 0.0593",
+          "avg_conviction > 0.0002"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W07",
+        "conditions_available": [
+          "intra_range > 0.0242",
+          "intra_range > 0.0385",
+          "avg_conviction <= 0.172",
+          "intra_range > 0.0532"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W08",
+        "conditions_available": [
+          "intra_range > 0.0432",
+          "mom_5d > -0.0651",
+          "close_pos <= 0.9964",
+          "intra_range > 0.0687"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      },
+      {
+        "pattern_id": "W09",
+        "conditions_available": [
+          "intra_range <= 0.0432",
+          "intra_range <= 0.005",
+          "mom_5d <= -0.0606"
+        ],
+        "atr14_missing": true,
+        "hr_train": 0.0,
+        "hr_valid": 0.0,
+        "lift_valid": 0.0,
+        "verdict": "INSUFFICIENT_DATA"
+      }
+    ]
+  },
+  "kmp_metadata": {
+    "generated_by": "IRP-002",
+    "generated_at": "2026-08-06T10:29:30"
+  }
+}
