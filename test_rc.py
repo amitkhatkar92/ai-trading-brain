@@ -88,6 +88,7 @@ from autonomous_research.rc_models import (
     STAGE_REPLAY,
     STAGE_VALIDATION,
     STAGE_EVIDENCE,
+    STAGE_EVOLUTION,
     STAGE_KNOWLEDGE,
     STAGE_SYNTHESIS,
     STAGE_REPOSITORY,
@@ -232,10 +233,11 @@ def suite_stage_constants(r: TestResult) -> None:
     r.ok("T006 STAGE_SYNTHESIS value",     STAGE_SYNTHESIS     == "cross_study_synthesis")
     r.ok("T007 STAGE_REPOSITORY value",    STAGE_REPOSITORY    == "repository_update")
     r.ok("T008 STAGE_REPORT value",        STAGE_REPORT        == "research_report")
-    r.ok("T009 RC_ALL_STAGES length",      len(RC_ALL_STAGES)  == 9)
+    r.ok("T009 RC_ALL_STAGES length",      len(RC_ALL_STAGES)  == 10)
     r.ok("T010 RC_ALL_STAGES order[0]",    RC_ALL_STAGES[0]    == STAGE_STUDY_PLAN)
-    r.ok("T011 RC_ALL_STAGES order[-1]",   RC_ALL_STAGES[-1]   == STAGE_REPORT)
+    r.ok("T011 RC_ALL_STAGES order[-1]",   RC_ALL_STAGES[-1]   == STAGE_EVOLUTION)
     r.ok("T012 REPORT in RC_ALWAYS_RUN",   STAGE_REPORT in RC_ALWAYS_RUN)
+    r.ok("T013b EVOLUTION in RC_ALWAYS_RUN", STAGE_EVOLUTION in RC_ALWAYS_RUN)
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -518,7 +520,7 @@ def suite_happy_path(r: TestResult) -> None:
     r.ok("T107 run_id set",              run.run_id.startswith("rc-"))
     r.ok("T108 study_plan_id",           run.study_plan_id == "SP-TEST0001")
     r.ok("T109 date set",                bool(run.date))
-    r.ok("T110 stages count 9",          len(run.stages) == 9)
+    r.ok("T110 stages count 10",          len(run.stages) == 10)
     r.ok("T111 health HEALTHY",          run.health == ResearchHealth.HEALTHY)
     r.ok("T112 telemetry not None",      run.telemetry is not None)
 
@@ -652,15 +654,17 @@ def suite_stage_toggles(r: TestResult) -> None:
     r.ok("T137 repository disabled â†’ SKIPPED",
          _disabled("repository_update_enabled", STAGE_REPOSITORY).state == ResearchStageState.SKIPPED)
 
-    # All stages disabled (except always-run report)
+    # All stages disabled (except always-run report + evolution)
     rc_all_off = ResearchCoordinator(config=RCConfig(
         study_plan_enabled=False, replay_enabled=False, validation_enabled=False,
+        methodology_audit_enabled=False,
         evidence_integration_enabled=False, knowledge_integration_enabled=False,
-        synthesis_enabled=False, repository_update_enabled=False, dry_run=True,
+        synthesis_enabled=False, repository_update_enabled=False,
+        scientific_evolution_enabled=False, dry_run=True,
     ))
     run_all_off = rc_all_off.run_research(_make_mock_plan())
     skipped_count = sum(1 for s in run_all_off.stages if s.state == ResearchStageState.SKIPPED)
-    r.ok("T138 all disabled â†’ 7 SKIPPED", skipped_count == 7)
+    r.ok("T138 all disabled â†’ 9 SKIPPED", skipped_count == 9)
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•

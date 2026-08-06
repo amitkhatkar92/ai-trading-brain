@@ -51,4 +51,6 @@ class RCConfig:
     knowledge_integration_enabled:  bool = True
     synthesis_enabled:              bool = True
     repository_update_enabled:      bool = True
+    scientific_evolution_enabled:   bool = True   # Phase 4: SFR+DQA after every study
+    sfr_report_path:                str  = "data/ars/sfr"
     dry_run:                        bool = False

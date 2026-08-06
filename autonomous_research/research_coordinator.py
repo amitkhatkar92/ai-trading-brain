@@ -51,6 +51,7 @@ from .rc_models import (
     RC_ALL_STAGES,
     STAGE_AUDIT,
     STAGE_EVIDENCE,
+    STAGE_EVOLUTION,
     STAGE_KNOWLEDGE,
     STAGE_REPLAY,
     STAGE_REPORT,
@@ -101,6 +102,8 @@ class ResearchCoordinator:
         evidence_validator=None,
         knowledge_provider=None,
         synthesizer=None,
+        gap_detector=None,
+        roadmap_manager=None,
         idr=None,
         ptue=None,
         config: Optional[RCConfig] = None,
@@ -110,6 +113,8 @@ class ResearchCoordinator:
         self._evidence_validator  = evidence_validator
         self._knowledge_provider  = knowledge_provider
         self._synthesizer         = synthesizer
+        self._gap_detector        = gap_detector
+        self._roadmap_manager     = roadmap_manager
         self._idr                 = idr
         self._ptue                = ptue
         self._config              = config or RCConfig()
@@ -185,6 +190,10 @@ class ResearchCoordinator:
             "contradictions_detected":  0,
             "repository_updated":       False,
             "idr_total_active_dna":     0,
+            "scientific_evolution_ran": False,
+            "dqa_score":                None,
+            "dqa_classification":       "NOT_RUN",
+            "next_program_id":          None,
         }
 
         # ── stage dispatch ──────────────────────────────────────────────────
@@ -465,6 +474,8 @@ class ResearchCoordinator:
         if stage_name == STAGE_REPORT:
             plan_id = getattr(study_plan, "plan_id", "unknown")
             return self._exec_report(ctx, plan_id, str(getattr(study_plan, "study_type", "UNKNOWN")))
+        if stage_name == STAGE_EVOLUTION:
+            return self._exec_scientific_evolution(study_plan, ctx)
         raise RCError(f"Unknown stage name: {stage_name}")
 
     # ─── individual stage implementations ───────────────────────────────────
@@ -818,6 +829,46 @@ class ResearchCoordinator:
         except Exception as exc:
             return self._fail(stage, exc)
 
+    def _exec_scientific_evolution(
+        self, study_plan: Any, ctx: Dict[str, Any]
+    ) -> ResearchStage:
+        """
+        Stage 10: Scientific Evolution — runs automatically after every study.
+
+        Calls ScientificFindingsReview which reuses:
+          GapDetector, RoadmapManager, HypothesisRegistry, CrossStudySynthesizer,
+          ScientificJournal, DataQualityAssessor.
+
+        Writes 4 governance reports to data/ars/sfr/{date}/.
+        """
+        stage = self._begin(STAGE_EVOLUTION)
+        if not self._config.scientific_evolution_enabled:
+            return self._skip(stage, "scientific_evolution_enabled=False")
+        try:
+            from .scientific_findings_review import ScientificFindingsReview  # noqa: PLC0415
+            from pathlib import Path as _Path  # noqa: PLC0415
+            sfr = ScientificFindingsReview(
+                knowledge_provider=self._knowledge_provider,
+                hypothesis_registry=self._hypothesis_registry,
+                synthesizer=self._synthesizer,
+                gap_detector=self._gap_detector,
+                roadmap_manager=self._roadmap_manager,
+                report_dir=_Path(self._config.sfr_report_path),
+                dry_run=self._config.dry_run,
+            )
+            result = sfr.run(study_plan, ctx)
+            ctx["scientific_evolution_ran"] = True
+            ctx["dqa_score"]               = round(result.dqa_result.overall_score, 1)
+            ctx["dqa_classification"]      = result.dqa_result.classification.value
+            ctx["next_program_id"]         = result.next_program.program_id if result.next_program else None
+            stage.meta          = result.to_dict()
+            stage.output_summary = f"Evolution: {result.summary_line}"
+            log.info("[RC] Scientific Evolution complete: %s", result.summary_line)
+            return self._succeed(stage)
+        except Exception as exc:
+            ctx["dqa_classification"] = "ERROR"
+            return self._fail(stage, exc)
+
     def _exec_report(self, ctx: Dict[str, Any], plan_id: str, study_type: str) -> ResearchStage:
         stage = self._begin(STAGE_REPORT)
         try:
@@ -840,6 +891,7 @@ class ResearchCoordinator:
                 f"  knowledge_snapshot:     {ctx.get('knowledge_snapshot_taken', False)} ({ctx.get('findings_count', 0)} findings)",
                 f"  synthesis_ran:          {ctx.get('synthesis_ran', False)} ({ctx.get('synthesized_findings', 0)} synth-findings)",
                 f"  repository_updated:     {ctx.get('repository_updated', False)} (idr_active={ctx.get('idr_total_active_dna', 0)})",
+                f"  scientific_evolution:   dqa={ctx.get('dqa_classification', 'NOT_RUN')}({ctx.get('dqa_score', 'N/A')})  next={ctx.get('next_program_id', 'NONE')}",
             ]
             stage.output_summary = " | ".join([
                 f"plan={'ok' if ctx.get('plan_validated') else 'skip'}",
@@ -851,6 +903,7 @@ class ResearchCoordinator:
                 f"kp={'ok' if ctx.get('knowledge_snapshot_taken') else 'skip'}",
                 f"synth={'ok' if ctx.get('synthesis_ran') else 'skip'}",
                 f"repo={'ok' if ctx.get('repository_updated') else 'skip'}",
+                f"evol=dqa:{ctx.get('dqa_classification', 'N/A')}",
             ])
             stage.meta = {"report_lines": lines}
             log.info("[RC] Research report:\n%s", "\n".join(lines))

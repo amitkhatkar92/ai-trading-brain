@@ -18,6 +18,10 @@ Exports:
     PTUEConfig             — PTUE configuration (R-006)
     MethodologyAuditor     — mandatory methodology audit stage (IRP-002A)
     AuditResult            — audit result data model (IRP-002A)
+    ScientificFindingsReview — permanent scientific evolution engine (Phase 4)
+    DataQualityAssessor    — 11-dimension evidence quality scoring (Phase 4)
+    SFRResult              — Scientific Findings Review result model (Phase 4)
+    DQAResult              — Data Quality Assessment result model (Phase 4)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -27,6 +31,9 @@ from .roadmap_manager import RoadmapManager
 from .evidence_validator import EvidenceValidator
 from .study_planner import StudyPlanner
 from .methodology_auditor import MethodologyAuditor, AuditResult, AuditVerdict, AuditCheck
+from .scientific_findings_review import ScientificFindingsReview
+from .data_quality_assessor import DataQualityAssessor
+from .sfr_models import SFRResult, DQAResult, DQAClassification, FindingOutcome
 from .study_planner_models import (
     ApprovalClass,
     DatasetRequirement,

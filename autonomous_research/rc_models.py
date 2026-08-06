@@ -25,6 +25,7 @@ STAGE_KNOWLEDGE     = "knowledge_integration" # read current knowledge snapshot
 STAGE_SYNTHESIS     = "cross_study_synthesis" # synthesize across completed studies
 STAGE_REPOSITORY    = "repository_update"     # IDR / knowledge-store update
 STAGE_REPORT        = "research_report"       # final report — always runs
+STAGE_EVOLUTION     = "scientific_evolution"  # Phase 4: SFR + DQA + next program selection
 
 RC_ALL_STAGES: List[str] = [
     STAGE_STUDY_PLAN,
@@ -36,10 +37,11 @@ RC_ALL_STAGES: List[str] = [
     STAGE_SYNTHESIS,
     STAGE_REPOSITORY,
     STAGE_REPORT,
+    STAGE_EVOLUTION,    # always runs: Scientific Findings Review + DQA + next program
 ]
 
 #: These stages always run regardless of earlier failures.
-RC_ALWAYS_RUN: frozenset = frozenset({STAGE_REPORT})
+RC_ALWAYS_RUN: frozenset = frozenset({STAGE_REPORT, STAGE_EVOLUTION})
 
 
 # ─── enumerations ───────────────────────────────────────────────────────────
