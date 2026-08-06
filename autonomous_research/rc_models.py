@@ -19,6 +19,7 @@ from typing import Any, Dict, List, Optional
 STAGE_STUDY_PLAN    = "study_plan"            # validate plan and cost-estimate
 STAGE_REPLAY        = "replay"                # historical replay (HISTORICAL_REPLAY only)
 STAGE_VALIDATION    = "validation"            # evidence / hypothesis quality gates
+STAGE_AUDIT         = "methodology_audit"     # IRP-002A: methodology audit before evidence
 STAGE_EVIDENCE      = "evidence_integration"  # write validated evidence into registry
 STAGE_KNOWLEDGE     = "knowledge_integration" # read current knowledge snapshot
 STAGE_SYNTHESIS     = "cross_study_synthesis" # synthesize across completed studies
@@ -29,6 +30,7 @@ RC_ALL_STAGES: List[str] = [
     STAGE_STUDY_PLAN,
     STAGE_REPLAY,
     STAGE_VALIDATION,
+    STAGE_AUDIT,        # mandatory methodology audit — runs before evidence collection
     STAGE_EVIDENCE,
     STAGE_KNOWLEDGE,
     STAGE_SYNTHESIS,

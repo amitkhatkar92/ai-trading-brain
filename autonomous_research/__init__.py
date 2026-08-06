@@ -16,6 +16,8 @@ Exports:
     ScientificJournal      — structured scientific memory (Phase 3C)
     PointInTimeUniverseEngine — historical universe provider (R-006)
     PTUEConfig             — PTUE configuration (R-006)
+    MethodologyAuditor     — mandatory methodology audit stage (IRP-002A)
+    AuditResult            — audit result data model (IRP-002A)
 """
 from .knowledge_provider import KnowledgeProvider
 from .hypothesis_registry import HypothesisRegistry
@@ -24,6 +26,7 @@ from .gap_detector import GapDetector
 from .roadmap_manager import RoadmapManager
 from .evidence_validator import EvidenceValidator
 from .study_planner import StudyPlanner
+from .methodology_auditor import MethodologyAuditor, AuditResult, AuditVerdict, AuditCheck
 from .study_planner_models import (
     ApprovalClass,
     DatasetRequirement,

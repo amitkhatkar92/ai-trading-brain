@@ -46,6 +46,7 @@ class RCConfig:
     study_plan_enabled:             bool = True
     replay_enabled:                 bool = True
     validation_enabled:             bool = True
+    methodology_audit_enabled:      bool = True   # IRP-002A: mandatory before evidence
     evidence_integration_enabled:   bool = True
     knowledge_integration_enabled:  bool = True
     synthesis_enabled:              bool = True

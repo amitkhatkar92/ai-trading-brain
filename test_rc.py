@@ -35,6 +35,7 @@ import os
 import json
 import threading
 import tempfile
+from pathlib import Path
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -231,7 +232,7 @@ def suite_stage_constants(r: TestResult) -> None:
     r.ok("T006 STAGE_SYNTHESIS value",     STAGE_SYNTHESIS     == "cross_study_synthesis")
     r.ok("T007 STAGE_REPOSITORY value",    STAGE_REPOSITORY    == "repository_update")
     r.ok("T008 STAGE_REPORT value",        STAGE_REPORT        == "research_report")
-    r.ok("T009 RC_ALL_STAGES length",      len(RC_ALL_STAGES)  == 8)
+    r.ok("T009 RC_ALL_STAGES length",      len(RC_ALL_STAGES)  == 9)
     r.ok("T010 RC_ALL_STAGES order[0]",    RC_ALL_STAGES[0]    == STAGE_STUDY_PLAN)
     r.ok("T011 RC_ALL_STAGES order[-1]",   RC_ALL_STAGES[-1]   == STAGE_REPORT)
     r.ok("T012 REPORT in RC_ALWAYS_RUN",   STAGE_REPORT in RC_ALWAYS_RUN)
@@ -489,16 +490,17 @@ def suite_rc_config(r: TestResult) -> None:
 
 def suite_construction(r: TestResult) -> None:
     print("\nâ”€â”€ T099â€“T105  Construction and initial status â”€â”€")
-    rc = ResearchCoordinator()
-    r.ok("T099 created without modules",  rc is not None)
+    with tempfile.TemporaryDirectory() as _tmp99:
+        rc = ResearchCoordinator(config=RCConfig(history_path=str(Path(_tmp99) / "hist.json")))
+        r.ok("T099 created without modules",  rc is not None)
 
-    st = rc.status()
-    r.ok("T100 status returns RCStatus",  isinstance(st, RCStatus))
-    r.ok("T101 health is NO_DATA",        st.health == ResearchHealth.NO_DATA)
-    r.ok("T102 total_runs 0",             st.total_runs == 0)
-    r.ok("T103 planner_available False",  st.planner_available is False)
-    r.ok("T104 consecutive_failures 0",   st.consecutive_failures == 0)
-    r.ok("T105 last_run_id None",         st.last_run_id is None)
+        st = rc.status()
+        r.ok("T100 status returns RCStatus",  isinstance(st, RCStatus))
+        r.ok("T101 health is NO_DATA",        st.health == ResearchHealth.NO_DATA)
+        r.ok("T102 total_runs 0",             st.total_runs == 0)
+        r.ok("T103 planner_available False",  st.planner_available is False)
+        r.ok("T104 consecutive_failures 0",   st.consecutive_failures == 0)
+        r.ok("T105 last_run_id None",         st.last_run_id is None)
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
@@ -516,7 +518,7 @@ def suite_happy_path(r: TestResult) -> None:
     r.ok("T107 run_id set",              run.run_id.startswith("rc-"))
     r.ok("T108 study_plan_id",           run.study_plan_id == "SP-TEST0001")
     r.ok("T109 date set",                bool(run.date))
-    r.ok("T110 stages count 8",          len(run.stages) == 8)
+    r.ok("T110 stages count 9",          len(run.stages) == 9)
     r.ok("T111 health HEALTHY",          run.health == ResearchHealth.HEALTHY)
     r.ok("T112 telemetry not None",      run.telemetry is not None)
 
@@ -792,7 +794,7 @@ def suite_history(r: TestResult) -> None:
         r.ok("T163 history limit=1",             len(hist_1) == 1)
 
         # empty history
-        rc2 = ResearchCoordinator(config=RCConfig(dry_run=True))
+        rc2 = ResearchCoordinator(config=RCConfig(dry_run=True, history_path=str(Path(tmp) / "empty_hist.json")))
         r.ok("T164 empty history returns []",    rc2.history() == [])
 
         # status total_runs
@@ -879,8 +881,9 @@ def suite_dry_run(r: TestResult) -> None:
 def suite_health_transitions(r: TestResult) -> None:
     print("\nâ”€â”€ T181â€“T186  Health transitions â”€â”€")
 
-    rc = ResearchCoordinator(config=RCConfig(dry_run=True))
-    r.ok("T181 initial NO_DATA",  rc.status().health == ResearchHealth.NO_DATA)
+    with tempfile.TemporaryDirectory() as _tmp181:
+        rc = ResearchCoordinator(config=RCConfig(dry_run=True, history_path=str(Path(_tmp181) / "hist.json")))
+        r.ok("T181 initial NO_DATA",  rc.status().health == ResearchHealth.NO_DATA)
 
     # All stages disabled except report â†’ HEALTHY (nothing failed)
     rc2 = ResearchCoordinator(config=RCConfig(

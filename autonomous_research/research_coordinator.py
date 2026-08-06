@@ -49,6 +49,7 @@ from .rc_config import RCConfig
 from .rc_models import (
     RC_ALWAYS_RUN,
     RC_ALL_STAGES,
+    STAGE_AUDIT,
     STAGE_EVIDENCE,
     STAGE_KNOWLEDGE,
     STAGE_REPLAY,
@@ -169,6 +170,9 @@ class ResearchCoordinator:
             "replay_studies_found":     0,
             "validation_ran":           False,
             "validation_outcome":       "N/A",
+            "methodology_audit_ran":    False,
+            "methodology_audit_result": "NOT_RUN",
+            "promotion_blocked":        False,
             "evidence_integrated":      False,
             "hypothesis_id":            None,
             "knowledge_snapshot_taken": False,
@@ -448,6 +452,8 @@ class ResearchCoordinator:
         if stage_name == STAGE_VALIDATION:
             hyp_id = getattr(study_plan, "source_hypothesis_id", None)
             return self._exec_validation(hyp_id or "auto", "hypothesis" if hyp_id else "finding", ctx)
+        if stage_name == STAGE_AUDIT:
+            return self._exec_methodology_audit(study_plan, ctx)
         if stage_name == STAGE_EVIDENCE:
             return self._exec_evidence_integration(study_plan, ctx)
         if stage_name == STAGE_KNOWLEDGE:
@@ -624,6 +630,44 @@ class ResearchCoordinator:
         except Exception as exc:
             return self._fail(stage, exc)
 
+    def _exec_methodology_audit(self, study_plan: Any, ctx: Dict[str, Any]) -> ResearchStage:
+        """IRP-002A: Run methodology audit BEFORE evidence collection.
+
+        Audits 7 checks: control group, method symmetry, proxy validation,
+        sample size, validation symmetry, replication readiness, bias detection.
+        On FAIL: sets ctx['promotion_blocked']=True. Research continues.
+        """
+        from .rc_models import STAGE_AUDIT  # noqa: PLC0415
+        stage = self._begin(STAGE_AUDIT)
+        if not self._config.methodology_audit_enabled:
+            return self._skip(stage, "methodology_audit_enabled=False")
+        try:
+            from .methodology_auditor import MethodologyAuditor  # noqa: PLC0415
+            auditor = MethodologyAuditor(knowledge_provider=self._knowledge_provider)
+            result  = auditor.audit(study_plan)
+
+            ctx["methodology_audit_ran"]    = True
+            ctx["methodology_audit_result"] = result.verdict.value
+            ctx["promotion_blocked"]        = result.promotion_blocked
+
+            stage.meta = result.to_dict()
+            stage.output_summary = (
+                f"Methodology audit: {result.summary_line}"
+            )
+
+            if result.verdict.value == "FAIL":
+                log.warning(
+                    "[RC] Methodology audit FAIL — promotion blocked. confounds=%s",
+                    result.confounds_detected,
+                )
+
+            return self._succeed(stage)
+        except Exception as exc:
+            # Audit failure must never block the pipeline — degrade gracefully
+            ctx["methodology_audit_result"] = "AUDIT_ERROR"
+            log.warning("[RC] Methodology audit raised exception: %s", exc)
+            return self._fail(stage, exc)
+
     def _exec_evidence_integration(self, study_plan: Any, ctx: Dict[str, Any]) -> ResearchStage:
         stage = self._begin(STAGE_EVIDENCE)
         if not self._config.evidence_integration_enabled:
@@ -791,6 +835,7 @@ class ResearchCoordinator:
                 f"  replay_ran:             {ctx.get('replay_ran', False)} ({ctx.get('replay_studies_found', 0)} studies)",
                 ptue_line,
                 f"  validation_outcome:     {ctx.get('validation_outcome', 'N/A')}",
+                f"  methodology_audit:      {ctx.get('methodology_audit_result', 'NOT_RUN')}  promotion_blocked={ctx.get('promotion_blocked', False)}",
                 f"  evidence_integrated:    {ctx.get('evidence_integrated', False)}",
                 f"  knowledge_snapshot:     {ctx.get('knowledge_snapshot_taken', False)} ({ctx.get('findings_count', 0)} findings)",
                 f"  synthesis_ran:          {ctx.get('synthesis_ran', False)} ({ctx.get('synthesized_findings', 0)} synth-findings)",
@@ -801,6 +846,7 @@ class ResearchCoordinator:
                 f"replay={'ok' if ctx.get('replay_ran') else 'skip'}",
                 f"ptue={ctx.get('ptue_universe_date', 'none')}",
                 f"val={ctx.get('validation_outcome', 'N/A')}",
+                f"audit={ctx.get('methodology_audit_result', 'NOT_RUN')}",
                 f"ev={'ok' if ctx.get('evidence_integrated') else 'skip'}",
                 f"kp={'ok' if ctx.get('knowledge_snapshot_taken') else 'skip'}",
                 f"synth={'ok' if ctx.get('synthesis_ran') else 'skip'}",
