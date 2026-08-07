@@ -5500,6 +5500,26 @@ class MasterOrchestrator:
                 wr, avg_r, false_pos_rate,
             )
 
+        # ── PGA-001: Predictive Gap Analysis ─────────────────────────────────
+        # Runs post-market every trading day. Fully automatic. Non-blocking.
+        # Analyses top gainers/losers, all decisions, and plans A–G learning actions.
+        try:
+            from predictive_gap.pga_runner import run_pga as _run_pga
+            _pga = _run_pga()
+            log.info(
+                "[PGA-001] Daily analysis complete: "
+                "gainers=%d losers=%d missed_winners=%d missed_losers=%d "
+                "actions=%d report=%s",
+                _pga.get("n_gainers", 0),
+                _pga.get("n_losers", 0),
+                _pga.get("n_missed_winners", 0),
+                _pga.get("n_missed_losers", 0),
+                _pga.get("n_learning_actions", 0),
+                _pga.get("report_dir", "N/A"),
+            )
+        except Exception as _pga_exc:
+            log.warning("[PGA-001] Daily analysis failed (non-critical): %s", _pga_exc)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     @staticmethod
