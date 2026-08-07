@@ -344,6 +344,16 @@ def main():
             except Exception as _ve:
                 log.warning("[Main] Runtime verification failed: %s", _ve)
 
+            # FRZ-001 Phase 9: Startup self-check
+            try:
+                from release_manager.frz_runner import run_startup_checks as _frz_startup
+                _frz_result = _frz_startup()
+                log.info("[FRZ-001] Startup check: %s", "OK" if _frz_result.get("ok") else "WARNINGS — see STARTUP_HEALTH_REPORT.md")
+                if _frz_result.get("failed_checks"):
+                    log.warning("[FRZ-001] Failed: %s", ", ".join(_frz_result["failed_checks"]))
+            except Exception as _frz_exc:
+                log.warning("[FRZ-001] Startup check failed (non-critical): %s", _frz_exc)
+
             # Start Telegram command bot polling (daemon thread)
             # This enables /token, /status, /perf etc. in --schedule mode.
             try:
