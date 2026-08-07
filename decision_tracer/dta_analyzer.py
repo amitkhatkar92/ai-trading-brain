@@ -3,15 +3,29 @@ decision_tracer/dta_analyzer.py
 =================================
 DTA-001 — Decision Traceability Audit — Question Analyzer
 
-Answers the 8 audit questions from a TraceBundle.
+Answers 10 audit questions from a TraceBundle.
 All answers are evidence-based only — no assumptions.
+
+Q1  Why was this stock selected?
+Q2  Why were other stocks rejected?
+Q3  Which knowledge (IKN) contributed?
+Q4  Which DNA contributed?
+Q5  Which PMCI factors mattered?
+Q6  Which CDS factors mattered?
+Q7  Which historical studies supported this?
+Q8  Which hypotheses supported it?
+Q9  What could have changed the decision?   ← counterfactual
+Q10 If the trade loses, what exactly will be learned?
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .dta_collector import TraceBundle, DNAMatch, EdgeMatch
+from .dta_collector import (
+    TraceBundle, DNAMatch, EdgeMatch, RejectionRecord,
+    _eval_condition as _eval_cond,
+)
 
 
 @dataclass
@@ -37,6 +51,218 @@ def _fmt_pct(v: float) -> str:
 
 def _fmt_conf(c: float) -> str:
     return f"{c:.2f}/10"
+
+
+_APPROVAL_THRESHOLD = 6.5
+
+
+def _build_counterfactual(bundle: TraceBundle, feat: dict,
+                          full_matches: list, active_edges: list,
+                          dna_hits: list) -> List[str]:
+    """What single change would flip the decision?"""
+    d = bundle.decision
+    if not d:
+        return ["No decision record — counterfactual cannot be computed."]
+
+    items: List[str] = []
+
+    if d.decision == "REJECTED":
+        gap = _APPROVAL_THRESHOLD - d.confidence
+        items.append(
+            f"CONFIDENCE GAP: Need +{gap:.2f} points more to reach APPROVED threshold "
+            f"({d.confidence:.2f} → {_APPROVAL_THRESHOLD})"
+        )
+        # Single-feature flips
+        rsi = feat.get("rsi")
+        if rsi and float(rsi) > 70:
+            items.append(
+                f"RSI FLIP: RSI={float(rsi):.1f} is overbought. "
+                f"If RSI dropped to 65, overbought penalty removed → confidence would rise"
+            )
+        vol = feat.get("volume_ratio_raw")
+        if vol and float(vol) < 1.5:
+            items.append(
+                f"VOLUME FLIP: volume_ratio={float(vol):.2f} is weak. "
+                f"A 2× volume day (ratio≥2.0) would strengthen breakout signal"
+            )
+        # Closest missed edges
+        for em in active_edges:
+            if not em.all_satisfied and em.satisfied_count > 0:
+                missed = [c for c in em.conditions if not _eval_cond(c, feat)]
+                for c in missed[:2]:
+                    curr = feat.get(c.get("feature", ""), "N/A")
+                    thr  = c.get("threshold", 0)
+                    op   = c.get("operator", "")
+                    try:
+                        gap_cond = abs(float(str(curr)) - float(thr))
+                        items.append(
+                            f"EDGE FLIP '{em.name}': {c.get('feature')} needs {op} {thr} "
+                            f"(current={curr}, gap={gap_cond:.4f}) — "
+                            f"satisfying this would unlock edge precision={_fmt_pct(em.precision)}"
+                        )
+                    except (ValueError, TypeError):
+                        items.append(
+                            f"EDGE FLIP '{em.name}': {c.get('feature')} needs {op} {thr} "
+                            f"(current={curr})"
+                        )
+        # VIX / regime flip
+        if bundle.market_ctx and bundle.market_ctx.vix > 22:
+            vix_drop = bundle.market_ctx.vix - 20
+            items.append(
+                f"VIX FLIP: VIX={bundle.market_ctx.vix:.1f}. "
+                f"If VIX dropped {vix_drop:.1f} pts to <20, position_modifier would increase "
+                f"→ confidence adjustment improves"
+            )
+    else:  # APPROVED — what would cause rejection?
+        buffer = d.confidence - _APPROVAL_THRESHOLD
+        items.append(
+            f"CONFIDENCE BUFFER: {buffer:.2f} pts above threshold. "
+            f"Decision would flip to REJECTED if confidence fell to "
+            f"< {_APPROVAL_THRESHOLD} (needs -{buffer:.2f})"
+        )
+        # Which satisfied edge conditions are closest to breaking?
+        for em in full_matches[:2]:
+            for c in em.conditions:
+                curr = feat.get(c.get("feature", ""))
+                if curr is not None:
+                    try:
+                        margin = abs(float(curr) - float(c.get("threshold", 0)))
+                        if margin < 0.1:
+                            items.append(
+                                f"EDGE MARGIN '{em.name}': "
+                                f"{c.get('feature')}={float(curr):.4f} is only "
+                                f"{margin:.4f} units from breaking condition "
+                                f"{c.get('operator')} {c.get('threshold')}"
+                            )
+                    except (ValueError, TypeError):
+                        pass
+        # Regime / VIX degradation
+        if bundle.market_ctx:
+            ctx = bundle.market_ctx
+            if ctx.vix < 30:
+                items.append(
+                    f"VIX ESCALATION: If VIX rises from {ctx.vix:.1f} above 30, "
+                    f"position_modifier decreases and confidence drops below threshold"
+                )
+            if ctx.regime in ("range_market",):
+                items.append(
+                    f"REGIME SHIFT: Current regime='{ctx.regime}'. "
+                    f"If regime transitions to 'volatile' or 'bear_market', "
+                    f"breakout strategy weight drops → confidence below threshold"
+                )
+        # DNA flip
+        loser_close = [m for m in bundle.dna_matches if m.category == "loser"
+                       and not m.matched and m.confidence > 0.7]
+        if loser_close:
+            items.append(
+                f"DNA FLIP: {len(loser_close)} high-confidence loser DNA patterns "
+                f"are NOT yet triggered. If "
+                f"{', '.join(m.feature_name for m in loser_close[:3])} values shift "
+                f"to loser range, decision could reverse"
+            )
+
+    if not items:
+        items.append("No single-variable flip identified — decision is robust to small changes.")
+
+    return items
+
+
+def _build_loss_learning(bundle: TraceBundle, dna_hits: list,
+                         full_matches: list) -> List[str]:
+    """Name the exact records that will be updated if this trade loses."""
+    d    = bundle.decision
+    strat = d.strategy if d else ""
+    steps: List[str] = []
+
+    # 1. Strategy performance tracker — named strategy
+    sp = bundle.strategy_perf
+    if sp:
+        steps.append(
+            f"STRATEGY TRACKER ['{strat}']: "
+            f"total_trades={sp.get('total_trades',0)+1}  wins stays at {sp.get('wins',0)}  "
+            f"→ new win_rate={(sp.get('wins',0)/max(sp.get('total_trades',1)+1,1)*100):.1f}%  "
+            f"(threshold for auto-disable: win_rate < 40% over last 10 trades)"
+        )
+    else:
+        steps.append(
+            f"STRATEGY TRACKER ['{strat}']: Will record 1 loss. "
+            f"Auto-disable triggers if consecutive losses reach threshold."
+        )
+
+    # 2. DNA records — by ID
+    winner_hits = [m for m in dna_hits if m.category == "winner"]
+    if winner_hits:
+        ids = [str(m.dna_id) for m in winner_hits[:6]]
+        steps.append(
+            f"DNA RECORDS (institutional_dna.db): "
+            f"Winner DNA IDs [{', '.join(ids)}] will have consensus_score decremented. "
+            f"Feature→outcome pair recorded as loss. "
+            f"If confidence falls below 0.5, lifecycle transitions ESTABLISHED → DECAYING."
+        )
+    loser_hits = [m for m in bundle.dna_matches if m.category == "loser" and m.matched]
+    if loser_hits:
+        ids = [str(m.dna_id) for m in loser_hits[:4]]
+        steps.append(
+            f"DNA RECORDS — LOSER REINFORCEMENT: IDs [{', '.join(ids)}] will be reinforced "
+            f"(this is a correct loser-DNA signal — increases their confidence score)"
+        )
+
+    # 3. Edge records — by name/ID
+    if full_matches:
+        for em in full_matches[:3]:
+            steps.append(
+                f"EDGE RECORD ['{em.name}' ID={em.edge_id}]: "
+                f"live_trades +1, live_wins unchanged. "
+                f"live_sharpe degrades. If below DECAYING threshold, "
+                f"status transitions ACTIVE → DECAYING."
+            )
+
+    # 4. Hypothesis
+    confirmed_hyps = [h for h in bundle.hypothesis_refs if h["status"] == "CONFIRMED"]
+    proposed_hyps  = [h for h in bundle.hypothesis_refs if h["status"] == "PROPOSED"]
+    if confirmed_hyps:
+        h = confirmed_hyps[0]
+        steps.append(
+            f"HYPOTHESIS [{h['id']}] '{h['title'][:60]}': "
+            f"Counter-evidence recorded. If confirmation_rate drops below 50%, "
+            f"status may revert to PROPOSED."
+        )
+    if bundle.market_ctx and bundle.market_ctx.regime:
+        steps.append(
+            f"HYPOTHESIS ENGINE: New hypothesis auto-generated: "
+            f"'{strat} BUY in {bundle.market_ctx.regime} with VIX={bundle.decision.vix:.1f} "
+            f"has negative outcome' — enters registry for next study run."
+        )
+
+    # 5. Meta-learning
+    if bundle.market_ctx and bundle.market_ctx.meta_top_strategy:
+        steps.append(
+            f"META-LEARNING (regime_strategy_map): "
+            f"Strategy '{bundle.market_ctx.meta_top_strategy}' in regime "
+            f"'{bundle.market_ctx.regime}' records 1 loss. "
+            f"k-NN weight updated on next retrain. "
+            f"Allocation weight reduces in subsequent cycle's strategy_mix."
+        )
+
+    # 6. IKN knowledge graph
+    study_nodes = [r for r in bundle.ikn_refs if r.node_type in ("STUDY", "DISCOVERY")]
+    if study_nodes:
+        steps.append(
+            f"IKN GRAPH: {len(study_nodes)} study/discovery nodes referenced this trade. "
+            f"Loss outcome stored as evidence. "
+            f"Edge confidence re-weighted in next IKN update cycle."
+        )
+
+    # 7. KNN model
+    vix_str = f"{d.vix:.1f}" if d else "0"
+    steps.append(
+        f"KNN REGIME MODEL: Feature vector for {bundle.symbol} "
+        f"(regime={d.regime if d else 'N/A'}, VIX={vix_str}) "
+        f"added to training set with label=LOSS. "
+        f"Model retrained in next walk-forward validation run."
+    )
+
+    return steps
 
 
 def analyze(bundle: TraceBundle) -> DTAAudit:
@@ -110,386 +336,304 @@ def analyze(bundle: TraceBundle) -> DTAAudit:
 
     audit.answers.append(q1)
 
-    # ── Q2: Why not BUY yesterday? ───────────────────────────────────────────
-    q2 = AuditAnswer(question="Why not BUY yesterday? (or: Why not the previous cycle?)")
-    prev = bundle.prev_decision
-    if not prev:
-        q2.answer = "No prior decision record found for comparison."
-        q2.verdict = "INSUFFICIENT"
-    else:
-        diff = bundle.prev_cycle_diff
-        if prev.decision == "APPROVED":
-            q2.answer = (
-                f"Previous decision was also APPROVED at {prev.ts[:10]} — "
-                f"the system was trading {bundle.symbol} across multiple cycles."
-            )
-            q2.verdict = "ANSWERED"
-        else:
-            reasons = []
-            if "regime_changed" in diff:
-                reasons.append(f"Regime changed: {diff['regime_changed']}")
-            if "vix_changed" in diff:
-                reasons.append(f"VIX changed: {diff['vix_changed']}")
-            if "confidence_changed" in diff:
-                reasons.append(f"Confidence changed: {diff['confidence_changed']}")
-            if "strategy_changed" in diff:
-                reasons.append(f"Strategy changed: {diff['strategy_changed']}")
-
-            if reasons:
-                q2.answer = (
-                    f"Previous decision at {prev.ts[:10]} was {prev.decision}. "
-                    f"Key changes: {'; '.join(reasons)}."
-                )
-                q2.evidence.extend(reasons)
-            else:
-                q2.answer = (
-                    f"Previous decision at {prev.ts[:10]} was {prev.decision} "
-                    f"with confidence {prev.confidence:.2f}. "
-                    f"Conditions appear similar — entry threshold not reached."
-                )
-                q2.evidence.append(f"Previous rejection: {prev.rejection_reason[:200]}")
-            q2.verdict = "ANSWERED"
-
-    q2.evidence.append(
-        f"Decision history: last {len(bundle.decision_history)} decisions — "
-        + " | ".join(f"{r.ts[:10]}:{r.decision}" for r in bundle.decision_history[:5])
+    # ── Q2: Why were other stocks rejected? (Rejection Audit) ─────────────────
+    q2 = AuditAnswer(
+        question="Why were other stocks rejected? (Full scanner rejection audit)"
     )
+    rejections = bundle.rejection_audit
+    n_scanned  = bundle.scanner_universe_size
+    n_rejected = sum(1 for r in rejections if r.decision_outcome in ("REJECTED", "NOT_DECIDED"))
+    n_approved = sum(1 for r in rejections if r.decision_outcome == "APPROVED")
+
+    if rejections:
+        q2.verdict = "ANSWERED"
+        q2.answer  = (
+            f"{n_scanned} stocks were scanned this cycle. "
+            f"Target ({bundle.symbol}) was selected. "
+            f"{n_rejected} others rejected or pre-filtered; {n_approved} also approved. "
+            f"Rejection reasons by stock:"
+        )
+        for r in rejections[:12]:
+            gap_str = f"  gap_vs_target={r.vs_target_gap:+.2f}" if r.vs_target_gap else ""
+            q2.evidence.append(
+                f"{r.symbol:<16} scan_conf={r.scanner_confidence:.2f}  "
+                f"outcome={r.decision_outcome:<12}{gap_str}  "
+                f"→ {r.rejection_reason[:80]}"
+            )
+        # Rank target among scanned
+        all_confs = [bundle.signal.confidence if bundle.signal else 0]
+        all_confs += [r.scanner_confidence for r in rejections]
+        all_confs.sort(reverse=True)
+        target_conf = bundle.signal.confidence if bundle.signal else 0
+        rank = sum(1 for c in all_confs if c > target_conf) + 1
+        q2.evidence.append(
+            f"{bundle.symbol} scanner rank: #{rank} of {n_scanned} stocks by initial confidence"
+        )
+    else:
+        q2.answer  = "No rejection audit data — cycle events not available."
+        q2.verdict = "INSUFFICIENT"
+
     audit.answers.append(q2)
 
-    # ── Q3: Why not BUY tomorrow? ─────────────────────────────────────────────
-    q3 = AuditAnswer(question="Why not BUY tomorrow? (What conditions would block entry?)")
-    q3.verdict = "ANSWERED"
-    blockers = []
+    # ── Q3: Which knowledge (IKN) contributed? ────────────────────────────────
+    q3 = AuditAnswer(question="Which knowledge (IKN) contributed to this decision?")
+    dna_nodes  = [r for r in bundle.ikn_refs if r.node_type == "DNA"]
+    stud_nodes = [r for r in bundle.ikn_refs if r.node_type in ("STUDY", "DISCOVERY", "FINDING")]
+    hyp_nodes  = [r for r in bundle.ikn_refs if r.node_type == "HYPOTHESIS"]
+    other_nodes= [r for r in bundle.ikn_refs if r.node_type not in ("DNA","STUDY","DISCOVERY","FINDING","HYPOTHESIS")]
 
-    if bundle.market_ctx:
-        ctx = bundle.market_ctx
-        if ctx.vix > 25:
-            blockers.append(
-                f"VIX={ctx.vix:.1f} is elevated. If VIX exceeds 45 the kill switch fires. "
-                f"High volatility typically suppresses breakout performance."
-            )
-        if ctx.regime in ("volatile", "bear_market"):
-            blockers.append(
-                f"Current regime '{ctx.regime}' — if this persists tomorrow, "
-                f"breakout/momentum strategies are de-weighted in strategy mix."
-            )
-        if not ctx.trading_allowed:
-            blockers.append(
-                f"Distortion flag is active ({ctx.distortion}). "
-                f"Trading may be blocked or size reduced."
-            )
-
-    if d and d.confidence < 7.0:
-        blockers.append(
-            f"Current confidence {d.confidence:.2f} is close to threshold {d.confidence:.2f}. "
-            f"Any degradation in momentum/volume features would push below 6.5 → REJECTED."
+    if bundle.ikn_refs:
+        q3.verdict = "ANSWERED"
+        q3.answer  = (
+            f"IKN graph contributed {len(bundle.ikn_refs)} nodes: "
+            f"{len(dna_nodes)} DNA, {len(stud_nodes)} study/discovery, "
+            f"{len(hyp_nodes)} hypothesis, {len(other_nodes)} other."
         )
+        for r in bundle.ikn_refs[:10]:
+            rels = f" → {r.relationships[0][:50]}" if r.relationships else ""
+            q3.evidence.append(f"[{r.node_type}] {r.name[:50]}{rels}")
+    else:
+        q3.answer  = "No IKN nodes matched current feature set."
+        q3.verdict = "PARTIAL"
 
-    # Feature-specific warnings
-    rsi = feat.get("rsi", 0)
-    if rsi and float(rsi) > 70:
-        blockers.append(
-            f"RSI={float(rsi):.1f} — currently overbought. "
-            f"If RSI remains >70 tomorrow, mean-reversion risk increases."
-        )
-
-    active_edge_conds = []
-    for e in full_matches[:2]:
-        active_edge_conds.append(
-            f"Active edge '{e.name}' requires {e.total_count} conditions. "
-            f"If any of these fail tomorrow, the edge no longer fires."
-        )
-        for c in e.conditions[:3]:
-            active_edge_conds.append(
-                f"  Condition: {c.get('feature')} {c.get('operator')} {c.get('threshold')} "
-                f"(current: {feat.get(c.get('feature',''),'N/A')})"
-            )
-    blockers.extend(active_edge_conds)
-
-    if not blockers:
-        blockers.append(
-            "No specific blockers identified based on current data. "
-            "Entry tomorrow depends on regime stability, VIX, and feature freshness."
-        )
-
-    q3.answer = (
-        f"Entry could be blocked tomorrow if: {'; '.join(blockers[:3])}. "
-        f"Full conditions below."
-    )
-    q3.evidence.extend(blockers)
     audit.answers.append(q3)
 
-    # ── Q4: What evidence contributed? ───────────────────────────────────────
-    q4 = AuditAnswer(
-        question="What evidence contributed to this decision?",
-        verdict="ANSWERED",
-    )
-    evidence_items = []
-
-    # Active edges
-    if full_matches:
-        for em in full_matches[:3]:
-            evidence_items.append(
-                f"ACTIVE EDGE '{em.name}': ALL {em.total_count} conditions satisfied  "
-                f"precision={_fmt_pct(em.precision)}  sharpe={em.sharpe:.2f}  "
-                f"oos_win_rate={_fmt_pct(em.oos_wr)}"
-            )
-    if active_edges and not full_matches:
-        for em in active_edges[:3]:
-            evidence_items.append(
-                f"ACTIVE EDGE '{em.name}': {em.satisfied_count}/{em.total_count} conditions met"
-            )
-
-    # DNA matches
-    winner_dna = [m for m in dna_hits if m.category == "winner" and m.direction == direction]
+    # ── Q4: Which DNA contributed? ────────────────────────────────────────────
+    q4 = AuditAnswer(question="Which DNA patterns contributed to this decision?")
+    winner_dna = [m for m in dna_hits if m.category == "winner"]
     loser_dna  = [m for m in bundle.dna_matches if m.category == "loser" and m.matched]
-    if winner_dna:
-        evidence_items.append(
-            f"WINNER DNA: {len(winner_dna)} patterns matched — "
-            + ", ".join(f"{m.feature_name}={m.feature_value:.3f}" for m in winner_dna[:3])
-        )
-    if loser_dna:
-        evidence_items.append(
-            f"LOSER DNA warning: {len(loser_dna)} loser patterns triggered — "
-            + ", ".join(m.feature_name for m in loser_dna[:3])
-        )
+    hypo_dna   = [m for m in bundle.dna_matches if m.lifecycle in ("CONFIRMED_WINNER", "ESTABLISHED")]
 
-    # IKN references
-    study_nodes = [r for r in bundle.ikn_refs if r.node_type in ("STUDY", "DISCOVERY")]
-    if study_nodes:
-        evidence_items.append(
-            f"IKN KNOWLEDGE GRAPH: {len(study_nodes)} study/discovery nodes referenced — "
-            + ", ".join(r.name[:40] for r in study_nodes[:3])
+    if dna_hits:
+        q4.verdict = "ANSWERED"
+        q4.answer  = (
+            f"{len(dna_hits)}/{len(bundle.dna_matches)} DNA patterns matched. "
+            f"Winner DNA: {len(winner_dna)}  Loser DNA warns: {len(loser_dna)}  "
+            f"High-confidence (lifecycle=ESTABLISHED/CONFIRMED_WINNER): {len(hypo_dna)}"
         )
+        for m in winner_dna[:6]:
+            q4.evidence.append(
+                f"[DNA#{m.dna_id} WINNER] {m.feature_name}={m.feature_value:.3f}  "
+                f"conf={m.confidence:.3f}  lifecycle={m.lifecycle}"
+            )
+        for m in loser_dna[:3]:
+            q4.evidence.append(
+                f"[DNA#{m.dna_id} LOSER ⚠] {m.feature_name}={m.feature_value:.3f}  "
+                f"conf={m.confidence:.3f}  lifecycle={m.lifecycle}"
+            )
+        if hypo_dna:
+            q4.evidence.append(
+                f"High-conviction DNA (established lifecycle): "
+                + ", ".join(f"#{m.dna_id}" for m in hypo_dna[:5])
+            )
+    else:
+        q4.answer  = "No DNA patterns matched. Decision made on scanner/edge signals only."
+        q4.verdict = "PARTIAL"
 
-    # Historical approval rate
-    if bundle.decision_history:
-        past_approved = sum(1 for r in bundle.decision_history if r.decision == "APPROVED")
-        approval_rate = past_approved / len(bundle.decision_history) * 100
-        evidence_items.append(
-            f"HISTORICAL: {past_approved}/{len(bundle.decision_history)} past cycles APPROVED "
-            f"({approval_rate:.0f}% historical approval rate for {bundle.symbol})"
-        )
-
-    # Studies
-    if bundle.study_references:
-        evidence_items.append(
-            f"RESEARCH STUDIES: {len(bundle.study_references)} studies referenced patterns "
-            f"matching current features"
-        )
-        evidence_items.extend(bundle.study_references[:3])
-
-    # Confirmed hypothesis
-    confirmed = [h for h in bundle.hypothesis_refs if h["status"] == "CONFIRMED"]
-    if confirmed:
-        evidence_items.append(
-            f"CONFIRMED HYPOTHESIS: {confirmed[0]['id']} — {confirmed[0]['title']}"
-        )
-
-    q4.answer = f"{len(evidence_items)} evidence sources contributed to this decision."
-    q4.evidence = evidence_items
     audit.answers.append(q4)
 
-    # ── Q5: Confidence? ───────────────────────────────────────────────────────
-    q5 = AuditAnswer(question="Confidence? (Score breakdown and components)")
+    # ── Q5: PMCI factor breakdown ─────────────────────────────────────────────
+    q5 = AuditAnswer(question="Which PMCI factors mattered? (Scanner/signal sub-component scores)")
     if d:
         q5.verdict = "ANSWERED"
-        q5.answer  = (
-            f"Final confidence: {_fmt_conf(d.confidence)}  "
-            f"(threshold ≥6.5 for APPROVED, ≥6.8 for full-size)\n"
-            f"  Position modifier: {d.position_modifier:.3f} × "
-            f"({d.position_modifier*100:.0f}% of max position size)"
-        )
-        score_sources = []
-        if bundle.signal:
-            score_sources.append(
-                f"Scanner raw score: {bundle.signal.confidence:.2f}/10 "
-                f"({bundle.signal.strategy})"
-            )
-        score_sources.append(
-            f"After risk/regime adjustment: {d.confidence:.2f}/10 "
-            f"(modifier={d.position_modifier:.3f})"
-        )
-        if bundle.market_ctx:
-            ctx = bundle.market_ctx
-            dom = ctx.regime_probs.get("dominant", ctx.regime)
-            score_sources.append(
-                f"Regime probability: dominant={dom}  "
-                f"bull={ctx.regime_probs.get('bull_trend', 0):.2f}  "
-                f"range={ctx.regime_probs.get('range', 0):.2f}  "
-                f"volatile={ctx.regime_probs.get('volatile', 0):.2f}"
-            )
-        # Key features affecting confidence
-        key_feats = ["rsi", "macd_signal_norm", "volume_ratio_raw", "breadth",
-                     "pcr", "atr_14", "adx_score", "avg_conviction"]
-        feat_lines = []
-        for kf in key_feats:
-            v = feat.get(kf)
-            if v is not None:
-                feat_lines.append(f"{kf}={float(v):.3f}")
-        if feat_lines:
-            score_sources.append("Key feature values: " + "  ".join(feat_lines))
+        pmci_factors = []
 
-        q5.evidence = score_sources
+        # Signal-level score (composite PMCI)
+        if bundle.signal:
+            pmci_factors.append(
+                f"PMCI composite score: {bundle.signal.confidence:.2f}/10  "
+                f"(strategy={bundle.signal.strategy}  direction={bundle.signal.direction})"
+            )
+
+        # Momentum sub-score: mom_1d, mom_5d, mom_20d, adx_score
+        mom_feats = {k: feat.get(k) for k in ("mom_1d", "mom_5d", "mom_20d", "adx_score") if feat.get(k) is not None}
+        if mom_feats:
+            pmci_factors.append(
+                "MOMENTUM: " + "  ".join(f"{k}={float(v):.4f}" for k, v in mom_feats.items())
+            )
+
+        # Volume sub-score: volume_ratio_raw, volume_spike
+        vol_feats = {k: feat.get(k) for k in ("volume_ratio_raw", "volume_spike") if feat.get(k) is not None}
+        if vol_feats:
+            pmci_factors.append(
+                "VOLUME: " + "  ".join(f"{k}={float(v):.4f}" for k, v in vol_feats.items())
+            )
+
+        # Technical sub-score: rsi, macd_signal_norm, macd_bull, close_pos, intra_range
+        tech_feats = {k: feat.get(k) for k in (
+            "rsi", "rsi_overbought", "rsi_oversold",
+            "macd_signal_norm", "macd_bull", "macd_bear",
+            "close_pos", "intra_range", "atr_14"
+        ) if feat.get(k) is not None}
+        if tech_feats:
+            pmci_factors.append(
+                "TECHNICAL: " + "  ".join(f"{k}={float(v):.4f}" for k, v in tech_feats.items())
+            )
+
+        # Regime sub-score: regime_bull, regime_range, regime_score
+        reg_feats = {k: feat.get(k) for k in ("regime_bull", "regime_range", "regime_score", "global_bias") if feat.get(k) is not None}
+        if reg_feats:
+            pmci_factors.append(
+                "REGIME: " + "  ".join(f"{k}={float(v):.4f}" for k, v in reg_feats.items())
+            )
+
+        # Sentiment: breadth, pcr, sector_flow_count, avg_conviction
+        sent_feats = {k: feat.get(k) for k in ("breadth", "pcr", "sector_flow_count", "avg_conviction") if feat.get(k) is not None}
+        if sent_feats:
+            pmci_factors.append(
+                "SENTIMENT: " + "  ".join(f"{k}={float(v):.4f}" for k, v in sent_feats.items())
+            )
+
+        if full_matches:
+            pmci_factors.append(
+                f"EDGE CONFIRMATION: {len(full_matches)} active edge(s) fully satisfied — "
+                + ", ".join(f"{e.name} (prec={_fmt_pct(e.precision)})" for e in full_matches[:3])
+            )
+
+        q5.answer = (
+            f"PMCI composite: {bundle.signal.confidence:.2f}/10 "
+            f"broken into {len(pmci_factors)} sub-factor groups below."
+            if bundle.signal else "Scanner signal not available."
+        )
+        q5.evidence = pmci_factors
     else:
-        q5.answer  = f"No decision record — confidence cannot be computed."
+        q5.answer  = "No decision record — PMCI cannot be reconstructed."
         q5.verdict = "INSUFFICIENT"
 
     audit.answers.append(q5)
 
-    # ── Q6: Risk? ─────────────────────────────────────────────────────────────
-    q6 = AuditAnswer(question="Risk? (What risk factors were evaluated?)")
-    if bundle.risk_ctx and d:
-        rc = bundle.risk_ctx
+    # ── Q6: CDS factor breakdown ──────────────────────────────────────────────
+    q6 = AuditAnswer(question="Which CDS factors mattered? (Decision engine sub-score breakdown)")
+    if d:
         q6.verdict = "ANSWERED"
-        risks = []
+        cds_factors = []
 
-        # VIX
-        if d.vix > 30:
-            risks.append(f"HIGH VIX: {d.vix:.1f} (>30 = elevated risk environment)")
-        elif d.vix > 20:
-            risks.append(f"MODERATE VIX: {d.vix:.1f} (20–30 = watch zone)")
+        # The 4 CDS components stored in ct_decisions
+        total = d.technical_score + d.risk_score + d.macro_score + d.regime_score
+        if total > 0:
+            cds_factors.append(
+                f"TECHNICAL SCORE:  {d.technical_score:.4f}  "
+                f"({d.technical_score/total*100:.0f}% weight)"
+            )
+            cds_factors.append(
+                f"RISK SCORE:       {d.risk_score:.4f}  "
+                f"({d.risk_score/total*100:.0f}% weight)"
+            )
+            cds_factors.append(
+                f"MACRO SCORE:      {d.macro_score:.4f}  "
+                f"({d.macro_score/total*100:.0f}% weight)"
+            )
+            cds_factors.append(
+                f"REGIME SCORE:     {d.regime_score:.4f}  "
+                f"({d.regime_score/total*100:.0f}% weight)"
+            )
+            cds_factors.append(
+                f"WEIGHTED COMPOSITE → CONFIDENCE: {d.confidence:.4f}/10"
+            )
         else:
-            risks.append(f"LOW VIX: {d.vix:.1f} (<20 = normal conditions)")
+            # Scores not separately stored — show what we have
+            cds_factors.append(f"Final confidence: {d.confidence:.4f}/10")
+            if bundle.signal:
+                cds_factors.append(f"Scanner (pre-CDS): {bundle.signal.confidence:.2f}/10")
+                delta = d.confidence - bundle.signal.confidence
+                cds_factors.append(
+                    f"CDS adjustment: {delta:+.2f} "
+                    f"({'increased by risk/regime' if delta >= 0 else 'reduced by risk/regime filters'})"
+                )
 
-        # Regime
-        risks.append(f"Regime: {d.regime}")
+        # Position modifier breakdown
+        cds_factors.append(
+            f"POSITION MODIFIER: {d.position_modifier:.3f} "
+            f"({d.position_modifier*100:.0f}% of max position) — "
+            f"applied by regime ({d.regime}) and VIX ({d.vix:.1f})"
+        )
 
-        # Position sizing
-        if d.position_modifier < 1.0:
-            risks.append(
-                f"Risk-adjusted position: {d.position_modifier*100:.0f}% of max size "
-                f"(regime/VIX reduction applied)"
+        # Strategy attribution
+        if bundle.market_ctx and bundle.market_ctx.strategy_mix:
+            top = sorted(bundle.market_ctx.strategy_mix.items(), key=lambda x: -x[1])[:3]
+            cds_factors.append(
+                "STRATEGY ALLOCATION (meta-learning weights): "
+                + "  ".join(f"{s}={w:.3f}" for s, w in top)
             )
 
-        # Portfolio state
-        if rc.open_positions > 0:
-            risks.append(f"Open positions: {rc.open_positions} (concentration risk)")
-        if rc.drawdown_pct > 1.0:
-            risks.append(f"Portfolio drawdown: {rc.drawdown_pct:.1f}% (monitoring)")
-
-        # Risk checks
-        if rc.risk_reasons:
-            risks.append("Risk check flags: " + " | ".join(rc.risk_reasons[:3]))
-        else:
-            risks.append("Risk checks passed: all capital and position limits satisfied")
-
-        # Kill switch thresholds
-        risks.append(
-            "Kill switch thresholds: VIX>45 (HALT all trading), "
-            "daily_loss>2% (HALT), NIFTY_drop>-5% (HALT)"
-        )
-
         q6.answer = (
-            f"Risk status: {'PASS' if rc.risk_passed else 'FLAG'}  "
-            f"Guardian: {'APPROVED' if rc.guardian_approved else 'BLOCKED'}  "
-            f"Simulation: {'PASS' if rc.simulation_approved else 'REJECT'}"
+            f"CDS final score: {d.confidence:.2f}/10 via 4 sub-components "
+            f"(technical + risk + macro + regime). "
+            f"Position modifier: {d.position_modifier:.0%} of max size."
         )
-        q6.evidence = risks
+        q6.evidence = cds_factors
     else:
-        q6.answer  = "Risk context unavailable — no cycle events found."
+        q6.answer  = "No decision record — CDS cannot be reconstructed."
         q6.verdict = "INSUFFICIENT"
 
     audit.answers.append(q6)
 
-    # ── Q7: Alternative candidates? ───────────────────────────────────────────
-    q7 = AuditAnswer(question="Alternative candidates? (What else was considered?)")
-    alts = bundle.alternative_candidates
-    if alts:
+    # ── Q7: Historical studies ────────────────────────────────────────────────
+    q7 = AuditAnswer(question="Which historical studies supported this decision?")
+    study_nodes = [r for r in bundle.ikn_refs if r.node_type in ("STUDY", "DISCOVERY", "FINDING")]
+    if bundle.study_references or study_nodes:
         q7.verdict = "ANSWERED"
         q7.answer  = (
-            f"{len(alts)} alternative candidates were identified in the same cycle. "
-            f"Top candidates by scanner confidence:"
+            f"{len(bundle.study_references)} study files and "
+            f"{len(study_nodes)} IKN study nodes reference features in this decision."
         )
-        for a in alts[:8]:
-            q7.evidence.append(
-                f"{a.symbol:<15} dir={a.direction:<6} "
-                f"confidence={a.confidence:.2f}  strategy={a.strategy}"
-            )
-        # Show where RELIANCE ranked
-        all_signals = sorted(
-            alts + ([bundle.signal] if bundle.signal else []),
-            key=lambda x: -x.confidence
-        )
-        rank = next((i+1 for i, s in enumerate(all_signals) if s.symbol == bundle.symbol), None)
-        if rank:
-            q7.evidence.append(
-                f"{bundle.symbol} ranked #{rank} of {len(all_signals)} candidates "
-                f"by initial scanner confidence"
-            )
+        for ref in bundle.study_references[:5]:
+            q7.evidence.append(ref)
+        for r in study_nodes[:3]:
+            q7.evidence.append(f"IKN [{r.node_type}] {r.name[:60]}")
     else:
-        q7.answer  = "No alternative candidates found in this cycle."
+        q7.answer  = "No study references matched current feature set."
         q7.verdict = "PARTIAL"
 
     audit.answers.append(q7)
 
-    # ── Q8: Expected learning if wrong? ──────────────────────────────────────
-    q8 = AuditAnswer(
-        question="Expected learning if wrong? (How will the system update if this trade fails?)",
+    # ── Q8: Hypotheses ───────────────────────────────────────────────────────
+    q8 = AuditAnswer(question="Which hypotheses supported this decision?")
+    confirmed = [h for h in bundle.hypothesis_refs if h["status"] == "CONFIRMED"]
+    proposed  = [h for h in bundle.hypothesis_refs if h["status"] == "PROPOSED"]
+    hyp_nodes = [r for r in bundle.ikn_refs if r.node_type == "HYPOTHESIS"]
+
+    if confirmed or proposed or hyp_nodes:
+        q8.verdict = "ANSWERED"
+        q8.answer  = (
+            f"{len(confirmed)} confirmed + {len(proposed)} proposed hypotheses in registry. "
+            f"{len(hyp_nodes)} hypothesis IKN nodes matched features."
+        )
+        for h in confirmed[:3]:
+            q8.evidence.append(f"✓ CONFIRMED [{h['id']}] {h['title']} (conf={h.get('confidence','')})")
+        for h in proposed[:5]:
+            q8.evidence.append(f"○ PROPOSED  [{h['id']}] {h['title']}")
+        for r in hyp_nodes[:3]:
+            q8.evidence.append(f"IKN [{r.node_type}] {r.name[:60]}")
+    else:
+        q8.answer  = "No hypotheses matched current feature context."
+        q8.verdict = "PARTIAL"
+
+    audit.answers.append(q8)
+
+    # ── Q9: What could have changed the decision? (COUNTERFACTUAL) ────────────
+    q9 = AuditAnswer(question="What could have changed the decision? (Sensitivity / counterfactual)")
+    q9.verdict = "ANSWERED"
+    cf_items = _build_counterfactual(bundle, feat, full_matches, active_edges, dna_hits)
+    q9.answer = (
+        f"{len(cf_items)} counterfactual conditions identified that could flip "
+        f"this decision from {d.decision if d else 'N/A'} to the opposite outcome."
+    )
+    q9.evidence = cf_items
+    audit.answers.append(q9)
+
+    # ── Q10: If loses, what exactly will be learned? ──────────────────────────
+    q10 = AuditAnswer(
+        question="If this trade loses, what EXACTLY will be learned? (Named records)",
         verdict="ANSWERED",
     )
-    learning_steps = []
-
-    # Strategy performance tracker
-    strat = bundle.decision.strategy if bundle.decision else ""
-    sp = bundle.strategy_perf
-    if sp:
-        learning_steps.append(
-            f"STRATEGY TRACKER: '{strat}' currently has "
-            f"trades={sp.get('total_trades',0)}  wins={sp.get('wins',0)}  "
-            f"enabled={sp.get('enabled',True)}. "
-            f"If this trade loses, win_rate declines and may trigger auto-disable."
-        )
-    else:
-        learning_steps.append(
-            f"STRATEGY TRACKER: Strategy '{strat}' will record the outcome. "
-            f"If consecutive losses reach threshold, strategy is auto-disabled."
-        )
-
-    # DNA update
-    matched_dna_names = [m.feature_name for m in dna_hits[:5]]
-    if matched_dna_names:
-        learning_steps.append(
-            f"DNA UPDATE: Features {matched_dna_names} triggered DNA patterns. "
-            f"A loss will reduce consensus_score and confidence of matched winner DNA. "
-            f"If confidence falls below threshold, DNA transitions to RETIRED lifecycle."
-        )
-
-    # Edge learning
-    if full_matches:
-        em_names = [e.name for e in full_matches[:2]]
-        learning_steps.append(
-            f"EDGE LEARNING: Active edge(s) {em_names} were triggered. "
-            f"A loss increments live_trades with live_wins unchanged, "
-            f"degrading live_sharpe → edge transitions to DECAYING status."
-        )
-
-    # Hypothesis generation
-    learning_steps.append(
-        "HYPOTHESIS ENGINE: A failed trade in this regime/feature context "
-        "may generate a new hypothesis (e.g., 'Breakout_Volume fails in high-VIX range markets'). "
-        "This enters the hypothesis registry for next research study."
+    learning_steps = _build_loss_learning(bundle, dna_hits, full_matches)
+    q10.answer = (
+        f"If this trade results in a loss, {len(learning_steps)} specific "
+        f"knowledge records will be updated (named below)."
     )
-
-    # Meta-learning
-    if bundle.market_ctx and bundle.market_ctx.meta_top_strategy:
-        learning_steps.append(
-            f"META-LEARNING: Current top strategy is '{bundle.market_ctx.meta_top_strategy}'. "
-            f"A loss will reduce its allocation weight in the next cycle's strategy mix."
-        )
-
-    # KNN update
-    learning_steps.append(
-        "KNN / REGIME MODEL: The (features → outcome) record will be added to the "
-        "ML dataset for next model retrain. "
-        "OOS improvement is measured in the next walk-forward evaluation."
-    )
-
-    q8.answer = (
-        f"If this trade results in a loss, {len(learning_steps)} learning mechanisms activate:"
-    )
-    q8.evidence = learning_steps
-    audit.answers.append(q8)
+    q10.evidence = learning_steps
+    audit.answers.append(q10)
 
     # ── Overall ───────────────────────────────────────────────────────────────
     answered = sum(1 for a in audit.answers if a.verdict == "ANSWERED")

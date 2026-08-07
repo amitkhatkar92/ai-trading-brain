@@ -127,6 +127,31 @@ def _ikn_table(refs: list, show_n: int = 12) -> str:
     return "\n".join(lines)
 
 
+_PMCI_GROUPS = {
+    "MOMENTUM":  ["mom_1d", "mom_5d", "mom_20d", "adx_score"],
+    "VOLUME":    ["volume_ratio_raw", "volume_spike"],
+    "TECHNICAL": ["rsi", "rsi_overbought", "rsi_oversold", "macd_signal_norm",
+                  "macd_bull", "macd_bear", "close_pos", "intra_range"],
+    "REGIME":    ["regime_bull", "regime_range", "regime_score", "global_bias"],
+    "SENTIMENT": ["breadth", "pcr", "sector_flow_count", "avg_conviction"],
+}
+
+
+def _pmci_subtable(features: dict) -> str:
+    lines = [f"    {'GROUP':<12} {'FEATURE':<28} {'VALUE':>10}"]
+    lines.append(f"    {_hr('─', 54)}")
+    for group, feat_list in _PMCI_GROUPS.items():
+        for feat in feat_list:
+            v = features.get(feat)
+            if v is not None:
+                try:
+                    lines.append(f"    {group:<12} {feat:<28} {float(v):>10.4f}")
+                except (TypeError, ValueError):
+                    pass
+        lines.append(f"    {' '*54}")
+    return "\n".join(lines)
+
+
 def _decision_history_table(history: list, show_n: int = 10) -> str:
     lines = [
         f"    {'DATE':<14} {'DECISION':<10} {'CONFIDENCE':>11} {'REGIME':<15} {'STRATEGY'}",
@@ -214,12 +239,34 @@ def generate_report(bundle: TraceBundle, audit: DTAAudit) -> str:
                 if k != "dominant":
                     lines.append(_kv(f"  {k}:", f"{float(v):.3f}" if isinstance(v, (int, float)) else str(v)))
             lines.append(_kv("Dominant:", ctx.regime_probs.get("dominant", "")))
+        # PMCI sub-factor groups
+        if feat and feat.features:
+            lines.append("")
+            lines.append("    PMCI SUB-FACTORS:")
+            lines.append(_pmci_subtable(feat.features))
     else:
         lines.append("    [No scanner signal found for this symbol in cycle]")
 
     # LAYER 4 — CDS Score / Strategy Mix
-    lines.append(_layer(4, "CDS SCORE / STRATEGY ALLOCATION"))
+    lines.append(_layer(4, "CDS SCORE / DECISION ENGINE"))
+    if d:
+        total = d.technical_score + d.risk_score + d.macro_score + d.regime_score
+        lines.append("    CDS COMPONENT SCORES:")
+        lines.append(f"    {'COMPONENT':<28} {'SCORE':>8} {'WEIGHT':>8}")
+        lines.append(f"    {_hr('─', 48)}")
+        for name, val in [
+            ("Technical Score", d.technical_score),
+            ("Risk Score",      d.risk_score),
+            ("Macro Score",     d.macro_score),
+            ("Regime Score",    d.regime_score),
+        ]:
+            pct = f"{val/total*100:.0f}%" if total > 0 else "N/A"
+            lines.append(f"    {name:<28} {val:>8.4f} {pct:>8}")
+        lines.append(f"    {_hr('─', 48)}")
+        lines.append(f"    {'FINAL CONFIDENCE':<28} {d.confidence:>8.4f} {'100%':>8}")
+        lines.append(f"    {'Position Modifier':<28} {d.position_modifier:>8.3f} {'':>8}")
     if ctx and ctx.strategy_mix:
+        lines.append("")
         lines.append(_kv("Meta-top strategy:", ctx.meta_top_strategy))
         lines.append(_kv("Strategy allocation:", ""))
         for strat, alloc in sorted(ctx.strategy_mix.items(), key=lambda x: -x[1]):
@@ -344,9 +391,9 @@ def generate_report(bundle: TraceBundle, audit: DTAAudit) -> str:
             lines.append(f"    Reason: {d.rejection_reason[:200]}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 8 AUDIT QUESTIONS
-    # ══════════════════════════════════════════════════════════════════════════
-    lines.append(_section("8 AUDIT QUESTIONS"))
+    # 10 AUDIT QUESTIONS (Investment Committee Decision Reconstruction)
+    # ═════════════════════════════════════════════════════════════════════════════
+    lines.append(_section("10 AUDIT QUESTIONS — Investment Committee Decision Reconstruction"))
 
     for i, aq in enumerate(audit.answers, 1):
         verdict_badge = {"ANSWERED": "✓", "PARTIAL": "~", "INSUFFICIENT": "?"}.get(aq.verdict, "?")
@@ -359,7 +406,31 @@ def generate_report(bundle: TraceBundle, audit: DTAAudit) -> str:
                 lines.append(f"    • {ev}")
 
     # ══════════════════════════════════════════════════════════════════════════
-    # ALTERNATIVE CANDIDATES
+    # REJECTION AUDIT — why each scanned stock was not selected
+    # ══════════════════════════════════════════════════════════════════════════
+    lines.append(_section("REJECTION AUDIT — Why Other Stocks Were Not Selected"))
+    lines.append(
+        f"    Scanner universe this cycle: {bundle.scanner_universe_size} stocks scanned\n"
+        f"    Target: {bundle.symbol} | Decision: {d.decision if d else 'N/A'}"
+    )
+    if bundle.rejection_audit:
+        lines.append("")
+        lines.append(
+            f"    {'SYMBOL':<16} {'SCAN_CONF':>9} {'OUTCOME':<13} "
+            f"{'GAP_VS_TARGET':>13}  REJECTION REASON"
+        )
+        lines.append(f"    {_hr('─', 90)}")
+        for r in bundle.rejection_audit:
+            gap_str = f"{r.vs_target_gap:+.2f}" if r.vs_target_gap else "  N/A"
+            lines.append(
+                f"    {r.symbol:<16} {r.scanner_confidence:>9.2f} {r.decision_outcome:<13} "
+                f"{gap_str:>13}  {r.rejection_reason[:60]}"
+            )
+    else:
+        lines.append("    [Rejection audit not available — no cycle event data]")
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # ALTERNATIVE CANDIDATES (legacy view — kept for reference)
     # ══════════════════════════════════════════════════════════════════════════
     lines.append(_section("ALTERNATIVE CANDIDATES (Same Cycle)"))
     if bundle.alternative_candidates:

@@ -161,6 +161,19 @@ class RiskContext:
 
 
 @dataclass
+class RejectionRecord:
+    """Why a scanned stock was NOT selected in this cycle."""
+    symbol:           str = ""
+    direction:        str = ""
+    scanner_confidence: float = 0.0
+    strategy:         str = ""
+    decision_outcome: str = ""      # APPROVED / REJECTED / NOT_DECIDED
+    decision_confidence: float = 0.0
+    rejection_reason: str = ""      # human-readable reason
+    vs_target_gap:    float = 0.0   # target_confidence - this_confidence
+
+
+@dataclass
 class TraceBundle:
     """Complete decision trace for one symbol."""
     symbol:          str = ""
@@ -178,6 +191,8 @@ class TraceBundle:
     # Historical context
     decision_history:      List[DecisionRecord] = field(default_factory=list)
     alternative_candidates: List[SignalRecord] = field(default_factory=list)
+    rejection_audit:       List[RejectionRecord] = field(default_factory=list)
+    scanner_universe_size: int = 0  # total stocks scanned this cycle
     strategy_perf:         Dict = field(default_factory=dict)
     study_references:      List[str] = field(default_factory=list)
     hypothesis_refs:       List[Dict] = field(default_factory=list)
@@ -616,6 +631,69 @@ def _prev_decision_diff(current: DecisionRecord, prev: Optional[DecisionRecord])
     return diff
 
 
+def _build_rejection_audit(
+    alts: List[SignalRecord],
+    target_signal: Optional[SignalRecord],
+    target_decision: Optional[DecisionRecord],
+) -> List[RejectionRecord]:
+    """Explain why each scanned stock (other than target) was not selected."""
+    if not target_decision:
+        return []
+
+    cycle_id   = target_decision.cycle_id
+    target_sym = target_decision.symbol
+    target_conf = target_decision.confidence
+
+    # Fetch ct_decisions for all other stocks in this cycle
+    other_dec: Dict[str, dict] = {}
+    conn = _conn(DB_CTRL)
+    if conn:
+        try:
+            rows = conn.execute("""
+                SELECT symbol, decision, confidence, rejection_reason
+                FROM ct_decisions WHERE cycle_id = ? AND symbol != ?
+            """, (cycle_id, target_sym)).fetchall()
+            for r in rows:
+                other_dec[r["symbol"]] = dict(r)
+        finally:
+            conn.close()
+
+    results = []
+    for alt in alts:
+        od = other_dec.get(alt.symbol, {})
+        dec_out = od.get("decision", "NOT_DECIDED")
+        dec_conf = float(od.get("confidence", 0) or 0)
+        gap = target_conf - dec_conf if dec_conf else 0.0
+
+        if dec_out == "REJECTED":
+            rr = od.get("rejection_reason", "") or ""
+            reason = rr[:120] if rr else f"Confidence {dec_conf:.2f} below approval threshold"
+        elif dec_out == "APPROVED":
+            reason = f"Also APPROVED in this cycle (confidence={dec_conf:.2f})"
+        elif dec_out == "NOT_DECIDED":
+            # Scanned but did not reach decision engine
+            reason = (
+                f"Scanner found signal (conf={alt.confidence:.2f}) but did not "
+                f"reach decision engine — pre-filtered or capacity limit reached"
+            )
+        else:
+            reason = f"Decision: {dec_out}"
+
+        results.append(RejectionRecord(
+            symbol=alt.symbol,
+            direction=alt.direction,
+            scanner_confidence=alt.confidence,
+            strategy=alt.strategy,
+            decision_outcome=dec_out,
+            decision_confidence=dec_conf,
+            rejection_reason=reason,
+            vs_target_gap=gap,
+        ))
+
+    results.sort(key=lambda r: -r.scanner_confidence)
+    return results
+
+
 # ── Main collector ────────────────────────────────────────────────────────────
 
 def collect_trace(symbol: str, target_date: Optional[str] = None) -> TraceBundle:
@@ -650,7 +728,13 @@ def collect_trace(symbol: str, target_date: Optional[str] = None) -> TraceBundle
     bundle.signal = _parse_signal(events, symbol)
 
     # Alternatives
-    bundle.alternative_candidates = _parse_alternatives(events, symbol)[:10]
+    bundle.alternative_candidates = _parse_alternatives(events, symbol)[:15]
+
+    # Rejection audit — why each scanned stock was not selected
+    bundle.rejection_audit = _build_rejection_audit(
+        bundle.alternative_candidates, bundle.signal, bundle.decision
+    )
+    bundle.scanner_universe_size = len(bundle.alternative_candidates) + 1  # +1 for target
 
     # Feature snapshot
     bundle.features = _load_features(symbol)
