@@ -5539,6 +5539,25 @@ class MasterOrchestrator:
         except Exception as _ilc_exc:
             log.warning("[ILC-001] Cycle failed (non-critical): %s", _ilc_exc)
 
+        # ── PRR-001: Production Readiness Pipeline ─────────────────────────────
+        # Runs all 9 PRR phases after ILC. Generates 9 audit reports.
+        # Each phase is failure-isolated; never affects trading.
+        try:
+            from production_readiness.prr_runner import run_prr as _run_prr
+            _prr = _run_prr()
+            log.info(
+                "[PRR-001] Readiness: %s  ils=%.1f/100 gva=%.1f/100 "
+                "critical_failures=%d warnings=%d elapsed=%.1fs",
+                _prr.get("certification_status", "?"),
+                _prr.get("ils_score", 0.0),
+                _prr.get("gva_score", 0.0),
+                _prr.get("critical_failures", 0),
+                _prr.get("warnings", 0),
+                _prr.get("elapsed_seconds", 0.0),
+            )
+        except Exception as _prr_exc:
+            log.warning("[PRR-001] Pipeline failed (non-critical): %s", _prr_exc)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     @staticmethod

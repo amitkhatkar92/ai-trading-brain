@@ -113,10 +113,33 @@ class KnowledgeProvider:
         status: Optional[EdgeStatus] = None,
         min_composite_score: Optional[float] = None,
     ) -> List[EdgeRecord]:
-        """Return discovered edges.  Optionally filter by status or composite score."""
+        """Return discovered edges.  Optionally filter by status or composite score.
+
+        PRR-001 Phase 1 — DECAYING Edge Gate:
+        DECAYING and RETIRED edges are permanently excluded from all callers.
+        They must never contribute to live signals, confidence calculations,
+        or decision inputs regardless of any caller-supplied status filter.
+        """
         if self._edges is None:
             self._edges = self._load_edges()
         edges = list(self._edges)
+        # ── PRR-001 Phase 1: Block DECAYING and RETIRED edges ─────────────────
+        _blocked_statuses = {"DECAYING", "RETIRED"}
+        _before = len(edges)
+        edges = [
+            e for e in edges
+            if (getattr(e, "status", None) is None
+                or str(getattr(e.status, "value", e.status)).upper() not in _blocked_statuses)
+        ]
+        _blocked = _before - len(edges)
+        if _blocked > 0:
+            import logging as _log
+            _log.getLogger(__name__).info(
+                "[EdgeGate] list_edges: blocked %d DECAYING/RETIRED edges "
+                "(remaining=%d). PRR-001 Phase 1 gate active.",
+                _blocked, len(edges),
+            )
+        # ─────────────────────────────────────────────────────────────────────
         if status is not None:
             edges = [e for e in edges if e.status == status]
         if min_composite_score is not None:

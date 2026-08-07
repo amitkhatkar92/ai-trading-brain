@@ -456,6 +456,23 @@ class OrderManager:
           vix       – float India VIX value
           distortion – bool any distortion event active
         """
+        # ── PRR-001 Phase 3: Signal Freshness Gate ───────────────────────────
+        # Block execution of signals older than 15 trading days (EXPIRED).
+        # WEAKENING signals (6–15 days) are allowed with a warning.
+        try:
+            from production_readiness.ph3_signal_freshness import is_signal_expired
+            if is_signal_expired(signal):
+                log.warning(
+                    "[SignalFreshnessGate] BLOCKED %s — signal timestamp=%s is EXPIRED "
+                    "(>15 trading days old). PRR-001 Phase 3 rule enforced.",
+                    signal.symbol,
+                    getattr(signal, "timestamp", "?"),
+                )
+                return None
+        except Exception as _sf_exc:
+            log.debug("[SignalFreshnessGate] Check skipped: %s", _sf_exc)
+        # ── end Signal Freshness Gate ─────────────────────────────────────────
+
         # ── Layer 3: ExecutionWindowBlock ───────────────────────────────────
         # Last-resort hard block: reject any order placed before 09:45 IST.
         # Catches callers that bypass Layers 1 and 2 (e.g. test harnesses,
