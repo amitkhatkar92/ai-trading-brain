@@ -5520,6 +5520,25 @@ class MasterOrchestrator:
         except Exception as _pga_exc:
             log.warning("[PGA-001] Daily analysis failed (non-critical): %s", _pga_exc)
 
+        # ── ILC-001: Institutional Learning Cycle ─────────────────────────────
+        # Runs after PGA every trading day. Full 12-phase learning pipeline.
+        # Never affects trading. Wrapped in try/except — totally non-blocking.
+        try:
+            from institutional_learning.ilc_runner import run_ilc as _run_ilc
+            _ilc = _run_ilc()
+            log.info(
+                "[ILC-001] Cycle complete: score=%.1f/100 (%s) "
+                "actions=%d verified=%d improved=%d roi+_pct=%.0f%%",
+                _ilc.get("learning_score", 0),
+                _ilc.get("grade", "?"),
+                _ilc.get("n_actions", 0),
+                _ilc.get("n_verified_today", 0),
+                _ilc.get("n_improved", 0),
+                _ilc.get("roi_positive_pct", 0),
+            )
+        except Exception as _ilc_exc:
+            log.warning("[ILC-001] Cycle failed (non-critical): %s", _ilc_exc)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     @staticmethod

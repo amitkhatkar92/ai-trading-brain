@@ -77,8 +77,18 @@ def _load_universe(max_symbols: int) -> List[str]:
             data = json.load(f)
         symbols = data.get("symbols", data) if isinstance(data, dict) else data
         if isinstance(symbols, list):
-            # Strip .NS suffix if present
-            cleaned = [s.replace(".NS", "").strip() for s in symbols if s]
+            # Strip .NS suffix if present; handle both str items and dict items
+            cleaned = []
+            for s in symbols:
+                if isinstance(s, dict):
+                    raw = s.get("symbol") or s.get("yahoo_ticker") or ""
+                elif isinstance(s, str):
+                    raw = s
+                else:
+                    continue
+                bare = str(raw).replace(".NS", "").strip()
+                if bare:
+                    cleaned.append(bare)
             return cleaned[:max_symbols]
     except Exception as e:
         log.warning("[PGA] Universe load failed: %s", e)
