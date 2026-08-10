@@ -40,6 +40,7 @@ Key functions
 from __future__ import annotations
 
 import json as _json
+import os as _os
 from datetime import datetime as _dt
 from typing import Dict, List, Optional, Tuple
 
@@ -104,6 +105,7 @@ _DRAWDOWN_REDUCERS: List[Tuple[float, float]] = [
 _STRATEGY_SHARE: Dict[str, float] = {
     "Breakout_Volume":          0.28,
     "Momentum_Retest":          0.18,
+    "Trend_Pullback":           0.18,  # pullback-in-trend; same role as Momentum_Retest
     "Mean_Reversion":           0.22,
     "Bull_Call_Spread":         0.12,
     "Iron_Condor_Range":        0.18,
@@ -112,8 +114,45 @@ _STRATEGY_SHARE: Dict[str, float] = {
     "Long_Straddle_Pre_Event":  0.08,
     "Futures_Basis_Arb":        0.14,
     "ETF_NAV_Arb":              0.12,
+    "Equity_Breakout":          0.28,  # volatile-regime breakout; same profile as Breakout_Volume
+    "Equity_Retest":            0.18,  # volatile-regime retest; same profile as Momentum_Retest
 }
-_DEFAULT_SHARE = 0.10   # fallback for unknown / evolved variants
+_DEFAULT_SHARE = 0.10   # fallback for genuinely unknown / unmapped strategies
+
+# ── Evolved strategy → base strategy resolution ────────────────────────────
+# Loaded lazily from data/evolved_strategies.json on first call.
+# Maps variant name → base_strategy name (e.g. EDG_MOMENT_95_EE0000 → Breakout_Volume).
+_EVOLVED_BASE_MAP: Dict[str, str] = {}
+_EVOLVED_BASE_MAP_LOADED: bool = False
+_EVOLVED_STRATEGIES_PATH: str = _os.path.join(
+    _os.path.dirname(_os.path.abspath(__file__)),
+    "..", "data", "evolved_strategies.json",
+)
+
+
+def _load_evolved_base_map() -> None:
+    """Populate _EVOLVED_BASE_MAP once from evolved_strategies.json."""
+    global _EVOLVED_BASE_MAP, _EVOLVED_BASE_MAP_LOADED
+    if _EVOLVED_BASE_MAP_LOADED:
+        return
+    try:
+        with open(_EVOLVED_STRATEGIES_PATH, "r", encoding="utf-8") as _f:
+            _evolved = _json.load(_f)
+        _EVOLVED_BASE_MAP = {
+            name: params["base_strategy"]
+            for name, params in _evolved.items()
+            if params.get("approved") and params.get("base_strategy")
+        }
+        log.info(
+            "[CREStrategyBaseMap] Loaded %d base-strategy mappings from evolved_strategies.json",
+            len(_EVOLVED_BASE_MAP),
+        )
+    except FileNotFoundError:
+        log.debug("[CREStrategyBaseMap] evolved_strategies.json not found — base map empty.")
+    except Exception as _exc:
+        log.warning("[CREStrategyBaseMap] Could not load evolved base map: %s", _exc)
+    finally:
+        _EVOLVED_BASE_MAP_LOADED = True
 
 # ── Maximum number of simultaneous positions (correlation control) ─────────
 _MAX_POSITIONS = 8
@@ -546,16 +585,35 @@ class CapitalRiskEngine:
         return TOTAL_CAPITAL * base_exposure * dd_reducer
 
     def _strategy_budget(self, strategy_name: str, deployable: float) -> float:
-        """Capital budget allocated to this specific strategy."""
+        """Capital budget allocated to this specific strategy.
+
+        Resolution order (capital-independent — percentage only):
+          1. Exact name match in _STRATEGY_SHARE
+          2. base_strategy from evolved_strategies.json → match in _STRATEGY_SHARE
+          3. Prefix match in _STRATEGY_SHARE (backward compat: *_RSI_HiVol style)
+          4. _DEFAULT_SHARE for genuinely unknown strategies
+        """
+        # 1. Exact match
         share = _STRATEGY_SHARE.get(strategy_name)
+
+        # 2. Evolved variant: look up base_strategy from the JSON metadata
         if share is None:
-            # Evolved variant: inherit base strategy share
-            for base, base_share in _STRATEGY_SHARE.items():
-                if strategy_name.startswith(base):
-                    share = base_share
+            _load_evolved_base_map()
+            _base = _EVOLVED_BASE_MAP.get(strategy_name)
+            if _base:
+                share = _STRATEGY_SHARE.get(_base)
+
+        # 3. Prefix match (backward compat for variants like Breakout_Volume_RSI_HiVol)
+        if share is None:
+            for _pfx, _pfx_share in _STRATEGY_SHARE.items():
+                if strategy_name.startswith(_pfx):
+                    share = _pfx_share
                     break
+
+        # 4. Fallback for genuinely unknown strategies
         if share is None:
             share = _DEFAULT_SHARE
+
         return deployable * share
 
     def _size_position(self, sig: TradeSignal, budget: float) -> int:
