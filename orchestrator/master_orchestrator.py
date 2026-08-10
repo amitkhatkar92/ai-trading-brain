@@ -247,7 +247,7 @@ class MasterOrchestrator:
         self.simulation_engine   = SimulationEngine(mc_runs=1_000)
 
         # ── Layer 7.5: Fail-Safe Risk Guardian ────────────────────────
-        self.risk_guardian       = FailSafeRiskGuardian(total_capital=1_000_000)
+        self.risk_guardian       = FailSafeRiskGuardian(total_capital=TOTAL_CAPITAL)
 
         # ── Layer 6–7: Debate & Decision ───────────────────────────────
         self.debate_system       = MultiAgentDebate()
