@@ -1665,6 +1665,7 @@ class MasterOrchestrator:
         _matched_syms = {s.symbol for s in matched}
         _reject_by_reason: dict = {}
         _reject_by_strategy: dict = {}
+        _sl_attrition_recs: list = []   # [(signal, rej_reason, bt_score)] for ScanAttrition write
         for _s in signals:
             if _s.symbol in _tested_syms:
                 continue  # survived
@@ -1705,6 +1706,7 @@ class MasterOrchestrator:
             )
             _reject_by_reason[_rej_reason]    = _reject_by_reason.get(_rej_reason, 0) + 1
             _reject_by_strategy[_strat]       = _reject_by_strategy.get(_strat, 0) + 1
+            _sl_attrition_recs.append((_s, _rej_reason, _bt_score))
         _strategy_reject_count = len(signals) - len(tested)
         if _strategy_reject_count:
             log.info(
@@ -1715,6 +1717,32 @@ class MasterOrchestrator:
                 dict(sorted(_reject_by_reason.items(), key=lambda x: -x[1])),
             )
         self._last_sl_reject_summary = dict(_reject_by_reason)  # for TradeDiagnostic
+
+        # ── [ScanAttrition] write StrategyLab rejects to daily staging file ──────
+        # Observational only — no pipeline logic changed.
+        try:
+            from predictive_gap.scan_attrition import append_attrition, make_strategy_lab_reject
+            _sa_cycle  = f"intraday_cycle_{getattr(self.system_monitor, '_cycle_id', 0)}"
+            _sa_regime = (
+                getattr(snapshot.regime, "value", str(snapshot.regime))
+                if snapshot else "UNKNOWN"
+            )
+            _sa_write = [
+                make_strategy_lab_reject(
+                    symbol=_sa_sig.symbol,
+                    cycle=_sa_cycle,
+                    regime=_sa_regime,
+                    strategy=getattr(_sa_sig, "strategy_name", "UNASSIGNED"),
+                    scanner_score=float(getattr(_sa_sig, "confidence", 0.0)),
+                    rejection_reason=_sa_rej,
+                    backtest_score=_sa_bt,
+                )
+                for _sa_sig, _sa_rej, _sa_bt in _sl_attrition_recs
+            ]
+            if _sa_write:
+                append_attrition(_sa_write)
+        except Exception:
+            pass  # attrition write must never affect the trading cycle
 
         self.bus.publish(SystemEvent(
             event_type=EventType.STRATEGY_LAB_COMPLETE,

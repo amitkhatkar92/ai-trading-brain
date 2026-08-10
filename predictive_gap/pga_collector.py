@@ -68,6 +68,7 @@ class DailyData:
     universe_symbols: List[str] = field(default_factory=list)
     dna_coverage: Dict[str, int] = field(default_factory=dict)       # symbol → count
     edge_coverage: Dict[str, int] = field(default_factory=dict)      # symbol → count
+    scan_attrition_records: list = field(default_factory=list)        # ScanAttritionRecord list
 
 
 def _load_universe(max_symbols: int) -> List[str]:
@@ -413,7 +414,14 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
     approved, rejected = _load_ct_decisions(report_date)
     signals = _load_ct_signals(report_date)
     executed_trades = _load_executed_trades(report_date)
-
+    # ── 3b. Load scan-attrition staging records (written intraday by orchestrator) ──
+    try:
+        from .scan_attrition import load_attrition as _load_attrition
+        attrition_records = _load_attrition(report_date)
+        log.info("[PGA] Scan attrition records: %d", len(attrition_records))
+    except Exception as _sa_exc:
+        log.debug("[PGA] scan_attrition load skipped: %s", _sa_exc)
+        attrition_records = []
     # ── 4. Build scanned_today set ─────────────────────────────────────
     scanned_today: Set[str] = {s.symbol for s in signals}
     decided_symbols: Set[str] = (
@@ -472,4 +480,5 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
         universe_symbols=universe,
         dna_coverage=dna_coverage,
         edge_coverage=edge_coverage,
+        scan_attrition_records=attrition_records,
     )

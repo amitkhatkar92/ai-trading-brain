@@ -56,6 +56,14 @@ _oe_io_counters: Dict[str, int] = {
 # Protected by _PRICE_CACHE_LOCK (written together with _PRICE_CACHE).
 _FEED_SOURCE_CACHE: Dict[str, str] = {}
 
+# ── Scan-attrition: per-cycle record of evaluated symbols ────────────────────
+# symbol → {"ltp": float, "in_range": bool, "signal_generated": bool}
+# Populated during each scan() call; read by scan_attrition hook in the
+# orchestrator after scan() returns so it can write SCANNER_NO_SIGNAL records.
+# Shared-read by pga_collector at EOD via load_last_cycle_evaluated().
+_LAST_CYCLE_EVALUATED: Dict[str, Dict] = {}
+_LAST_CYCLE_REGIME: str = ""
+
 # ── PriceGuard cold-start constants ─────────────────────────────────────────
 # On cold start the cache is empty; guard waits for background refresh before
 # allowing a scan cycle.  System skips the cycle if prices can't be obtained.
