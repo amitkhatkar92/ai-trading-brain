@@ -11,8 +11,9 @@ services:
     # teardown and causes an infinite restart loop (os.kill(1, 0) always succeeds
     # on Linux; the stale-lock detection in instance_lock.py never fires).
     # `exec` replaces the shell so python is PID 1 and receives SIGTERM directly.
+    # PAPER_TRADING is read from .env — do not hardcode --paper here.
     command: >
-      sh -c "rm -f /app/data/trading_engine.pid /tmp/trading_engine.pid && exec python main.py --schedule --paper"
+      sh -c "rm -f /app/data/trading_engine.pid /tmp/trading_engine.pid && exec python main.py --schedule"
     
     # Mounted volumes for persistent data
     volumes:
