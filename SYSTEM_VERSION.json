@@ -1,9 +1,9 @@
 {
   "schema_version": 1,
   "platform_version": "1.0.0",
-  "build_number": 2,
-  "git_commit": "92665fa",
-  "git_commit_full": "92665fa42e36e9414b34d9e336e432033d5111ee",
+  "build_number": 3,
+  "git_commit": "e0ee255",
+  "git_commit_full": "e0ee25599711668efc9caf0df7cdb02df7c97269",
   "release_date": "2026-08-10",
   "release_name": "IIOS-V1.0.0",
   "db_versions": {
@@ -14,12 +14,12 @@
   "research_version": "H001:CONFIRMED",
   "dna_version": "124-records",
   "knowledge_version": "259-edges",
-  "config_version": "92665fa",
+  "config_version": "e0ee255",
   "container_version": "1.0.0",
   "certification_status": "PRODUCTION_READY_WITH_OBSERVATIONS",
   "frz_status": "FROZEN",
   "previous_version": "1.0.0",
-  "release_notes": "Protected modules updated: FailSafeRiskGuardian: total_capital=TOTAL_CAPITAL \u2014 authorized fix",
+  "release_notes": "LIVE ACTIVATION \u2014 PAPER_TRADING=false DhanBroker v2.1+ DhanContext",
   "protected_module_hashes": {
     "risk_guardian/risk_guardian.py": "465760e0f9c623b6",
     "strategy_lab/backtesting_ai.py": "12df34ede0158531",
