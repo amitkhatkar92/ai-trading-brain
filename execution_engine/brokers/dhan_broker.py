@@ -30,8 +30,13 @@ class DhanBroker:
 
     def _connect(self):
         try:
-            from dhanhq import dhanhq
-            self._dhan      = dhanhq(self.client_id, self.access_token)
+            from dhanhq import dhanhq as _DhanHQ
+            try:
+                from dhanhq import DhanContext  # v2.1+
+                ctx        = DhanContext(self.client_id, self.access_token)
+                self._dhan = _DhanHQ(ctx)
+            except ImportError:
+                self._dhan = _DhanHQ(self.client_id, self.access_token)
             self._connected = True
             log.info("[DhanBroker] Connected.")
         except ImportError:
