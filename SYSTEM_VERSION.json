@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "platform_version": "1.0.0",
-  "build_number": 1,
-  "git_commit": "a1ca6e1",
-  "git_commit_full": "a1ca6e18a0583f95c335ce22b7b3281449d956f4",
-  "release_date": "2026-08-07",
+  "build_number": 2,
+  "git_commit": "92665fa",
+  "git_commit_full": "92665fa42e36e9414b34d9e336e432033d5111ee",
+  "release_date": "2026-08-10",
   "release_name": "IIOS-V1.0.0",
   "db_versions": {
     "control_tower": "0",
@@ -14,12 +14,12 @@
   "research_version": "H001:CONFIRMED",
   "dna_version": "124-records",
   "knowledge_version": "259-edges",
-  "config_version": "a1ca6e1",
+  "config_version": "92665fa",
   "container_version": "1.0.0",
   "certification_status": "PRODUCTION_READY_WITH_OBSERVATIONS",
   "frz_status": "FROZEN",
-  "previous_version": "",
-  "release_notes": "FRZ-001: Architecture Freeze initial release",
+  "previous_version": "1.0.0",
+  "release_notes": "Protected modules updated: FailSafeRiskGuardian: total_capital=TOTAL_CAPITAL \u2014 authorized fix",
   "protected_module_hashes": {
     "risk_guardian/risk_guardian.py": "465760e0f9c623b6",
     "strategy_lab/backtesting_ai.py": "12df34ede0158531",
@@ -32,9 +32,9 @@
     "validation_engine\\validation_report.py": "4eed420f0b360524",
     "validation_engine\\walkforward_test.py": "04b733ba6d6e8d4f",
     "data_feeds/dhan_feed.py": "a368eeb1e5023c95",
-    "main.py": "ba34445977ebce3c",
+    "main.py": "5186d0380f386755",
     "config.py": "57e6071d420784bb",
-    "orchestrator/master_orchestrator.py": "5d39852c7856070e",
+    "orchestrator/master_orchestrator.py": "0f3df2cba275c771",
     "execution_engine/order_manager.py": "459e44887f3b0552"
   }
 }
