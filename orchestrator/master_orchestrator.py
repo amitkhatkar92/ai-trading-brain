@@ -5768,6 +5768,47 @@ class MasterOrchestrator:
         except Exception as exc:
             log.debug("Telegram market-open notify failed: %s", exc)
 
+    def _dhan_equity_readiness_probe_0915(self) -> None:
+        """
+        FRZ-001 Phase 3 — Fire Dhan equity readiness probe at 09:15 IST.
+
+        Ensures equity_verified=True is set BEFORE the 09:45 first trading
+        cycle when the container starts pre-market.  Reuses the existing
+        DhanFeed._readiness_probe() — this call is READ-ONLY and never
+        places, modifies, or cancels any order.
+
+        If verification fails: logs the reason and retains existing safe
+        FALLBACK behavior.  Yahoo Finance continues to provide live equity
+        data until Dhan is verified.
+        """
+        try:
+            from data_feeds.data_feed_manager import get_feed_manager as _gfm
+            _dhan = getattr(_gfm(), "dhan", None)
+            if _dhan is None:
+                log.info("[DhanReadiness09:15] Dhan feed not initialised — probe skipped.")
+                return
+            if getattr(_dhan, "_equity_verified", False):
+                log.info("[DhanReadiness09:15] Equity already verified — probe skipped.")
+                return
+            log.info(
+                "[DhanReadiness09:15] Firing equity readiness probe at market open "
+                "(probe is read-only — no orders placed)."
+            )
+            _dhan._readiness_probe()
+            if getattr(_dhan, "_equity_verified", False):
+                log.info(
+                    "[DhanReadiness09:15] ✅ Dhan equity verified — "
+                    "09:45 first cycle will use LIVE_VERIFIED feed."
+                )
+            else:
+                log.warning(
+                    "[DhanReadiness09:15] ⚠️  Dhan equity NOT verified after probe — "
+                    "09:45 cycle will use FALLBACK (Yahoo Finance). "
+                    "FeedTruth governance remains active."
+                )
+        except Exception as _exc:
+            log.warning("[DhanReadiness09:15] Probe exception: %s", _exc)
+
     def _market_close_notify(self) -> None:
         """
         Called at 15:30 IST when NSE market closes.
@@ -6012,6 +6053,7 @@ class MasterOrchestrator:
 
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
+        sched_lib.every().day.at("09:15").do(self._dhan_equity_readiness_probe_0915)  # FRZ-001
         sched_lib.every().day.at("15:30").do(self._market_close_notify)  # 15:30 IST = NSE close
 
         # ── EOD learning ───────────────────────────────────────────────

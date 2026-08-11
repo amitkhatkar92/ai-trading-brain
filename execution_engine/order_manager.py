@@ -3018,6 +3018,103 @@ class OrderManager:
                         )
                         continue
 
+            # Pass 1.9 — Deep orphan expiry for SIM_ paper records older than
+            # the normal restore window.  These rows are invisible to Pass 2
+            # (cutoff_dt skips them) but CycleHealthMonitor reads the full CSV
+            # and reports them as stale every cycle, forever.
+            #
+            # Safety constraints:
+            #   • Only SIM_-prefixed order_ids (paper records).  Real broker
+            #     order_ids are never touched — they do NOT carry the SIM_ prefix.
+            #   • Append-only: original OPEN row is preserved; we only add a CLOSE.
+            #   • Idempotent: after the CLOSE is written, Pass 1 adds the oid to
+            #     closed_in_csv, so re-runs are no-ops.
+            #   • The oid is added to closed_in_csv before Pass 2 so Pass 2 also
+            #     skips it cleanly.
+            _DEEP_ORPHAN_DAYS = 60   # scan back this far for unmatched SIM_ OPENs
+            _deep_cutoff = now - timedelta(days=_DEEP_ORPHAN_DAYS)
+            _deep_orphan_rows: list = []   # (oid, row_dict, placed_at, age_days)
+            try:
+                with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as fh:
+                    _dr = csv.DictReader(fh)
+                    for _row in _dr:
+                        try:
+                            _ts = _row.get("timestamp", "")
+                            try:
+                                _rdt = datetime.strptime(_ts[:19], "%Y-%m-%d %H:%M:%S")
+                            except (ValueError, TypeError):
+                                continue
+                            if _rdt < _deep_cutoff:
+                                continue   # beyond extended scan window
+                            if _rdt >= cutoff_dt:
+                                continue   # within normal restore window — handled by Pass 2
+                            _oid = _row.get("order_id", "").strip()
+                            _ev  = _row.get("event", "").strip().upper()
+                            if not _oid or not _oid.startswith("SIM_"):
+                                continue   # safety: only paper SIM_ records
+                            if _ev not in ("OPEN", "REENTRY_OPEN"):
+                                continue
+                            if _oid in closed_in_csv or _oid in closed_registry:
+                                continue   # already closed — skip
+                            try:
+                                _placed_at = datetime.strptime(_ts[:19], "%Y-%m-%d %H:%M:%S")
+                            except (ValueError, TypeError):
+                                _placed_at = now
+                            _age_d = (now - _placed_at).days
+                            _deep_orphan_rows.append((_oid, _row, _placed_at, _age_d))
+                        except Exception:
+                            continue
+            except Exception as _dop_scan_exc:
+                log.debug("[OrderManager] Deep orphan scan error: %s", _dop_scan_exc)
+
+            if _deep_orphan_rows:
+                # Mark as closed so Pass 2 skips them
+                for _oid, _, _, _ in _deep_orphan_rows:
+                    closed_in_csv.add(_oid)
+                try:
+                    with self._journal_lock:
+                        with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as fh:
+                            _w = csv.DictWriter(fh, fieldnames=_JOURNAL_HEADER)
+                            for _oid, _row, _placed_at, _age_d in _deep_orphan_rows:
+                                _ep = float(_row.get("entry_price", 0) or 0)
+                                _w.writerow({
+                                    "timestamp":   now.strftime("%Y-%m-%d %H:%M:%S"),
+                                    "order_id":    _oid,
+                                    "symbol":      _row.get("symbol", ""),
+                                    "direction":   _row.get("direction", ""),
+                                    "quantity":    _row.get("quantity", 0),
+                                    "entry_price": _ep,
+                                    "stop_loss":   _row.get("stop_loss", ""),
+                                    "target":      _row.get("target", ""),
+                                    "strategy":    _row.get("strategy", ""),
+                                    "confidence":  "",
+                                    "rr":          "",
+                                    "event":       "CLOSE",
+                                    "exit_price":  _ep,
+                                    "pnl":         0.0,
+                                    "reason":      "SESSION_EXPIRED_DEEP_ORPHAN",
+                                })
+                                log.info(
+                                    "[OrderManager] SESSION_EXPIRED_DEEP_ORPHAN: "
+                                    "%s %s  age=%dd > restore_window=%dd  "
+                                    "(SIM paper record — original OPEN preserved, "
+                                    "CLOSE appended for auditability).",
+                                    _row.get("symbol", ""), _oid,
+                                    _age_d, _MAX_LOOKBACK_DAYS,
+                                )
+                            fh.flush()
+                            os.fsync(fh.fileno())
+                    log.info(
+                        "[OrderManager] Deep orphan expiry: %d SIM record(s) reconciled. "
+                        "CSV is now clean. (Real broker positions: untouched.)",
+                        len(_deep_orphan_rows),
+                    )
+                except Exception as _dop_write_exc:
+                    log.warning(
+                        "[OrderManager] Deep orphan expiry write failed: %s",
+                        _dop_write_exc,
+                    )
+
             # Pass 2: Find OPEN rows within the lookback window.
             open_rows: dict[str, dict] = {}   # order_id -> latest OPEN row
             _corrupt_pass2 = 0

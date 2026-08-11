@@ -9,13 +9,12 @@ Runs two scan modes simultaneously (Q2 answer):
      • detects breakout events (price crosses recent high/low)
      • fires MarketEvent onto EventBus for any downstream agent
 
-  2. Deep Analysis  — scheduled at specific intraday times
+  2. Deep Analysis  — scheduled at specific intraday times (opening window only)
        09:05  market open regime detection
        09:10  first opportunity scan
        09:20  strategy evaluation
-       10:30  mid-morning scan
-       13:00  afternoon scan
-       15:00  closing analysis + pre-EOD
+     All later cycles (10:30 / 11:30 / 13:00 / 14:00 / 15:00) are owned
+     exclusively by sched_lib in master_orchestrator.py.
 
 Usage:
     monitor = MarketMonitor(feed)
@@ -44,15 +43,11 @@ CIRCUIT_DROP_PCT    = -2.0      # NIFTY drop > 2% in one tick → circuit alert
 # MarketMonitor owns ONLY the opening-window deep scans (09:05–09:20).
 # All subsequent full cycles (10:30 onward) are owned exclusively by
 # the sched_lib scheduler in master_orchestrator.py to prevent double-firing.
+# FRZ-001: removed 10:30/11:30/13:00/14:00/15:00 — owned by sched_lib only.
 DEEP_SCAN_SCHEDULE: List[str] = [
     "09:05",   # market open — regime detection
     "09:10",   # first opportunity scan
     "09:20",   # strategy evaluation
-    "10:30",   # mid-morning re-scan
-    "11:30",   # mid-session scan
-    "13:00",   # afternoon scan
-    "14:00",   # early afternoon scan
-    "15:00",   # closing analysis + options exit evaluation
 ]
 
 # Symbols watched in continuous mode
