@@ -382,6 +382,12 @@ def execute_actions(
                 action.scheduled = ok
                 action.outcome = "IDR_REINFORCED" if ok else "IDR_FAILED"
 
+            elif action.category == "E" and action.target_system == TARGET_IDR:
+                # Cat-E: DNA candidate — research is batched for CLE-001 post-EOD executor.
+                # Mark as scheduled so the ILC registry records the intent clearly.
+                action.scheduled = True
+                action.outcome = "CLE_SCHEDULED"
+
             else:
                 # Categories A, D, E, F, G → logged for manual/scheduled execution
                 action.outcome = "LOGGED_FOR_REVIEW"

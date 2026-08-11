@@ -5567,6 +5567,28 @@ class MasterOrchestrator:
         except Exception as _ilc_exc:
             log.warning("[ILC-001] Cycle failed (non-critical): %s", _ilc_exc)
 
+        # ── CLE-001: Cat-E Automatic DNA Learning Executor ─────────────────────
+        # Runs after ILC. Processes PENDING Cat-E actions from the learning
+        # registry: fetches historical OHLCV, assesses evidence, and creates
+        # DISCOVERED DNA candidates in the IDR when evidence is sufficient.
+        # SAFETY: never modifies live trading rules. DNA starts at lifecycle=DISCOVERED.
+        # Totally non-blocking — failure here must never stop the pipeline.
+        try:
+            from cle_learning_executor import run_cat_e_learning as _run_cle
+            _cle = _run_cle(dry_run=False)
+            log.info(
+                "[CLE-001] Cat-E executor complete: found=%d processed=%d "
+                "candidates=%d no_dna=%d skipped=%d failed=%d",
+                _cle.get("n_found", 0),
+                _cle.get("n_processed", 0),
+                _cle.get("n_candidates", 0),
+                _cle.get("n_no_dna", 0),
+                _cle.get("n_skipped", 0),
+                _cle.get("n_failed", 0),
+            )
+        except Exception as _cle_exc:
+            log.warning("[CLE-001] Cat-E executor failed (non-critical): %s", _cle_exc)
+
         # ── PRR-001: Production Readiness Pipeline ─────────────────────────────
         # Runs all 9 PRR phases after ILC. Generates 9 audit reports.
         # Each phase is failure-isolated; never affects trading.
