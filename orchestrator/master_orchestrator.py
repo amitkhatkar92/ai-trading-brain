@@ -5589,6 +5589,26 @@ class MasterOrchestrator:
         except Exception as _cle_exc:
             log.warning("[CLE-001] Cat-E executor failed (non-critical): %s", _cle_exc)
 
+        # ── EMP-001: Early-Move Persistence & Previous-Day Predictive Value Audit
+        # Pure observational research — answers "does morning rank persist?" and
+        # "does the previous day predict tomorrow's winners?"
+        # SAFETY: never places orders, never modifies strategies, DNA, or risk rules.
+        # Non-blocking — failure here must never stop the pipeline.
+        try:
+            from early_move_audit import run_emp_audit as _run_emp
+            _today_str = datetime.now().strftime("%Y-%m-%d")
+            _emp = _run_emp(days=60, date_str=_today_str, dry_run=False)
+            log.info(
+                "[EMP-001] Observation complete: days=%d symbols=%d "
+                "recommendation=%s warnings=%d",
+                _emp.persistence.n_trading_days,
+                _emp.persistence.n_symbols,
+                _emp.predictive.recommendation,
+                len(_emp.warnings),
+            )
+        except Exception as _emp_exc:
+            log.warning("[EMP-001] Audit failed (non-critical): %s", _emp_exc)
+
         # ── PRR-001: Production Readiness Pipeline ─────────────────────────────
         # Runs all 9 PRR phases after ILC. Generates 9 audit reports.
         # Each phase is failure-isolated; never affects trading.
