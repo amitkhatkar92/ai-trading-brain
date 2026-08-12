@@ -4070,8 +4070,10 @@ class MasterOrchestrator:
             "close_emergency",         # TradeMonitor MAE — risk-engine intervention
             "ORPHAN_CLOSE",            # closed before first monitoring cycle (never had live LTP)
             "EOD_CLOSE",               # forced end-of-day flatten (currently dead code; exclude until wired)
-            # (C) data repair
+            # (C) data repair / journal housekeeping
             "SYSTEM_CLEANUP",
+            "SESSION_EXPIRED_DEEP_ORPHAN",  # Pass 1.9: old SIM_ record expired at restart
+            "PAPER_MODE_ARTIFACT",          # ORJ-001: historical SIM_ paper record reconciled
         }
         _session_expired_reasons = {"SESSION_EXPIRED", "SESSION_EXPIRED_EXTENDED"}
         try:
@@ -6267,20 +6269,53 @@ class MasterOrchestrator:
             )
             return
 
-        # Build alert message
+        # ── Categorize: SIM_ paper artifacts vs real/Dhan orphans ──────────
+        # HISTORICAL_SIM_ARTIFACT — order_id starts with "SIM_": created in a
+        #   paper-mode session, never sent to Dhan, no live capital at risk.
+        #   These should have been closed by _reconcile_sim_paper_artifacts()
+        #   earlier in __init__; if they appear here it means they are within
+        #   the 7-day restore window and require no immediate action.
+        # REAL_ORPHAN — non-SIM_ order_id not tracked by OrderManager:
+        #   could represent a live Dhan position without a corresponding record.
+        #   Requires immediate investigation.
+        sim_artifacts = {oid for oid in truly_orphaned if oid.startswith("SIM_")}
+        real_orphans  = truly_orphaned - sim_artifacts
+
+        if sim_artifacts:
+            for oid in sorted(sim_artifacts):
+                r = opens[oid]
+                log.info(
+                    "[OrphanAudit] HISTORICAL_SIM_ARTIFACT: %s %s %s @ %s — "
+                    "SIM_ paper record, no live Dhan exposure. "
+                    "Will be reconciled by ORJ-001 once outside the 7-day restore window.",
+                    r.get("symbol", oid), r.get("direction", "?"),
+                    r.get("quantity", "?"), r.get("entry_price", "?"),
+                )
+
+        if not real_orphans:
+            log.info(
+                "[OrphanAudit] %d HISTORICAL_SIM_ARTIFACT(s) noted — "
+                "SIM_ paper records, no live trading risk. 0 REAL_ORPHAN(s). "
+                "No alert required.",
+                len(sim_artifacts),
+            )
+            return
+
+        # Build CRITICAL alert for real/Dhan orphans only
         lines = []
-        for oid in truly_orphaned:
+        for oid in sorted(real_orphans):
             r = opens[oid]
             lines.append(
-                f"  {r.get('symbol','?')} {r.get('direction','?')} "
+                f"  [REAL_ORPHAN] {r.get('symbol','?')} {r.get('direction','?')} "
                 f"{r.get('quantity','?')} @ {r.get('entry_price','?')} "
-                f"(SL={r.get('stop_loss','?')})"
+                f"(SL={r.get('stop_loss','?')})  order_id={oid}"
             )
         alert_body = (
-            f"WARNING: {len(truly_orphaned)} position(s) found in paper_trades.csv "
+            f"WARNING: {len(real_orphans)} REAL_ORPHAN(s) found in paper_trades.csv "
             f"as OPEN without a CLOSE row AND not tracked by order_manager:\n"
             + "\n".join(lines)
-            + "\nManual review required."
+            + "\nThese are non-SIM_ order IDs — potential live Dhan positions without "
+            "a corresponding record. Manual review required immediately."
         )
         log.critical("[OrphanAudit] %s", alert_body)
 

@@ -167,6 +167,16 @@ def _decision_confidence(symbol: str, start_date: str, end_date: str) -> float:
 
 def _win_rate(symbol: str, start_date: str, end_date: str) -> float:
     """Win rate from paper trades CSV for a symbol in a date range."""
+    # Journal housekeeping reasons — synthetic closes with no real market
+    # outcome. Including them would dilute win rates with zero-PnL rows.
+    _SKIP_REASONS = {
+        "PAPER_MODE_ARTIFACT",          # ORJ-001 reconciliation
+        "SESSION_EXPIRED_DEEP_ORPHAN",  # Pass 1.9 reconciliation
+        "SYSTEM_CLEANUP",
+        "ORPHAN_CLOSE",
+        "emergency_close",
+        "close_emergency",
+    }
     if not PAPER_TRADES_CSV.exists():
         return 0.0
     try:
@@ -180,6 +190,8 @@ def _win_rate(symbol: str, start_date: str, end_date: str) -> float:
                 if row.get("event", "").upper() != "CLOSE":
                     continue
                 if symbol and row.get("symbol", "") != symbol:
+                    continue
+                if row.get("reason", "") in _SKIP_REASONS:
                     continue
                 pnl = float(row.get("pnl", 0) or 0)
                 total += 1

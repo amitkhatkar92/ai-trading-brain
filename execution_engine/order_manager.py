@@ -430,6 +430,10 @@ class OrderManager:
             self._prefetch_restored_ltps() # immediately resolve LTP for restored positions
         else:
             log.info("[OrderManager] Active broker: %s", ACTIVE_BROKER.upper())
+            # ORJ-001: reconcile historical SIM_ paper artifacts that were left
+            # open before the PAPER→LIVE transition.  Append-only; never touches
+            # live positions or Dhan orders.
+            self._reconcile_sim_paper_artifacts()
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC
@@ -3441,4 +3445,134 @@ class OrderManager:
 
         except Exception as exc:
             log.warning("[OrderManager] Could not restore from journal: %s", exc)
+
+    def _reconcile_sim_paper_artifacts(self) -> int:
+        """
+        ORJ-001: Append-only reconciliation of historical SIM_ paper records.
+
+        In LIVE mode _restore_from_journal() is never called, so Pass 1.9 never
+        writes SESSION_EXPIRED_DEEP_ORPHAN rows.  Without this, old SIM_ OPEN
+        rows persist in paper_trades.csv forever and trigger ORPHAN POSITION
+        ALERTs on every container restart.
+
+        Safety conditions (ALL must hold to reconcile a single row):
+          1. order_id starts with "SIM_"   — paper record; was never sent to Dhan
+          2. event OPEN with no CLOSE      — genuinely unmatched in journal
+          3. age > _MAX_LOOKBACK_DAYS (7d) — outside normal restore window
+          4. age ≤ _DEEP_ORPHAN_DAYS (60d) — within extended scan horizon
+          5. order_id not in self._orders  — not tracked as a live position
+
+        Appends one CLOSE row per artifact:
+          reason   = PAPER_MODE_ARTIFACT
+          exit_price = entry_price (₹0 P&L — no real LTP used)
+          pnl      = 0.0
+
+        Never adds any entry to self._orders.
+        Fully idempotent: re-runs detect the CLOSE row and skip.
+
+        Returns: number of records reconciled this call.
+        """
+        _MAX_LOOKBACK_DAYS  = 7    # consistent with _restore_from_journal
+        _DEEP_ORPHAN_DAYS   = 60   # consistent with Pass 1.9
+
+        if not os.path.exists(PAPER_TRADE_LOG):
+            return 0
+
+        now         = datetime.now()
+        cutoff_dt   = now - timedelta(days=_MAX_LOOKBACK_DAYS)   # must be older than this
+        deep_cutoff = now - timedelta(days=_DEEP_ORPHAN_DAYS)    # must be newer than this
+
+        # Build set of order_ids that already have a CLOSE row (idempotency guard)
+        closed_in_csv: set = set()
+        try:
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as _fh:
+                for _row in csv.DictReader(_fh):
+                    _ev = _row.get("event", "").strip().upper()
+                    if _ev in ("CLOSE", "CANCELLED"):
+                        _oid = _row.get("order_id", "").strip()
+                        if _oid:
+                            closed_in_csv.add(_oid)
+        except Exception as _scan_exc:
+            log.debug("[ORJ001] CSV scan error: %s", _scan_exc)
+            return 0
+
+        # Identify eligible SIM_ orphans
+        eligible: list = []
+        try:
+            with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as _fh:
+                for _row in csv.DictReader(_fh):
+                    _oid = _row.get("order_id", "").strip()
+                    _ev  = _row.get("event", "").strip().upper()
+
+                    if not _oid or not _oid.startswith("SIM_"):   # 1
+                        continue
+                    if _ev not in ("OPEN", "REENTRY_OPEN"):        # 2
+                        continue
+                    if _oid in closed_in_csv:                      # 2 (no CLOSE)
+                        continue
+                    if _oid in self._orders:                       # 5
+                        continue
+
+                    _ts = _row.get("timestamp", "")
+                    try:
+                        _rdt = datetime.strptime(_ts[:19], "%Y-%m-%d %H:%M:%S")
+                    except (ValueError, TypeError):
+                        continue
+                    if _rdt >= cutoff_dt:    # 3: must be older than restore window
+                        continue
+                    if _rdt < deep_cutoff:   # 4: within extended scan horizon
+                        continue
+
+                    eligible.append((_oid, _row, _rdt))
+        except Exception as _elig_exc:
+            log.debug("[ORJ001] Eligibility scan error: %s", _elig_exc)
+            return 0
+
+        if not eligible:
+            return 0
+
+        # Append CLOSE rows — append-only, never rewrites existing rows
+        count = 0
+        try:
+            with self._journal_lock:
+                with open(PAPER_TRADE_LOG, "a", newline="", encoding="utf-8") as _fh:
+                    _w = csv.DictWriter(_fh, fieldnames=_JOURNAL_HEADER)
+                    for _oid, _row, _rdt in eligible:
+                        _ep    = float(_row.get("entry_price", 0) or 0)
+                        _age_d = (now - _rdt).days
+                        _w.writerow({
+                            "timestamp":   now.strftime("%Y-%m-%d %H:%M:%S"),
+                            "order_id":    _oid,
+                            "symbol":      _row.get("symbol", ""),
+                            "direction":   _row.get("direction", ""),
+                            "quantity":    _row.get("quantity", 0),
+                            "entry_price": _ep,
+                            "stop_loss":   _row.get("stop_loss", ""),
+                            "target":      _row.get("target", ""),
+                            "strategy":    _row.get("strategy", ""),
+                            "confidence":  "",
+                            "rr":          "",
+                            "event":       "CLOSE",
+                            "exit_price":  _ep,
+                            "pnl":         0.0,
+                            "reason":      "PAPER_MODE_ARTIFACT",
+                        })
+                        log.info(
+                            "[ORJ001] PAPER_MODE_ARTIFACT: %s %s  age=%dd  "
+                            "(SIM record — original OPEN preserved, CLOSE appended).",
+                            _row.get("symbol", ""), _oid, _age_d,
+                        )
+                        count += 1
+                    _fh.flush()
+                    os.fsync(_fh.fileno())
+        except Exception as _write_exc:
+            log.warning("[ORJ001] Failed to write reconciliation rows: %s", _write_exc)
+            return 0
+
+        log.info(
+            "[ORJ001] Journal reconciliation complete: %d SIM paper artifact(s) reconciled. "
+            "Original OPEN rows preserved. No live positions created.",
+            count,
+        )
+        return count
 
