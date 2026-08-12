@@ -176,6 +176,20 @@ class StrategyHealthRecord:
     # on first record_trade() call; manually settable for evolved variants.
     strategy_profile_type: str = "UNKNOWN"
 
+    # ── G-001: Post-cooldown revalidation state ────────────────────────────
+    # Set by tick_session() when EARLY_ABORT cooldown completes but metrics
+    # still fail.  Cleared only by mark_revalidation_complete().
+    # Does NOT automatically re-enable the strategy.
+    revalidation_pending:   bool            = False
+    revalidation_timestamp: Optional[str]   = None   # ISO when requested
+    revalidation_result:    Optional[str]   = None   # PASS / FAIL / None
+
+    # ── G-004: Regime-tagged trade metadata ────────────────────────────────
+    # trade_regime_counts: regime → number of recorded trades in that regime
+    # recent_trades_with_regime: last RECENT_WINDOW trade dicts {r, regime}
+    trade_regime_counts:      Dict[str, int]  = field(default_factory=dict)
+    recent_trades_with_regime: List[Dict]     = field(default_factory=list)
+
     # ── Computed properties ────────────────────────────────────────────────
 
     @property
@@ -272,6 +286,13 @@ class StrategyHealthRecord:
             "cooldown_override":       self.cooldown_override,
             # Profile metadata
             "strategy_profile_type":   self.strategy_profile_type,
+            # G-001 revalidation
+            "revalidation_pending":    self.revalidation_pending,
+            "revalidation_timestamp":  self.revalidation_timestamp,
+            "revalidation_result":     self.revalidation_result,
+            # G-004 regime metadata
+            "trade_regime_counts":         self.trade_regime_counts,
+            "recent_trades_with_regime":   self.recent_trades_with_regime[-RECENT_WINDOW:],
         }
 
     @classmethod
@@ -296,6 +317,13 @@ class StrategyHealthRecord:
         # Profile metadata — only load what is already in the JSON.
         # _backfill_profiles() handles stamping + saving for records without the field.
         obj.strategy_profile_type = d.get("strategy_profile_type", "UNKNOWN")
+        # G-001 revalidation
+        obj.revalidation_pending   = d.get("revalidation_pending", False)
+        obj.revalidation_timestamp = d.get("revalidation_timestamp")
+        obj.revalidation_result    = d.get("revalidation_result")
+        # G-004 regime metadata
+        obj.trade_regime_counts         = d.get("trade_regime_counts", {})
+        obj.recent_trades_with_regime   = d.get("recent_trades_with_regime", [])
         return obj
 
 
@@ -321,8 +349,9 @@ class StrategyHealthMonitor:
     def record_trade(
         self,
         strategy_name: str,
-        pnl_pct: float,     # e.g. 0.015 = +1.5% on the trade
-        r_multiple: float,  # e.g. 2.0 = a 2R win
+        pnl_pct: float,                    # e.g. 0.015 = +1.5% on the trade
+        r_multiple: float,                 # e.g. 2.0 = a 2R win
+        regime: Optional[str] = None,      # G-004: regime at trade entry
     ) -> HealthStatus:
         """
         Record the outcome of a closed trade for the given strategy.
@@ -341,6 +370,13 @@ class StrategyHealthMonitor:
             rec.wins += 1
         rec.total_r     += r_multiple
         rec.recent_pnl   = (rec.recent_pnl + [pnl_pct])[-RECENT_WINDOW:]
+
+        # G-004: record regime metadata
+        if regime:
+            rec.trade_regime_counts[regime] = rec.trade_regime_counts.get(regime, 0) + 1
+            rec.recent_trades_with_regime = (
+                rec.recent_trades_with_regime + [{"r": r_multiple, "regime": regime}]
+            )[-RECENT_WINDOW:]
 
         # Rolling drawdown on recent PnL
         running = 0.0
@@ -471,6 +507,10 @@ class StrategyHealthMonitor:
         Call once per trading day at EOD (from MasterOrchestrator._do_eod_learning).
         After EARLY_ABORT_COOLDOWN sessions the strategy becomes eligible for
         re-enable on the next trade that produces a passing status.
+
+        G-001: When cooldown completes AND metrics still fail the EARLY_ABORT gate,
+        sets revalidation_pending=True so the orchestrator can request a governance
+        review.  Does NOT automatically enable the strategy.
         """
         changed = False
         for name, rec in self._records.items():
@@ -484,8 +524,89 @@ class StrategyHealthMonitor:
                         "Eligible for re-enable on next passing trade.",
                         name, EARLY_ABORT_COOLDOWN,
                     )
+                    # G-001: if the strategy's metrics still satisfy the EARLY_ABORT
+                    # disable condition (no new trades have come in), mark it for
+                    # governance revalidation.  Does NOT re-enable it.
+                    _still_fails = (
+                        EARLY_ABORT_MIN_TRADES <= rec.trades < MIN_TRADES
+                        and rec.win_rate < EARLY_ABORT_MAX_WR
+                        and rec.total_r  < EARLY_ABORT_MIN_TOTAL_R
+                    )
+                    if _still_fails and not rec.revalidation_pending:
+                        rec.revalidation_pending   = True
+                        rec.revalidation_timestamp = datetime.now().isoformat()
+                        rec.revalidation_result    = None
+                        log.warning(
+                            "[SHM] ⚠️  G-001 REVALIDATION_REQUIRED '%s' — "
+                            "cooldown_start=%s cooldown_end=%s "
+                            "disable_reason=%s wr=%.0f%% trades=%d total_r=%.2f "
+                            "— strategy remains DISABLED pending governance review.",
+                            name,
+                            rec.disabled_since,
+                            datetime.now().isoformat(),
+                            rec.disabled_reason,
+                            rec.win_rate * 100,
+                            rec.trades,
+                            rec.total_r,
+                        )
         if changed:
             self._save_db()
+
+    # G-001 ── Revalidation API ───────────────────────────────────────────────
+
+    def get_revalidation_required(self) -> Dict[str, Dict[str, Any]]:
+        """
+        Returns strategies that require governance revalidation after cooldown.
+
+        A strategy appears here when:
+          • EARLY_ABORT cooldown has just completed (tick_session set the flag), AND
+          • Metrics still satisfy the EARLY_ABORT disable condition, AND
+          • Revalidation has not yet been completed.
+
+        The returned dict maps strategy_name → audit metadata.
+        The strategy remains in get_disabled_strategies() — this does NOT re-enable it.
+        """
+        result: Dict[str, Dict[str, Any]] = {}
+        for name, rec in self._records.items():
+            if rec.revalidation_pending and rec.revalidation_result is None:
+                result[name] = {
+                    "strategy":              name,
+                    "disable_reason":        rec.disabled_reason,
+                    "cooldown_start":        rec.disabled_since,
+                    "cooldown_end":          rec.revalidation_timestamp,
+                    "revalidation_requested": rec.revalidation_timestamp,
+                    "wr":                    rec.win_rate,
+                    "trades":                rec.trades,
+                    "total_r":               rec.total_r,
+                }
+        return result
+
+    def mark_revalidation_complete(
+        self,
+        strategy_name: str,
+        result: str,    # "PASS" or "FAIL"
+        reason: str,
+    ) -> None:
+        """
+        Record the governance revalidation outcome.  Idempotent.
+
+        Does NOT enable or disable the strategy — that remains with normal
+        promotion governance.  A "PASS" result means external governance has
+        approved re-enabling via the standard promotion pathway; the strategy
+        still requires a passing trade metric to be removed from disabled set.
+        """
+        rec = self._records.get(strategy_name)
+        if rec is None:
+            log.warning("[SHM] mark_revalidation_complete: unknown strategy '%s'.", strategy_name)
+            return
+        ts = datetime.now().isoformat()
+        rec.revalidation_pending = False
+        rec.revalidation_result  = result
+        log.info(
+            "[SHM] 📋 REVALIDATION_COMPLETE strategy=%s result=%s reason=%s timestamp=%s",
+            strategy_name, result, reason, ts,
+        )
+        self._save_db()
 
     def manual_override(self, strategy_name: str, enable: bool = True) -> None:
         """

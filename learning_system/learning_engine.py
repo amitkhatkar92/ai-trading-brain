@@ -143,9 +143,13 @@ class LearningEngine:
                 r_mult  = (trade.pnl / (sl_dist * abs(trade.quantity))
                            if sl_dist > 0 and trade.quantity else 0.0)
                 _close_reason = getattr(trade, "close_reason", "") or ""
+                # G-004: forward regime from trade record to SHM for per-regime stats
+                _trade_regime = (getattr(trade, "signal_regime", None)
+                                 or getattr(trade, "regime", None))
                 if _close_reason in _STRATEGY_CLOSE_REASONS:
                     # Pure strategy event — feeds win-rate / avg-R / Sharpe
-                    self._shm.record_trade(trade.strategy, pnl_pct, r_mult)
+                    self._shm.record_trade(trade.strategy, pnl_pct, r_mult,
+                                           regime=_trade_regime)
                     _ps = _pure_stats[trade.strategy]
                     _ps["count"] += 1
                     if pnl_pct > 0:

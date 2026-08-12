@@ -285,6 +285,9 @@ class StrategyGeneratorAI:
                     # Default: pure mean-reversion (oversold bounce / short fade)
                     evolved = self._best_evolved_variant("Mean_Reversion", active,
                                                           min_signal_rr=rr)
+                    # G-003: audit why evolved variant was not selected when base is excluded
+                    if not evolved and active is not None and "Mean_Reversion" not in active:
+                        self._log_evolved_variant_audit("Mean_Reversion", active, rr, signal.symbol)
                     return evolved or _choose(["Mean_Reversion"])
             elif signal.signal_type in (SignalType.OPTIONS, SignalType.SPREAD):
                 return _choose(["Iron_Condor_Range"])
@@ -324,3 +327,36 @@ class StrategyGeneratorAI:
         if candidates:
             return max(candidates, key=lambda x: x[1]["min_rr"])[0]
         return ""
+
+    def _log_evolved_variant_audit(
+        self,
+        base_strategy: str,
+        active: Optional[Set[str]],
+        signal_rr: float,
+        symbol: str = "",
+    ) -> None:
+        """G-003: emit diagnostic when base strategy is excluded but evolved variant
+        should theoretically be available.  Helps diagnose VPS routing gaps."""
+        variants = [
+            (name, params) for name, params in STRATEGY_PARAMS.items()
+            if params.get("base_strategy") == base_strategy
+        ]
+        if not variants:
+            log.info(
+                "[G003 EvolvedVariantAudit] symbol=%s base=%s "
+                "NO_VARIANTS_REGISTERED — evolved_strategies.json may not be "
+                "loaded or contains no approved variants for this base.",
+                symbol, base_strategy,
+            )
+            return
+        for name, params in variants:
+            min_rr   = params.get("min_rr", 0.0)
+            in_active = active is None or name in (active or set())
+            rr_ok     = signal_rr == 0.0 or min_rr <= signal_rr
+            log.info(
+                "[G003 EvolvedVariantAudit] symbol=%s variant=%s "
+                "in_active=%s min_rr=%.1f signal_rr=%.1f rr_ok=%s "
+                "eligible=%s",
+                symbol, name, in_active, min_rr, signal_rr, rr_ok,
+                in_active and rr_ok,
+            )

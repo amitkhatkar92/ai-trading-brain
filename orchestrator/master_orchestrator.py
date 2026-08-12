@@ -4414,6 +4414,53 @@ class MasterOrchestrator:
         try:
             self.strategy_health.tick_session()
             log.info("[EOD] SHM session tick complete.")
+
+            # G-001: post-cooldown revalidation trigger ──────────────────────
+            # If tick_session() just marked any strategy as revalidation_pending,
+            # log a structured governance event.  Does NOT enable the strategy.
+            try:
+                _reval_needed = self.strategy_health.get_revalidation_required()
+                if _reval_needed:
+                    for _reval_name, _reval_info in _reval_needed.items():
+                        log.warning(
+                            "[GovernanceRevalidation] strategy=%s "
+                            "disable_reason=%s cooldown_start=%s cooldown_end=%s "
+                            "revalidation_requested=%s wr=%.0f%% trades=%d total_r=%.2f "
+                            "revalidation_result=PENDING "
+                            "— governance review required before re-enable.",
+                            _reval_name,
+                            _reval_info.get("disable_reason"),
+                            _reval_info.get("cooldown_start"),
+                            _reval_info.get("cooldown_end"),
+                            _reval_info.get("revalidation_requested"),
+                            (_reval_info.get("wr") or 0) * 100,
+                            _reval_info.get("trades", 0),
+                            _reval_info.get("total_r", 0.0),
+                        )
+                    # G-002: run divergence check for each strategy needing revalidation
+                    try:
+                        from trade_monitoring.performance_divergence_detector import (
+                            PerformanceDivergenceDetector,
+                        )
+                        from strategy_lab.backtesting_ai import _BACKTEST_CACHE
+                        _div_detector = PerformanceDivergenceDetector()
+                        for _reval_name, _reval_info in _reval_needed.items():
+                            _bt = _BACKTEST_CACHE.get(_reval_name)
+                            if _bt is not None:
+                                _div_detector.check_divergence(
+                                    strategy_name   = _reval_name,
+                                    live_wr         = _reval_info.get("wr", 0.0),
+                                    live_n          = _reval_info.get("trades", 0),
+                                    live_avg_r      = (_reval_info.get("total_r", 0.0)
+                                                       / max(_reval_info.get("trades", 1), 1)),
+                                    synthetic_wr    = getattr(_bt, "win_rate", 0.0),
+                                    synthetic_avg_r = getattr(_bt, "expectancy", 0.0),
+                                )
+                    except Exception as _div_exc:
+                        log.warning("[EOD] Divergence check failed: %s", _div_exc)
+            except Exception as _reval_exc:
+                log.warning("[EOD] Revalidation check failed: %s", _reval_exc)
+
         except Exception as _shm_tick_exc:
             log.warning("[EOD] SHM tick_session failed: %s", _shm_tick_exc)
 
