@@ -36,6 +36,10 @@ ETF_DATA: List[Dict[str, Any]] = [
     {"symbol": "BANKBEES",  "etf_price": 481.5, "nav": 480.0, "lot": 1},
 ]
 
+# ETF_DATA prices are hardcoded and never refreshed; NIFTYBEES/BANKBEES have no
+# DHAN_SECURITY_MAP entry.  Disable until live prices and mappings are wired.
+_ETF_ARB_DISABLED: bool = True
+
 
 class ArbitrageAI:
     """Detects and signals low-risk arbitrage opportunities."""
@@ -98,6 +102,9 @@ class ArbitrageAI:
     # ─────────────────────────────────────────────
 
     def _etf_nav_arb(self) -> List[TradeSignal]:
+        if _ETF_ARB_DISABLED:
+            log.info("[ETF_ARB_DISABLED] ETF NAV arbitrage disabled by governance")
+            return []
         results = []
         for item in ETF_DATA:
             diff_bps = ((item["etf_price"] - item["nav"]) / item["nav"]) * 10_000

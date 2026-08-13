@@ -1948,10 +1948,24 @@ class OrderManager:
             import time as _t
             _ms = _t.time_ns() // 1_000_000   # ms timestamp — guarantees uniqueness
             return f"SIM_{symbol}_{direction}_Q{qty}_P{price:.2f}_{_ms}"
+        # Resolve NSE ticker → Dhan (security_id, exchange_segment) — EB001 + EB002 fix
+        from data_feeds.dhan_feed import DHAN_SECURITY_MAP as _DSM
+        _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
+        _meta = _DSM.get(_sym)
+        if not _meta:
+            log.error(
+                "[OrderManager] [MISSING_DHAN_MAPPING] symbol=%s not in DHAN_SECURITY_MAP"
+                " — order blocked. Add entry to data_feeds/dhan_feed.py.",
+                symbol,
+            )
+            return None
         return self._broker.place_order(
-            symbol=symbol, exchange="NSE",
-            transaction_type=direction, quantity=qty, price=price,
-            order_type=order_type,
+            security_id      = _meta["security_id"],
+            exchange_segment = _meta["segment"],
+            transaction_type = direction,
+            quantity         = qty,
+            price            = price,
+            order_type       = order_type,
         )
 
     def _update_portfolio(self, sig: TradeSignal, qty: int):
