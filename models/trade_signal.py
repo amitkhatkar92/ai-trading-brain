@@ -57,6 +57,10 @@ class TradeSignal:
     adv_crore: float                     = 0.0   # Average Daily Volume in ₹ crore; used by LiquidityGuard to cap position size
     entry_zone_low:  float               = 0.0   # entry − ATR(14)×0.10  — lower bound of acceptable entry zone
     entry_zone_high: float               = 0.0   # entry + ATR(14)×0.10  — upper bound of acceptable entry zone
+    # ── MOP-RC-001: Observational fields — research only, never used in any decision ──
+    expected_move_pct:    Optional[float] = None  # (atr/entry_price) × rr × 100 — research proxy
+    _obs_candidate_score: Optional[float] = None  # scanner score at signal time
+    _obs_regime:          Optional[str]   = None  # regime label at signal time
 
     @property
     def risk_reward_ratio(self) -> float:

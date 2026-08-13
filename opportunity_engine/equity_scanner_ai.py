@@ -1414,6 +1414,18 @@ class EquityScannerAI:
             if stock.get("_prepared"):
                 _per_sym_result[stock["symbol"]] = {"sig": sig, "reason": reason}
             if sig:
+                # ── MOP-RC-001: Attach observational fields (telemetry only — never gating) ─
+                try:
+                    _rr_obs = sig.risk_reward_ratio
+                    if sig.atr and sig.entry_price and sig.entry_price > 0 and _rr_obs > 0:
+                        sig.expected_move_pct = round(
+                            sig.atr / sig.entry_price * _rr_obs * 100, 4
+                        )
+                    sig._obs_candidate_score = stock.get("score")
+                    sig._obs_regime = getattr(snapshot.regime, "value", str(snapshot.regime))
+                except Exception:
+                    pass
+                # ─────────────────────────────────────────────────────────────────
                 signals.append(sig)
                 # ── EdgeTelemetry: lightweight signal feature snapshot ─────────
                 # Each accepted signal is logged with the feature values that drove
@@ -1440,13 +1452,22 @@ class EquityScannerAI:
                     _setup = "mean_reversion_bounce"
                 log.info(
                     "[EdgeTelemetry] signal_id=%s_%s  regime=%s  setup_type=%s"
-                    "  atr_pct=%.2f  rsi=%.0f  vol_ratio=%.1f  entry=%.2f  rr=%.1f",
+                    "  atr_pct=%.2f  rsi=%.0f  vol_ratio=%.1f  entry=%.2f  rr=%.1f"
+                    "  expected_move_pct=%s  candidate_score=%s",
                     stock["symbol"], datetime.now().strftime("%H%M%S"),
                     getattr(snapshot.regime, "value", str(snapshot.regime)),
                     _setup, _atr_pct,
                     stock.get("rsi", 0), stock.get("volume_ratio", 0),
                     sig.entry_price, _rr_e,
+                    f"{sig.expected_move_pct:.4f}" if sig.expected_move_pct is not None else "null",
+                    f"{sig._obs_candidate_score:.4f}" if sig._obs_candidate_score is not None else "null",
                 )
+                # ── MOP-RC-001: Record signal observation (never raises) ───────
+                try:
+                    from opportunity_engine.mop_rc001_observer import record_signal_observation
+                    record_signal_observation(sig, stock)
+                except Exception:
+                    pass
                 # ─────────────────────────────────────────────────────────────
             _r[reason] = _r.get(reason, 0) + 1
             log.debug(
