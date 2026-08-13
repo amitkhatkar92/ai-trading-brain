@@ -133,6 +133,10 @@ Full cycle:          172ms  ✅  HEALTHY
 | `autonomous_research/research_coordinator.py` | NEW — `ResearchCoordinator`: 8-stage pipeline orchestrator (study_plan → replay → validation → evidence → knowledge → synthesis → repository → report) | N/A |
 | `autonomous_research/__init__.py` | Added RC exports: `ResearchCoordinator`, `RCConfig`, all RC models and constants | No |
 | `test_rc.py` | NEW — 190/190 tests (T001–T190) | N/A |
+| `models/trade_signal.py` | MOP-RC-001: added `expected_move_pct`, `_obs_candidate_score`, `_obs_regime` (all `Optional`, default `None`) | No |
+| `opportunity_engine/equity_scanner_ai.py` | MOP-RC-001: compute+attach observational fields in `scan()`, extend `[EdgeTelemetry]`, call observer | No |
+| `opportunity_engine/mop_rc001_observer.py` | NEW — MOP-RC-001 append-only JSONL observer, `record_signal_observation()`, `write_daily_summary_md()` | N/A |
+| `test_mop_rc001.py` | NEW — 15 tests (T001–T015): formula, None-safety, invariance, no look-ahead, dedup | N/A |
 
 ---
 
