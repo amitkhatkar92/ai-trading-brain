@@ -3720,6 +3720,33 @@ class MasterOrchestrator:
         except Exception as _oios_scan_exc:
             log.warning("[OIOS] Signal scan failed (non-critical): %s", _oios_scan_exc)
 
+        # ── OIOS signal outcome resolution — measurement only ─────────────────
+        # Runs after signal scan so new births exist before resolution.
+        # Requires OHLCV data to be refreshed first (this slot is post-market).
+        # Non-critical: failure does not affect trading engine or positions.
+        # Isolation: reads signal_births + ohlcv_daily; writes only outcome
+        # measurement columns; never touches DecisionEngine, CRE, OrderManager.
+        try:
+            from oios.db.connection import get_connection as _sor_get_conn
+            from oios.engine.signal_outcome_tracker import run_daily_outcome_resolution as _sor_run
+            with _sor_get_conn() as _sor_conn:
+                _sor_result = _sor_run(_sor_conn)
+                log.info(
+                    "[OutcomeResolver] as_of=%s eligible=%d resolved=%d "
+                    "pending=%d no_data=%d errors=%d",
+                    _sor_result.get("as_of_date", "?"),
+                    _sor_result.get("total", 0),
+                    _sor_result.get("resolved", 0),
+                    _sor_result.get("pending", 0),
+                    _sor_result.get("no_data", 0),
+                    _sor_result.get("errors", 0),
+                )
+            self._oios_fail_counts["signal_outcome_resolver"] = 0
+        except Exception as _sor_exc:
+            log.warning("[OutcomeResolver] Signal outcome resolution failed (non-critical): %s", _sor_exc)
+            _sor_cnt = self._oios_fail_counts.get("signal_outcome_resolver", 0) + 1
+            self._oios_fail_counts["signal_outcome_resolver"] = _sor_cnt
+
     def _run_premarket_refiner(self) -> None:
         """
         Phase G — Pre-market refinement.  Scheduled at 08:45 IST.
