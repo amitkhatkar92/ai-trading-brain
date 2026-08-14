@@ -1,0 +1,15 @@
+feature,direction,inverted,recall,precision,lift,n_dates
+atr_pct,DOWN,False,0.2223,0.209,2.2411,1199
+atr_pct,UP,False,0.1779,0.2185,1.7996,1201
+hv_20,UP,False,0.1734,0.2114,1.7504,1201
+vol_ratio,DOWN,False,0.1722,0.1533,1.7355,1199
+rsi_14,DOWN,False,0.1613,0.1415,1.623,1199
+mom_1d,UP,False,0.1577,0.1858,1.5909,1201
+mom_5d,UP,False,0.1548,0.1804,1.5579,1201
+mom_20d,UP,False,0.154,0.1851,1.549,1201
+mom_1d,DOWN,True,0.1521,0.1561,1.5322,1199
+vol_ratio,UP,False,0.1486,0.1781,1.4948,1201
+mom_accel,UP,False,0.1381,0.1676,1.3955,1201
+mom_accel,DOWN,True,0.1308,0.1409,1.3181,1199
+vol_expansion,UP,False,0.1265,0.1571,1.2687,1201
+mom_5d,DOWN,True,0.1158,0.1366,1.1668,1199
