@@ -274,6 +274,7 @@ SCANNER_MEMORY_RETENTION_DAYS: int  = 30     # days of concentration history to 
 # When True: prepared universe is generated and logged but does NOT influence
 # execution. Allows 5-10 sessions of silent validation before Phase E goes live.
 SCANNER_SHADOW_MODE: bool = False  # set True when Phase D first runs, False after validation
+MOVER_DISCOVERY_V3_SHADOW_MODE: bool = False  # enable to run V3 shadow alongside Phase D (read-only, never trades)
 
 # ── Candidate quality floor — Patch 4 ─────────────────────────────────────
 # Candidates scored below this threshold by market_scanner are dropped before

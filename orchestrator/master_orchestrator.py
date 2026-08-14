@@ -3747,6 +3747,37 @@ class MasterOrchestrator:
             _sor_cnt = self._oios_fail_counts.get("signal_outcome_resolver", 0) + 1
             self._oios_fail_counts["signal_outcome_resolver"] = _sor_cnt
 
+        # ── Mover Discovery V3 — read-only shadow (observation layer) ─────────
+        # Runs AFTER existing Phase D scanner and OIOS refresh complete.
+        # NEVER modifies CandidateStore, DecisionEngine, RiskControl, or
+        # ExecutionEngine.  Appends to data/logs/mover_discovery_v3_shadow.jsonl.
+        # Controlled by MOVER_DISCOVERY_V3_SHADOW_MODE in config.py (default OFF).
+        try:
+            from config import MOVER_DISCOVERY_V3_SHADOW_MODE as _v3_shadow_on
+            if _v3_shadow_on:
+                _v3_t0 = time.monotonic()
+                from opportunity_engine.mover_discovery_v3_shadow_runner import (
+                    run_phase_d_v3_shadow as _run_v3_shadow,
+                )
+                _v3_result = _run_v3_shadow()
+                _v3_ms = round((time.monotonic() - _v3_t0) * 1000, 1)
+                log.info(
+                    "[V3Shadow] Phase D shadow complete: success=%s up=%d down=%d "
+                    "overlap=%d v3_only=%d v3_shadow_duration_ms=%.1f",
+                    _v3_result.get("success"),
+                    _v3_result.get("v3_up_count", 0),
+                    _v3_result.get("v3_down_count", 0),
+                    _v3_result.get("total_overlap", 0),
+                    _v3_result.get("v3_only_candidates", 0),
+                    _v3_ms,
+                )
+            else:
+                log.debug("[V3Shadow] MOVER_DISCOVERY_V3_SHADOW_MODE=False — skipped.")
+        except Exception as _v3_exc:
+            log.warning(
+                "[V3Shadow] Phase D shadow failed — production unaffected: %s", _v3_exc
+            )
+
     def _run_premarket_refiner(self) -> None:
         """
         Phase G — Pre-market refinement.  Scheduled at 08:45 IST.
