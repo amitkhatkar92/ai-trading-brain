@@ -426,14 +426,15 @@ class TestTokenGeneration:
 
     @patch("scripts.dhan_auth.dhan_token_agent.requests.post")
     def test_t036_request_body_has_correct_fields(self, mock_post):
-        """T036: POST body contains dhanClientId, pin, totp."""
+        """T036: POST sends dhanClientId, pin, totp as URL query parameters (not JSON body)."""
         mock_post.return_value = _ok_generate_response()
         _make_agent().call_generate_token(FAKE_CLIENT_ID, FAKE_PIN, "123456")
         _, kwargs = mock_post.call_args
-        body = kwargs.get("json", {})
-        assert body.get("dhanClientId") == FAKE_CLIENT_ID
-        assert body.get("pin") == FAKE_PIN
-        assert body.get("totp") == "123456"
+        params = kwargs.get("params", {})
+        assert params.get("dhanClientId") == FAKE_CLIENT_ID
+        assert params.get("pin") == FAKE_PIN
+        assert params.get("totp") == "123456"
+        assert kwargs.get("json") is None, "credentials must not be sent in JSON body"
 
     @patch("scripts.dhan_auth.dhan_token_agent.requests.post")
     def test_t037_request_sent_to_correct_url(self, mock_post):
@@ -446,11 +447,11 @@ class TestTokenGeneration:
 
     @patch("scripts.dhan_auth.dhan_token_agent.requests.post")
     def test_t038_content_type_header_set(self, mock_post):
-        """T038: Request headers include Content-Type: application/json."""
+        """T038: Request has no Content-Type header (no request body per Dhan spec)."""
         mock_post.return_value = _ok_generate_response()
         _make_agent().call_generate_token(FAKE_CLIENT_ID, FAKE_PIN, "123456")
         headers = mock_post.call_args[1].get("headers", {})
-        assert headers.get("Content-Type") == "application/json"
+        assert "Content-Type" not in headers, "Content-Type must not be set when sending query params"
 
     @patch("scripts.dhan_auth.dhan_token_agent.time.sleep")
     @patch("scripts.dhan_auth.dhan_token_agent.requests.post")

@@ -376,8 +376,9 @@ class DhanTokenAgent:
         NEVER logs token, pin, or totp.
         Uses bounded retries with exponential backoff.
         """
-        payload = {"dhanClientId": client_id, "pin": pin, "totp": totp}
-        headers: Dict[str, str] = {"Content-Type": "application/json"}
+        # Dhan API: all three fields are URL query parameters — no request body.
+        params = {"dhanClientId": client_id, "pin": pin, "totp": totp}
+        headers: Dict[str, str] = {}
         if api_key:
             headers["api-key"] = api_key
 
@@ -389,7 +390,7 @@ class DhanTokenAgent:
             try:
                 resp = requests.post(
                     GENERATE_TOKEN_URL,
-                    json=payload,
+                    params=params,
                     headers=headers,
                     timeout=HTTP_TIMEOUT_S,
                 )
