@@ -146,6 +146,23 @@ def _detect_env_path() -> Path:
     return Path(__file__).resolve().parent.parent.parent / ".env"
 
 
+def _load_dhan_env() -> None:
+    """
+    Populate os.environ from the mounted/local .env file.
+
+    Uses python-dotenv with override=False so any variable already present
+    in the process environment (e.g. from 'docker run -e') takes precedence.
+    Called before every credential read; safe to call multiple times.
+    """
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return  # python-dotenv absent; caller must supply env vars directly
+    env_path = _detect_env_path()
+    if env_path.exists():
+        load_dotenv(str(env_path), override=False)
+
+
 def _update_env_file(env_path: Path, new_token: str) -> None:
     """
     Replace DHAN_ACCESS_TOKEN in .env with the new value.
@@ -223,10 +240,11 @@ class DhanTokenAgent:
 
     def load_credentials(self) -> Dict[str, str]:
         """
-        Load credentials from environment variables only.
+        Load credentials from environment variables (populated from .env if needed).
         Raises CredentialError if any required variable is missing.
         Never returns PIN, TOTP secret, or API secret in logs.
         """
+        _load_dhan_env()  # ensure .env is loaded before any os.getenv() call
         required = ("DHAN_CLIENT_ID", "DHAN_PIN", "DHAN_TOTP_SECRET")
         missing = []
         creds: Dict[str, str] = {}
@@ -708,6 +726,7 @@ def _notify(status: str, detail: str, client_id: str) -> None:
 # ── CLI entry point ───────────────────────────────────────────────────────────
 
 def main() -> int:
+    _load_dhan_env()  # load .env before argparse reads any DHAN_* vars
     parser = argparse.ArgumentParser(
         prog="dhan_token_agent",
         description="DTA-001 — Dhan access-token automation",

@@ -46,7 +46,9 @@ from scripts.dhan_auth.dhan_token_agent import (
     IPMismatchError,
     TokenGenerationError,
     TokenHealthError,
+    _detect_env_path,
     _expiry_iso,
+    _load_dhan_env,
     _parse_jwt_expiry,
     _update_env_file,
     main,
@@ -978,3 +980,137 @@ class TestSecurity:
         content = ts.HEALTH_PATH.read_text()
         assert "DO_NOT_STORE" not in content
         assert "keep_this" in content
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T091-T100: Environment loading from .env file
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEnvLoader:
+    """
+    Verify that _load_dhan_env() reads the mounted/local .env file and
+    populates os.environ before credential access.
+
+    All files use fake test values only — no real credentials.
+    monkeypatch.delenv / monkeypatch.setenv ensure full env teardown per test.
+    """
+
+    def _write_fake_env(self, path: Path, extras: dict | None = None) -> None:
+        lines = [
+            f"DHAN_CLIENT_ID = {FAKE_CLIENT_ID}\n",
+            f"DHAN_PIN = {FAKE_PIN}\n",
+            f"DHAN_TOTP_SECRET = {FAKE_TOTP_SECRET}\n",
+        ]
+        if extras:
+            for k, v in extras.items():
+                lines.append(f"{k} = {v}\n")
+        path.write_text("".join(lines))
+
+    def test_t091_docker_env_path_detected(self, monkeypatch):
+        """T091: RUNNING_IN_DOCKER=1 → _detect_env_path() returns /app/.env."""
+        monkeypatch.delenv("DHAN_ENV_PATH", raising=False)
+        monkeypatch.setenv("RUNNING_IN_DOCKER", "1")
+        path = _detect_env_path()
+        assert path == Path("/app/.env")
+
+    def test_t092_client_id_loaded_from_env_file(self, monkeypatch, tmp_path):
+        """T092: DHAN_CLIENT_ID available via os.getenv after _load_dhan_env()."""
+        env_file = tmp_path / ".env"
+        env_file.write_text(f"DHAN_CLIENT_ID = {FAKE_CLIENT_ID}\n")
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        monkeypatch.delenv("DHAN_CLIENT_ID", raising=False)
+        _load_dhan_env()
+        assert os.getenv("DHAN_CLIENT_ID") == FAKE_CLIENT_ID
+
+    def test_t093_pin_loaded_from_env_file(self, monkeypatch, tmp_path):
+        """T093: DHAN_PIN available via os.getenv after _load_dhan_env()."""
+        env_file = tmp_path / ".env"
+        env_file.write_text(f"DHAN_PIN = {FAKE_PIN}\n")
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        monkeypatch.delenv("DHAN_PIN", raising=False)
+        _load_dhan_env()
+        assert os.getenv("DHAN_PIN") == FAKE_PIN
+
+    def test_t094_totp_secret_loaded_from_env_file(self, monkeypatch, tmp_path):
+        """T094: DHAN_TOTP_SECRET available via os.getenv after _load_dhan_env()."""
+        env_file = tmp_path / ".env"
+        env_file.write_text(f"DHAN_TOTP_SECRET = {FAKE_TOTP_SECRET}\n")
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        monkeypatch.delenv("DHAN_TOTP_SECRET", raising=False)
+        _load_dhan_env()
+        assert os.getenv("DHAN_TOTP_SECRET") == FAKE_TOTP_SECRET
+
+    def test_t095_existing_env_var_not_overwritten(self, monkeypatch, tmp_path):
+        """T095: Existing os.environ value takes precedence over .env file."""
+        env_file = tmp_path / ".env"
+        env_file.write_text("DHAN_CLIENT_ID = from_file\n")
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        monkeypatch.setenv("DHAN_CLIENT_ID", "from_env")
+        _load_dhan_env()
+        assert os.getenv("DHAN_CLIENT_ID") == "from_env"
+
+    def test_t096_dhan_env_path_explicit(self, monkeypatch, tmp_path):
+        """T096: DHAN_ENV_PATH explicit path loads all three credentials from that file."""
+        env_file = tmp_path / "custom_creds.env"
+        self._write_fake_env(env_file)
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        for k in ("DHAN_CLIENT_ID", "DHAN_PIN", "DHAN_TOTP_SECRET"):
+            monkeypatch.delenv(k, raising=False)
+        _load_dhan_env()
+        assert os.getenv("DHAN_CLIENT_ID") == FAKE_CLIENT_ID
+        assert os.getenv("DHAN_PIN") == FAKE_PIN
+        assert os.getenv("DHAN_TOTP_SECRET") == FAKE_TOTP_SECRET
+
+    def test_t097_missing_env_file_no_crash(self, monkeypatch, tmp_path):
+        """T097: Missing .env file → _load_dhan_env() is silent; CredentialError raised normally."""
+        monkeypatch.setenv("DHAN_ENV_PATH", str(tmp_path / "nonexistent.env"))
+        for k in ("DHAN_CLIENT_ID", "DHAN_PIN", "DHAN_TOTP_SECRET"):
+            monkeypatch.delenv(k, raising=False)
+        _load_dhan_env()  # must not raise
+        with pytest.raises(CredentialError) as exc:
+            DhanTokenAgent().load_credentials()
+        assert "DHAN_CLIENT_ID" in str(exc.value)
+
+    def test_t098_secret_values_never_in_credential_error(self, monkeypatch, tmp_path):
+        """T098: CredentialError message never contains PIN or TOTP secret text."""
+        env_file = tmp_path / ".env"
+        env_file.write_text(
+            f"DHAN_CLIENT_ID = {FAKE_CLIENT_ID}\n"
+            f"DHAN_TOTP_SECRET = {FAKE_TOTP_SECRET}\n"
+        )  # PIN intentionally absent
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        for k in ("DHAN_CLIENT_ID", "DHAN_PIN", "DHAN_TOTP_SECRET"):
+            monkeypatch.delenv(k, raising=False)
+        with pytest.raises(CredentialError) as exc:
+            DhanTokenAgent().load_credentials()
+        error_text = str(exc.value)
+        assert FAKE_PIN not in error_text
+        assert FAKE_TOTP_SECRET not in error_text
+
+    def test_t099_load_credentials_reads_env_file_internally(self, monkeypatch, tmp_path):
+        """T099: load_credentials() works from .env file without the caller pre-loading env."""
+        env_file = tmp_path / ".env"
+        self._write_fake_env(env_file)
+        monkeypatch.setenv("DHAN_ENV_PATH", str(env_file))
+        for k in ("DHAN_CLIENT_ID", "DHAN_PIN", "DHAN_TOTP_SECRET"):
+            monkeypatch.delenv(k, raising=False)
+        # Do NOT call _load_dhan_env() manually — load_credentials() must do it
+        creds = DhanTokenAgent().load_credentials()
+        assert creds["DHAN_CLIENT_ID"] == FAKE_CLIENT_ID
+        assert creds["DHAN_PIN"] == FAKE_PIN
+        assert creds["DHAN_TOTP_SECRET"] == FAKE_TOTP_SECRET
+
+    def test_t100_no_trading_modules_imported_by_dta(self):
+        """T100: DTA modules do not import broker/order/trading-engine modules at module level."""
+        import scripts.dhan_auth.dhan_token_agent   # noqa: F401
+        import scripts.dhan_auth.dhan_token_store    # noqa: F401
+        import scripts.dhan_auth.dhan_token_health   # noqa: F401
+        forbidden_prefixes = {
+            "execution_engine", "risk_guardian", "strategy_lab",
+            "order_manager", "data_feeds.dhan_feed",
+        }
+        for mod_name in sys.modules:
+            for prefix in forbidden_prefixes:
+                assert not mod_name.startswith(prefix), (
+                    f"Forbidden trading module '{mod_name}' was imported by DTA"
+                )
