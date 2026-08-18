@@ -1,97 +1,108 @@
-# ═══════════════════════════════════════════════════════════════════════════
-# SECURITY: Credentials & Secrets — NEVER COMMIT
-# ═══════════════════════════════════════════════════════════════════════════
-.env
-.env.local
-.env.*.local
-*.key
-*.pem
-*.p12
-*.pfx
-*.crt
-id_rsa
-id_rsa.pub
-*.jks
-secrets/
-.aws/
-.gcp/
-config/api_tokens.json
-config/api_tokens.json.*
-config/*.token
-config/*.token.*
+﻿# =============================================================================
+# IIOS — .gitignore
+# =============================================================================
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Build artifacts — generated per-build, not tracked in source
-# ═══════════════════════════════════════════════════════════════════════════
-build_manifest.json
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Python & Virtual Environments
-# ═══════════════════════════════════════════════════════════════════════════
+# ── Python ────────────────────────────────────────────────────────────────────
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ── Virtual environments ──────────────────────────────────────────────────────
 .venv/
 venv/
 env/
 ENV/
-*.egg-info/
-dist/
-build/
-*.egg
-.tox/
+env.bak/
+venv.bak/
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Sensitive Data: Logs, Database, Trade History
-# ═══════════════════════════════════════════════════════════════════════════
-data/
-logs/
-simulation_logs/
-audit_out.txt
-readiness_out*.txt
-*.log
-*.log.*
-*.db
-*.db-wal
-*.db-shm
-*.sqlite
-*.sqlite3
-paper_trades.csv
-paper_trade_log.csv
-*_trades.csv
-trade_history/
+# ── .env files (SECRETS — never commit real credentials) ─────────────────────
+.env
+.env.*
+!.env.example        # Always commit the example template
 
-# ═══════════════════════════════════════════════════════════════════════════
-# System & IDE
-# ═══════════════════════════════════════════════════════════════════════════
+# ── IDE ───────────────────────────────────────────────────────────────────────
 .vscode/settings.json
-.vscode/extensions.json
+.vscode/launch.json
 .idea/
 *.swp
 *.swo
 *~
-.DS_Store
-Thumbs.db
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Test & Cache
-# ═══════════════════════════════════════════════════════════════════════════
+# ── Type checking ─────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# ── Testing ───────────────────────────────────────────────────────────────────
 .pytest_cache/
-htmlcov/
-.coverage
 .hypothesis/
 
-# ═══════════════════════════════════════════════════════════════════════════
-# OS-specific
-# ═══════════════════════════════════════════════════════════════════════════
-*.swp
-*.swo
-*~
-.vscode/
-.idea/
+# ── Coverage ──────────────────────────────────────────────────────────────────
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
 
-# ═══════════════════════════════════════════════════════════════════════════
-# Docker & Deployment
-# ═══════════════════════════════════════════════════════════════════════════
-docker-compose.override.yml
+# ── Logs (runtime generated — not source) ────────────────────────────────────
+logs/
+*.log
+*.log.*
+
+# ── IIOS Runtime data ─────────────────────────────────────────────────────────
+# data/ is intentionally NOT gitignored — iios.db and paper_trades.csv
+# must persist across deploys. Only derived/temporary files are excluded.
+data/reports/
+data/backups/
+data/*.bak
+data/.bootstrap_probe
+data/.hc_probe
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+.docker-data/
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ── Notebooks (analysis only, not production) ─────────────────────────────────
+*.ipynb
+.ipynb_checkpoints/
+
+# ── Temporary analysis scripts ────────────────────────────────────────────────
+analysis_temp.py
+*_temp.py
+
+# ── Benchmarks ────────────────────────────────────────────────────────────────
+.benchmarks/
+
+# ── Secrets baseline (DO commit this file once generated) ─────────────────────
+# .secrets.baseline
+
+# ── Broker token files (contain live JWTs — never commit) ─────────────────────
+config/api_tokens.json
