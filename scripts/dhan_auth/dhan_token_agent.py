@@ -57,22 +57,43 @@ from typing import Any, Dict, Optional, Tuple
 
 import requests
 
-# DTA internal imports
-from .dhan_token_health import check_ip_whitelist, check_token_health
-from .dhan_token_store import (
-    STATUS_IP_MISMATCH,
-    STATUS_NO_TOKEN,
-    STATUS_TOKEN_REFRESH_FAILED,
-    STATUS_TOKEN_REFRESHED,
-    STATUS_TOKEN_VALID,
-    TokenMetadata,
-    append_audit,
-    acquire_lock,
-    load_metadata,
-    release_lock,
-    save_metadata,
-    write_health,
-)
+# DTA internal imports — support both `python -m scripts.dhan_auth.dhan_token_agent`
+# (relative imports work) and `python /app/scripts/dhan_auth/dhan_token_agent.py`
+# (no parent package; fall back to sys.path injection + absolute imports).
+try:
+    from .dhan_token_health import check_ip_whitelist, check_token_health
+    from .dhan_token_store import (
+        STATUS_IP_MISMATCH,
+        STATUS_NO_TOKEN,
+        STATUS_TOKEN_REFRESH_FAILED,
+        STATUS_TOKEN_REFRESHED,
+        STATUS_TOKEN_VALID,
+        TokenMetadata,
+        append_audit,
+        acquire_lock,
+        load_metadata,
+        release_lock,
+        save_metadata,
+        write_health,
+    )
+except ImportError:
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).parent))
+    from dhan_token_health import check_ip_whitelist, check_token_health  # type: ignore[no-redef]
+    from dhan_token_store import (  # type: ignore[no-redef]
+        STATUS_IP_MISMATCH,
+        STATUS_NO_TOKEN,
+        STATUS_TOKEN_REFRESH_FAILED,
+        STATUS_TOKEN_REFRESHED,
+        STATUS_TOKEN_VALID,
+        TokenMetadata,
+        append_audit,
+        acquire_lock,
+        load_metadata,
+        release_lock,
+        save_metadata,
+        write_health,
+    )
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
