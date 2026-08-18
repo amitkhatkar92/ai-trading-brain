@@ -48,6 +48,7 @@ from scripts.dhan_auth.dhan_token_agent import (
     TokenHealthError,
     _detect_env_path,
     _expiry_iso,
+    _extract_dhan_error,
     _load_dhan_env,
     _parse_jwt_expiry,
     _update_env_file,
@@ -1114,3 +1115,104 @@ class TestEnvLoader:
                 assert not mod_name.startswith(prefix), (
                     f"Forbidden trading module '{mod_name}' was imported by DTA"
                 )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T101-T106: Dhan error diagnostic — HTTP error body capture
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _mock_error_response(status_code: int, body: Any) -> MagicMock:
+    """Build a mock requests.Response with given status and JSON body."""
+    resp = MagicMock()
+    resp.status_code = status_code
+    if isinstance(body, str):
+        resp.json.side_effect = ValueError("not json")
+        resp.text = body
+    else:
+        resp.json.return_value = body
+        resp.text = json.dumps(body)
+    return resp
+
+
+class TestDhanErrorDiagnostic:
+    """
+    T101-T106: Verify that non-200 Dhan responses produce actionable diagnostic
+    output without exposing credentials.
+    """
+
+    def test_t101_http_400_json_error_body_captured(self):
+        """T101: HTTP 400 with JSON error body → dhan_detail contains code + message."""
+        resp = _mock_error_response(400, {
+            "errorCode": "DH-900",
+            "errorMessage": "Invalid pin or totp",
+            "status": "failure",
+        })
+        detail = _extract_dhan_error(resp)
+        assert detail["http_status"] == 400
+        assert detail.get("dhan_error_code") == "DH-900"
+        assert "Invalid pin or totp" in detail.get("dhan_error_message", "")
+        assert detail.get("dhan_status") == "failure"
+        assert detail.get("retry") is False
+
+    def test_t102_http_400_non_json_body_truncated(self):
+        """T102: HTTP 400 with HTML/non-JSON body → safe truncated raw response captured."""
+        html_body = "<html><body>Bad Request</body></html>" * 20  # > 400 chars
+        resp = _mock_error_response(400, html_body)
+        detail = _extract_dhan_error(resp)
+        assert detail["http_status"] == 400
+        assert "dhan_raw_response" in detail
+        # Truncated to 400 chars max
+        assert len(detail["dhan_raw_response"]) <= 400
+
+    def test_t103_credential_values_redacted_in_error_body(self):
+        """T103: Values that look like TOTP codes or JWTs are redacted in dhan_detail."""
+        fake_totp = "123456"
+        fake_jwt_like = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.payload.sig"
+        resp = _mock_error_response(400, {
+            "errorMessage": f"Auth failed with totp={fake_totp} token={fake_jwt_like}",
+            "status": "failure",
+        })
+        detail = _extract_dhan_error(resp)
+        detail_str = json.dumps(detail)
+        assert fake_totp not in detail_str, "6-digit TOTP code must be redacted"
+        assert fake_jwt_like not in detail_str, "JWT-like value must be redacted"
+        assert "[REDACTED]" in detail_str
+
+    def test_t104_no_retry_on_400_with_error_detail(self):
+        """T104: HTTP 400 with error body still results in no retry and TokenGenerationError."""
+        resp = _mock_error_response(400, {"errorCode": "DH-900", "errorMessage": "Bad creds"})
+        with patch("scripts.dhan_auth.dhan_token_agent.requests.post", return_value=resp):
+            with patch.dict(os.environ, _fresh_creds()):
+                with pytest.raises(TokenGenerationError) as exc:
+                    DhanTokenAgent().call_generate_token(
+                        FAKE_CLIENT_ID, FAKE_PIN, "123456"
+                    )
+        assert "NO_RETRY" in exc.value.error_category
+        assert exc.value.dhan_detail.get("dhan_error_code") == "DH-900"
+        assert exc.value.dhan_detail.get("http_status") == 400
+
+    def test_t105_successful_200_behavior_unchanged(self):
+        """T105: HTTP 200 success path is unaffected by the diagnostic changes."""
+        resp = _ok_generate_response()
+        with patch("scripts.dhan_auth.dhan_token_agent.requests.post", return_value=resp):
+            with patch.dict(os.environ, _fresh_creds()):
+                token = DhanTokenAgent().call_generate_token(
+                    FAKE_CLIENT_ID, FAKE_PIN, "123456"
+                )
+        assert token == FAKE_JWT
+
+    def test_t106_http_401_json_error_body_captured(self):
+        """T106: HTTP 401 with JSON error body → dhan_detail populated, no retry."""
+        resp = _mock_error_response(401, {
+            "errorCode": "DH-401",
+            "errorMessage": "Unauthorized",
+        })
+        with patch("scripts.dhan_auth.dhan_token_agent.requests.post", return_value=resp):
+            with patch.dict(os.environ, _fresh_creds()):
+                with pytest.raises(TokenGenerationError) as exc:
+                    DhanTokenAgent().call_generate_token(
+                        FAKE_CLIENT_ID, FAKE_PIN, "123456"
+                    )
+        assert exc.value.dhan_detail.get("dhan_error_code") == "DH-401"
+        assert exc.value.dhan_detail.get("http_status") == 401
+        assert "NO_RETRY" in exc.value.error_category

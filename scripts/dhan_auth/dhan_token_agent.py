@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import uuid
@@ -118,9 +119,11 @@ class ClockError(RuntimeError):
 
 class TokenGenerationError(RuntimeError):
     """Dhan token generation endpoint returned an error."""
-    def __init__(self, message: str, error_category: str = "UNKNOWN"):
+    def __init__(self, message: str, error_category: str = "UNKNOWN",
+                 dhan_detail: Optional[Dict[str, Any]] = None):
         super().__init__(message)
         self.error_category = error_category
+        self.dhan_detail: Dict[str, Any] = dhan_detail or {}
 
 class TokenHealthError(RuntimeError):
     """Generated token failed the profile health check."""
@@ -132,6 +135,60 @@ class IPMismatchError(RuntimeError):
     """VPS public IP does not match the expected Dhan-whitelisted IP."""
 
 # ── Utilities ─────────────────────────────────────────────────────────────────
+
+# Safe fields Dhan returns in error bodies — these are never credential values.
+_DHAN_ERROR_FIELD_MAP: Dict[str, str] = {
+    "errorCode":     "dhan_error_code",
+    "error_code":    "dhan_error_code",
+    "code":          "dhan_error_code",
+    "errorMessage":  "dhan_error_message",
+    "error_message": "dhan_error_message",
+    "message":       "dhan_error_message",
+    "error":         "dhan_error_message",
+    "remarks":       "dhan_remarks",
+    "status":        "dhan_status",
+    "errorType":     "dhan_error_type",
+    "error_type":    "dhan_error_type",
+    "httpStatus":    "dhan_http_status_body",
+}
+# Fields whose names suggest they contain credentials — skip regardless of position.
+_SECRET_FIELD_RE = re.compile(
+    r"(pin|totp|secret|token|password|access_token|jwt|api.?key)",
+    re.IGNORECASE,
+)
+# Values that look like credentials: 6-digit codes (TOTP) or JWT-like strings.
+_CREDENTIAL_VALUE_RE = re.compile(
+    r"eyJ[A-Za-z0-9_\-]{10,}|(?<![\d])\d{6}(?![\d])"
+)
+
+
+def _extract_dhan_error(resp: "requests.Response") -> Dict[str, Any]:
+    """
+    Safely extract diagnostic information from a non-200 Dhan API response.
+    Never includes credential values (PIN, TOTP, tokens, secrets).
+    """
+    detail: Dict[str, Any] = {"http_status": resp.status_code, "retry": False}
+    try:
+        body = resp.json()
+        if isinstance(body, dict):
+            for src, dst in _DHAN_ERROR_FIELD_MAP.items():
+                if dst in detail:           # already populated by a higher-priority key
+                    continue
+                if _SECRET_FIELD_RE.search(src):  # skip any field whose name looks secret
+                    continue
+                val = body.get(src)
+                if val is None:
+                    continue
+                safe = _CREDENTIAL_VALUE_RE.sub("[REDACTED]", str(val))[:300]
+                detail[dst] = safe
+    except (ValueError, Exception):
+        try:
+            raw = _CREDENTIAL_VALUE_RE.sub("[REDACTED]", resp.text[:400])
+            detail["dhan_raw_response"] = raw
+        except Exception:
+            detail["dhan_raw_response"] = "[unreadable]"
+    return detail
+
 
 def _detect_env_path() -> Path:
     """Return the .env path to update (container or host)."""
@@ -341,6 +398,9 @@ class DhanTokenAgent:
                 if resp.status_code == 200:
                     return self._parse_token_response(resp, client_id)
 
+                # Always extract Dhan's error body for diagnostics (no credentials inside).
+                dhan_detail = _extract_dhan_error(resp)
+
                 # Determine if we should retry
                 if resp.status_code in _NO_RETRY_CODES:
                     last_category = f"HTTP_{resp.status_code}_NO_RETRY"
@@ -348,6 +408,7 @@ class DhanTokenAgent:
                         f"Authentication failure HTTP {resp.status_code}. "
                         "Check DHAN_CLIENT_ID, DHAN_PIN, and DHAN_TOTP_SECRET.",
                         error_category=last_category,
+                        dhan_detail=dhan_detail,
                     )
 
                 if resp.status_code == 429:
@@ -360,6 +421,7 @@ class DhanTokenAgent:
                 last_exc = TokenGenerationError(
                     f"HTTP {resp.status_code} from token endpoint.",
                     error_category=last_category,
+                    dhan_detail=dhan_detail,
                 )
 
             except requests.Timeout:
@@ -782,6 +844,8 @@ def main() -> int:
         return 2
     except (TokenGenerationError, TokenHealthError) as exc:
         print(f"[DTA-001] {type(exc).__name__}: {exc}", file=sys.stderr)
+        if isinstance(exc, TokenGenerationError) and exc.dhan_detail:
+            print(json.dumps(exc.dhan_detail, indent=2), file=sys.stderr)
         _notify(STATUS_TOKEN_REFRESH_FAILED, f"Error: {type(exc).__name__}", client_id)
         return 1
     except Exception as exc:
