@@ -24,13 +24,25 @@ from typing import Optional, Tuple
 
 import requests
 
-from .dhan_token_store import (
-    STATUS_IP_MISMATCH,
-    STATUS_TOKEN_INVALID,
-    STATUS_TOKEN_VALID,
-    append_audit,
-    write_health,
-)
+try:
+    from .dhan_token_store import (
+        STATUS_IP_MISMATCH,
+        STATUS_TOKEN_INVALID,
+        STATUS_TOKEN_VALID,
+        append_audit,
+        write_health,
+    )
+except ImportError:
+    from pathlib import Path as _Path
+    import sys as _sys
+    _sys.path.insert(0, str(_Path(__file__).parent))
+    from dhan_token_store import (  # type: ignore[no-redef]
+        STATUS_IP_MISMATCH,
+        STATUS_TOKEN_INVALID,
+        STATUS_TOKEN_VALID,
+        append_audit,
+        write_health,
+    )
 
 PROFILE_URL = "https://api.dhan.co/v2/profile"
 HTTP_TIMEOUT = 10              # seconds
