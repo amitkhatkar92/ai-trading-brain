@@ -248,6 +248,12 @@ def run_loop(
         "proposals": len(proposals),
     })
 
+    # ── STAGE 9: WRITE HEALTH FILE ────────────────────────────────────────
+    try:
+        write_health_file(summary)
+    except Exception as _hf_exc:
+        print(f"[KSL] Health file write failed (non-critical): {_hf_exc}")
+
     print(f"[KSL] Complete. Run: {run_id}")
     return summary
 
@@ -352,6 +358,118 @@ def _save_research_queue_json(questions: List[ResearchQuestion]) -> None:
     with open(tmp, "w") as f:
         json.dump(queue, f, indent=2)
     os.replace(tmp, RESEARCH_QUEUE_JSON)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Knowledge pipeline health file
+# ─────────────────────────────────────────────────────────────────────────────
+
+HEALTH_PATH = ROOT / "data" / "knowledge_pipeline_health.json"
+_STALE_ALERT_PATH = ROOT / "data" / "knowledge_pipeline_health.last_stale_alert"
+_STALE_HOURS = 48  # pipeline is "stale" if not run in this many hours
+_STALE_ALERT_COOLDOWN_H = 24  # only send one stale alert per this many hours
+
+
+def write_health_file(summary: Dict) -> None:
+    """
+    Write data/knowledge_pipeline_health.json after every run_loop() call.
+    Includes counts, last-run timestamp, staleness flag, and overall status.
+    Sends a Telegram alert (rate-limited to once per 24 h) when the pipeline
+    has been stale for more than STALE_HOURS hours.
+    """
+    from scripts.knowledge_system.shadow_evidence_consumer_001 import (
+        SHADOW_JSONL,
+        LEDGER_PATH,
+        STATE_PATH,
+    )
+
+    now = datetime.now(timezone.utc)
+
+    # Ledger sizes
+    evidence_count = sum(1 for _ in open(LEDGER_PATH)) if LEDGER_PATH.exists() else 0
+    knowledge_count = sum(1 for _ in open(KNOWLEDGE_LEDGER)) if KNOWLEDGE_LEDGER.exists() else 0
+    rq_count = sum(1 for _ in open(RQ_QUEUE_PATH)) if RQ_QUEUE_PATH.exists() else 0
+
+    # Shadow source info
+    shadow_size = SHADOW_JSONL.stat().st_size if SHADOW_JSONL.exists() else 0
+    shadow_lines = sum(1 for _ in open(SHADOW_JSONL)) if SHADOW_JSONL.exists() else 0
+
+    # Last run from KSL state file (authoritative: set by consumer)
+    last_run_at = summary.get("completed_at", "")
+    byte_offset = 0
+    if STATE_PATH.exists():
+        try:
+            _st = json.loads(STATE_PATH.read_text())
+            byte_offset = _st.get("last_processed_byte_offset", 0)
+            if not last_run_at:
+                last_run_at = _st.get("last_processed_at", "")
+        except Exception:
+            pass
+
+    # Staleness calculation
+    pipeline_age_hours: Optional[float] = None
+    stale = False
+    if last_run_at:
+        try:
+            _lr = datetime.fromisoformat(last_run_at.replace("Z", "+00:00"))
+            if _lr.tzinfo is None:
+                _lr = _lr.replace(tzinfo=timezone.utc)
+            pipeline_age_hours = round((now - _lr).total_seconds() / 3600, 1)
+            stale = pipeline_age_hours > _STALE_HOURS
+        except Exception:
+            pass
+
+    overall_status = (
+        "STALE" if stale else ("OK" if evidence_count > 0 else "NO_DATA")
+    )
+
+    health = {
+        "audit_timestamp": now.isoformat(),
+        "shadow_source": str(SHADOW_JSONL),
+        "shadow_file_size_bytes": shadow_size,
+        "shadow_records_available": shadow_lines,
+        "shadow_bytes_consumed": byte_offset,
+        "evidence_records": evidence_count,
+        "knowledge_events": knowledge_count,
+        "research_questions": rq_count,
+        "new_evidence_this_run": summary.get("new_evidence_records", 0),
+        "patterns_this_run": summary.get("patterns_detected", 0),
+        "new_questions_this_run": summary.get("new_questions_generated", 0),
+        "proposals_this_run": summary.get("proposals_built", 0),
+        "pipeline_last_run": last_run_at,
+        "pipeline_age_hours": pipeline_age_hours,
+        "stale": stale,
+        "overall_status": overall_status,
+    }
+
+    HEALTH_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = HEALTH_PATH.with_suffix(".tmp")
+    with open(tmp, "w") as _f:
+        json.dump(health, _f, indent=2)
+    os.replace(tmp, HEALTH_PATH)
+
+    # Rate-limited stale alert via Telegram (max once per STALE_ALERT_COOLDOWN_H)
+    if stale:
+        try:
+            _send = True
+            if _STALE_ALERT_PATH.exists():
+                _last_ts = datetime.fromisoformat(_STALE_ALERT_PATH.read_text().strip())
+                if _last_ts.tzinfo is None:
+                    _last_ts = _last_ts.replace(tzinfo=timezone.utc)
+                if (now - _last_ts).total_seconds() < _STALE_ALERT_COOLDOWN_H * 3600:
+                    _send = False
+            if _send:
+                from notifications import get_notifier
+                get_notifier().send_alert(
+                    f"[KSL-001] Knowledge pipeline STALE: "
+                    f"{pipeline_age_hours}h since last run. "
+                    f"Shadow source has {shadow_lines} records "
+                    f"({shadow_size} bytes). "
+                    f"Check that orchestrator EOD cycle is running."
+                )
+                _STALE_ALERT_PATH.write_text(now.isoformat())
+        except Exception:
+            pass  # notification is best-effort
 
 
 if __name__ == "__main__":

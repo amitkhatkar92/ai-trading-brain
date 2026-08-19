@@ -5455,9 +5455,32 @@ class MasterOrchestrator:
         except Exception as _mlc_eod_exc:
             log.warning("[MLC] EOD pipeline failed (non-critical): %s", _mlc_eod_exc)
 
-    # ──────────────────────────────────────────────────────────────────
-    # PATCH 8 — SHADOW MODE VALIDATION / PREPARED UNIVERSE AUDIT
-    # ──────────────────────────────────────────────────────────────────
+        # ── KSL-001: Knowledge System Learning feedback loop ──────────────────
+        # Runs every EOD after all learning stages complete.
+        # Guards on shadow file existence so the VPS skips silently (local-only data).
+        # Never modifies trading engine, orders, risk control, or positions.
+        try:
+            from pathlib import Path as _ksl_chk
+            _ksl_shadow = _ksl_chk(__file__).resolve().parents[1] / "data" / "logs" / "final_trading_architecture_shadow_001.jsonl"
+            if _ksl_shadow.exists():
+                from scripts.knowledge_system.knowledge_feedback_loop_001 import run_loop as _ksl_run
+                _ksl_t0 = time.monotonic()
+                _ksl_result = _ksl_run(seed_historical=False)
+                _ksl_ms = round((time.monotonic() - _ksl_t0) * 1000, 1)
+                log.info(
+                    "[KSL-001] EOD loop complete: new_evidence=%d patterns=%d "
+                    "new_questions=%d proposals=%d hypotheses=%d duration_ms=%.1f",
+                    _ksl_result.get("new_evidence_records", 0),
+                    _ksl_result.get("patterns_detected", 0),
+                    _ksl_result.get("new_questions_generated", 0),
+                    _ksl_result.get("proposals_built", 0),
+                    _ksl_result.get("hypotheses_registered", 0),
+                    _ksl_ms,
+                )
+            else:
+                log.debug("[KSL-001] Shadow source not found — KSL loop skipped (VPS mode).")
+        except Exception as _ksl_exc:
+            log.warning("[KSL-001] Feedback loop failed (non-critical): %s", _ksl_exc)
 
     def _run_prepared_universe_audit(self, trades: list) -> None:
         """
