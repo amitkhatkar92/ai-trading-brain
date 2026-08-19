@@ -332,27 +332,29 @@ class TelegramCommandBot:
 
     def _register_handlers(self) -> None:
         self._handlers = {
-            "/help":      self._cmd_help,
-            "/status":    self._cmd_status,
-            "/cycle":     self._cmd_cycle,
-            "/nifty":     self._cmd_nifty,
-            "/vix":       self._cmd_vix,
-            "/market":    self._cmd_market,
-            "/snapshot":  self._cmd_snapshot,
-            "/positions": self._cmd_positions,
-            "/pnl":       self._cmd_pnl,
-            "/edges":     self._cmd_edges,
-            "/perf":      self._cmd_perf,
-            "/learn":     self._cmd_learn,
-            "/token":     self._cmd_token,
-            "/pause":     self._cmd_pause,
-            "/resume":    self._cmd_resume,
-            "/report":    self._cmd_report,
-            "/eod":       self._cmd_eod,
-            "/analytics": self._cmd_analytics,
-            "/backlog":   self._cmd_backlog,
-            "/build":     self._cmd_build,
-            "/rescan":    self._cmd_rescan,
+            "/help":           self._cmd_help,
+            "/status":         self._cmd_status,
+            "/cycle":          self._cmd_cycle,
+            "/nifty":          self._cmd_nifty,
+            "/vix":            self._cmd_vix,
+            "/market":         self._cmd_market,
+            "/snapshot":       self._cmd_snapshot,
+            "/positions":      self._cmd_positions,
+            "/pnl":            self._cmd_pnl,
+            "/edges":          self._cmd_edges,
+            "/perf":           self._cmd_perf,
+            "/learn":          self._cmd_learn,
+            "/token":          self._cmd_token,
+            "/token_status":   self._cmd_token_status,
+            "/trading_status": self._cmd_trading_status,
+            "/pause":          self._cmd_pause,
+            "/resume":         self._cmd_resume,
+            "/report":         self._cmd_report,
+            "/eod":            self._cmd_eod,
+            "/analytics":      self._cmd_analytics,
+            "/backlog":        self._cmd_backlog,
+            "/build":          self._cmd_build,
+            "/rescan":         self._cmd_rescan,
         }
 
     # ── /start ─────────────────────────────────────────────────────────────
@@ -408,6 +410,8 @@ class TelegramCommandBot:
             "/analytics    — Today's trade performance analytics\n"
             "/backlog      — Open improvement items (auto-tracked)\n"
             "/token        — Update Dhan API token (hot-reload, no restart)\n"
+            "/token_status  — DTA token state, generation, expiry, remaining lifetime\n"
+            "/trading_status — Engine + token + feed status at a glance\n"
             "/build        — Deployment manifest, git commit, drift status\n"
             "/rescan       — Force full universe + candidate rescan now\n"
             "/pause        — Pause signal generation\n"
@@ -1051,6 +1055,52 @@ class TelegramCommandBot:
         except Exception as exc:
             log.error("[TelegramBot] /token handler error: %s", exc)
             return f"🚨 Token update failed: {_esc(str(exc))}"
+
+    # ── /token_status ──────────────────────────────────────────────────────
+
+    def _cmd_token_status(self, msg: dict) -> str:  # noqa: ARG002
+        """Return DTA-001/DTA-002 token state without exposing JWT, PIN, or TOTP."""
+        try:
+            from scripts.dhan_auth.dhan_token_notifier import format_token_status_message
+            from scripts.dhan_auth.dhan_token_sync import get_token_sync
+            sync_gen_id = get_token_sync()._last_loaded_generation_id
+        except Exception:
+            sync_gen_id = None
+            try:
+                from scripts.dhan_auth.dhan_token_notifier import format_token_status_message
+            except Exception:
+                return "⚠️ /token_status unavailable — dhan_token_notifier not found."
+        try:
+            return format_token_status_message(sync_gen_id=sync_gen_id)
+        except Exception as exc:
+            log.error("[TelegramBot] /token_status error: %s", exc)
+            return f"🚨 /token_status failed: {_esc(str(exc))}"
+
+    # ── /trading_status ────────────────────────────────────────────────────
+
+    def _cmd_trading_status(self, msg: dict) -> str:  # noqa: ARG002
+        """Return engine + token + feed status. No credentials."""
+        try:
+            from scripts.dhan_auth.dhan_token_notifier import format_trading_status_message
+            from scripts.dhan_auth.dhan_token_sync import get_token_sync
+            ts = get_token_sync()
+            sync_gen_id   = ts._last_loaded_generation_id
+            last_sync_ts  = getattr(ts, "_last_sync_ts", None)
+        except Exception:
+            sync_gen_id   = None
+            last_sync_ts  = None
+            try:
+                from scripts.dhan_auth.dhan_token_notifier import format_trading_status_message
+            except Exception:
+                return "⚠️ /trading_status unavailable."
+        try:
+            return format_trading_status_message(
+                sync_gen_id=sync_gen_id,
+                last_sync_ts=last_sync_ts,
+            )
+        except Exception as exc:
+            log.error("[TelegramBot] /trading_status error: %s", exc)
+            return f"🚨 /trading_status failed: {_esc(str(exc))}"
 
     # ── /pause / /resume ───────────────────────────────────────────────────
 

@@ -515,6 +515,45 @@ class MasterOrchestrator:
         except Exception as exc:
             log.warning("[Orchestrator] Could not start market monitor: %s", exc)
 
+    def _sync_dhan_token(self) -> None:
+        """
+        DTA-002: Detect a new DTA-001 token (changed generation_id) and hot-swap
+        it into the live DhanFeed singleton without restarting the container.
+
+        Runs every 5 minutes via the scheduler.  Safe to call any time — idempotent.
+        Never logs the JWT; never places/modifies/cancels orders.
+        """
+        try:
+            from scripts.dhan_auth.dhan_token_sync import get_token_sync
+            from data_feeds import get_feed_manager
+            result = get_token_sync().maybe_sync(get_feed_manager())
+            action = result.get("action", "")
+            if action == "RELOADED":
+                log.info(
+                    "[DTA-002] Token hot-swapped into live DhanFeed. "
+                    "generation_id=%s",
+                    result.get("generation_id"),
+                )
+            elif action == "RELOAD_FAILED":
+                log.warning(
+                    "[DTA-002] Token reload failed — will retry next cycle. "
+                    "generation_id=%s error=%s",
+                    result.get("generation_id"), result.get("error"),
+                )
+                # DTA-003: notify Telegram on reload failure (rate-limited 1/h)
+                try:
+                    from scripts.dhan_auth.dhan_token_notifier import get_token_notifier
+                    get_token_notifier().notify_reload_result(
+                        gen_id=result.get("generation_id", ""),
+                        success=False,
+                        error=str(result.get("error", "")),
+                    )
+                except Exception:
+                    pass
+            # NO_CHANGE / NO_METADATA / SKIPPED_LOCK_BUSY → silent (expected no-ops)
+        except Exception as exc:
+            log.debug("[DTA-002] Token sync check skipped: %s", exc)
+
     def _on_market_signal(self, event_type: str, data: dict) -> None:
         """
         Called by MarketMonitor on every real-time signal.
@@ -6250,6 +6289,9 @@ class MasterOrchestrator:
             self._check_scanner_events()   # V2: handle event-driven mini rescans
 
         sched_lib.every(5).minutes.do(_five_min_tasks)
+
+        # DTA-002: sync DTA-001 token into the live DhanFeed singleton every 5 min
+        sched_lib.every(5).minutes.do(self._sync_dhan_token)
 
         log.info("[Orchestrator] Scheduler armed.")
         log.info("  Pre-market : 08:00 init | 08:30 data warm-up + [Mon] universe rebuild")

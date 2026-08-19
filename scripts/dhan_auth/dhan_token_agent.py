@@ -772,13 +772,17 @@ class DhanTokenAgent:
 # ── Telegram helper (non-critical — never blocks on failure) ─────────────────
 
 def _notify(status: str, detail: str, client_id: str) -> None:
-    """Send metadata-only Telegram notification. Never sends token, PIN, or TOTP."""
+    """
+    Fallback Telegram notification (plain text).
+    Used when the DTA-003 rich notifier is unavailable.
+    Never sends token, PIN, or TOTP.
+    """
     try:
         from notifications.notifier_manager import get_notifier
         notifier = get_notifier()
         client_display = f"{str(client_id)[:4]}****" if client_id else "unknown"
         notifier.send_alert(
-            f"🔑 DTA-001 token event: <b>{status}</b>\n"
+            f"🔑 DTA-001 token event: {status}\n"
             f"Client: {client_display}\n"
             f"{detail}"
         )
@@ -826,13 +830,25 @@ def main() -> int:
 
         # Default: --refresh
         result = agent.run_refresh()
-        _notify(result["status"], f"Expires: {result.get('expiry_time', 'unknown')}", client_id)
+        # DTA-003: rich, idempotent, credential-safe Telegram notification
+        try:
+            from scripts.dhan_auth.dhan_token_notifier import get_token_notifier
+            get_token_notifier().notify_refresh_success(result)
+        except Exception:
+            _notify(result["status"], f"Expires: {result.get('expiry_time', 'unknown')}", client_id)
         _print_safe(result)
         return 0
 
     except CredentialError as exc:
         print(f"[DTA-001] CREDENTIAL_ERROR: {exc}", file=sys.stderr)
-        _notify(STATUS_TOKEN_REFRESH_FAILED, "Credential error — check env vars", client_id)
+        try:
+            from scripts.dhan_auth.dhan_token_notifier import get_token_notifier
+            get_token_notifier().notify_refresh_failure(
+                error_category="CREDENTIAL_ERROR",
+                current_token_state="check env vars",
+            )
+        except Exception:
+            _notify(STATUS_TOKEN_REFRESH_FAILED, "Credential error — check env vars", client_id)
         return 2
     except ClockError as exc:
         print(f"[DTA-001] CLOCK_ERROR: {exc}", file=sys.stderr)
@@ -847,7 +863,16 @@ def main() -> int:
         print(f"[DTA-001] {type(exc).__name__}: {exc}", file=sys.stderr)
         if isinstance(exc, TokenGenerationError) and exc.dhan_detail:
             print(json.dumps(exc.dhan_detail, indent=2), file=sys.stderr)
-        _notify(STATUS_TOKEN_REFRESH_FAILED, f"Error: {type(exc).__name__}", client_id)
+        try:
+            from scripts.dhan_auth.dhan_token_notifier import get_token_notifier
+            _det = getattr(exc, "dhan_detail", {}) or {}
+            get_token_notifier().notify_refresh_failure(
+                error_category=getattr(exc, "error_category", "UNKNOWN"),
+                http_status=_det.get("http_status"),
+                retry=bool(_det.get("retry", False)),
+            )
+        except Exception:
+            _notify(STATUS_TOKEN_REFRESH_FAILED, f"Error: {type(exc).__name__}", client_id)
         return 1
     except Exception as exc:
         print(f"[DTA-001] UNEXPECTED_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
