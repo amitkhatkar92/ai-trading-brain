@@ -423,6 +423,29 @@ def write_health_file(summary: Dict) -> None:
         "STALE" if stale else ("OK" if evidence_count > 0 else "NO_DATA")
     )
 
+    # ── KLP stats: read today's KLP file for live observation counts ──────────
+    klp_obs = klp_ann = klp_sel = klp_over = 0
+    klp_bridge_last = None
+    klp_bridge_today = 0
+    try:
+        from opportunity_engine.klp_evaluator import get_klp_evaluator as _get_klp_hf
+        _klp_stats = _get_klp_hf().get_today_stats()
+        klp_obs      = _klp_stats.get("klp_observations", 0)
+        klp_ann      = _klp_stats.get("klp_annotations", 0)
+        klp_sel      = _klp_stats.get("klp_selected", 0)
+        klp_over     = _klp_stats.get("klp_overrules", 0)
+    except Exception:
+        pass
+    try:
+        from scripts.knowledge_system.klp_bridge_001 import KLPBridge as _KLPBridge
+        _bridge_state = _KLPBridge().get_bridge_state()
+        today_str = now.strftime("%Y-%m-%d")
+        _today_bridge = _bridge_state.get(today_str, {})
+        klp_bridge_today  = int(_today_bridge.get("records_transferred", 0))
+        klp_bridge_last   = _today_bridge.get("last_transfer_ts")
+    except Exception:
+        pass
+
     health = {
         "audit_timestamp": now.isoformat(),
         "shadow_source": str(SHADOW_JSONL),
@@ -440,6 +463,13 @@ def write_health_file(summary: Dict) -> None:
         "pipeline_age_hours": pipeline_age_hours,
         "stale": stale,
         "overall_status": overall_status,
+        # ── KLP-001: Live observation layer stats ─────────────────────────────
+        "klp_today_observations":   klp_obs,
+        "klp_today_annotations":    klp_ann,
+        "klp_today_selected":       klp_sel,
+        "klp_today_overrules":      klp_over,
+        "klp_bridge_today_records": klp_bridge_today,
+        "klp_bridge_last_transfer": klp_bridge_last,
     }
 
     HEALTH_PATH.parent.mkdir(parents=True, exist_ok=True)

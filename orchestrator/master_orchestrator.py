@@ -938,10 +938,44 @@ class MasterOrchestrator:
             self.system_monitor.finalize_cycle()
             return
 
+        # ── KLP-001: Knowledge evaluation (before StrategyLab) ───────
+        # Scores and ranks all signals using KNOWLEDGE_RESEARCH_SCORE_v1,
+        # selects a knowledge top-5, and writes KNOWLEDGE_OBSERVATION records.
+        # Runs BEFORE StrategyLab to ensure independence.  Never raises.
+        try:
+            from opportunity_engine.klp_evaluator import get_klp_evaluator as _get_klp
+            _klp_obs = _get_klp().evaluate_and_record(signals, snapshot)
+            if _klp_obs:
+                log.info(
+                    "[KLP-001] Knowledge evaluation: total=%d selected=%d",
+                    len(_klp_obs),
+                    sum(1 for r in _klp_obs if r.get("knowledge_selected")),
+                )
+        except Exception as _klp_exc:
+            log.debug("[KLP-001] Knowledge evaluation skipped: %s", _klp_exc)
+
         # ── STEP 3: Strategy Evaluation ──────────────────────────────
         with self.system_monitor.time_layer("StrategyLab"):
             enriched_signals = self._run_strategy_lab(signals, snapshot)
         if self._abort_if_timed_out("StrategyLab"): return
+
+        # ── KLP-001: Strategy annotation (after StrategyLab) ─────────
+        # Annotates each original signal with its StrategyLab outcome and
+        # computes the knowledge-vs-strategy disagreement label.  Never raises.
+        try:
+            from opportunity_engine.klp_evaluator import get_klp_evaluator as _get_klp2
+            _approved_syms = {s.symbol for s in enriched_signals}
+            _rejected_syms = {
+                s.symbol: "STRATEGY_REJECTED"
+                for s in signals
+                if s.symbol not in _approved_syms
+            }
+            _get_klp2().annotate_strategy_outcome(
+                signals, _approved_syms, _rejected_syms, snapshot
+            )
+        except Exception as _klp2_exc:
+            log.debug("[KLP-001] Strategy annotation skipped: %s", _klp2_exc)
+
         _sl_reasons = getattr(self, '_last_sl_reject_summary', {})
         _sl_top = max(_sl_reasons, key=_sl_reasons.get, default="UNKNOWN") if _sl_reasons else "OK"
         _diag.record_stage("StrategyLab", len(signals), len(enriched_signals), _sl_top)
