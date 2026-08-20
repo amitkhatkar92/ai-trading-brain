@@ -5516,6 +5516,23 @@ class MasterOrchestrator:
         except Exception as _ksl_exc:
             log.warning("[KSL-001] Feedback loop failed (non-critical): %s", _ksl_exc)
 
+        # ── KLP-002: Outcome engine — fill pending KLP observations ───────────
+        # Runs every EOD; processes yesterday's and earlier pending observations.
+        # Never modifies executed orders, positions, or risk controls.
+        try:
+            from opportunity_engine.klp_outcome_engine import get_klp_outcome_engine as _get_klpe
+            _klpe_result = _get_klpe().fill_pending_outcomes()
+            if _klpe_result.get("processed", 0):
+                log.info(
+                    "[KLP-002] Outcome fill: processed=%d skipped_pending=%d "
+                    "skipped_no_data=%d",
+                    _klpe_result.get("processed", 0),
+                    _klpe_result.get("skipped_pending", 0),
+                    _klpe_result.get("skipped_no_data", 0),
+                )
+        except Exception as _klpe_exc:
+            log.debug("[KLP-002] Outcome engine skipped: %s", _klpe_exc)
+
     def _run_prepared_universe_audit(self, trades: list) -> None:
         """
         Patch 8 — EOD prepared-universe audit.

@@ -281,6 +281,8 @@ class KLPEvaluator:
                 "structural_strategy_reason":     structural_reason,
                 "knowledge_selected":             knowledge_selected,
                 "knowledge_strategy_disagreement": disagreement,
+                "knowledge_execution_status":     "NOT_EXECUTED" if not strat_approved else "STRATEGY_APPROVED",
+                "observation_type":               "KNOWLEDGE_ONLY_OBSERVATION" if (knowledge_selected and not strat_approved) else "STRATEGY_PASSED_OBSERVATION" if strat_approved else "KNOWLEDGE_OBSERVED",
                 "no_lookahead":                   True,
             })
 
@@ -501,6 +503,9 @@ def _build_obs_record(
         "atr_pct":                      atr_pct,
         "stop_method":                  "ATR_1.5x_FROM_ENTRY",
         "target_method":                "REUSE_SCANNER_STOP_TARGET",
+        "calculation_version":          "KLP_001_v1",
+        "target_method_version":        "ATR_1.5x_RR_scanner_v1",
+        "stop_method_version":          "ATR_1.5x_v1",
         # ── Scanner context ──────────────────────────────────────────────────
         "candidate_score":              getattr(sig, "_obs_candidate_score", None),
         "scanner_confidence":           float(getattr(sig, "confidence", 0.0) or 0.0),

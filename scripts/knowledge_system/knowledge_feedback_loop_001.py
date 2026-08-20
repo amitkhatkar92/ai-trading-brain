@@ -158,6 +158,21 @@ def run_loop(
     _log_event({"event_type": "LOOP_STAGE", "stage": "INGEST", "new_records": len(new_evidence), "run_id": run_id})
     print(f"       {len(new_evidence)} new records ingested.")
 
+    # ── STAGE 1.5: KLP EVIDENCE INGESTION ─────────────────────────────────
+    # Convert completed KLP outcome records into EvidenceRecords.
+    # Runs silently if no KLP outcomes are ready (VPS-side doesn't need this).
+    print("[KSL] Stage 1.5: KLP outcome evidence ingestion …")
+    _klp_new = 0
+    try:
+        from scripts.knowledge_system.klp_evidence_adapter_001 import ingest_klp_outcomes as _klp_ingest
+        _klp_result = _klp_ingest()
+        _klp_new = _klp_result.get("new_records", 0)
+    except Exception as _klp_adp_exc:
+        _klp_new = 0
+    summary["klp_evidence_ingested"] = _klp_new
+    _log_event({"event_type": "LOOP_STAGE", "stage": "KLP_INGEST", "new_records": _klp_new, "run_id": run_id})
+    print(f"       {_klp_new} KLP evidence records ingested.")
+
     # ── STAGE 3: DETECT PATTERNS ──────────────────────────────────────────
     print("[KSL] Stage 3: Pattern mining …")
     patterns: List[PatternRecord] = mine_patterns()
@@ -427,6 +442,7 @@ def write_health_file(summary: Dict) -> None:
     klp_obs = klp_ann = klp_sel = klp_over = 0
     klp_bridge_last = None
     klp_bridge_today = 0
+    klp_pending_outcomes = 0
     try:
         from opportunity_engine.klp_evaluator import get_klp_evaluator as _get_klp_hf
         _klp_stats = _get_klp_hf().get_today_stats()
@@ -434,6 +450,11 @@ def write_health_file(summary: Dict) -> None:
         klp_ann      = _klp_stats.get("klp_annotations", 0)
         klp_sel      = _klp_stats.get("klp_selected", 0)
         klp_over     = _klp_stats.get("klp_overrules", 0)
+    except Exception:
+        pass
+    try:
+        from opportunity_engine.klp_outcome_engine import get_klp_outcome_engine as _get_klpe_hf
+        klp_pending_outcomes = _get_klpe_hf().get_pending_count()
     except Exception:
         pass
     try:
@@ -445,6 +466,57 @@ def write_health_file(summary: Dict) -> None:
         klp_bridge_last   = _today_bridge.get("last_transfer_ts")
     except Exception:
         pass
+
+    # ── Per-stage health computation ──────────────────────────────────────
+    def _stage_status(last_success_ts: Optional[str], pending: int, error_count: int = 0) -> str:
+        if error_count > 0:
+            return "FAILED"
+        if last_success_ts:
+            try:
+                _ls = datetime.fromisoformat(last_success_ts.replace("Z", "+00:00"))
+                if _ls.tzinfo is None:
+                    _ls = _ls.replace(tzinfo=timezone.utc)
+                age_h = (now - _ls).total_seconds() / 3600
+                if age_h > _STALE_HOURS:
+                    return "STALE"
+            except Exception:
+                pass
+            if pending > 0:
+                return "WAITING_FOR_DATA"
+            return "WORKING"
+        return "NO_DATA"
+
+    klp_stages = {
+        "live_observation":    {
+            "status":       "WORKING" if klp_obs > 0 else "WAITING_FOR_DATA",
+            "count_today":  klp_obs,
+        },
+        "strategy_annotation": {
+            "status":       "WORKING" if klp_ann > 0 else ("WAITING_FOR_DATA" if klp_obs > 0 else "WAITING_FOR_DATA"),
+            "count_today":  klp_ann,
+        },
+        "outcome_tracking":    {
+            "status":       "WAITING_FOR_DATA" if klp_pending_outcomes > 0 else ("WORKING" if klp_obs > 0 else "NO_DATA"),
+            "pending_count": klp_pending_outcomes,
+        },
+        "evidence_ingestion":  {
+            "status":       "WORKING" if summary.get("klp_evidence_ingested", 0) >= 0 else "NO_DATA",
+            "new_records":  summary.get("klp_evidence_ingested", 0),
+        },
+        "vps_local_bridge":    {
+            "status":        "WORKING" if klp_bridge_last else "NO_DATA",
+            "records_today": klp_bridge_today,
+            "last_transfer": klp_bridge_last,
+        },
+        "pattern_mining":      {
+            "status":  "WORKING" if summary.get("patterns_detected", 0) >= 0 else "NO_DATA",
+            "count":   summary.get("patterns_detected", 0),
+        },
+        "research_questions":  {
+            "status":  "WORKING" if rq_count >= 0 else "NO_DATA",
+            "count":   rq_count,
+        },
+    }
 
     health = {
         "audit_timestamp": now.isoformat(),
@@ -468,8 +540,10 @@ def write_health_file(summary: Dict) -> None:
         "klp_today_annotations":    klp_ann,
         "klp_today_selected":       klp_sel,
         "klp_today_overrules":      klp_over,
+        "klp_today_pending_outcomes": klp_pending_outcomes,
         "klp_bridge_today_records": klp_bridge_today,
         "klp_bridge_last_transfer": klp_bridge_last,
+        "klp_stages":               klp_stages,
     }
 
     HEALTH_PATH.parent.mkdir(parents=True, exist_ok=True)
