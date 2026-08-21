@@ -75,6 +75,52 @@ log = get_logger(__name__)
 _HISTORY_PATH = os.path.join("data", "regime_probability_history.json")
 _HISTORY_MAX  = 500   # rotate when file exceeds this many records
 
+
+def _load_regime_history() -> list:
+    """Load regime history, recovering from corrupted tail if needed."""
+    if not os.path.exists(_HISTORY_PATH):
+        return []
+    try:
+        with open(_HISTORY_PATH, "r", encoding="utf-8") as fh:
+            content = fh.read()
+        return json.loads(content)
+    except json.JSONDecodeError:
+        # Attempt to recover the longest valid prefix array
+        try:
+            with open(_HISTORY_PATH, "r", encoding="utf-8") as fh:
+                content = fh.read()
+            # Scan backwards from end to find last closing ']' of a valid array
+            for i in range(len(content) - 1, 0, -1):
+                if content[i] == "]":
+                    try:
+                        recovered = json.loads(content[: i + 1])
+                        log.warning(
+                            "[MRPM] Recovered %d records from corrupted history (tail stripped)",
+                            len(recovered),
+                        )
+                        # Immediately repair the file atomically
+                        _atomic_write_regime_history(recovered)
+                        return recovered
+                    except json.JSONDecodeError:
+                        continue
+        except Exception as exc:
+            log.debug("[MRPM] History recovery failed: %s", exc)
+    return []
+
+
+def _atomic_write_regime_history(history: list) -> None:
+    """Write regime history atomically: write to .tmp then os.replace."""
+    tmp_path = _HISTORY_PATH + ".tmp"
+    payload = json.dumps(history, separators=(",", ":"))
+    # Validate before writing (guard against writing corrupt data)
+    json.loads(payload)  # raises if invalid — should never happen
+    with open(tmp_path, "w", encoding="utf-8") as fh:
+        fh.write(payload)
+        fh.flush()
+        os.fsync(fh.fileno())
+    os.replace(tmp_path, _HISTORY_PATH)
+
+
 # Keywords used to map regime probability categories → strategy names
 _CATEGORY_KEYWORDS: Dict[str, List[str]] = {
     "momentum":       ["momentum", "trend", "macd", "supertrend", "adx",
@@ -486,18 +532,13 @@ class RegimeProbabilityModel:
                 "actual_regime": None,   # ← filled by LearningEngine at EOD
             }
 
-            history: list = []
-            if os.path.exists(_HISTORY_PATH):
-                with open(_HISTORY_PATH, "r", encoding="utf-8") as fh:
-                    history = json.load(fh)
-
+            history: list = _load_regime_history()
             history.append(record)
             if len(history) > _HISTORY_MAX:
                 history = history[-_HISTORY_MAX:]
 
             os.makedirs("data", exist_ok=True)
-            with open(_HISTORY_PATH, "w", encoding="utf-8") as fh:
-                json.dump(history, fh, separators=(",", ":"))
+            _atomic_write_regime_history(history)
 
         except Exception as exc:
             log.debug("[MRPM] History write skipped: %s", exc)

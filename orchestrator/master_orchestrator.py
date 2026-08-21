@@ -2415,7 +2415,25 @@ class MasterOrchestrator:
             self.bus.publish(RiskEvent(
                 event_type=EventType.RISK_CHECK_FAILED,
                 source_agent="RiskManagerAI",
-                payload={"rejected": rejected_count},
+                payload={
+                    "rejected": rejected_count,
+                    "rejection_summary": {
+                        "rr":   _rc_full.get("rr_rejected", 0),
+                        "heat": _rc_full.get("heat_rejected", 0),
+                        "other": (
+                            _rc_full.get("governance_rejected", 0)
+                            + _rc_full.get("cooldown_rejected", 0)
+                            + _rc_full.get("liquidity_rejected", 0)
+                            + _rc_full.get("position_limit_rejected", 0)
+                            + _rc_full.get("sector_rejected", 0)
+                            + _rc_full.get("correlation_rejected", 0)
+                            + _rc_full.get("stale_rejected", 0)
+                            + _rc_full.get("other_rejected", 0)
+                        ),
+                        "total_in":   len(signals),
+                        "total_out":  len(stressed),
+                    },
+                },
             ))
         if stressed:
             self.bus.publish(RiskEvent(

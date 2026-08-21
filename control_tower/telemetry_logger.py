@@ -60,7 +60,8 @@ CREATE TABLE IF NOT EXISTS ct_cycles (
     risk_approved     INTEGER DEFAULT 0,
     sim_approved      INTEGER DEFAULT 0,
     trades_executed   INTEGER DEFAULT 0,
-    cycle_ms          INTEGER DEFAULT 0
+    cycle_ms          INTEGER DEFAULT 0,
+    risk_rejection_summary TEXT
 );
 """
 
@@ -140,6 +141,13 @@ class TelemetryLogger:
             conn.execute(_CREATE_EVENTS)
             conn.execute(_CREATE_CYCLES)
             conn.execute(_CREATE_DECISIONS)
+            # Migration: add risk_rejection_summary if not present (idempotent)
+            try:
+                conn.execute(
+                    "ALTER TABLE ct_cycles ADD COLUMN risk_rejection_summary TEXT"
+                )
+            except Exception:
+                pass  # Column already exists
             conn.commit()
 
     # ── Event handler ──────────────────────────────────────────────────────
@@ -195,6 +203,15 @@ class TelemetryLogger:
                     if self._current_cycle:
                         self._upsert_cycle_locked(conn, self._current_cycle,
                                                    {"risk_approved": payload.get("approved", 0)})
+                elif et == EventType.RISK_CHECK_FAILED.value:
+                    if self._current_cycle:
+                        summary = payload.get("rejection_summary")
+                        if summary is not None:
+                            self._upsert_cycle_locked(
+                                conn,
+                                self._current_cycle,
+                                {"risk_rejection_summary": json.dumps(summary)},
+                            )
                 elif et == EventType.SIMULATION_COMPLETE.value:
                     if self._current_cycle:
                         self._upsert_cycle_locked(conn, self._current_cycle,

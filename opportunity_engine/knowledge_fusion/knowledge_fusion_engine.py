@@ -55,6 +55,12 @@ from .kf_models import (
     TRUE_NEGATIVE, TRUE_POSITIVE,
     USED_AS_CONTEXT, USED_IN_DECISION, OBSERVED_ONLY, INSUFFICIENT_DATA,
 )
+from .market_behavior_adapter import (
+    MarketLeaderRecord,
+    load_market_leader_records,
+    get_sector_leader_stats,
+    get_symbol_leader_stats,
+)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Paths
@@ -197,6 +203,7 @@ def build_source_inventory(
     shadow_n     = _jsonl_count(d / "shadow_evidence_ledger.jsonl")
     ke_n         = _jsonl_count(d / "knowledge_evidence_ledger.jsonl")
     rq_n         = _jsonl_count(d / "research_question_queue.jsonl")
+    mb_n         = _db_count(d / "market_behavior.db",       "market_leaders_daily")
 
     regime_n = 0
     if (d / "regime_probability_history.json").exists():
@@ -357,6 +364,17 @@ def build_source_inventory(
             historical_depth="computed on demand from KLP outcomes",
             record_count=0,
             update_frequency="ON_DEMAND",
+            is_outcome_linked=True,
+            currently_used_in_decisions=False,
+            usage_status=OBSERVED_ONLY,
+        ),
+        SourceInventoryItem(
+            source="MARKET_BEHAVIOR_DB",
+            field="symbol, trade_date, leader_type, rank_position, day_return_pct, volume_ratio, sector, regime, return_1d/3d/5d/10d/20d, max_favorable, max_adverse, outcome_class",
+            availability=_avail(mb_n),
+            historical_depth="2026-06-19 to present",
+            record_count=mb_n,
+            update_frequency="DAILY",
             is_outcome_linked=True,
             currently_used_in_decisions=False,
             usage_status=OBSERVED_ONLY,
@@ -1058,6 +1076,337 @@ def _score_knowledge_value(ko: KnowledgeObject) -> KnowledgeValueScore:
     return w
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# KLP-005 PART 5-10 — Six new analysis angles
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _leader_outcome_angle(
+    symbol: str,
+    sector: str,
+    direction: str,
+    leader_records: List[MarketLeaderRecord],
+) -> AngleResult:
+    """
+    PART 5 — LEADER_OUTCOME angle.
+    Uses market_behavior.db outcomes to assess how sector leaders behave
+    after being classified as WINNER/LOSER.
+    """
+    name = "LEADER_OUTCOME"
+    symbol_stats = get_symbol_leader_stats(symbol, leader_records)
+    sector_stats  = get_sector_leader_stats(sector, "WINNER", leader_records)
+
+    n_sym = symbol_stats.get("n", 0)
+    n_sec = sector_stats.get("n", 0)
+    n = n_sym + n_sec
+
+    if n == 0:
+        return _angle_insufficient(name)
+
+    # Prefer symbol-level stats when available, fall back to sector
+    win_rate = (
+        symbol_stats.get("win_rate_1d")
+        if n_sym >= 3
+        else sector_stats.get("win_rate_1d")
+    )
+    avg_r5 = (
+        symbol_stats.get("avg_return_5d")
+        if n_sym >= 3
+        else sector_stats.get("avg_return_5d")
+    )
+    avg_fav = sector_stats.get("avg_max_favorable")
+    avg_adv = sector_stats.get("avg_max_adverse")
+
+    metrics: Dict[str, Any] = {
+        "symbol_appearances": n_sym,
+        "sector_appearances": n_sec,
+        "win_rate_1d": win_rate,
+        "avg_return_5d": avg_r5,
+        "avg_max_favorable": avg_fav,
+        "avg_max_adverse": avg_adv,
+        "dominant_outcome_class": (
+            list(sector_stats.get("outcome_classes", {}).keys() or ["UNKNOWN"])[0]
+        ),
+    }
+
+    from opportunity_engine.hbe_models import evidence_tier as _tier
+    conf = min(_tier(n) / 6.0 * 0.75, 0.75)
+
+    summary_parts = []
+    if win_rate is not None:
+        summary_parts.append(f"win_rate_1d={win_rate:.2%}")
+    if avg_r5 is not None:
+        summary_parts.append(f"avg_r5d={avg_r5:+.2f}%")
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=n,
+        metrics=metrics,
+        evidence_level=max(1, 7 - _tier(n)),
+        confidence=conf,
+        summary=" ".join(summary_parts) or f"n={n}",
+    )
+
+
+def _source_quality_angle(
+    record: KnowledgeFusionRecord,
+    pool: List[KnowledgeFusionRecord],
+) -> AngleResult:
+    """
+    PART 6 — SOURCE_QUALITY angle.
+    Weights the evidence pool by source quality:
+    outcome-linked sources → high quality; context-only → low.
+    Returns a composite quality score for the available evidence.
+    """
+    name = "SOURCE_QUALITY"
+    if not pool:
+        return _angle_insufficient(name)
+
+    # Source quality weights: outcome-linked is 2x context-only
+    quality_map = {
+        "REJECTION_AUDIT":     1.0,
+        "SHADOW_EVIDENCE":     0.8,
+        "KLP_OUTCOME":         1.0,
+        "KLP_OBSERVATION":     0.4,
+        "LEADER_OUTCOME":      0.7,
+        "CT_DECISIONS":        0.5,
+        "REGIME_HISTORY":      0.3,
+        "PAPER_TRADES":        1.0,
+    }
+
+    outcome_linked = [r for r in pool if r.outcome_available]
+    context_only   = [r for r in pool if not r.outcome_available]
+
+    total = len(pool)
+    ol_frac = len(outcome_linked) / total if total > 0 else 0.0
+
+    # Compute confidence-weighted quality score from record's own source tags
+    source_tags = getattr(record, "source_tags", []) or []
+    if source_tags:
+        weights = [quality_map.get(t.upper(), 0.4) for t in source_tags]
+        composite_quality = sum(weights) / len(weights)
+    else:
+        # Infer from pool composition
+        composite_quality = 0.4 + 0.4 * ol_frac
+
+    conf = min(composite_quality * 0.85, 0.85)
+    metrics: Dict[str, Any] = {
+        "outcome_linked_count": len(outcome_linked),
+        "context_only_count":   len(context_only),
+        "outcome_linked_frac":  round(ol_frac, 4),
+        "composite_quality":    round(composite_quality, 4),
+        "source_tags":          source_tags,
+    }
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=total,
+        metrics=metrics,
+        evidence_level=max(1, 8 - round(composite_quality * 6)),
+        confidence=conf,
+        summary=f"quality={composite_quality:.2f} outcome_linked={ol_frac:.1%}",
+    )
+
+
+def _recency_angle(
+    record: KnowledgeFusionRecord,
+    pool: List[KnowledgeFusionRecord],
+    ref: Optional[date] = None,
+) -> AngleResult:
+    """
+    PART 7 — RECENCY angle.
+    Computes effective sample size (ESS) using exponential decay (half-life=90d).
+    A stale evidence pool → low confidence even with many records.
+    """
+    name = "RECENCY"
+    if not pool:
+        return _angle_insufficient(name)
+
+    ref_date = ref or date.today()
+    ess = _ess([r.trading_date for r in pool], ref_date)
+    oldest = min((r.trading_date for r in pool if r.trading_date), default="")
+    newest = max((r.trading_date for r in pool if r.trading_date), default="")
+    ess_frac = ess / max(len(pool), 1)
+
+    # Recent evidence (>50% ESS) = high confidence
+    conf = min(ess_frac * 0.9, 0.9)
+
+    metrics: Dict[str, Any] = {
+        "pool_size": len(pool),
+        "ess": round(ess, 2),
+        "ess_fraction": round(ess_frac, 4),
+        "oldest_record": oldest,
+        "newest_record": newest,
+    }
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=len(pool),
+        metrics=metrics,
+        evidence_level=max(1, 8 - round(ess_frac * 6)),
+        confidence=conf,
+        summary=f"ess={ess:.1f}/{len(pool)} ess_frac={ess_frac:.1%}",
+    )
+
+
+def _redundancy_angle(
+    record: KnowledgeFusionRecord,
+    pool: List[KnowledgeFusionRecord],
+) -> AngleResult:
+    """
+    PART 8 — REDUNDANCY angle.
+    Measures cross-source agreement: how many independent data sources
+    corroborate the direction/signal for this symbol.
+    High redundancy → more reliable signal.
+    """
+    name = "REDUNDANCY"
+    symbol_recs = [
+        r for r in pool
+        if r.symbol == record.symbol and r.direction == record.direction
+    ]
+    n = len(symbol_recs)
+    if n == 0:
+        return _angle_insufficient(name)
+
+    # Redundancy = distinct source types confirming same direction
+    # Approximate from outcome patterns: records from multiple sectors = broader evidence
+    distinct_dates = len({r.trading_date for r in symbol_recs if r.trading_date})
+    outcome_agreeing = sum(
+        1 for r in symbol_recs
+        if r.outcome_available and getattr(r, "return_1d", None) is not None
+        and (r.direction == "BUY" and (r.return_1d or 0) > 0
+             or r.direction == "SELL" and (r.return_1d or 0) < 0)
+    )
+    # Source diversity: use distinct field combos as proxy
+    source_diversity = min(distinct_dates / max(n, 1), 1.0)
+    agreement_rate = outcome_agreeing / n if n > 0 else 0.0
+
+    redundancy_score = (source_diversity * 0.4 + agreement_rate * 0.6)
+    conf = min(redundancy_score * 0.8, 0.8)
+
+    metrics: Dict[str, Any] = {
+        "corroborating_records": n,
+        "distinct_dates": distinct_dates,
+        "outcome_agreeing": outcome_agreeing,
+        "source_diversity": round(source_diversity, 4),
+        "agreement_rate": round(agreement_rate, 4),
+        "redundancy_score": round(redundancy_score, 4),
+    }
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=n,
+        metrics=metrics,
+        evidence_level=max(1, 8 - round(redundancy_score * 6)),
+        confidence=conf,
+        summary=f"redundancy={redundancy_score:.2f} agreement={agreement_rate:.1%} n={n}",
+    )
+
+
+def _contradiction_angle(record: KnowledgeFusionRecord) -> AngleResult:
+    """
+    PART 9 — CONTRADICTION angle.
+    Formalizes the contradiction detection result as a MultiAngleView angle.
+    Converts ContradictionRecord list → severity score → confidence modifier.
+    Low contradiction → high confidence.
+    """
+    name = "CONTRADICTION"
+    contradictions = _detect_contradictions(record)
+
+    if not contradictions:
+        return AngleResult(
+            angle_name=name,
+            sample_count=0,
+            metrics={"contradictions": 0, "severity": CONTRADICTION_NONE, "max_severity": "NONE"},
+            evidence_level=1,
+            confidence=0.85,
+            summary="no_contradictions",
+        )
+
+    severity_order = {CONTRADICTION_NONE: 0, CONTRADICTION_MINOR: 1, CONTRADICTION_MAJOR: 2}
+    max_sev = max(contradictions, key=lambda c: severity_order.get(c.severity, 0))
+    max_sev_val = severity_order.get(max_sev.severity, 0)
+    n_major = sum(1 for c in contradictions if c.severity == CONTRADICTION_MAJOR)
+    n_minor = sum(1 for c in contradictions if c.severity == CONTRADICTION_MINOR)
+
+    # Confidence penalty: major = -0.4, minor = -0.15
+    raw_conf = 0.85 - n_major * 0.4 - n_minor * 0.15
+    conf = max(raw_conf, 0.0)
+
+    metrics: Dict[str, Any] = {
+        "contradictions": len(contradictions),
+        "major": n_major,
+        "minor": n_minor,
+        "max_severity": max_sev.severity,
+        "fields": [c.field for c in contradictions],
+    }
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=len(contradictions),
+        metrics=metrics,
+        evidence_level=3 + max_sev_val * 2,
+        confidence=conf,
+        summary=f"contradictions={len(contradictions)} major={n_major} minor={n_minor}",
+    )
+
+
+def _oos_validation_angle(
+    record: KnowledgeFusionRecord,
+    pool: List[KnowledgeFusionRecord],
+) -> AngleResult:
+    """
+    PART 10 — OOS_VALIDATION angle.
+    Checks how much of the evidence pool has been through out-of-sample validation.
+    Records with OOS_PASSED → strong signal; OOS_FAILED → caution.
+    """
+    name = "OOS_VALIDATION"
+    if not pool:
+        return _angle_insufficient(name)
+
+    oos_passed = sum(1 for r in pool if getattr(r, "oos_status", OOS_NOT_TESTED) == OOS_PASSED)
+    oos_failed = sum(1 for r in pool if getattr(r, "oos_status", OOS_NOT_TESTED) == OOS_FAILED)
+    oos_tested = sum(1 for r in pool if getattr(r, "oos_status", OOS_NOT_TESTED) in (OOS_PASSED, OOS_FAILED))
+    oos_not_tested = len(pool) - oos_tested
+
+    if oos_tested == 0:
+        metrics: Dict[str, Any] = {
+            "oos_not_tested": len(pool),
+            "oos_passed": 0,
+            "oos_failed": 0,
+            "oos_pass_rate": None,
+        }
+        return AngleResult(
+            angle_name=name,
+            sample_count=len(pool),
+            metrics=metrics,
+            evidence_level=5,
+            confidence=0.1,
+            summary=f"all_untested n={len(pool)}",
+        )
+
+    pass_rate = oos_passed / oos_tested
+    conf = min(pass_rate * 0.8 + 0.1, 0.85)
+
+    metrics = {
+        "pool_size": len(pool),
+        "oos_tested": oos_tested,
+        "oos_passed": oos_passed,
+        "oos_failed": oos_failed,
+        "oos_not_tested": oos_not_tested,
+        "oos_pass_rate": round(pass_rate, 4),
+    }
+
+    return AngleResult(
+        angle_name=name,
+        sample_count=oos_tested,
+        metrics=metrics,
+        evidence_level=max(1, 7 - round(pass_rate * 6)),
+        confidence=conf,
+        summary=f"oos_pass_rate={pass_rate:.1%} tested={oos_tested}/{len(pool)}",
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Output writers (append-only)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1132,8 +1481,9 @@ class KnowledgeFusionEngine:
         all_records: Optional[List[KnowledgeFusionRecord]] = None,
     ) -> MultiAngleView:
         """
-        Produce a 10-angle view for one fusion record.
+        Produce a 16-angle view for one fusion record.
         Uses all_records for population-level context angles.
+        Angles A-J: original KLP-004. Angles K-P: new KLP-005.
         """
         pool = all_records or []
 
@@ -1178,6 +1528,28 @@ class KnowledgeFusionEngine:
 
         # J. COUNTERFACTUAL angle — what happened to rejected candidates
         angles["COUNTERFACTUAL"] = _counterfactual_angle(pool, record.direction)
+
+        # K. LEADER_OUTCOME angle — market_behavior.db sector/symbol leader patterns
+        _mb_db = self._data_dir / "market_behavior.db"
+        leader_recs = load_market_leader_records(_mb_db if _mb_db.exists() else None)
+        angles["LEADER_OUTCOME"] = _leader_outcome_angle(
+            record.symbol, record.sector, record.direction, leader_recs
+        )
+
+        # L. SOURCE_QUALITY angle — evidence quality weighting
+        angles["SOURCE_QUALITY"] = _source_quality_angle(record, pool)
+
+        # M. RECENCY angle — exponential decay evidence weighting
+        angles["RECENCY"] = _recency_angle(record, pool, self._ref_date)
+
+        # N. REDUNDANCY angle — cross-source corroboration count
+        angles["REDUNDANCY"] = _redundancy_angle(record, pool)
+
+        # O. CONTRADICTION angle — formalized contradiction severity
+        angles["CONTRADICTION"] = _contradiction_angle(record)
+
+        # P. OOS_VALIDATION angle — out-of-sample validation quality
+        angles["OOS_VALIDATION"] = _oos_validation_angle(record, pool)
 
         # Overall signal
         confidence_vals = [a.confidence for a in angles.values() if a.confidence > 0]
