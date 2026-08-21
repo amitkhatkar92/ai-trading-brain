@@ -330,6 +330,13 @@ class OrderManager:
 
     def __init__(self):
         self._paper_mode = getattr(_cfg, "PAPER_TRADING", True)
+        # Defense in depth: require explicit LIVE_TRADING_AUTHORIZED to route real orders
+        if not self._paper_mode and os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() != "true":
+            log.warning(
+                "[OrderManager] PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED not set "
+                "— forcing paper mode. Broker will not be initialized."
+            )
+            self._paper_mode = True
         self._broker     = None if self._paper_mode else self._load_broker()
         self._portfolio  = Portfolio(capital=TOTAL_CAPITAL, peak_capital=TOTAL_CAPITAL)
         self._orders: Dict[str, OrderRecord] = {}

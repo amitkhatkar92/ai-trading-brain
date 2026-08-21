@@ -192,6 +192,18 @@ def main():
         sys.exit(1)
 
     import config as _cfgmod
+
+    # Safety gate: live execution requires an explicit LIVE_TRADING_AUTHORIZED=true
+    # alongside PAPER_TRADING=false.  Broker connectivity alone is NOT authorization.
+    if not _cfgmod.PAPER_TRADING and os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() != "true":
+        log.warning(
+            "[SAFETY] PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED not set "
+            "— forcing paper mode. Set LIVE_TRADING_AUTHORIZED=true in .env "
+            "together with PAPER_TRADING=false to explicitly authorize live execution."
+        )
+        _cfgmod.PAPER_TRADING = True
+        os.environ["PAPER_TRADING"] = "true"
+
     _trading_mode_str = "PAPER" if _cfgmod.PAPER_TRADING else "LIVE"
     log.info("=== TRADING ENGINE STARTED ===")
     log.info("  Mode    : %s | %s", _lock_mode, _trading_mode_str)

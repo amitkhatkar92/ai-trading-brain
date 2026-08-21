@@ -554,6 +554,14 @@ class MasterOrchestrator:
         except Exception as exc:
             log.debug("[DTA-002] Token sync check skipped: %s", exc)
 
+    def _write_readiness_health(self) -> None:
+        """Write dhan_readiness.json snapshot (scheduled every 30 min)."""
+        try:
+            from live_operations.dhan_readiness_health import write_readiness_health
+            write_readiness_health()
+        except Exception as exc:
+            log.debug("[Readiness] Health write failed: %s", exc)
+
     def _on_market_signal(self, event_type: str, data: dict) -> None:
         """
         Called by MarketMonitor on every real-time signal.
@@ -6002,6 +6010,13 @@ class MasterOrchestrator:
             log.warning("  ⚠️  Candidate freshness check failed: %s", _cand_exc)
 
         log.info("  Pre-market init complete. Waiting for 09:05 deep scan.")
+        # Write readiness snapshot so dashboard/health checks are current
+        try:
+            from live_operations.dhan_readiness_health import write_readiness_health
+            write_readiness_health()
+            log.info("[Readiness] Health snapshot written to data/dhan_readiness.json")
+        except Exception as _rh_exc:
+            log.debug("[Readiness] Health write failed (non-critical): %s", _rh_exc)
 
     def _premarket_data_warmup(self) -> None:
         """
@@ -6388,6 +6403,16 @@ class MasterOrchestrator:
 
         # DTA-002: sync DTA-001 token into the live DhanFeed singleton every 5 min
         sched_lib.every(5).minutes.do(self._sync_dhan_token)
+
+        # Readiness health snapshot every 30 min
+        sched_lib.every(30).minutes.do(self._write_readiness_health)
+
+        # Write initial readiness snapshot at scheduler start
+        try:
+            from live_operations.dhan_readiness_health import write_readiness_health
+            write_readiness_health()
+        except Exception as _rh0:
+            log.debug("[Readiness] Startup health write failed: %s", _rh0)
 
         log.info("[Orchestrator] Scheduler armed.")
         log.info("  Pre-market : 08:00 init | 08:30 data warm-up + [Mon] universe rebuild")
