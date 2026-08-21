@@ -5533,6 +5533,28 @@ class MasterOrchestrator:
         except Exception as _klpe_exc:
             log.debug("[KLP-002] Outcome engine skipped: %s", _klpe_exc)
 
+        # ── KLP→KSL: Knowledge evidence bridge (VPS-safe; no shadow JSONL needed) ──
+        # Runs OUTSIDE the local shadow-file guard so completed KLP observations
+        # reach the pattern/research pipeline on VPS.  Idempotent — re-runs
+        # produce 0 new records when all outcomes are already ingested.
+        # No broker calls, orders, execution, or PAPER_TRADING changes.
+        try:
+            from scripts.knowledge_system.knowledge_feedback_loop_001 import (
+                run_klp_loop as _run_klp_loop,
+            )
+            _klp_ksl = _run_klp_loop()
+            log.info(
+                "[KLP-KSL] Bridge: klp_ingested=%d patterns=%d "
+                "questions=%d proposals=%d health_written=%s",
+                _klp_ksl.get("klp_evidence_ingested", 0),
+                _klp_ksl.get("patterns_detected", 0),
+                _klp_ksl.get("new_questions_generated", 0),
+                _klp_ksl.get("proposals_built", 0),
+                _klp_ksl.get("health_written", False),
+            )
+        except Exception as _klp_ksl_exc:
+            log.warning("[KLP-KSL] Knowledge bridge failed (non-critical): %s", _klp_ksl_exc)
+
     def _run_prepared_universe_audit(self, trades: list) -> None:
         """
         Patch 8 — EOD prepared-universe audit.

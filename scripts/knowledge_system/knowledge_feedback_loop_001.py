@@ -278,9 +278,10 @@ def run_loop(
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _log_event(event: Dict) -> None:
-    KNOWLEDGE_LEDGER.parent.mkdir(parents=True, exist_ok=True)
-    with open(KNOWLEDGE_LEDGER, "a") as f:
+def _log_event(event: Dict, _path: Optional[Path] = None) -> None:
+    out = _path or KNOWLEDGE_LEDGER
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with open(out, "a") as f:
         f.write(json.dumps(event) + "\n")
 
 
@@ -385,7 +386,7 @@ _STALE_HOURS = 48  # pipeline is "stale" if not run in this many hours
 _STALE_ALERT_COOLDOWN_H = 24  # only send one stale alert per this many hours
 
 
-def write_health_file(summary: Dict) -> None:
+def write_health_file(summary: Dict, _out_path: Optional[Path] = None) -> None:
     """
     Write data/knowledge_pipeline_health.json after every run_loop() call.
     Includes counts, last-run timestamp, staleness flag, and overall status.
@@ -546,11 +547,12 @@ def write_health_file(summary: Dict) -> None:
         "klp_stages":               klp_stages,
     }
 
-    HEALTH_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = HEALTH_PATH.with_suffix(".tmp")
+    _effective_out = _out_path or HEALTH_PATH
+    _effective_out.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _effective_out.with_suffix(".tmp")
     with open(tmp, "w") as _f:
         json.dump(health, _f, indent=2)
-    os.replace(tmp, HEALTH_PATH)
+    os.replace(tmp, _effective_out)
 
     # Rate-limited stale alert via Telegram (max once per STALE_ALERT_COOLDOWN_H)
     if stale:
@@ -576,8 +578,160 @@ def write_health_file(summary: Dict) -> None:
             pass  # notification is best-effort
 
 
+def run_klp_loop(
+    register_hypotheses: bool = True,
+    top_n_proposals: int = 3,
+    min_proposal_priority: float = 55.0,
+    *,
+    _klp_data_dir: Optional[Path] = None,
+    _shadow_ledger: Optional[Path] = None,
+    _knowledge_ledger_path: Optional[Path] = None,
+    _klp_adapter_state: Optional[Path] = None,
+    _health_path: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """
+    VPS-compatible KLP→KSL evidence bridge (stages 1.5–9).
+
+    Runs without requiring final_trading_architecture_shadow_001.jsonl.
+    Called from _do_eod_learning() OUTSIDE the local shadow-file guard so
+    completed KLP outcomes always reach the pattern/research pipeline on VPS.
+
+    Idempotent: ingest_klp_outcomes() deduplicates on obs_id via watermark.
+    Stages 3-7 only run when new KLP evidence was ingested — prevents duplicate
+    downstream runs when local run_loop() already processed the same evidence.
+    Health file (stage 9) always written regardless of new evidence.
+    No broker calls, orders, or execution-layer imports.
+    """
+    from scripts.knowledge_system.shadow_evidence_consumer_001 import LEDGER_PATH as _DEFAULT_SHADOW_LEDGER
+
+    run_id = str(uuid.uuid4())
+    started_at = datetime.now(timezone.utc).isoformat()
+    _eff_shadow  = _shadow_ledger       or _DEFAULT_SHADOW_LEDGER
+    _eff_k_ledger = _knowledge_ledger_path or KNOWLEDGE_LEDGER
+
+    summary: Dict[str, Any] = {
+        "run_id":                   run_id,
+        "started_at":               started_at,
+        "klp_evidence_ingested":    0,
+        "new_evidence_records":     0,
+        "patterns_detected":        0,
+        "new_questions_generated":  0,
+        "total_questions_in_queue": 0,
+        "proposals_built":          0,
+        "hypotheses_registered":    0,
+        "health_written":           False,
+        "safety": {
+            "broker_calls":          0,
+            "orders":                0,
+            "candidatestore_writes": 0,
+            "production_changes":    0,
+        },
+    }
+
+    _eff_shadow.parent.mkdir(parents=True, exist_ok=True)
+    _eff_k_ledger.parent.mkdir(parents=True, exist_ok=True)
+    STATE_JSON.parent.mkdir(parents=True, exist_ok=True)
+
+    # Stage 1.5: KLP evidence ingestion (idempotent via watermark)
+    _klp_new = 0
+    try:
+        from scripts.knowledge_system.klp_evidence_adapter_001 import ingest_klp_outcomes as _klp_ingest
+        _klp_result = _klp_ingest(
+            klp_data_dir=_klp_data_dir,
+            shadow_ledger=_eff_shadow,
+            knowledge_ledger=_eff_k_ledger,
+            state_path=_klp_adapter_state,
+        )
+        _klp_new = _klp_result.get("new_records", 0)
+    except Exception:
+        pass
+    summary["klp_evidence_ingested"] = _klp_new
+    summary["new_evidence_records"]  = _klp_new
+    _log_event({"event_type": "LOOP_STAGE", "stage": "KLP_INGEST",
+                "new_records": _klp_new, "run_id": run_id}, _path=_eff_k_ledger)
+
+    patterns: List[PatternRecord]         = []
+    new_questions: List[ResearchQuestion] = []
+    prioritized: List[ResearchQuestion]   = []
+    proposals: List[ResearchProposal]     = []
+    registered: List[str]                 = []
+
+    if _klp_new > 0:
+        # Stage 3: Pattern mining on the shadow ledger (KLP adapter wrote to it)
+        patterns = mine_patterns(ledger_path=_eff_shadow)
+        summary["patterns_detected"] = len(patterns)
+        _log_event({"event_type": "LOOP_STAGE", "stage": "PATTERN_MINE",
+                    "patterns": len(patterns), "run_id": run_id}, _path=_eff_k_ledger)
+        for p in patterns:
+            _log_event({
+                "event_type":   KSLEventType.PATTERN.value,
+                "pattern_id":   p.pattern_id,
+                "pattern_type": p.pattern_type.value,
+                "direction":    p.direction,
+                "strength":     p.strength,
+                "description":  p.description,
+                "run_id":       run_id,
+            }, _path=_eff_k_ledger)
+
+        # Stage 4: Research question generation
+        new_questions = generate_questions(patterns, knowledge_ledger_path=_eff_k_ledger)
+        summary["new_questions_generated"] = len(new_questions)
+        _log_event({"event_type": "LOOP_STAGE", "stage": "GENERATE_RQ",
+                    "questions": len(new_questions), "run_id": run_id}, _path=_eff_k_ledger)
+
+        # Stage 5: Prioritization
+        all_questions = _load_all_questions()
+        prioritized   = prioritize_questions(all_questions, patterns)
+        summary["total_questions_in_queue"] = len(prioritized)
+
+        # Stage 6: Proposals
+        proposals = build_proposals_for_top_n(
+            prioritized, n=top_n_proposals, min_priority=min_proposal_priority
+        )
+        summary["proposals_built"] = len(proposals)
+        for prop in proposals:
+            _log_event({
+                "event_type": KSLEventType.RESEARCH_PROPOSAL.value,
+                "proposal_id": prop.proposal_id,
+                "question_id": prop.research_question_id,
+                "run_id":      run_id,
+            }, _path=_eff_k_ledger)
+
+        # Stage 7: Hypothesis registry (non-fatal if unavailable)
+        if register_hypotheses and new_questions:
+            for rq in new_questions:
+                if rq.research_priority >= min_proposal_priority:
+                    hyp_id = _try_register_hypothesis(rq)
+                    if hyp_id:
+                        registered.append(hyp_id)
+        summary["hypotheses_registered"] = len(registered)
+
+        # Stage 8: State + research queue
+        _save_state_json(summary, run_id, started_at, patterns, prioritized, proposals)
+        _save_research_queue_json(prioritized[:20])
+
+    summary["completed_at"] = datetime.now(timezone.utc).isoformat()
+    _log_event({
+        "event_type":    "KLP_LOOP_COMPLETE",
+        "run_id":        run_id,
+        "klp_ingested":  _klp_new,
+        "patterns":      len(patterns),
+        "new_questions": len(new_questions),
+        "proposals":     len(proposals),
+    }, _path=_eff_k_ledger)
+
+    # Stage 9: Health file — always written (even on idle runs without new evidence)
+    try:
+        write_health_file(summary, _out_path=_health_path)
+        summary["health_written"] = True
+    except Exception:
+        pass
+
+    return summary
+
+
 if __name__ == "__main__":
-    summary = run_loop()
+
     print("\n=== KSL-001 RESEARCH AGENDA ===")
     for q in summary.get("top_questions", []):
         print(f"  [{q['rank']}] Priority={q['priority']}/100  [{q['area']} / {q['direction']}]")
