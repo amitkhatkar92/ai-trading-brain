@@ -73,6 +73,7 @@ try:
         append_audit,
         acquire_lock,
         load_metadata,
+        read_health,
         release_lock,
         save_metadata,
         write_health,
@@ -91,6 +92,7 @@ except ImportError:
         append_audit,
         acquire_lock,
         load_metadata,
+        read_health,
         release_lock,
         save_metadata,
         write_health,
@@ -397,33 +399,44 @@ class DhanTokenAgent:
                 elapsed = int((time.monotonic() - t0) * 1000)
 
                 if resp.status_code == 200:
-                    return self._parse_token_response(resp, client_id)
+                    try:
+                        return self._parse_token_response(resp, client_id)
+                    except TokenGenerationError as exc:
+                        # Dhan returns 200 with an error body for rate limits.
+                        # Treat RATE_LIMITED as retriable (wait 130s minimum).
+                        if getattr(exc, "error_category", "") == "RATE_LIMITED":
+                            last_exc = exc
+                            last_category = "RATE_LIMITED"
+                            # fall through to retry logic below
+                        else:
+                            raise  # non-retriable 200-body error
 
-                # Always extract Dhan's error body for diagnostics (no credentials inside).
-                dhan_detail = _extract_dhan_error(resp)
+                else:
+                    # Always extract Dhan's error body for diagnostics (no credentials inside).
+                    dhan_detail = _extract_dhan_error(resp)
 
-                # Determine if we should retry
-                if resp.status_code in _NO_RETRY_CODES:
-                    last_category = f"HTTP_{resp.status_code}_NO_RETRY"
-                    raise TokenGenerationError(
-                        f"Authentication failure HTTP {resp.status_code}. "
-                        "Check DHAN_CLIENT_ID, DHAN_PIN, and DHAN_TOTP_SECRET.",
+                    # Determine if we should retry
+                    if resp.status_code in _NO_RETRY_CODES:
+                        last_category = f"HTTP_{resp.status_code}_NO_RETRY"
+                        raise TokenGenerationError(
+                            f"Authentication failure HTTP {resp.status_code}. "
+                            "Check DHAN_CLIENT_ID, DHAN_PIN, and DHAN_TOTP_SECRET.",
+                            error_category=last_category,
+                            dhan_detail=dhan_detail,
+                        )
+
+                    if resp.status_code == 429:
+                        last_category = "RATE_LIMITED"
+                    elif resp.status_code >= 500:
+                        last_category = f"HTTP_{resp.status_code}_SERVER"
+                    else:
+                        last_category = f"HTTP_{resp.status_code}"
+
+                    last_exc = TokenGenerationError(
+                        f"HTTP {resp.status_code} from token endpoint.",
                         error_category=last_category,
                         dhan_detail=dhan_detail,
                     )
-
-                if resp.status_code == 429:
-                    last_category = "RATE_LIMITED"
-                elif resp.status_code >= 500:
-                    last_category = f"HTTP_{resp.status_code}_SERVER"
-                else:
-                    last_category = f"HTTP_{resp.status_code}"
-
-                last_exc = TokenGenerationError(
-                    f"HTTP {resp.status_code} from token endpoint.",
-                    error_category=last_category,
-                    dhan_detail=dhan_detail,
-                )
 
             except requests.Timeout:
                 last_exc = TokenGenerationError(
@@ -432,7 +445,7 @@ class DhanTokenAgent:
                 )
                 last_category = "TIMEOUT"
             except TokenGenerationError:
-                raise   # no-retry codes bubble immediately
+                raise   # non-retriable errors bubble immediately
             except requests.RequestException as exc:
                 last_exc = TokenGenerationError(
                     f"Network error on attempt {attempt}: {type(exc).__name__}",
@@ -443,7 +456,8 @@ class DhanTokenAgent:
             if attempt <= MAX_RETRIES:
                 delay = _RETRY_BASE_DELAY_S * (2 ** (attempt - 1))
                 if last_category == "RATE_LIMITED":
-                    delay = max(delay, 60)
+                    # Dhan enforces a 2-minute window; wait at least 130 s.
+                    delay = max(delay, 130)
                 time.sleep(delay)
 
         raise last_exc or TokenGenerationError("Token generation failed.", last_category)
@@ -455,6 +469,22 @@ class DhanTokenAgent:
         except ValueError:
             raise TokenGenerationError(
                 "Malformed JSON in token response.", error_category="MALFORMED_RESPONSE"
+            )
+
+        # Dhan sometimes returns HTTP 200 with an application-level error body
+        # (e.g. {"status":"error","message":"Token can be generated once every 2 minutes."})
+        # Detect this pattern BEFORE checking for token fields so we can raise a
+        # retriable RATE_LIMITED error instead of the misleading EMPTY_TOKEN_FIELD.
+        if isinstance(data, dict) and data.get("status") == "error":
+            msg = str(data.get("message", "Dhan API error")).strip()
+            if "2 minute" in msg.lower() or "rate" in msg.lower() or "once every" in msg.lower():
+                raise TokenGenerationError(
+                    f"Rate limited by Dhan API: {msg}",
+                    error_category="RATE_LIMITED",
+                )
+            raise TokenGenerationError(
+                f"Dhan API returned error in 200 body: {msg}",
+                error_category="API_ERROR_IN_200",
             )
 
         # Accept multiple possible key names
