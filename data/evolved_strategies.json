@@ -1,0 +1,6546 @@
+{
+  "Breakout_Volume_RSI_HiVol": {
+    "base_strategy": "Breakout_Volume",
+    "lookback_days": 20,
+    "volume_ratio": 3.0,
+    "use_rsi_filter": true,
+    "rsi_min": 51,
+    "rsi_max": 62,
+    "stop_loss_pct": 0.01,
+    "target_multiplier": 3.99,
+    "confidence_modifier": 12.77,
+    "variant_name": "Breakout_Volume_RSI_HiVol",
+    "approved": true,
+    "cross_market_rate": 1.0,
+    "wf_consistency": 1.0,
+    "overfitting_ratio": 0.063,
+    "approved_at": "2026-03-10T13:22:45.622619"
+  },
+  "Mean_Reversion_RSI_HiVol": {
+    "base_strategy": "Mean_Reversion",
+    "lookback_days": 20,
+    "volume_ratio": 2.7,
+    "use_rsi_filter": true,
+    "rsi_min": 50,
+    "rsi_max": 63,
+    "stop_loss_pct": 0.01,
+    "target_multiplier": 4.0,
+    "confidence_modifier": 6.17,
+    "variant_name": "Mean_Reversion_RSI_HiVol",
+    "approved": true,
+    "cross_market_rate": 1.0,
+    "wf_consistency": 0.8,
+    "overfitting_ratio": 1.337,
+    "approved_at": "2026-03-10T13:22:45.638689"
+  },
+  "EDG_COMPOS_92_EE0002": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.276
+      },
+      {
+        "feature": "adx_score",
+        "operator": ">",
+        "threshold": 0.045
+      },
+      {
+        "feature": "hist_vol_20d",
+        "operator": ">",
+        "threshold": 0.2088
+      }
+    ],
+    "precision": 0.9285714285714286,
+    "support": 17,
+    "expected_return": 0.016714285714285713,
+    "description": "IF breadth > 0.660 AND global_bias > 0.276 AND adx_score > 0.045 AND hist_vol_20d > 0.209 THEN bullish with 93% hit rate (n=17)",
+    "approved": true,
+    "created_at": "2026-03-10T17:42:53.587169"
+  },
+  "EDG_MACRO__78_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "macro_flow",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.635
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.7335
+      }
+    ],
+    "precision": 0.7816091954022989,
+    "support": 36,
+    "expected_return": 0.01406896551724138,
+    "description": "IF breadth <= 0.660 AND breadth <= 0.635 AND regime_score > 0.750 AND sector_strength > 0.734 THEN bullish with 78% hit rate (n=36)",
+    "approved": true,
+    "created_at": "2026-03-10T17:42:53.587192"
+  },
+  "EDG_VOLATI_91_EE0004": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3972
+      },
+      {
+        "feature": "mom_1d",
+        "operator": ">",
+        "threshold": 0.0046
+      }
+    ],
+    "precision": 0.918531781557744,
+    "support": 25,
+    "expected_return": 0.01653357206803939,
+    "description": "IF pcr > 0.400 AND bb_position > 0.397 AND mom_1d > 0.005 THEN bullish with 92% hit rate (n=25)",
+    "approved": true,
+    "created_at": "2026-03-10T17:43:40.295690"
+  },
+  "EDG_VOLATI_68_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6895628902765389,
+    "support": 95,
+    "expected_return": 0.0124121320249777,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 69% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:47:34.660193"
+  },
+  "EDG_VOLATI_63_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": "<=",
+        "threshold": 0.3972
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.7448
+      }
+    ],
+    "precision": 0.6368715083798884,
+    "support": 28,
+    "expected_return": 0.01146368715083799,
+    "description": "IF pcr > 0.400 AND bb_position <= 0.397 AND pcr > 0.745 THEN bullish with 64% hit rate (n=28)",
+    "approved": true,
+    "created_at": "2026-03-10T17:43:40.295728"
+  },
+  "EDG_VOLATI_61_EE0001": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": "<=",
+        "threshold": 0.3972
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.7448
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 34.8875
+      }
+    ],
+    "precision": 0.6102783725910065,
+    "support": 19,
+    "expected_return": 0.010985010706638116,
+    "description": "IF pcr > 0.400 AND bb_position <= 0.397 AND pcr <= 0.745 AND rsi <= 34.887 THEN bullish with 61% hit rate (n=19)",
+    "approved": true,
+    "created_at": "2026-03-10T17:43:40.295743"
+  },
+  "EDG_COMPOS_93_EE0003": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.276
+      },
+      {
+        "feature": "adx_score",
+        "operator": ">",
+        "threshold": 0.045
+      },
+      {
+        "feature": "hist_vol_20d",
+        "operator": ">",
+        "threshold": 0.2088
+      }
+    ],
+    "precision": 0.9393939393939393,
+    "support": 17,
+    "expected_return": 0.01690909090909091,
+    "description": "IF breadth > 0.660 AND global_bias > 0.276 AND adx_score > 0.045 AND hist_vol_20d > 0.209 THEN bullish with 94% hit rate (n=17)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:41.173033"
+  },
+  "EDG_COMPOS_82_EE0000": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.283
+      }
+    ],
+    "precision": 0.8266666666666667,
+    "support": 24,
+    "expected_return": 0.014879999999999999,
+    "description": "IF breadth <= 0.660 AND breadth <= 0.283 THEN bullish with 83% hit rate (n=24)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:41.173051"
+  },
+  "EDG_MACRO__72_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "macro_flow",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.283
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.4645
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.6456
+      }
+    ],
+    "precision": 0.7284595300261096,
+    "support": 25,
+    "expected_return": 0.013112271540469973,
+    "description": "IF breadth <= 0.660 AND breadth > 0.283 AND global_bias <= 0.465 AND sector_strength > 0.646 THEN bullish with 73% hit rate (n=25)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:41.173066"
+  },
+  "EDG_COMPOS_94_EE0003": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.276
+      },
+      {
+        "feature": "adx_score",
+        "operator": ">",
+        "threshold": 0.045
+      },
+      {
+        "feature": "hist_vol_20d",
+        "operator": ">",
+        "threshold": 0.2088
+      }
+    ],
+    "precision": 0.9473684210526315,
+    "support": 17,
+    "expected_return": 0.017052631578947368,
+    "description": "IF breadth > 0.660 AND global_bias > 0.276 AND adx_score > 0.045 AND hist_vol_20d > 0.209 THEN bullish with 95% hit rate (n=17)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:42.734613"
+  },
+  "EDG_MACRO__64_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "macro_flow",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.2799
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.5304
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.4925
+      }
+    ],
+    "precision": 0.6464912280701754,
+    "support": 42,
+    "expected_return": 0.011636842105263157,
+    "description": "IF breadth <= 0.660 AND breadth > 0.280 AND vix > 0.530 AND sector_strength > 0.493 THEN bullish with 65% hit rate (n=42)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:41.350542"
+  },
+  "EDG_COMPOS_86_EE0001": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6598
+      },
+      {
+        "feature": "breadth_strong",
+        "operator": "<=",
+        "threshold": 0.5
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.9638
+      }
+    ],
+    "precision": 0.8674698795180723,
+    "support": 24,
+    "expected_return": 0.0156144578313253,
+    "description": "IF breadth <= 0.660 AND breadth_strong <= 0.500 AND regime_score > 0.750 AND bb_position > 0.964 THEN bullish with 87% hit rate (n=24)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:42.734633"
+  },
+  "EDG_VOLATI_93_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3972
+      },
+      {
+        "feature": "mom_1d",
+        "operator": ">",
+        "threshold": 0.0046
+      }
+    ],
+    "precision": 0.9383886255924171,
+    "support": 25,
+    "expected_return": 0.016890995260663507,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.397 AND mom_1d > 0.005 THEN bullish with 94% hit rate (n=25)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:43.117646"
+  },
+  "EDG_VOLATI_74_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.7475728155339805,
+    "support": 27,
+    "expected_return": 0.013456310679611647,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 75% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:43.117663"
+  },
+  "EDG_VOLATI_94_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3972
+      },
+      {
+        "feature": "mom_1d",
+        "operator": ">",
+        "threshold": 0.0046
+      }
+    ],
+    "precision": 0.9419272495213785,
+    "support": 25,
+    "expected_return": 0.016954690491384813,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.397 AND mom_1d > 0.005 THEN bullish with 94% hit rate (n=25)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:43.683036"
+  },
+  "EDG_VOLATI_75_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.7592592592592592,
+    "support": 27,
+    "expected_return": 0.013666666666666664,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 76% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:43.683054"
+  },
+  "EDG_VOLATI_89_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3068
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.3329
+      }
+    ],
+    "precision": 0.896,
+    "support": 51,
+    "expected_return": 0.016128,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.307 AND global_bias > 0.333 THEN bullish with 90% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:45.366633"
+  },
+  "EDG_VOLATI_76_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.7699115044247787,
+    "support": 27,
+    "expected_return": 0.013858407079646017,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 77% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:44.975384"
+  },
+  "EDG_VOLATI_77_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.7796610169491527,
+    "support": 27,
+    "expected_return": 0.014033898305084747,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 78% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:22:45.366654"
+  },
+  "EDG_VOLATI_90_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3068
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.3329
+      }
+    ],
+    "precision": 0.9092564491654022,
+    "support": 51,
+    "expected_return": 0.016366616084977238,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.307 AND global_bias > 0.333 THEN bullish with 91% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:29.714508"
+  },
+  "EDG_VOLATI_78_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.7886178861788619,
+    "support": 27,
+    "expected_return": 0.014195121951219513,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 79% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:27.183091"
+  },
+  "EDG_VOLATI_79_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.796875,
+    "support": 27,
+    "expected_return": 0.014343749999999999,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 80% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:27.552465"
+  },
+  "EDG_VOLATI_80_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.8045112781954887,
+    "support": 27,
+    "expected_return": 0.014481203007518796,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 80% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:29.714546"
+  },
+  "EDG_VOLATI_91_EE0002": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3068
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.3329
+      }
+    ],
+    "precision": 0.9129548762736536,
+    "support": 51,
+    "expected_return": 0.016433187772925763,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.307 AND global_bias > 0.333 THEN bullish with 91% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:30.367060"
+  },
+  "EDG_VOLATI_81_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.8181818181818182,
+    "support": 27,
+    "expected_return": 0.014727272727272728,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 82% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:31.205811"
+  },
+  "EDG_VOLATI_91_EE0003": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3068
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.3329
+      }
+    ],
+    "precision": 0.9195154777927321,
+    "support": 51,
+    "expected_return": 0.016551278600269177,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.307 AND global_bias > 0.333 THEN bullish with 92% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:33.317984"
+  },
+  "EDG_VOLATI_82_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3531
+      }
+    ],
+    "precision": 0.8243243243243243,
+    "support": 27,
+    "expected_return": 0.014837837837837837,
+    "description": "IF sector_flow_count <= 0.300 AND pcr <= 0.400 AND pcr <= 0.353 THEN bullish with 82% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-11T17:25:33.318025"
+  },
+  "EDG_VOLATI_92_EE0003": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "pcr",
+        "operator": ">",
+        "threshold": 0.4002
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.3068
+      },
+      {
+        "feature": "global_bias",
+        "operator": ">",
+        "threshold": 0.3329
+      }
+    ],
+    "precision": 0.9276904474002419,
+    "support": 51,
+    "expected_return": 0.016698428053204352,
+    "description": "IF sector_flow_count <= 0.300 AND pcr > 0.400 AND bb_position > 0.307 AND global_bias > 0.333 THEN bullish with 93% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-11T17:29:13.566821"
+  },
+  "EDG_MOMENT_98_EE0005": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0005",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9880050088973834,
+    "support": 21,
+    "expected_return": 0.0177840901601529,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 99% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:27.164648"
+  },
+  "EDG_MOMENT_91_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.001
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": -0.0032
+      }
+    ],
+    "precision": 0.9192125984251969,
+    "support": 16,
+    "expected_return": 0.016545826771653543,
+    "description": "IF volume_ratio > 0.485 AND gap_pct <= 0.001 AND mom_5d > -0.015 AND gap_pct <= -0.003 THEN bullish with 92% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.250628"
+  },
+  "EDG_MOMENT_79_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      }
+    ],
+    "precision": 0.7984397163120569,
+    "support": 176,
+    "expected_return": 0.014371914893617024,
+    "description": "IF event_count <= 0.100 AND mom_5d > -0.011 AND volume_ratio <= 0.503 AND regime_score > 0.750 THEN bullish with 80% hit rate (n=176)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:45.500961"
+  },
+  "EDG_MOMENT_69_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.6949152542372882,
+    "support": 59,
+    "expected_return": 0.008338983050847458,
+    "description": "volume_spike > 0.000 \u2192 69% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:49:49.814458"
+  },
+  "EDG_MOMENT_68_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.2537
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "regime_bull",
+        "operator": ">",
+        "threshold": 0.5
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8163
+      }
+    ],
+    "precision": 0.6888944213570298,
+    "support": 163,
+    "expected_return": 0.012400099584426536,
+    "description": "IF vix > 0.254 AND volume_ratio_raw <= 1.941 AND regime_bull > 0.500 AND pcr <= 0.816 THEN bullish with 69% hit rate (n=163)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:03.932393"
+  },
+  "EDG_MOMENT_70_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      }
+    ],
+    "precision": 0.7071786556603766,
+    "support": 232,
+    "expected_return": 0.012729215801886778,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 2.012 AND mom_5d > 0.000 AND bb_position > -0.216 THEN bullish with 71% hit rate (n=232)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:36.124314"
+  },
+  "EDG_MOMENT_68_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.684931506849315,
+    "support": 73,
+    "expected_return": 0.00821917808219178,
+    "description": "volume_spike > 0.000 \u2192 68% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.250649"
+  },
+  "EDG_MOMENT_66_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.6496
+      },
+      {
+        "feature": "mom_1d",
+        "operator": "<=",
+        "threshold": 0.0148
+      }
+    ],
+    "precision": 0.6671163965075267,
+    "support": 169,
+    "expected_return": 0.01200809513713548,
+    "description": "IF volume_ratio <= 0.479 AND global_bias <= 0.881 AND sector_strength > 0.650 AND mom_1d <= 0.015 THEN bullish with 67% hit rate (n=169)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:03.311908"
+  },
+  "EDG_MOMENT_97_EE0005": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0005",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.4712
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": -0.619
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0011
+      }
+    ],
+    "precision": 0.9757188498402557,
+    "support": 29,
+    "expected_return": 0.017562939297124602,
+    "description": "IF volume_ratio > 0.479 AND vix > 0.471 AND macd_signal_norm > -0.619 AND gap_pct > 0.001 THEN bullish with 98% hit rate (n=29)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:42.268511"
+  },
+  "EDG_MOMENT_89_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "mom_1d",
+        "operator": "<=",
+        "threshold": -0.005
+      }
+    ],
+    "precision": 0.8916349809885931,
+    "support": 16,
+    "expected_return": 0.016049429657794673,
+    "description": "IF volume_ratio > 0.485 AND gap_pct <= 0.001 AND mom_1d <= -0.005 THEN bullish with 89% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.545212"
+  },
+  "EDG_MOMENT_71_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "mom_1d",
+        "operator": ">",
+        "threshold": -0.005
+      },
+      {
+        "feature": "rsi_norm",
+        "operator": "<=",
+        "threshold": 0.5847
+      }
+    ],
+    "precision": 0.7116843702579666,
+    "support": 19,
+    "expected_return": 0.012810318664643399,
+    "description": "IF volume_ratio > 0.485 AND gap_pct <= 0.001 AND mom_1d > -0.005 AND rsi_norm <= 0.585 THEN bullish with 71% hit rate (n=19)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.545226"
+  },
+  "EDG_MOMENT_67_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.804
+      }
+    ],
+    "precision": 0.6776981970857002,
+    "support": 23,
+    "expected_return": 0.012198567547542604,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 2.012 AND mom_5d <= 0.000 AND vix > 0.804 THEN bullish with 68% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:38.935936"
+  },
+  "EDG_MOMENT_66_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6697235814511164,
+    "support": 195,
+    "expected_return": 0.012055024466120095,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 67% hit rate (n=195)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:37.283269"
+  },
+  "EDG_MOMENT_65_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.6578947368421053,
+    "support": 76,
+    "expected_return": 0.007894736842105263,
+    "description": "volume_spike > 0.000 \u2192 66% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.545258"
+  },
+  "EDG_MOMENT_95_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8789
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9598499889697772,
+    "support": 21,
+    "expected_return": 0.017277299801455988,
+    "description": "IF macd_signal_norm > 0.636 AND global_bias <= 0.879 AND volume_ratio > 0.486 AND iv_rank <= 0.655 THEN bullish with 96% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:35.435756"
+  },
+  "EDG_MOMENT_86_EE0002": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.025,
+    "stop_loss_pct": 0.03,
+    "target_multiplier": 2.2,
+    "base_strategy": "Momentum_Retest",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_trend",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "intra_range",
+        "operator": ">",
+        "threshold": 0.0219
+      },
+      {
+        "feature": "avg_conviction",
+        "operator": ">",
+        "threshold": 0.6215
+      },
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.6544
+      },
+      {
+        "feature": "mom_1d",
+        "operator": "<=",
+        "threshold": 0.0018
+      }
+    ],
+    "precision": 0.8691625501080364,
+    "support": 290,
+    "expected_return": 0.015644925901944655,
+    "description": "IF intra_range > 0.022 AND avg_conviction > 0.622 AND breadth <= 0.654 AND mom_1d <= 0.002 THEN bullish with 87% hit rate (n=290)",
+    "approved": true,
+    "created_at": "2026-08-01T19:14:56.522911"
+  },
+  "EDG_MOMENT_67_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.6761565836298935,
+    "support": 168,
+    "expected_return": 0.012170818505338082,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio <= 0.486 AND pcr <= 0.811 AND mom_10d > -0.025 THEN bullish with 68% hit rate (n=168)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.700668"
+  },
+  "EDG_MOMENT_59_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.1722
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.3735
+      }
+    ],
+    "precision": 0.5988538681948425,
+    "support": 33,
+    "expected_return": 0.010779369627507165,
+    "description": "IF macd_signal_norm <= 0.636 AND volume_ratio_raw <= 2.011 AND hist_vol_5d > 0.172 AND pcr <= 0.374 THEN bullish with 60% hit rate (n=33)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.700682"
+  },
+  "EDG_MOMENT_58_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.5802469135802469,
+    "support": 81,
+    "expected_return": 0.006962962962962963,
+    "description": "volume_spike > 0.000 \u2192 58% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.700687"
+  },
+  "EDG_MOMENT_97_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.5151
+      }
+    ],
+    "precision": 0.9747508305647841,
+    "support": 29,
+    "expected_return": 0.01754551495016611,
+    "description": "IF volume_ratio > 0.485 AND gap_pct > 0.001 AND volume_ratio > 0.515 THEN bullish with 97% hit rate (n=29)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.949978"
+  },
+  "EDG_MOMENT_89_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.8155
+      }
+    ],
+    "precision": 0.899588960657663,
+    "support": 35,
+    "expected_return": 0.016192601291837933,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw > 1.914 AND gap_pct <= 0.001 AND iv_rank <= 0.816 THEN bullish with 90% hit rate (n=35)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:25.370982"
+  },
+  "EDG_MOMENT_72_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.5547
+      }
+    ],
+    "precision": 0.7299834614262091,
+    "support": 208,
+    "expected_return": 0.013139702305671762,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND bb_position > -0.555 THEN bullish with 73% hit rate (n=208)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:43.904275"
+  },
+  "EDG_MOMENT_64_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.6493506493506493,
+    "support": 77,
+    "expected_return": 0.007792207792207792,
+    "description": "volume_spike > 0.000 \u2192 65% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:37.950027"
+  },
+  "EDG_MOMENT_100_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2432
+      }
+    ],
+    "precision": 1.0,
+    "support": 18,
+    "expected_return": 0.018,
+    "description": "IF volume_ratio > 0.503 AND gap_pct > 0.001 AND hist_vol_5d > 0.243 THEN bullish with 100% hit rate (n=18)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:38.242368"
+  },
+  "EDG_MOMENT_65_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      },
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      }
+    ],
+    "precision": 0.6594960575934182,
+    "support": 232,
+    "expected_return": 0.011870929036681526,
+    "description": "IF volume_ratio <= 0.503 AND mom_5d > 0.000 AND bb_position > -0.216 AND event_count <= 0.100 THEN bullish with 66% hit rate (n=232)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:50.658507"
+  },
+  "EDG_MOMENT_98_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.001
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0712
+      }
+    ],
+    "precision": 0.9898792613636364,
+    "support": 26,
+    "expected_return": 0.01781782670454545,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw > 1.941 AND gap_pct > 0.001 AND volume_ratio_raw > 2.071 THEN bullish with 99% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:58.443549"
+  },
+  "EDG_MOMENT_83_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.8374531835205993,
+    "support": 57,
+    "expected_return": 0.015074157303370786,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 84% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:10.020130"
+  },
+  "EDG_MOMENT_69_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.3702
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.5326
+      }
+    ],
+    "precision": 0.6991561985230674,
+    "support": 245,
+    "expected_return": 0.012584811573415212,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 1.941 AND bb_position > -0.370 AND sector_strength > 0.533 THEN bullish with 70% hit rate (n=245)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:10.493654"
+  },
+  "EDG_MOMENT_84_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.001
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      }
+    ],
+    "precision": 0.8493723849372385,
+    "support": 31,
+    "expected_return": 0.015288702928870293,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw > 1.941 AND gap_pct <= 0.001 AND mom_5d > -0.015 THEN bullish with 85% hit rate (n=31)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:06.961493"
+  },
+  "EDG_MOMENT_70_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "regime_bull",
+        "operator": ">",
+        "threshold": 0.5
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8163
+      }
+    ],
+    "precision": 0.7092866756393001,
+    "support": 164,
+    "expected_return": 0.0127671601615074,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 1.941 AND regime_bull > 0.500 AND pcr <= 0.816 THEN bullish with 71% hit rate (n=164)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:39.125680"
+  },
+  "EDG_MOMENT_66_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.6666666666666666,
+    "support": 75,
+    "expected_return": 0.008,
+    "description": "volume_spike > 0.000 \u2192 67% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:40.686719"
+  },
+  "EDG_MOMENT_98_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9878528999532804,
+    "support": 21,
+    "expected_return": 0.017781352199159047,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 99% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:26.445380"
+  },
+  "EDG_MOMENT_90_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": -0.0012
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      }
+    ],
+    "precision": 0.9067408376963351,
+    "support": 22,
+    "expected_return": 0.01632133507853403,
+    "description": "IF volume_ratio > 0.479 AND gap_pct <= 0.001 AND gap_pct <= -0.001 AND mom_5d > -0.015 THEN bullish with 91% hit rate (n=22)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:41.134918"
+  },
+  "EDG_MOMENT_88_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "mom_1d",
+        "operator": "<=",
+        "threshold": -0.005
+      }
+    ],
+    "precision": 0.8873517786561265,
+    "support": 16,
+    "expected_return": 0.015972332015810276,
+    "description": "IF volume_ratio > 0.485 AND gap_pct <= 0.001 AND mom_1d <= -0.005 THEN bullish with 89% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:41.544999"
+  },
+  "EDG_MOMENT_70_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4853
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "mom_1d",
+        "operator": ">",
+        "threshold": -0.005
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 58.4716
+      }
+    ],
+    "precision": 0.702660406885759,
+    "support": 19,
+    "expected_return": 0.012647887323943662,
+    "description": "IF volume_ratio > 0.485 AND gap_pct <= 0.001 AND mom_1d > -0.005 AND rsi <= 58.472 THEN bullish with 70% hit rate (n=19)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:41.545013"
+  },
+  "EDG_MOMENT_85_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.8586319218241044,
+    "support": 57,
+    "expected_return": 0.015455374592833878,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 86% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:17.566512"
+  },
+  "EDG_MOMENT_63_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      },
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      }
+    ],
+    "precision": 0.6399528757854028,
+    "support": 232,
+    "expected_return": 0.01151915176413725,
+    "description": "IF volume_ratio <= 0.503 AND mom_5d > 0.000 AND bb_position > -0.216 AND sector_flow_count <= 0.300 THEN bullish with 64% hit rate (n=232)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:48.855310"
+  },
+  "EDG_MOMENT_80_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      }
+    ],
+    "precision": 0.809005376344086,
+    "support": 176,
+    "expected_return": 0.014562096774193546,
+    "description": "IF event_count <= 0.100 AND mom_5d > -0.011 AND volume_ratio <= 0.503 AND regime_score > 0.750 THEN bullish with 81% hit rate (n=176)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:48.462548"
+  },
+  "EDG_MOMENT_64_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4798
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.6496
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "mom_1d",
+        "operator": "<=",
+        "threshold": 0.0148
+      }
+    ],
+    "precision": 0.6486992250269505,
+    "support": 169,
+    "expected_return": 0.011676586050485108,
+    "description": "IF volume_ratio <= 0.480 AND sector_strength > 0.650 AND global_bias <= 0.881 AND mom_1d <= 0.015 THEN bullish with 65% hit rate (n=169)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:51.898784"
+  },
+  "EDG_MOMENT_85_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.859002169197397,
+    "support": 199,
+    "expected_return": 0.015462039045553145,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 86% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:25.010409"
+  },
+  "EDG_MOMENT_80_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "vix",
+        "operator": "<=",
+        "threshold": 0.4712
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 65.5199
+      }
+    ],
+    "precision": 0.8096071258151741,
+    "support": 17,
+    "expected_return": 0.014572928264673133,
+    "description": "IF volume_ratio > 0.479 AND vix <= 0.471 AND rsi <= 65.520 THEN bullish with 81% hit rate (n=17)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:42.268545"
+  },
+  "EDG_MOMENT_100_EE0005": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0005",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0059
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0256
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6101
+      }
+    ],
+    "precision": 1.0,
+    "support": 16,
+    "expected_return": 0.018,
+    "description": "IF mom_5d > 0.006 AND volume_ratio_raw > 2.026 AND iv_rank <= 0.610 THEN bullish with 100% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:43.855930"
+  },
+  "EDG_MOMENT_67_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6790434479283742,
+    "support": 171,
+    "expected_return": 0.012222782062710736,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND mom_10d > -0.025 AND pcr <= 0.811 THEN bullish with 68% hit rate (n=171)",
+    "approved": true,
+    "created_at": "2026-03-12T18:43:58.216912"
+  },
+  "EDG_MOMENT_61_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.804
+      }
+    ],
+    "precision": 0.6171897917277794,
+    "support": 23,
+    "expected_return": 0.011109416251100028,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw <= 2.012 AND mom_5d <= 0.000 AND vix > 0.804 THEN bullish with 62% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:33.003269"
+  },
+  "EDG_MOMENT_87_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.001
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      }
+    ],
+    "precision": 0.8795986622073579,
+    "support": 31,
+    "expected_return": 0.015832775919732443,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw > 1.941 AND gap_pct <= 0.001 AND mom_5d > -0.015 THEN bullish with 88% hit rate (n=31)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:12.961525"
+  },
+  "EDG_MOMENT_65_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4643
+      }
+    ],
+    "precision": 0.6595549203756638,
+    "support": 206,
+    "expected_return": 0.011871988566761946,
+    "description": "IF volume_ratio <= 0.503 AND mom_5d > 0.000 AND bb_position > -0.216 AND volume_ratio <= 0.464 THEN bullish with 66% hit rate (n=206)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:27.852221"
+  },
+  "EDG_MOMENT_62_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0059
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5064
+      },
+      {
+        "feature": "mom_10d",
+        "operator": "<=",
+        "threshold": -0.0248
+      },
+      {
+        "feature": "mom_20d",
+        "operator": ">",
+        "threshold": 0.0386
+      }
+    ],
+    "precision": 0.6265389876880986,
+    "support": 15,
+    "expected_return": 0.011277701778385774,
+    "description": "IF mom_5d > 0.006 AND volume_ratio <= 0.506 AND mom_10d <= -0.025 AND mom_20d > 0.039 THEN bullish with 63% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:43.938805"
+  },
+  "EDG_MOMENT_96_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0059
+      },
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9614651704425153,
+    "support": 21,
+    "expected_return": 0.017306373067965276,
+    "description": "IF mom_5d > 0.006 AND event_count <= 0.100 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 96% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:44.214227"
+  },
+  "EDG_MOMENT_87_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.8155
+      }
+    ],
+    "precision": 0.8786947268857886,
+    "support": 35,
+    "expected_return": 0.015816505083944193,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw > 1.914 AND gap_pct <= 0.001 AND iv_rank <= 0.816 THEN bullish with 88% hit rate (n=35)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:17.943914"
+  },
+  "EDG_MOMENT_65_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0059
+      },
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.6585989375830011,
+    "support": 196,
+    "expected_return": 0.01185478087649402,
+    "description": "IF mom_5d > 0.006 AND event_count <= 0.100 AND volume_ratio_raw <= 1.945 AND mom_10d > -0.025 THEN bullish with 66% hit rate (n=196)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:44.214277"
+  },
+  "EDG_MOMENT_96_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9699322649925657,
+    "support": 21,
+    "expected_return": 0.01745878076986618,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 97% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:46.521225"
+  },
+  "EDG_MOMENT_78_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      }
+    ],
+    "precision": 0.7897304236200255,
+    "support": 26,
+    "expected_return": 0.014215147625160459,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.750 THEN bullish with 79% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:25.736252"
+  },
+  "EDG_MOMENT_67_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6783741992489504,
+    "support": 195,
+    "expected_return": 0.012210735586481105,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 68% hit rate (n=195)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:37.860813"
+  },
+  "EDG_MOMENT_79_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      }
+    ],
+    "precision": 0.7980852915578764,
+    "support": 15,
+    "expected_return": 0.014365535248041775,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND volume_ratio > 0.486 THEN bullish with 80% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:43.047970"
+  },
+  "EDG_MOMENT_68_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6865832282665517,
+    "support": 195,
+    "expected_return": 0.01235849810879793,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 69% hit rate (n=195)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:38.488459"
+  },
+  "EDG_MOMENT_80_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      }
+    ],
+    "precision": 0.8096800656275636,
+    "support": 15,
+    "expected_return": 0.014574241181296143,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND volume_ratio > 0.486 THEN bullish with 81% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:44.607286"
+  },
+  "EDG_MOMENT_69_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6987709046947413,
+    "support": 199,
+    "expected_return": 0.012577876284505343,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 70% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:46.103051"
+  },
+  "EDG_MOMENT_81_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      }
+    ],
+    "precision": 0.8166973926784302,
+    "support": 15,
+    "expected_return": 0.014700553068211743,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND volume_ratio > 0.486 THEN bullish with 82% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:46.389646"
+  },
+  "EDG_MOMENT_71_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.7191433402216793,
+    "support": 199,
+    "expected_return": 0.012944580123990225,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 72% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:46.913286"
+  },
+  "EDG_MOMENT_97_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9786460166608002,
+    "support": 21,
+    "expected_return": 0.017615628299894402,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 98% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:02.206680"
+  },
+  "EDG_MOMENT_82_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.582
+      }
+    ],
+    "precision": 0.8296861503023324,
+    "support": 30,
+    "expected_return": 0.014934350705441982,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.011 AND volume_ratio <= 0.582 THEN bullish with 83% hit rate (n=30)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:47.406894"
+  },
+  "EDG_MOMENT_72_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.011
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      }
+    ],
+    "precision": 0.7277934985161153,
+    "support": 231,
+    "expected_return": 0.013100282973290075,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 2.012 AND macd_signal_norm > 0.011 AND bb_position > -0.216 THEN bullish with 73% hit rate (n=231)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:38.149077"
+  },
+  "EDG_MOMENT_73_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      }
+    ],
+    "precision": 0.7377788533462392,
+    "support": 232,
+    "expected_return": 0.013280019360232305,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 2.012 AND mom_5d > 0.000 AND bb_position > -0.216 THEN bullish with 74% hit rate (n=232)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:39.768455"
+  },
+  "EDG_MOMENT_95_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9598499889697772,
+    "support": 21,
+    "expected_return": 0.017277299801455988,
+    "description": "IF macd_signal_norm > 0.636 AND sector_flow_count <= 0.300 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 96% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:48.293344"
+  },
+  "EDG_MOMENT_77_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      }
+    ],
+    "precision": 0.7783491204330177,
+    "support": 26,
+    "expected_return": 0.014010284167794318,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.750 THEN bullish with 78% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:21.823992"
+  },
+  "EDG_MOMENT_63_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6373999514916314,
+    "support": 199,
+    "expected_return": 0.011473199126849364,
+    "description": "IF macd_signal_norm > 0.636 AND sector_flow_count <= 0.300 AND volume_ratio <= 0.486 AND pcr <= 0.811 THEN bullish with 64% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:36:47.962543"
+  },
+  "EDG_MOMENT_64_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.2158
+      },
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      }
+    ],
+    "precision": 0.6499970634874018,
+    "support": 232,
+    "expected_return": 0.011699947142773231,
+    "description": "IF volume_ratio <= 0.503 AND mom_5d > 0.000 AND bb_position > -0.216 AND event_count <= 0.100 THEN bullish with 65% hit rate (n=232)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:49.793015"
+  },
+  "EDG_MOMENT_83_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      }
+    ],
+    "precision": 0.8376487053883834,
+    "support": 15,
+    "expected_return": 0.0150776766969909,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d <= -0.011 AND volume_ratio > 0.486 THEN bullish with 84% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:51.918675"
+  },
+  "EDG_MOMENT_74_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.7475941245990207,
+    "support": 199,
+    "expected_return": 0.013456694242782372,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 75% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:25.466277"
+  },
+  "EDG_MOMENT_84_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.3279
+      }
+    ],
+    "precision": 0.8482555156490509,
+    "support": 30,
+    "expected_return": 0.015268599281682916,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.011 AND volume_ratio_raw <= 2.328 THEN bullish with 85% hit rate (n=30)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:27.123366"
+  },
+  "EDG_MOMENT_75_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.7580645161290321,
+    "support": 56,
+    "expected_return": 0.013645161290322578,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 76% hit rate (n=56)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:42.615625"
+  },
+  "EDG_MOMENT_85_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.3279
+      }
+    ],
+    "precision": 0.8575728389116302,
+    "support": 30,
+    "expected_return": 0.015436311100409342,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.011 AND volume_ratio_raw <= 2.328 THEN bullish with 86% hit rate (n=30)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:29.562374"
+  },
+  "EDG_MOMENT_76_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0123
+      },
+      {
+        "feature": "adx_score",
+        "operator": ">",
+        "threshold": 0.0139
+      }
+    ],
+    "precision": 0.7697262479871176,
+    "support": 25,
+    "expected_return": 0.013855072463768117,
+    "description": "IF macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.012 AND adx_score > 0.014 THEN bullish with 77% hit rate (n=25)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:38.760834"
+  },
+  "EDG_MOMENT_77_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.778944255507911,
+    "support": 199,
+    "expected_return": 0.014020996599142398,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 78% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:02.206713"
+  },
+  "EDG_MOMENT_86_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.3279
+      }
+    ],
+    "precision": 0.863173721952348,
+    "support": 30,
+    "expected_return": 0.015537126995142262,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.011 AND volume_ratio_raw <= 2.328 THEN bullish with 86% hit rate (n=30)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:31.090232"
+  },
+  "EDG_MOMENT_97_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9799846035411856,
+    "support": 21,
+    "expected_return": 0.01763972286374134,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 98% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:04.135916"
+  },
+  "EDG_MOMENT_78_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.7865200628302154,
+    "support": 199,
+    "expected_return": 0.014157361130943876,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 79% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:03.447311"
+  },
+  "EDG_MOMENT_72_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "regime_bull",
+        "operator": ">",
+        "threshold": 0.5
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8163
+      }
+    ],
+    "precision": 0.7288762634603951,
+    "support": 164,
+    "expected_return": 0.013119772742287112,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw <= 1.941 AND regime_bull > 0.500 AND pcr <= 0.816 THEN bullish with 73% hit rate (n=164)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:57.825847"
+  },
+  "EDG_MOMENT_73_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.9933
+      }
+    ],
+    "precision": 0.7391975308641976,
+    "support": 20,
+    "expected_return": 0.013305555555555555,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.993 THEN bullish with 74% hit rate (n=20)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:04.723194"
+  },
+  "EDG_MOMENT_81_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4798
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.3475
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.8155
+      }
+    ],
+    "precision": 0.8190954773869348,
+    "support": 31,
+    "expected_return": 0.014743718592964824,
+    "description": "IF volume_ratio > 0.480 AND vix > 0.347 AND gap_pct <= 0.001 AND iv_rank <= 0.816 THEN bullish with 82% hit rate (n=31)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:52.619634"
+  },
+  "EDG_MOMENT_79_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.7969577617818824,
+    "support": 199,
+    "expected_return": 0.014345239712073882,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 80% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:05.365613"
+  },
+  "EDG_MOMENT_74_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      }
+    ],
+    "precision": 0.7483870967741935,
+    "support": 26,
+    "expected_return": 0.01347096774193548,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.750 THEN bullish with 75% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:13.783665"
+  },
+  "EDG_MOMENT_82_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.8298039215686274,
+    "support": 57,
+    "expected_return": 0.01493647058823529,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 83% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:08.203474"
+  },
+  "EDG_MOMENT_71_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      }
+    ],
+    "precision": 0.7170984455958548,
+    "support": 26,
+    "expected_return": 0.012907772020725385,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.750 THEN bullish with 72% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:07.960997"
+  },
+  "EDG_MOMENT_81_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.8177496038034864,
+    "support": 199,
+    "expected_return": 0.014719492868462754,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 82% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:10.020145"
+  },
+  "EDG_MOMENT_83_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.8398523985239851,
+    "support": 57,
+    "expected_return": 0.015117343173431731,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 84% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:10.785975"
+  },
+  "EDG_MOMENT_82_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.8278244846251295,
+    "support": 199,
+    "expected_return": 0.01490084072325233,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 83% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:13.129741"
+  },
+  "EDG_MOMENT_84_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0023
+      }
+    ],
+    "precision": 0.8487804878048779,
+    "support": 57,
+    "expected_return": 0.015278048780487802,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.591 AND gap_pct > 0.002 THEN bullish with 85% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:13.783637"
+  },
+  "EDG_MOMENT_83_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.8389529247010666,
+    "support": 199,
+    "expected_return": 0.015101152644619198,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 84% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:16.612526"
+  },
+  "EDG_MOMENT_75_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.5908
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      }
+    ],
+    "precision": 0.7573333333333332,
+    "support": 26,
+    "expected_return": 0.013631999999999997,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm <= 0.636 AND volume_ratio_raw <= 1.591 AND bb_position > 0.750 THEN bullish with 76% hit rate (n=26)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:15.901045"
+  },
+  "EDG_MOMENT_76_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.3702
+      },
+      {
+        "feature": "sector_strength",
+        "operator": ">",
+        "threshold": 0.6496
+      }
+    ],
+    "precision": 0.7695161310267224,
+    "support": 179,
+    "expected_return": 0.013851290358481002,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 1.914 AND bb_position > -0.370 AND sector_strength > 0.650 THEN bullish with 77% hit rate (n=179)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:16.344447"
+  },
+  "EDG_MOMENT_84_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.8487301426692299,
+    "support": 199,
+    "expected_return": 0.015277142568046137,
+    "description": "IF event_count <= 0.100 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 85% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:20.411479"
+  },
+  "EDG_MOMENT_86_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.8636322174587245,
+    "support": 199,
+    "expected_return": 0.01554537991425704,
+    "description": "IF sector_flow_count <= 0.300 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 86% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:27.164682"
+  },
+  "EDG_MOMENT_68_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.6816997841780157,
+    "support": 174,
+    "expected_return": 0.012270596115204282,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio <= 0.486 AND pcr <= 0.811 AND mom_10d > -0.025 THEN bullish with 68% hit rate (n=174)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:37.924215"
+  },
+  "EDG_MOMENT_85_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9411
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.001
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      }
+    ],
+    "precision": 0.857331571994716,
+    "support": 31,
+    "expected_return": 0.015431968295904886,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw > 1.941 AND gap_pct <= 0.001 AND mom_5d > -0.015 THEN bullish with 86% hit rate (n=31)",
+    "approved": true,
+    "created_at": "2026-03-12T18:37:57.825833"
+  },
+  "EDG_MOMENT_86_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0109
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.3279
+      },
+      {
+        "feature": "hist_vol_20d",
+        "operator": "<=",
+        "threshold": 0.2444
+      }
+    ],
+    "precision": 0.8687342228633249,
+    "support": 15,
+    "expected_return": 0.015637216011539848,
+    "description": "IF macd_signal_norm <= 0.636 AND volume_ratio_raw > 2.011 AND volume_ratio_raw <= 2.328 AND hist_vol_20d <= 0.244 THEN bullish with 87% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:34.733422"
+  },
+  "EDG_MOMENT_99_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0603
+      }
+    ],
+    "precision": 0.9937623112278398,
+    "support": 28,
+    "expected_return": 0.017887721602101114,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw > 1.914 AND gap_pct > 0.001 AND volume_ratio_raw > 2.060 THEN bullish with 99% hit rate (n=28)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:20.629520"
+  },
+  "EDG_MOMENT_64_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8789
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.6477633741099132,
+    "support": 187,
+    "expected_return": 0.011659740733978437,
+    "description": "IF macd_signal_norm > 0.636 AND global_bias <= 0.879 AND volume_ratio <= 0.486 AND mom_10d > -0.025 THEN bullish with 65% hit rate (n=187)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:34.733438"
+  },
+  "EDG_MOMENT_62_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.804
+      }
+    ],
+    "precision": 0.6259673258813414,
+    "support": 23,
+    "expected_return": 0.011267411865864144,
+    "description": "IF event_count <= 0.100 AND volume_ratio_raw <= 2.012 AND mom_5d <= 0.000 AND vix > 0.804 THEN bullish with 63% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:53.298056"
+  },
+  "EDG_MOMENT_71_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.5547
+      }
+    ],
+    "precision": 0.7181947405828004,
+    "support": 208,
+    "expected_return": 0.012927505330490406,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND bb_position > -0.555 THEN bullish with 72% hit rate (n=208)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:42.615639"
+  },
+  "EDG_MOMENT_73_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8833
+      },
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": -0.5547
+      }
+    ],
+    "precision": 0.7355155326853446,
+    "support": 208,
+    "expected_return": 0.013239279588336202,
+    "description": "IF global_bias <= 0.883 AND macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND bb_position > -0.555 THEN bullish with 74% hit rate (n=208)",
+    "approved": true,
+    "created_at": "2026-03-12T18:38:44.527527"
+  },
+  "EDG_MOMENT_95_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8789
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9598499889697772,
+    "support": 21,
+    "expected_return": 0.017277299801455988,
+    "description": "IF macd_signal_norm > 0.636 AND global_bias <= 0.879 AND volume_ratio > 0.486 AND iv_rank <= 0.655 THEN bullish with 96% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:39:04.231586"
+  },
+  "EDG_MOMENT_65_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8789
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.657882603298457,
+    "support": 187,
+    "expected_return": 0.011841886859372226,
+    "description": "IF macd_signal_norm > 0.636 AND global_bias <= 0.879 AND volume_ratio <= 0.486 AND mom_10d > -0.025 THEN bullish with 66% hit rate (n=187)",
+    "approved": true,
+    "created_at": "2026-03-12T18:39:04.231622"
+  },
+  "EDG_MOMENT_91_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.327
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8178
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0154
+      }
+    ],
+    "precision": 0.9147025813692481,
+    "support": 57,
+    "expected_return": 0.016464646464646463,
+    "description": "IF volume_ratio > 0.479 AND vix > 0.327 AND pcr <= 0.818 AND mom_5d > -0.015 THEN bullish with 91% hit rate (n=57)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:02.692890"
+  },
+  "EDG_MOMENT_96_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.4786
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.3139
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0117
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.001
+      }
+    ],
+    "precision": 0.9685121532040265,
+    "support": 34,
+    "expected_return": 0.017433218757672477,
+    "description": "IF volume_ratio > 0.479 AND vix > 0.314 AND volume_ratio_raw > 2.012 AND gap_pct > 0.001 THEN bullish with 97% hit rate (n=34)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:03.311872"
+  },
+  "EDG_MOMENT_99_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0603
+      }
+    ],
+    "precision": 0.9950339780449556,
+    "support": 28,
+    "expected_return": 0.0179106116048092,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw > 1.914 AND gap_pct > 0.001 AND volume_ratio_raw > 2.060 THEN bullish with 100% hit rate (n=28)",
+    "approved": true,
+    "created_at": "2026-03-12T18:43:44.352691"
+  },
+  "EDG_MOMENT_88_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.8155
+      }
+    ],
+    "precision": 0.8891769280622165,
+    "support": 35,
+    "expected_return": 0.016005184705119895,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw > 1.914 AND gap_pct <= 0.001 AND iv_rank <= 0.816 THEN bullish with 89% hit rate (n=35)",
+    "approved": true,
+    "created_at": "2026-03-12T18:40:20.963881"
+  },
+  "EDG_MOMENT_90_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9144
+      },
+      {
+        "feature": "gap_pct",
+        "operator": "<=",
+        "threshold": 0.0011
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.8155
+      }
+    ],
+    "precision": 0.9082125603864735,
+    "support": 35,
+    "expected_return": 0.01634782608695652,
+    "description": "IF sector_flow_count <= 0.300 AND volume_ratio_raw > 1.914 AND gap_pct <= 0.001 AND iv_rank <= 0.816 THEN bullish with 91% hit rate (n=35)",
+    "approved": true,
+    "created_at": "2026-03-12T18:43:44.352712"
+  },
+  "EDG_MOMENT_95_EE0005": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0005",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "iv_rank",
+        "operator": "<=",
+        "threshold": 0.6546
+      }
+    ],
+    "precision": 0.9580934837669813,
+    "support": 21,
+    "expected_return": 0.017245682707805663,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio_raw > 1.945 AND iv_rank <= 0.655 THEN bullish with 96% hit rate (n=21)",
+    "approved": true,
+    "created_at": "2026-03-12T18:43:58.216873"
+  },
+  "EDG_MOMENT_96_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_20d",
+        "operator": "<=",
+        "threshold": 0.0167
+      }
+    ],
+    "precision": 0.965748031496063,
+    "support": 24,
+    "expected_return": 0.017383464566929133,
+    "description": "IF volume_ratio > 0.503 AND mom_20d <= 0.017 THEN bullish with 97% hit rate (n=24)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:29.234670"
+  },
+  "EDG_MOMENT_74_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.7454545454545455,
+    "support": 55,
+    "expected_return": 0.008945454545454546,
+    "description": "volume_spike > 0.000 \u2192 75% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:27.852179"
+  },
+  "EDG_MOMENT_58_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.804
+      }
+    ],
+    "precision": 0.5881981697696435,
+    "support": 23,
+    "expected_return": 0.010587567055853581,
+    "description": "IF volume_ratio <= 0.503 AND mom_5d <= 0.000 AND vix > 0.804 THEN bullish with 59% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:30.202125"
+  },
+  "EDG_MOMENT_60_EE0000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": 0.0004
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.804
+      }
+    ],
+    "precision": 0.6079903875037549,
+    "support": 23,
+    "expected_return": 0.010943826975067588,
+    "description": "IF volume_ratio <= 0.503 AND global_bias <= 0.881 AND mom_5d <= 0.000 AND vix > 0.804 THEN bullish with 61% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:32.179033"
+  },
+  "EDG_MOMENT_100_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": "<=",
+        "threshold": 0.2724
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.1198
+      }
+    ],
+    "precision": 1.0,
+    "support": 16,
+    "expected_return": 0.018,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d <= 0.272 AND bb_position > 0.120 THEN bullish with 100% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:33.003214"
+  },
+  "EDG_MOMENT_81_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2724
+      }
+    ],
+    "precision": 0.8193146417445483,
+    "support": 20,
+    "expected_return": 0.014747663551401868,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d > 0.272 THEN bullish with 82% hit rate (n=20)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:33.003233"
+  },
+  "EDG_MOMENT_82_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2724
+      }
+    ],
+    "precision": 0.8299120234604106,
+    "support": 20,
+    "expected_return": 0.01493841642228739,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d > 0.272 THEN bullish with 83% hit rate (n=20)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:34.482082"
+  },
+  "EDG_MOMENT_70_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.7068965517241379,
+    "support": 58,
+    "expected_return": 0.008482758620689654,
+    "description": "volume_spike > 0.000 \u2192 71% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:35.370561"
+  },
+  "EDG_MOMENT_98_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": ">",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": "<=",
+        "threshold": 0.2724
+      }
+    ],
+    "precision": 0.9866143549503809,
+    "support": 27,
+    "expected_return": 0.017759058389106856,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d > -0.011 AND volume_ratio > 0.503 AND hist_vol_5d <= 0.272 THEN bullish with 99% hit rate (n=27)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:51.918659"
+  },
+  "EDG_MOMENT_78_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      }
+    ],
+    "precision": 0.7866366366366367,
+    "support": 176,
+    "expected_return": 0.014159459459459461,
+    "description": "IF event_count <= 0.100 AND mom_5d > -0.011 AND volume_ratio <= 0.503 AND regime_score > 0.750 THEN bullish with 79% hit rate (n=176)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:43.337374"
+  },
+  "EDG_MOMENT_82_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.5029
+      },
+      {
+        "feature": "regime_score",
+        "operator": ">",
+        "threshold": 0.75
+      }
+    ],
+    "precision": 0.8298203592814367,
+    "support": 176,
+    "expected_return": 0.01493676646706586,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d > -0.011 AND volume_ratio <= 0.503 AND regime_score > 0.750 THEN bullish with 83% hit rate (n=176)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:53.819110"
+  },
+  "EDG_VOLATI_60_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6094276094276092,
+    "support": 95,
+    "expected_return": 0.010969696969696964,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 61% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:54.646228"
+  },
+  "EDG_VOLATI_61_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 64.2795
+      }
+    ],
+    "precision": 0.6180021953896815,
+    "support": 95,
+    "expected_return": 0.011124039517014265,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi <= 64.279 THEN bullish with 62% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:56.307058"
+  },
+  "EDG_VOLATI_62_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6262083780880776,
+    "support": 95,
+    "expected_return": 0.011271750805585396,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 63% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:57.932415"
+  },
+  "EDG_VOLATI_63_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 64.2795
+      }
+    ],
+    "precision": 0.6378772112382937,
+    "support": 95,
+    "expected_return": 0.011481789802289285,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi <= 64.279 THEN bullish with 64% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:44:59.798106"
+  },
+  "EDG_VOLATI_64_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "sector_flow_count",
+        "operator": "<=",
+        "threshold": 0.3
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6488395560040361,
+    "support": 95,
+    "expected_return": 0.011679112008072649,
+    "description": "IF sector_flow_count <= 0.300 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 65% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:51:56.051000"
+  },
+  "EDG_VOLATI_65_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 64.2795
+      }
+    ],
+    "precision": 0.6591576885406465,
+    "support": 95,
+    "expected_return": 0.011864838393731637,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi <= 64.279 THEN bullish with 66% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:45:05.136755"
+  },
+  "EDG_MOMENT_78_EE0003": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0003",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "rsi_norm",
+        "operator": "<=",
+        "threshold": 0.6558
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.1216
+      }
+    ],
+    "precision": 0.7830750893921334,
+    "support": 75,
+    "expected_return": 0.014095351609058402,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND rsi_norm <= 0.656 AND bb_position > 0.122 THEN bullish with 78% hit rate (n=75)",
+    "approved": true,
+    "created_at": "2026-03-12T18:45:05.969001"
+  },
+  "EDG_MOMENT_60_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "rsi_norm",
+        "operator": ">",
+        "threshold": 0.6558
+      },
+      {
+        "feature": "adx_score",
+        "operator": ">",
+        "threshold": 0.999
+      }
+    ],
+    "precision": 0.6082488543257881,
+    "support": 51,
+    "expected_return": 0.010948479377864185,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio_raw <= 1.945 AND rsi_norm > 0.656 AND adx_score > 0.999 THEN bullish with 61% hit rate (n=51)",
+    "approved": true,
+    "created_at": "2026-03-12T18:45:05.969032"
+  },
+  "EDG_MOMENT_67_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio",
+        "operator": "<=",
+        "threshold": 0.4862
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      },
+      {
+        "feature": "mom_10d",
+        "operator": ">",
+        "threshold": -0.0248
+      }
+    ],
+    "precision": 0.6790434479283741,
+    "support": 171,
+    "expected_return": 0.012222782062710734,
+    "description": "IF macd_signal_norm > 0.636 AND volume_ratio <= 0.486 AND pcr <= 0.811 AND mom_10d > -0.025 THEN bullish with 68% hit rate (n=171)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:37.167489"
+  },
+  "EDG_MOMENT_74_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9703
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2361
+      }
+    ],
+    "precision": 0.7438284971849286,
+    "support": 28,
+    "expected_return": 0.013388912949328714,
+    "description": "IF macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.970 AND hist_vol_5d > 0.236 THEN bullish with 74% hit rate (n=28)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:37.924187"
+  },
+  "EDG_MOMENT_62_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 1.9703
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": "<=",
+        "threshold": 0.2361
+      },
+      {
+        "feature": "mom_10d",
+        "operator": "<=",
+        "threshold": -0.0167
+      }
+    ],
+    "precision": 0.6265389876880986,
+    "support": 15,
+    "expected_return": 0.011277701778385774,
+    "description": "IF macd_signal_norm <= 0.636 AND volume_ratio_raw > 1.970 AND hist_vol_5d <= 0.236 AND mom_10d <= -0.017 THEN bullish with 63% hit rate (n=15)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:37.924229"
+  },
+  "EDG_COMPOS_77_EE0000": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "vix",
+        "operator": "<=",
+        "threshold": 0.5833
+      },
+      {
+        "feature": "bb_position",
+        "operator": ">",
+        "threshold": 0.7499
+      },
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.4892
+      }
+    ],
+    "precision": 0.7786657400972897,
+    "support": 16,
+    "expected_return": 0.014015983321751213,
+    "description": "IF macd_signal_norm <= 0.636 AND vix <= 0.583 AND bb_position > 0.750 AND global_bias <= 0.489 THEN bullish with 78% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:39.498302"
+  },
+  "EDG_MOMENT_66_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": ">",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": "<=",
+        "threshold": 1.9447
+      },
+      {
+        "feature": "pcr",
+        "operator": "<=",
+        "threshold": 0.8106
+      }
+    ],
+    "precision": 0.6665179567254073,
+    "support": 199,
+    "expected_return": 0.01199732322105733,
+    "description": "IF macd_signal_norm > 0.636 AND event_count <= 0.100 AND volume_ratio_raw <= 1.945 AND pcr <= 0.811 THEN bullish with 67% hit rate (n=199)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:39.498319"
+  },
+  "EDG_COMPOS_60_EE0001": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "macd_signal_norm",
+        "operator": "<=",
+        "threshold": 0.6361
+      },
+      {
+        "feature": "vix",
+        "operator": ">",
+        "threshold": 0.5833
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 69.5743
+      },
+      {
+        "feature": "gap_pct",
+        "operator": ">",
+        "threshold": -0.0056
+      }
+    ],
+    "precision": 0.6011053935582239,
+    "support": 107,
+    "expected_return": 0.01081989708404803,
+    "description": "IF macd_signal_norm <= 0.636 AND vix > 0.583 AND rsi <= 69.574 AND gap_pct > -0.006 THEN bullish with 60% hit rate (n=107)",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:39.498334"
+  },
+  "EDG_MOMENT_67_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.6721311475409836,
+    "support": 61,
+    "expected_return": 0.008065573770491804,
+    "description": "volume_spike > 0.000 \u2192 67% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:46:50.658489"
+  },
+  "EDG_VOLATI_66_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi",
+        "operator": "<=",
+        "threshold": 64.2795
+      }
+    ],
+    "precision": 0.6688867745004757,
+    "support": 95,
+    "expected_return": 0.012039961941008563,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi <= 64.279 THEN bullish with 67% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:47:27.762883"
+  },
+  "EDG_VOLATI_67_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6780758556891769,
+    "support": 95,
+    "expected_return": 0.012205365402405185,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 68% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:47:30.650608"
+  },
+  "EDG_VOLATI_69_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.6976542137271942,
+    "support": 95,
+    "expected_return": 0.012557775847089494,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 70% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:47:40.061043"
+  },
+  "EDG_VOLATI_70_EE0000": {
+    "min_rr": 1.5,
+    "max_loss_pct": 0.015,
+    "stop_loss_pct": 0.015,
+    "target_multiplier": 2.0,
+    "base_strategy": "Short_Straddle_IV_Spike",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0000",
+    "category": "volatility",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "event_count",
+        "operator": "<=",
+        "threshold": 0.1
+      },
+      {
+        "feature": "mom_5d",
+        "operator": "<=",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "iv_rank",
+        "operator": ">",
+        "threshold": 0.3223
+      },
+      {
+        "feature": "rsi_overbought",
+        "operator": "<=",
+        "threshold": 0.5
+      }
+    ],
+    "precision": 0.7078085642317379,
+    "support": 95,
+    "expected_return": 0.01274055415617128,
+    "description": "IF event_count <= 0.100 AND mom_5d <= -0.011 AND iv_rank > 0.322 AND rsi_overbought <= 0.500 THEN bullish with 71% hit rate (n=95)",
+    "approved": true,
+    "created_at": "2026-03-12T18:47:45.572394"
+  },
+  "EDG_MOMENT_71_>0.000": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "CORR_volume_spike_>_0.000",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "volume_spike",
+        "operator": ">",
+        "threshold": 0.0
+      }
+    ],
+    "precision": 0.7192982456140351,
+    "support": 57,
+    "expected_return": 0.00863157894736842,
+    "description": "volume_spike > 0.000 \u2192 72% hit rate",
+    "approved": true,
+    "created_at": "2026-03-12T18:49:40.857999"
+  },
+  "EDG_MOMENT_100_EE0002": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0002",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": "<=",
+        "threshold": 0.2724
+      },
+      {
+        "feature": "liquidity_score",
+        "operator": "<=",
+        "threshold": 0.891
+      }
+    ],
+    "precision": 1.0,
+    "support": 16,
+    "expected_return": 0.018,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d <= 0.272 AND liquidity_score <= 0.891 THEN bullish with 100% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:19.083211"
+  },
+  "EDG_MOMENT_83_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2724
+      }
+    ],
+    "precision": 0.8393351800554016,
+    "support": 20,
+    "expected_return": 0.015108033240997229,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d > 0.272 THEN bullish with 84% hit rate (n=20)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:19.960948"
+  },
+  "EDG_MOMENT_84_EE0004": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0004",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": ">",
+        "threshold": 0.2724
+      }
+    ],
+    "precision": 0.84366576819407,
+    "support": 20,
+    "expected_return": 0.01518598382749326,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d > 0.272 THEN bullish with 84% hit rate (n=20)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:20.757547"
+  },
+  "EDG_MOMENT_100_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0116
+      },
+      {
+        "feature": "hist_vol_5d",
+        "operator": "<=",
+        "threshold": 0.2724
+      },
+      {
+        "feature": "liquidity_score",
+        "operator": "<=",
+        "threshold": 0.891
+      }
+    ],
+    "precision": 1.0,
+    "support": 16,
+    "expected_return": 0.018,
+    "description": "IF global_bias <= 0.881 AND volume_ratio_raw > 2.012 AND hist_vol_5d <= 0.272 AND liquidity_score <= 0.891 THEN bullish with 100% hit rate (n=16)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:21.562185"
+  },
+  "EDG_MOMENT_93_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "regime_bull",
+        "operator": "<=",
+        "threshold": 0.5
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0184
+      }
+    ],
+    "precision": 0.9391523289970626,
+    "support": 23,
+    "expected_return": 0.016904741921947124,
+    "description": "IF global_bias <= 0.881 AND mom_5d > -0.011 AND regime_bull <= 0.500 AND volume_ratio_raw > 2.018 THEN bullish with 94% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:26.467691"
+  },
+  "EDG_MOMENT_94_EE0001": {
+    "min_rr": 2.0,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.5,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "momentum_volume",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "global_bias",
+        "operator": "<=",
+        "threshold": 0.8812
+      },
+      {
+        "feature": "mom_5d",
+        "operator": ">",
+        "threshold": -0.0115
+      },
+      {
+        "feature": "regime_score",
+        "operator": "<=",
+        "threshold": 0.75
+      },
+      {
+        "feature": "volume_ratio_raw",
+        "operator": ">",
+        "threshold": 2.0184
+      }
+    ],
+    "precision": 0.9434256730394069,
+    "support": 23,
+    "expected_return": 0.016981662114709323,
+    "description": "IF global_bias <= 0.881 AND mom_5d > -0.011 AND regime_score <= 0.750 AND volume_ratio_raw > 2.018 THEN bullish with 94% hit rate (n=23)",
+    "approved": true,
+    "created_at": "2026-03-12T18:50:29.066270"
+  },
+  "EDG_COMPOS_73_EE0001": {
+    "min_rr": 1.8,
+    "max_loss_pct": 0.02,
+    "stop_loss_pct": 0.02,
+    "target_multiplier": 2.2,
+    "base_strategy": "Breakout_Volume",
+    "source": "EdgeDiscoveryEngine",
+    "pattern_id": "TREE_0001",
+    "category": "composite",
+    "direction": "BUY",
+    "entry_conditions": [
+      {
+        "feature": "intra_range",
+        "operator": ">",
+        "threshold": 0.0219
+      },
+      {
+        "feature": "avg_conviction",
+        "operator": "<=",
+        "threshold": 0.6215
+      },
+      {
+        "feature": "breadth",
+        "operator": "<=",
+        "threshold": 0.1695
+      },
+      {
+        "feature": "breadth",
+        "operator": ">",
+        "threshold": 0.1411
+      }
+    ],
+    "precision": 0.7377108357729794,
+    "support": 1687,
+    "expected_return": 0.013278795043913627,
+    "description": "IF intra_range > 0.022 AND avg_conviction <= 0.622 AND breadth <= 0.170 AND breadth > 0.141 THEN bullish with 74% hit rate (n=1687)",
+    "approved": true,
+    "created_at": "2026-08-01T19:14:56.522927"
+  }
+}

@@ -1,0 +1,21 @@
+trading_date,t1_date,rank_type,rank,symbol,v3_score,actual_ret_1d_pct,v3_captured,v3_direction_correct,notes
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,1,GALAXYSURF.NS,N/A,20.0,TRUE,TRUE,V3 UP rank#1. Biggest mover in universe on 2026-08-14.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,2,RATEGAIN.NS,N/A,6.5,TRUE,FALSE,"V3 captured — but placed in DOWN pool (rank#11). Directional misclassification."
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,3,SUDARSCHEM.NS,N/A,6.2,TRUE,FALSE,"V3 captured — but placed in DOWN pool (rank#6). Directional misclassification."
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,4,IDEAFORGE.NS,N/A,4.99,TRUE,FALSE,"V3 captured — but placed in DOWN pool (rank#3). Directional misclassification."
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,5,IDEA.NS,N/A,4.44,TRUE,TRUE,V3 UP rank#5.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,6,BATAINDIA.NS,N/A,3.85,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,7,OFSS.NS,N/A,3.57,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,8,GNFC.NS,N/A,3.37,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,9,GODREJAGRO.NS,N/A,3.26,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_UP,10,DEEPAKFERT.NS,N/A,2.74,TRUE,FALSE,"V3 captured — but placed in DOWN pool (rank#5). Directional misclassification."
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,1,CENTUM.NS,N/A,-6.66,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,2,MIDHANI.NS,N/A,-6.33,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,3,NATIONALUM.NS,N/A,-6.12,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,4,OLECTRA.NS,N/A,-5.5,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,5,NATCOPHARM.NS,N/A,-5.1,TRUE,FALSE,"V3 captured — but placed in UP pool (rank#20). Directional misclassification."
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,6,LTTS.NS,N/A,-3.55,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,7,LAURUSLABS.NS,N/A,-3.48,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,8,RECLTD.NS,N/A,-3.32,FALSE,N/A,Not in either V3 pool.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,9,HINDZINC.NS,N/A,-2.84,TRUE,TRUE,V3 DOWN rank#9.
+2026-08-14,2026-08-14,ACTUAL_TOP_DN,10,NCC.NS,N/A,-2.81,FALSE,N/A,Not in either V3 pool.

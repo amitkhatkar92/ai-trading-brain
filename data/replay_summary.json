@@ -1,0 +1,411 @@
+{
+  "generated_at": "2026-03-16T15:51:22.425451",
+  "target_days": 30,
+  "days_replayed": 30,
+  "date_range": "2026-01-30 \u2192 2026-03-13",
+  "run_duration_sec": 24.9,
+  "metrics": {
+    "total_signals": 286,
+    "trades_executed": 6,
+    "trades_approved_pct": 2.097902097902098,
+    "win_rate": 50.0,
+    "avg_r_multiple": 0.7499793422574749,
+    "total_pnl": 36393.27,
+    "profit_factor": 3.958225224346468,
+    "max_drawdown_pct": 0.9,
+    "days_with_trades": 6,
+    "days_total": 30,
+    "cycle_errors": 0,
+    "per_strategy": {
+      "Momentum_Retest": {
+        "name": "Momentum_Retest",
+        "trades": 2,
+        "wins": 1,
+        "total_pnl": 21395.67,
+        "total_r": 1.499876053544862
+      },
+      "EDG_MACRO__78_EE0000": {
+        "name": "EDG_MACRO__78_EE0000",
+        "trades": 1,
+        "wins": 0,
+        "total_pnl": -2910.6,
+        "total_r": -0.9999999999999986
+      },
+      "Mean_Reversion_RSI_HiVol": {
+        "name": "Mean_Reversion_RSI_HiVol",
+        "trades": 3,
+        "wins": 2,
+        "total_pnl": 17908.199999999997,
+        "total_r": 3.999999999999985
+      }
+    },
+    "per_regime": {
+      "BULL_TREND": 3,
+      "RANGE_MARKET": 3,
+      "BEAR_MARKET": 0,
+      "VOLATILE": 0
+    },
+    "sl_missing_count": 0,
+    "rr_below_1_count": 0,
+    "regime_alignment_pct": 0.0,
+    "total_brokerage": 240.0,
+    "total_stt": 1068.92,
+    "total_slippage": 1068.92,
+    "total_costs": 2505.57,
+    "net_pnl": 33887.7,
+    "avg_cost_per_trade": 417.59
+  },
+  "mcr": {
+    "regime_stats": {
+      "BULL_TREND": {
+        "regime": "BULL_TREND",
+        "days_count": 20,
+        "trades_count": 3,
+        "wins_count": 1,
+        "market_move_pct": 13.66,
+        "system_return_pct": 1.8485,
+        "capture_ratio_pct": 13.53,
+        "avg_trade_capture": 6.67,
+        "win_rate": 33.3
+      },
+      "RANGE_MARKET": {
+        "regime": "RANGE_MARKET",
+        "days_count": 4,
+        "trades_count": 3,
+        "wins_count": 2,
+        "market_move_pct": 3.8,
+        "system_return_pct": 1.7908,
+        "capture_ratio_pct": 47.18,
+        "avg_trade_capture": 53.33,
+        "win_rate": 66.7
+      },
+      "BEAR_MARKET": {
+        "regime": "BEAR_MARKET",
+        "days_count": 4,
+        "trades_count": 0,
+        "wins_count": 0,
+        "market_move_pct": 5.4,
+        "system_return_pct": 0.0,
+        "capture_ratio_pct": 0.0,
+        "avg_trade_capture": 0.0,
+        "win_rate": 0.0
+      },
+      "VOLATILE": {
+        "regime": "VOLATILE",
+        "days_count": 2,
+        "trades_count": 0,
+        "wins_count": 0,
+        "market_move_pct": 3.79,
+        "system_return_pct": 0.0,
+        "capture_ratio_pct": 0.0,
+        "avg_trade_capture": 0.0,
+        "win_rate": 0.0
+      }
+    },
+    "overall_capture_pct": 13.66,
+    "total_market_move": 26.65,
+    "total_system_return": 3.6393,
+    "primary_regime": "RANGE_MARKET",
+    "avoid_regime": "BULL_TREND",
+    "total_trades": 6,
+    "capital": 1000000.0
+  },
+  "ehl": {
+    "delays": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "avg_r_at_delay": [
+      0.75,
+      0.7458,
+      0.7416,
+      0.7375,
+      0.7333,
+      0.7291,
+      0.7249
+    ],
+    "half_life_candles": null,
+    "r_at_zero": 0.75,
+    "r_half": 0.375,
+    "per_strategy": {
+      "Momentum_Retest": {
+        "strategy": "Momentum_Retest",
+        "trades": 2,
+        "r_at_delays": [
+          0.7499,
+          0.745,
+          0.7402,
+          0.7354,
+          0.7305,
+          0.7257,
+          0.7208
+        ],
+        "half_life": null,
+        "r_at_zero": 0.7499
+      },
+      "EDG_MACRO__78_EE0000": {
+        "strategy": "EDG_MACRO__78_EE0000",
+        "trades": 1,
+        "r_at_delays": [
+          -1.0,
+          -1.0054,
+          -1.0108,
+          -1.0162,
+          -1.0216,
+          -1.0269,
+          -1.0323
+        ],
+        "half_life": null,
+        "r_at_zero": -1.0
+      },
+      "Mean_Reversion_RSI_HiVol": {
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "trades": 3,
+        "r_at_delays": [
+          1.3333,
+          1.33,
+          1.3267,
+          1.3234,
+          1.3201,
+          1.3168,
+          1.3134
+        ],
+        "half_life": null,
+        "r_at_zero": 1.3333
+      }
+    },
+    "per_candle_drift_pct": 0.011844,
+    "recommended_expiry": 3,
+    "recommended_aet_wait": 2,
+    "recommended_reentry_win": 10,
+    "total_trades": 6,
+    "days_used": 30
+  },
+  "edm": {
+    "bins": [
+      {
+        "label": "<-3.0R",
+        "lower": null,
+        "upper": -3.0,
+        "count": 0,
+        "is_overflow": true
+      },
+      {
+        "label": "-2.8R",
+        "lower": -3.0,
+        "upper": -2.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "-2.2R",
+        "lower": -2.5,
+        "upper": -2.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "-1.8R",
+        "lower": -2.0,
+        "upper": -1.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "-1.2R",
+        "lower": -1.5,
+        "upper": -1.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "-0.8R",
+        "lower": -1.0,
+        "upper": -0.5,
+        "count": 3,
+        "is_overflow": false
+      },
+      {
+        "label": "-0.2R",
+        "lower": -0.5,
+        "upper": 0.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+0.2R",
+        "lower": 0.0,
+        "upper": 0.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+0.8R",
+        "lower": 0.5,
+        "upper": 1.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+1.2R",
+        "lower": 1.0,
+        "upper": 1.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+1.8R",
+        "lower": 1.5,
+        "upper": 2.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+2.2R",
+        "lower": 2.0,
+        "upper": 2.5,
+        "count": 1,
+        "is_overflow": false
+      },
+      {
+        "label": "+2.8R",
+        "lower": 2.5,
+        "upper": 3.0,
+        "count": 2,
+        "is_overflow": false
+      },
+      {
+        "label": "+3.2R",
+        "lower": 3.0,
+        "upper": 3.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+3.8R",
+        "lower": 3.5,
+        "upper": 4.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+4.2R",
+        "lower": 4.0,
+        "upper": 4.5,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": "+4.8R",
+        "lower": 4.5,
+        "upper": 5.0,
+        "count": 0,
+        "is_overflow": false
+      },
+      {
+        "label": ">=+5.0R",
+        "lower": 5.0,
+        "upper": null,
+        "count": 0,
+        "is_overflow": true
+      }
+    ],
+    "r_multiples": [
+      2.4999,
+      -1.0,
+      2.5,
+      -1.0,
+      -1.0,
+      2.5
+    ],
+    "total_trades": 6,
+    "win_count": 3,
+    "loss_count": 3,
+    "breakeven_count": 0,
+    "win_rate": 50.0,
+    "avg_r": 0.75,
+    "avg_win_r": 2.5,
+    "avg_loss_r": 1.0,
+    "payoff_ratio": 2.5,
+    "tail_profit_ratio": 2.5,
+    "loss_concentration": 33.3,
+    "profile": "Balanced",
+    "profile_description": "Moderate win-rate and payoff ratio. Equal emphasis on stop-loss control and letting winners run. Kelly fraction: standard sizing (f ~ 0.20). Review per-strategy profiles for more granular guidance.",
+    "per_strategy": {
+      "Momentum_Retest": {
+        "strategy": "Momentum_Retest",
+        "trades": 2,
+        "win_rate": 50.0,
+        "payoff_ratio": 2.5,
+        "avg_r": 0.7499,
+        "profile": "Balanced"
+      },
+      "EDG_MACRO__78_EE0000": {
+        "strategy": "EDG_MACRO__78_EE0000",
+        "trades": 1,
+        "win_rate": 0.0,
+        "payoff_ratio": 0.0,
+        "avg_r": -1.0,
+        "profile": "Balanced"
+      },
+      "Mean_Reversion_RSI_HiVol": {
+        "strategy": "Mean_Reversion_RSI_HiVol",
+        "trades": 3,
+        "win_rate": 66.7,
+        "payoff_ratio": 2.5,
+        "avg_r": 1.3333,
+        "profile": "Balanced"
+      }
+    }
+  },
+  "vix_stability": [
+    {
+      "label": "Low (<12)",
+      "trades": 1,
+      "avg_r": -1.0,
+      "win_rate": 0.0,
+      "pf": 0.0
+    },
+    {
+      "label": "Medium (12-18)",
+      "trades": 5,
+      "avg_r": 1.1,
+      "win_rate": 60.0,
+      "pf": 3.75
+    },
+    {
+      "label": "High (18-25)",
+      "trades": 0,
+      "avg_r": null,
+      "win_rate": null,
+      "pf": null
+    },
+    {
+      "label": "Extreme (>25)",
+      "trades": 0,
+      "avg_r": null,
+      "win_rate": null,
+      "pf": null
+    }
+  ],
+  "rejection_funnel": {
+    "raw_signals": 286,
+    "after_strategy_lab": 82,
+    "after_risk_control": 23,
+    "after_simulation": 6,
+    "after_guardian": 6,
+    "debate_approved": 6,
+    "executed": 6
+  },
+  "health": {
+    "total_errors": 0,
+    "days_with_errors": 0,
+    "days_with_trades": 6,
+    "total_days": 30
+  }
+}

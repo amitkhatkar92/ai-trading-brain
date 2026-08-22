@@ -1,0 +1,47 @@
+﻿# Package Manifest: iios
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios"
+version: "0.1.0"
+purpose: "Investment Intelligence Operating System -- root Python package for the complete IIOS trading system"
+architecture_reference: "IIOS-FCR-001"
+layer: "ROOT"
+owner: "Architecture Council"
+wave: 1
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "core"
+  - "config"
+  - "bootstrap"
+  - "infrastructure"
+  - "shared"
+  - "knowledge"
+  - "reasoning"
+  - "decisions"
+  - "learning"
+  - "market"
+  - "portfolio"
+  - "risk"
+  - "execution"
+  - "agents"
+  - "models"
+  - "research"
+  - "simulation"
+  - "replay"
+  - "database"
+  - "storage"
+  - "cache"
+  - "monitoring"
+  - "logging"
+  - "security"
+  - "api"
+  - "dashboard"
+  - "cli"
+  - "services"
+  - "workflows"
+  - "integrations"
+  - "tools"
+dependencies:
+  - "None"

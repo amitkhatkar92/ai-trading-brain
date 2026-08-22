@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.dashboard
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.dashboard"
+version: "0.1.0"
+purpose: "Streamlit dashboard -- Layer 17 visualization: portfolio P&L, strategy performance, health monitoring, regime display"
+architecture_reference: "IIOS-ARC-001 Layer 17"
+layer: "LAYER-17-DASHBOARD"
+owner: "Platform"
+wave: 7
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "dashboard_app"
+  - "portfolio_view"
+  - "performance_view"
+  - "health_view"
+  - "regime_view"
+  - "pnl_chart"
+dependencies:
+  - "iios.core"
+  - "iios.monitoring"
+  - "iios.database"
+  - "iios.infrastructure"

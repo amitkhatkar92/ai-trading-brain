@@ -1,0 +1,26 @@
+﻿# Package Manifest: iios.execution
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.execution"
+version: "0.1.0"
+purpose: "Layers 11-12: ExecutionEngine (OrderManager, paper trades at data/paper_trades.csv), TradeMonitoring, StrategyHealthMonitor"
+architecture_reference: "IIOS-ARC-001 Layers 11-12"
+layer: "LAYERS-11-12"
+owner: "Platform"
+wave: 6
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "order_manager"
+  - "trade_monitor"
+  - "paper_trade_journal"
+  - "execution_engine"
+  - "trade_executor"
+  - "strategy_health_monitor"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.decisions"
+  - "iios.integrations"
+  - "iios.portfolio"

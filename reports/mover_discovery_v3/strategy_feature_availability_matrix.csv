@@ -1,0 +1,19 @@
+feature,source,availability,notes
+symbol,trace.EQUITY_SIGNAL_FOUND,AVAILABLE_EXACT,Always present in trace payload
+direction,trace.EQUITY_SIGNAL_FOUND,AVAILABLE_EXACT,BUY/SELL/SHORT — always in payload
+strategy_name,trace.EQUITY_SIGNAL_FOUND,AVAILABLE_EXACT,Pre-assigned by scanner; in payload
+confidence,trace.EQUITY_SIGNAL_FOUND,AVAILABLE_EXACT,Always in payload
+signal_type,inferred from strategy_name,AVAILABLE_DERIVED,OPTIONS/ARB/EQUITY inferred from STRATEGY_PARAMS lookup
+regime,trace.MARKET_REGIME_CLASSIFIED,AVAILABLE_EXACT,Always in trace payload
+volatility_level,trace.MARKET_REGIME_CLASSIFIED,AVAILABLE_EXACT,VolatilityLevel.LOW/MEDIUM/HIGH/EXTREME
+vix,trace.MARKET_DATA_READY,AVAILABLE_EXACT,In MARKET_DATA_READY payload
+active_strategy_set,computed from regime + vol + code,AVAILABLE_DERIVED,Deterministically computed from REGIME_MAP_ORIGINAL + overlays
+risk_reward_ratio,"signal (in-memory, not in trace)",UNAVAILABLE,Computed at scan time; NOT emitted to EQUITY_SIGNAL_FOUND event
+entry_price,signal (in-memory),UNAVAILABLE,Not in trace events
+target_price,signal (in-memory),UNAVAILABLE,Not in trace events
+stop_loss,signal (in-memory),UNAVAILABLE,Not in trace events
+backtest_passes_gate,BacktestingAI._BACKTEST_CACHE,AVAILABLE_PROXY,Pass-through in replay (after_bt=assigned on all days)
+shm_disabled_set,StrategyHealthMonitor (no file on disk),AVAILABLE_PROXY,No strategy_health.json file on disk → inferred as empty set
+perf_disabled_set,strategy_performance.json (2026-03-12),AVAILABLE_EXACT,"File exists, modified 2026-03-12; no disabled strategies"
+evolved_strategy_bases,data/evolved_strategies.json,AVAILABLE_EXACT,"177 strategies, all approved; base→variant map reconstructable"
+min_rr_per_strategy,STRATEGY_PARAMS dict (code),AVAILABLE_EXACT,From strategy_generator_ai.py initial commit

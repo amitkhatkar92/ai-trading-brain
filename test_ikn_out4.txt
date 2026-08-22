@@ -1,0 +1,322 @@
+﻿.venv\Scripts\python.exe : Traceback (most recent call last):
+At line:1 char:32
++ ... IOENCODING="utf-8"; .venv\Scripts\python.exe test_ikn.py 2>&1 | Out-F ...
++                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last) 
+   ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", 
+line 701, in _rmtree_unsafe
+    os.unlink(fullname)
+    ~~~~~~~~~^^^^^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it 
+is being used by another process: 
+'C:\\Users\\UCIC\\AppData\\Local\\Temp\\tmpc6hhsa_i\\ikn.db'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_ikn.py", line 
+1167, in <module>
+    test_reports()
+    ~~~~~~~~~~~~^^
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_ikn.py", line 
+970, in test_reports
+    with tempfile.TemporaryDirectory() as tmpdir:
+         ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File 
+"C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 
+971, in __exit__
+    self.cleanup()
+    ~~~~~~~~~~~~^^
+  File 
+"C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 
+975, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File 
+"C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 
+955, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", 
+line 852, in rmtree
+    _rmtree_impl(path, dir_fd, onexc)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\shutil.py", 
+line 705, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File 
+"C:\Users\UCIC\AppData\Local\Python\pythoncore-3.14-64\Lib\tempfile.py", line 
+930, in onexc
+    _os.unlink(path)
+    ~~~~~~~~~~^^^^^^
+PermissionError: [WinError 32] The process cannot access the file because it 
+is being used by another process: 
+'C:\\Users\\UCIC\\AppData\\Local\\Temp\\tmpc6hhsa_i\\ikn.db'
+
+-- T001-T025  ikn_models --
+  PASS  T001 NodeType has 15 values
+  PASS  T002 RelationshipType has 18 values
+  PASS  T003 IKNError is Exception
+  PASS  T004 NodeType.DNA exists
+  PASS  T005 NodeType.KNOWLEDGE_PACKAGE exists
+  PASS  T006 RelationshipType.SUPPORTED_BY exists
+  PASS  T007 RelationshipType.CO_OCCURS_WITH exists
+  PASS  T008 RelationshipType.SUPERSEDES exists
+  PASS  T009 KnowledgeNode.to_dict has all keys
+  PASS  T010 KnowledgeNode version defaults to 1
+  PASS  T011 KnowledgeNode metadata preserved
+  PASS  T012 KnowledgeRelationship.to_dict has all keys
+  PASS  T013 KnowledgeRelationship version defaults to 1
+  PASS  T014 supporting_studies preserved
+  PASS  T015 supporting_years preserved
+  PASS  T016 supporting_regimes preserved
+  PASS  T017 KnowledgeEvidence.to_dict has all keys
+  PASS  T018 KnowledgeEvidence data_points preserved
+  PASS  T019 KnowledgePath.to_dict has all keys
+  PASS  T020 KnowledgePath length=0 for trivial path
+  PASS  T021 KnowledgePath total_confidence=1.0 for trivial path
+  PASS  T022 KnowledgeSubgraph.to_dict has all keys
+  PASS  T023 KnowledgeSubgraph center_node_id preserved
+  PASS  T024 KnowledgeStatistics.to_dict has all keys
+  PASS  T025 KnowledgeNetworkSnapshot.to_dict has all keys
+
+-- T026-T040  IKNConfig --
+  PASS  T026 db_path default
+  PASS  T027 reports_root default
+  PASS  T028 max_path_length default = 10
+  PASS  T029 dry_run default = False
+  PASS  T030 max_path_length < 1 raises ValueError
+  PASS  T031 max_path_length > 50 raises ValueError
+  PASS  T032 max_path_length = 1 is valid
+  PASS  T033 max_path_length = 50 is valid
+  PASS  T034 dry_run = True accepted
+  PASS  T035 custom db_path accepted
+  PASS  T036 custom reports_root accepted
+  PASS  T037 max_path_length = 25 valid
+  PASS  T038 IKNConfig is a dataclass
+  PASS  T039 max_path_length = -1 raises ValueError
+  PASS  T040 max_path_length = 51 raises ValueError
+
+-- T041-T070  IKNStore --
+  PASS  T041 IKNStore in-memory creates without file
+  PASS  T042 add_node + get_node roundtrip
+  PASS  T043 node_exists True after add
+  PASS  T044 node_exists False for unknown
+  PASS  T045 get_node None for unknown
+  PASS  T046 get_all_nodes returns both
+  PASS  T047 get_nodes_by_type filters
+  PASS  T048 update_node changes name
+  PASS  T049 update_node changes metadata
+  PASS  T050 update_node changes version
+  PASS  T051 relationship_exists True
+  PASS  T052 relationship_exists False
+  PASS  T053 get_relationship roundtrip
+  PASS  T054 get_all_relationships returns 1
+  PASS  T055 get_rels outgoing from N1
+  PASS  T056 get_rels incoming to N2
+  PASS  T057 get_rels both N1
+  PASS  T058 get_rels both N2
+  PASS  T059 get_rels filter by type
+  PASS  T060 get_rels filter by wrong type returns empty
+  PASS  T061 update_relationship confidence
+  PASS  T062 update_relationship evidence_count
+  PASS  T063 update_relationship supporting_years
+  PASS  T064 update_relationship version
+  PASS  T065 add_evidence + get works
+  PASS  T066 evidence description preserved
+  PASS  T067 evidence source preserved
+  PASS  T068 evidence data_points preserved
+  PASS  T069 raw_statistics has expected keys
+  PASS  T070 raw_statistics total_nodes=2
+
+-- T071-T090  IKNNetwork node registration --
+  PASS  T071 register_node returns KnowledgeNode
+  PASS  T072 node_type preserved
+  PASS  T073 name preserved
+  PASS  T074 metadata preserved
+  PASS  T075 version = 1 on first register
+  PASS  T076 created_at not empty
+  PASS  T077 updated_at not empty
+  PASS  T078 re-register returns same node_id
+  PASS  T079 re-register increments version
+  PASS  T080 re-register updates name
+  PASS  T081 re-register updates metadata
+  PASS  T082 get_node after register returns node
+  PASS  T083 get_node returns None for unknown
+  PASS  T084 empty node_id raises IKNError
+  PASS  T085 invalid node_type raises IKNError
+  PASS  T086 all 15 NodeType values accepted
+  PASS  T087 metadata defaults to empty dict
+  PASS  T088 node_type preserved on re-register
+  PASS  T089 created_at unchanged on re-register
+  PASS  T090 multiple re-registers accumulate version
+
+-- T091-T110  IKNNetwork relationships --
+  PASS  T091 add_relationship returns KnowledgeRelationship
+  PASS  T092 relationship_id starts with IKN-REL
+  PASS  T093 target_id preserved
+  PASS  T094 rel_type preserved
+  PASS  T095 confidence preserved
+  PASS  T096 evidence_count preserved
+  PASS  T097 supporting_studies preserved
+  PASS  T098 supporting_years preserved
+  PASS  T099 supporting_regimes preserved
+  PASS  T100 version = 1 on creation
+  PASS  T101 unknown source raises IKNError
+  PASS  T102 unknown target raises IKNError
+  PASS  T103 invalid rel_type raises IKNError
+  PASS  T104 confidence < 0 raises IKNError
+  PASS  T105 confidence > 1 raises IKNError
+  PASS  T106 confidence = 0.0 valid
+  PASS  T107 confidence = 1.0 valid
+  PASS  T108 all 18 RelationshipType values accepted
+  PASS  T109 update_relationship changes confidence
+  PASS  T110 update_relationship increments version
+  PASS  T108b update_rel on unknown raises IKNError
+
+-- T111-T120  IKNNetwork evidence --
+  PASS  T111 add_evidence returns KnowledgeEvidence
+  PASS  T112 evidence_id format
+  PASS  T113 description preserved
+  PASS  T114 source preserved
+  PASS  T115 data_points preserved
+  PASS  T116 relationship_id preserved
+  PASS  T117 created_at not empty
+  PASS  T118 multiple evidence stored
+  PASS  T119 unknown rel_id raises IKNError
+  PASS  T120 evidence.to_dict has all keys
+
+-- T121-T135  Query get_node / get_relationships --
+  PASS  T121 query.get_node returns same as network.get_node
+  PASS  T122 query.get_node None for unknown
+  PASS  T123 query.get_node correct node_type
+  PASS  T124 query.get_node correct name
+  PASS  T125 get_relationships returns all for N01
+  PASS  T126 get_relationships outgoing = 5
+  PASS  T127 get_relationships incoming = 3
+  PASS  T128 get_relationships filtered by type
+  PASS  T129 filtered rel has correct type
+  PASS  T130 confidence preserved in query
+  PASS  T131 supporting_studies preserved
+  PASS  T132 supporting_years preserved
+  PASS  T133 supporting_regimes preserved
+  PASS  T134 orphan node has no rels
+  PASS  T135 unknown node returns empty list
+
+-- T136-T150  Query related() --
+  PASS  T136 related() returns KnowledgeSubgraph
+  PASS  T137 center_node_id = N17
+  PASS  T138 center node in subgraph.nodes
+  PASS  T139 depth=1 includes direct neighbours
+  PASS  T140 depth=1 rels non-empty
+  PASS  T141 relationships in subgraph are KnowledgeRelationship objects
+  PASS  T142 depth=2 includes more nodes than depth=1
+  PASS  T143 depth=2 N06 reachable via N17->N01->N06
+  PASS  T144 isolated node subgraph has only self
+  PASS  T145 isolated node subgraph has no rels
+  PASS  T146 depth=0 treated as 1 (neighbours present)
+  PASS  T147 no duplicate relationships in subgraph
+  PASS  T148 unknown node returns empty subgraph nodes
+  PASS  T149 all subgraph nodes are KnowledgeNode
+  PASS  T150 subgraph.to_dict() has correct keys
+
+-- T151-T165  Query shortest_path() --
+  PASS  T151 same-node path returns KnowledgePath
+  PASS  T152 same-node path.length = 0
+  PASS  T153 same-node total_confidence = 1.0
+  PASS  T154 direct connection path.length = 1
+  PASS  T155 direct path confidence = 0.95
+  PASS  T156 direct path nodes count = 2
+  PASS  T157 path nodes include source N09
+  PASS  T158 2-hop path.length = 2
+  PASS  T159 2-hop path has 3 nodes
+  PASS  T160 2-hop path nodes are N17, N01, N06
+  PASS  T161 2-hop total_confidence = product of edge confidences
+  PASS  T162 path relationships list length = path length
+  PASS  T163 disconnected nodes return None
+  PASS  T164 unknown source returns None
+  PASS  T165 max_path_length=1 blocks 2-hop path
+
+-- T166-T180  Query semantic queries --
+  PASS  T166 supports() returns SUPPORTED_BY rels
+  PASS  T167 supports() rel_type is SUPPORTED_BY
+  PASS  T168 supports() empty for N02
+  PASS  T169 contradictions() returns CONTRADICTED_BY rels
+  PASS  T170 contradictions() rel_type is CONTRADICTED_BY
+  PASS  T171 contradictions() empty for N01
+  PASS  T172 history() for N09 includes SUPERSEDES
+  PASS  T173 history() N09 contains SUPERSEDES rel
+  PASS  T174 history() for N03 includes EVOLVED_TO
+  PASS  T175 history() N03 rel_type is EVOLVED_TO
+  PASS  T176 history() N10 includes incoming SUPERSEDES rel
+  PASS  T177 history() empty for N02 (no EVOLVED_TO or SUPERSEDES)
+  PASS  T178 supports() includes incoming for N06
+  PASS  T179 contradictions() includes incoming for N08
+  PASS  T180 supports() includes all SUPPORTED_BY rels
+
+-- T181-T195  Query statistics and coverage --
+  PASS  T181 statistics() returns KnowledgeStatistics
+  PASS  T182 total_nodes = 20
+  PASS  T183 total_relationships = 18
+  PASS  T184 nodes_by_type has DNA
+  PASS  T185 relationships_by_type has SUPPORTED_BY
+  PASS  T186 avg_confidence in (0, 1]
+  PASS  T187 orphan_count = 3 (N05, N19, N20)
+  PASS  T188 most_connected_nodes non-empty
+  PASS  T189 most_connected_nodes[0][0] = N01
+  PASS  T190 generated_at not empty
+  PASS  T191 statistics.to_dict works
+  PASS  T192 coverage() returns dict with required keys
+  PASS  T193 node_type_coverage = 1.0 (all 15 present)
+  PASS  T194 relationship_type_coverage = 1.0 (all 18 present)
+  PASS  T195 traceability_score = 1.0 (DISC-001 has DISCOVERED_IN)
+
+-- T196-T210  Versioning and updates --
+  PASS  T196 new node has version=1
+  PASS  T197 re-registered node has version=2
+  PASS  T198 new relationship has version=1
+  PASS  T199 updated relationship has version=2
+  PASS  T200 update preserves relationship_id
+  PASS  T201 update preserves source_id
+  PASS  T202 update preserves target_id
+  PASS  T203 update changes confidence
+  PASS  T204 update evidence_count
+  PASS  T205 update supporting_studies
+  PASS  T206 update supporting_years
+  PASS  T207 update supporting_regimes
+  PASS  T208 version accumulates after multiple updates
+  PASS  T209 node created_at preserved on re-register
+  PASS  T210 updated_at changes on re-register
+
+-- T211-T225  Concurrency and thread safety --
+  PASS  T211 10 threads register different nodes without error
+  PASS  T212 all 10 nodes exist after concurrent registration
+  PASS  T213 10 concurrent add_relationship no errors
+  PASS  T214 all relationship IDs unique
+  PASS  T215 10 concurrent reads produce consistent total_nodes
+  PASS  T216 relationship counter unique
+  PASS  T217 evidence IDs unique across threads
+  PASS  T218 all evidence stored
+  PASS  T219 all evidence entries present after concurrent adds
+  PASS  T220 relationship still readable after concurrent writes
+  PASS  T221 concurrent statistics produce correct results
+  PASS  T222 1000 node registrations succeed
+  PASS  T223 1000 relationship additions succeed
+  PASS  T224 statistics after 1000 rels is fast and correct
+  PASS  T225 coverage() after 1000 rels
+
+-- T226-T235  Reports and snapshot --
+  PASS  T226 snapshot() returns KnowledgeNetworkSnapshot
+  PASS  T227 snapshot_id starts with IKN-SNAP
+  PASS  T228 dry_run snapshot has 4 reports
+  PASS  T229 dry_run writes no files
+  PASS  T230 snapshot.node_count correct
+  PASS  T231 snapshot.relationship_count = 18
+  PASS  T232 snapshot.to_dict has all keys
+  PASS  T233 real snapshot has 4 reports
+  PASS  T234 all 4 report files exist
+  PASS  T235 NETWORK_SUMMARY.md contains IKN-001

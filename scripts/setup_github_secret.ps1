@@ -1,4 +1,4 @@
-#!/usr/bin/env pwsh
+﻿#!/usr/bin/env pwsh
 <#
 .SYNOPSIS
     One-time setup: pushes VPS_SSH_KEY (and other required secrets) to GitHub
@@ -31,7 +31,8 @@ Write-Host ""
 if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
     Write-Host "[1/6] Installing GitHub CLI via winget..." -ForegroundColor Yellow
     winget install --id GitHub.cli --silent --accept-source-agreements --accept-package-agreements
-    $env:PATH += ";$env:ProgramFiles\GitHub CLI"
+    $ghCliPath = Join-Path $env:ProgramFiles "GitHub CLI"
+    $env:PATH  = $env:PATH + ";" + $ghCliPath
     if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
         Write-Host "      Restart PowerShell after winget install, then re-run this script." -ForegroundColor Red
         exit 1

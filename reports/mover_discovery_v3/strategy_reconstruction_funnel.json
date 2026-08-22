@@ -1,0 +1,66 @@
+{
+  "study_id": "STRATEGY_RECONSTRUCTION_VALIDATION_001",
+  "generated": "2026-08-17",
+  "funnel": {
+    "raw_signals": 286,
+    "strategy_survivors": 82,
+    "strategy_rejections": 204,
+    "risk_survivors": 23,
+    "executed": 6
+  },
+  "accuracy": {
+    "signal_level": 0.965,
+    "day_level": 0.7667,
+    "days_exact_match": 23,
+    "total_days": 30
+  },
+  "verdict": "A",
+  "verdict_label": "RECONSTRUCTION_VALIDATED",
+  "rejection_breakdown": {
+    "D1_type_low_rr": 180,
+    "D2_bear_equity_buy": 0,
+    "D3_regime_mismatch": 14,
+    "total_deterministic": 194,
+    "indeterminate_total": 92,
+    "indet_actual_pass": 82,
+    "indet_actual_rr_fail": 10
+  },
+  "regime_breakdown": {
+    "bull_trend": {
+      "n_raw": 186,
+      "n_actual_strat": 56,
+      "n_pred_pass": 66,
+      "n_reject_d1": 120,
+      "n_reject_d2": 0,
+      "n_reject_d3": 0,
+      "n_indet": 66
+    },
+    "range_market": {
+      "n_raw": 50,
+      "n_actual_strat": 26,
+      "n_pred_pass": 26,
+      "n_reject_d1": 24,
+      "n_reject_d2": 0,
+      "n_reject_d3": 0,
+      "n_indet": 26
+    },
+    "bear_market": {
+      "n_raw": 24,
+      "n_actual_strat": 0,
+      "n_pred_pass": 0,
+      "n_reject_d1": 24,
+      "n_reject_d2": 0,
+      "n_reject_d3": 0,
+      "n_indet": 0
+    },
+    "volatile": {
+      "n_raw": 26,
+      "n_actual_strat": 0,
+      "n_pred_pass": 0,
+      "n_reject_d1": 12,
+      "n_reject_d2": 0,
+      "n_reject_d3": 14,
+      "n_indet": 0
+    }
+  }
+}

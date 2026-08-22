@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.tools
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.tools"
+version: "0.1.0"
+purpose: "Development and analysis tools -- backtesting runner, strategy analyzer, performance reporter, debug utilities, audit exporter"
+architecture_reference: "IIOS-IMP-001"
+layer: "TOOLS"
+owner: "Platform"
+wave: 5
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "backtest_runner"
+  - "strategy_analyzer"
+  - "performance_reporter"
+  - "debug_tools"
+  - "audit_exporter"
+dependencies:
+  - "iios.core"
+  - "iios.learning"
+  - "iios.research"
+  - "iios.database"

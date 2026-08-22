@@ -1,0 +1,20 @@
+﻿# Package Manifest: iios.config
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.config"
+version: "0.1.0"
+purpose: "Configuration management -- wraps config.py, provides immutable ConfigurationSnapshot, validates all constants at startup"
+architecture_reference: "IIOS-CIS-001 INFRA-CFG-001"
+layer: "INFRASTRUCTURE"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "config_service"
+  - "config_snapshot"
+  - "config_validator"
+  - "config_loader"
+dependencies:
+  - "iios.core"

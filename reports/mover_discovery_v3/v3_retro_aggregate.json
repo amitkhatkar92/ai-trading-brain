@@ -1,0 +1,56 @@
+{
+  "replay_db": "C:\\Users\\UCIC\\OneDrive\\Desktop\\ai_trading_brain\\data\\study002_replay.db",
+  "days_eligible": 218,
+  "days_replayed": 214,
+  "days_with_t1": 213,
+  "days_with_t3": 210,
+  "pool_size": 20,
+  "UP_T1": {
+    "n_picks": 4256,
+    "avg_return_pct": 0.0705,
+    "positive_pct": 0.473,
+    "ge1pct_capture_rate": 0.2864,
+    "ge1pct_random_baseline": 0.2457,
+    "ge1pct_lift": 1.1658,
+    "ge2pct_capture_rate": 0.1699,
+    "ge2pct_random_baseline": 0.1202,
+    "ge2pct_lift": 1.4134,
+    "ge3pct_capture_rate": 0.1076,
+    "ge3pct_random_baseline": 0.0615,
+    "ge3pct_lift": 1.7493,
+    "spearman_score_vs_ret": -0.0134,
+    "note": "lift > 1.0 means V3 outperforms random for that threshold"
+  },
+  "DN_T1": {
+    "n_picks": 4258,
+    "avg_return_pct": -0.0072,
+    "negative_directional_acc": 0.5124,
+    "le_neg1pct_capture_rate": 0.2919,
+    "le_neg1pct_random_baseline": 0.2557,
+    "le_neg1pct_lift": 1.1416,
+    "le_neg2pct_capture_rate": 0.148,
+    "le_neg2pct_random_baseline": 0.1146,
+    "le_neg2pct_lift": 1.2916,
+    "le_neg3pct_capture_rate": 0.0749,
+    "le_neg3pct_random_baseline": 0.0522,
+    "le_neg3pct_lift": 1.435,
+    "spearman_score_vs_neg_ret": 0.0244,
+    "note": "favorable = actual return is negative (moved DOWN as predicted)"
+  },
+  "UP_T3": {
+    "n_picks": 4216,
+    "avg_return_pct": 0.1723,
+    "ge2pct_capture_rate": 0.2749
+  },
+  "DN_T3": {
+    "n_picks": 4217,
+    "avg_return_pct": 0.006,
+    "le_neg2pct_capture": 0.2727
+  },
+  "verdict": [
+    "UP_POOL_OUTPERFORMS_RANDOM (\u22652% lift=1.41\u00d7)",
+    "DN_POOL_OUTPERFORMS_RANDOM (\u2264-2% lift=1.29\u00d7)",
+    "SCORE_RANK_NOT_PREDICTIVE_UP (spearman=-0.0134)",
+    "SCORE_RANK_NOT_PREDICTIVE_DN (spearman=0.0244)"
+  ]
+}

@@ -1,0 +1,2 @@
+track,status,reason
+C1,DATA_UNAVAILABLE,"oios_events: 0 rows; no corporate announcement, earnings, or regulatory data in study002_replay.db"

@@ -1,0 +1,1692 @@
+[
+  {
+    "learning_id": "PGA-EB51FF6E",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HINDALCO",
+    "description": "Create candidate DNA for HINDALCO: moved +4.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HINDALCO via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0217,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-C4E3B0F3",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HEROMOTOCO",
+    "description": "Create candidate DNA for HEROMOTOCO: moved +3.3% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HEROMOTOCO via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0172,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-7F04157C",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "TCS",
+    "description": "Create candidate DNA for TCS: moved +3.3% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for TCS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.017,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-1396EA12",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "GRASIM",
+    "description": "Create candidate DNA for GRASIM: moved +3.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for GRASIM via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0581,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-C4458C3D",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "M&M",
+    "description": "Create candidate DNA for M&M: moved +2.9% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for M&M via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0148,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-2316CF93",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HCLTECH",
+    "description": "Create candidate DNA for HCLTECH: moved +2.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HCLTECH via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0108,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-AC52085B",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "MARUTI",
+    "description": "Create candidate DNA for MARUTI: moved +1.6% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for MARUTI via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0298,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-616CFDC8",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "SBIN",
+    "description": "Create candidate DNA for SBIN: moved +1.6% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for SBIN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0082,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-152D8969",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "INFY",
+    "description": "Create candidate DNA for INFY: moved +1.3% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for INFY via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0067,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-E415E27A",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "INDUSINDBK",
+    "description": "Create candidate DNA for INDUSINDBK: moved +1.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for INDUSINDBK via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.006,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-0E244614",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "RELIANCE",
+    "description": "Create candidate DNA for RELIANCE: moved +1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for RELIANCE via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0203,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-D737FB6B",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "NESTLEIND",
+    "description": "Create candidate DNA for NESTLEIND: moved +1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for NESTLEIND via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0058,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-92E32986",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "BHARTIARTL",
+    "description": "Create candidate DNA for BHARTIARTL: moved +1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for BHARTIARTL via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0058,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-2FDA1526",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "POWERGRID",
+    "description": "Create candidate DNA for POWERGRID: moved +1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for POWERGRID via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.02,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-CF02E375",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "EICHERMOT",
+    "description": "Create candidate DNA for EICHERMOT: moved +1.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for EICHERMOT via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0052,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-276417E2",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "CROMPTON",
+    "description": "Create candidate DNA for CROMPTON: moved -7.4% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for CROMPTON via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0259,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-455E1B8C",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "GODREJCP",
+    "description": "Create candidate DNA for GODREJCP: moved -2.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for GODREJCP via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.013,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-BDB8614F",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "CHOLAFIN",
+    "description": "Create candidate DNA for CHOLAFIN: moved -2.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for CHOLAFIN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0129,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-845781B1",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "LUPIN",
+    "description": "Create candidate DNA for LUPIN: moved -1.9% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for LUPIN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.035,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-D8A64F52",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "NMDC",
+    "description": "Create candidate DNA for NMDC: moved -1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for NMDC via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0059,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-898FD10C",
+    "created_date": "2026-08-07",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "DMART",
+    "description": "Create candidate DNA for DMART: moved -1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for DMART via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0059,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-63F653EA",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "TITAN",
+    "description": "Create candidate DNA for TITAN: moved +3.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for TITAN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0581,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-5E584B70",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "BAJFINANCE",
+    "description": "Create candidate DNA for BAJFINANCE: moved +2.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for BAJFINANCE via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0116,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-BD151F86",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "TATACONSUM",
+    "description": "Create candidate DNA for TATACONSUM: moved +2.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for TATACONSUM via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.011,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-AB8DC99A",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "SHRIRAMFIN",
+    "description": "Create candidate DNA for SHRIRAMFIN: moved +2.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for SHRIRAMFIN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0106,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-2FC905DF",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "BRITANNIA",
+    "description": "Create candidate DNA for BRITANNIA: moved +2.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for BRITANNIA via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0365,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-41E60EC6",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "GRASIM",
+    "description": "Create candidate DNA for GRASIM: moved +1.7% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for GRASIM via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0088,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-00D46168",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HEROMOTOCO",
+    "description": "Create candidate DNA for HEROMOTOCO: moved +1.6% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HEROMOTOCO via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0086,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-4199AB7F",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "TATASTEEL",
+    "description": "Create candidate DNA for TATASTEEL: moved +1.4% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for TATASTEEL via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0074,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-962CA864",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "KOTAKBANK",
+    "description": "Create candidate DNA for KOTAKBANK: moved +1.4% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for KOTAKBANK via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0074,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-4860EA55",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "AXISBANK",
+    "description": "Create candidate DNA for AXISBANK: moved +1.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for AXISBANK via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0052,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-AB12F9BC",
+    "created_date": "2026-08-10",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "PAGEIND",
+    "description": "Schedule HKAP replay for PAGEIND: build historical knowledge about 4.0% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for PAGEIND via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.06521739130434782
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0151,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-97E30ACA",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "SAIL",
+    "description": "Create candidate DNA for SAIL: moved -2.6% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for SAIL via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0133,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-877EE725",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "LUPIN",
+    "description": "Create candidate DNA for LUPIN: moved -2.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for LUPIN via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0461,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-812F763A",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "NYKAA",
+    "description": "Create candidate DNA for NYKAA: moved -2.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for NYKAA via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.013,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-517352D8",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "FORTIS",
+    "description": "Create candidate DNA for FORTIS: moved -2.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for FORTIS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0374,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-430A85CC",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "GODREJCP",
+    "description": "Create candidate DNA for GODREJCP: moved -1.8% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for GODREJCP via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0095,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-C14B085E",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HINDZINC",
+    "description": "Create candidate DNA for HINDZINC: moved -1.8% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HINDZINC via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0093,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-B958BCA3",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "VOLTAS",
+    "description": "Create candidate DNA for VOLTAS: moved -1.4% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for VOLTAS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0256,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-4973AA5D",
+    "created_date": "2026-08-10",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "DEEPAKNTR",
+    "description": "Schedule HKAP replay for DEEPAKNTR: build historical knowledge about 1.2% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for DEEPAKNTR via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.06521739130434782
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0046,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-EE83706F",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "AUROPHARMA",
+    "description": "Create candidate DNA for AUROPHARMA: moved -1.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for AUROPHARMA via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0218,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-046F8357",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "MOTHERSON",
+    "description": "Create candidate DNA for MOTHERSON: moved -1.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for MOTHERSON via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0061,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-F81E4DA2",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "EMAMILTD",
+    "description": "Create candidate DNA for EMAMILTD: moved -1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for EMAMILTD via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0057,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-F956CC53",
+    "created_date": "2026-08-10",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "FORCEMOT",
+    "description": "Schedule HKAP replay for FORCEMOT: build historical knowledge about 1.1% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for FORCEMOT via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.10869565217391304
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0041,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-B0C7ECEC",
+    "created_date": "2026-08-10",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "LTTS",
+    "description": "Create candidate DNA for LTTS: moved -1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for LTTS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0055,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-30F56A06",
+    "created_date": "2026-08-10",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "UPL",
+    "description": "Schedule HKAP replay for UPL: build historical knowledge about 1.0% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for UPL via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.08695652173913043
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0038,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-F46369F6",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "DRREDDY",
+    "description": "Create candidate DNA for DRREDDY: moved +4.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for DRREDDY via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0205,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-F56D15BD",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "DIVISLAB",
+    "description": "Create candidate DNA for DIVISLAB: moved +3.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for DIVISLAB via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0164,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-80F9FCDF",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "CANBK",
+    "description": "Create candidate DNA for CANBK: moved +1.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for CANBK via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0052,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-B891CE79",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "VEDL",
+    "description": "Create candidate DNA for VEDL: moved -3.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for VEDL via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.018,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-5B59D84B",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "GODREJPROP",
+    "description": "Create candidate DNA for GODREJPROP: moved -3.3% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for GODREJPROP via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0173,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-CDFCE313",
+    "created_date": "2026-08-11",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "BHARATFORG",
+    "description": "Schedule HKAP replay for BHARATFORG: build historical knowledge about 3.0% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for BHARATFORG via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.08695652173913043
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0114,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-566FAA5A",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "MAXHEALTH",
+    "description": "Create candidate DNA for MAXHEALTH: moved -2.4% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for MAXHEALTH via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0432,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-23A59748",
+    "created_date": "2026-08-11",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "AMBUJACEM",
+    "description": "Schedule HKAP replay for AMBUJACEM: build historical knowledge about 2.3% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for AMBUJACEM via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.043478260869565216
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0087,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-0118BEB3",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "HINDZINC",
+    "description": "Create candidate DNA for HINDZINC: moved -2.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for HINDZINC via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0107,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-94D1681B",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "METROPOLIS",
+    "description": "Create candidate DNA for METROPOLIS: moved -1.9% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for METROPOLIS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0096,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-CBAF3F84",
+    "created_date": "2026-08-11",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "BHEL",
+    "description": "Schedule HKAP replay for BHEL: build historical knowledge about 1.7% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for BHEL via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.021739130434782608
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0064,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-B170114A",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "EMAMILTD",
+    "description": "Create candidate DNA for EMAMILTD: moved -1.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for EMAMILTD via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.008,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-E08E7349",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "SRF",
+    "description": "Create candidate DNA for SRF: moved -1.5% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for SRF via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0079,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-994A06DE",
+    "created_date": "2026-08-11",
+    "action_type": "schedule_hkap_replay",
+    "category": "F",
+    "symbol": "PRESTIGE",
+    "description": "Schedule HKAP replay for PRESTIGE: build historical knowledge about 1.4% move patterns",
+    "target_system": "HKAP",
+    "expected_benefit": "Improve scan_hit_rate for PRESTIGE via HKAP",
+    "prediction_metric": "scan_hit_rate",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "scan_hit_rate": 0.10869565217391304
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0052,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-8E6705C3",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "CROMPTON",
+    "description": "Create candidate DNA for CROMPTON: moved -1.3% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for CROMPTON via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "MEDIUM",
+    "eig_score": 0.0241,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-E478AC8C",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "AAVAS",
+    "description": "Create candidate DNA for AAVAS: moved -1.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for AAVAS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0063,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-533D6B5B",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "DLF",
+    "description": "Create candidate DNA for DLF: moved -1.2% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for DLF via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0062,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-A4749638",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "TORNTPHARM",
+    "description": "Create candidate DNA for TORNTPHARM: moved -1.1% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for TORNTPHARM via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0059,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "learning_id": "PGA-C157D4AC",
+    "created_date": "2026-08-11",
+    "action_type": "create_dna_candidate",
+    "category": "E",
+    "symbol": "FORTIS",
+    "description": "Create candidate DNA for FORTIS: moved -1.0% with zero DNA coverage",
+    "target_system": "IDR",
+    "expected_benefit": "Improve dna_count for FORTIS via IDR",
+    "prediction_metric": "dna_count",
+    "measurement_windows": [
+      30,
+      60,
+      90
+    ],
+    "baseline_metrics": {
+      "dna_count": 0.0
+    },
+    "verification_results": [],
+    "status": "PENDING",
+    "confidence": "EXPERIMENTAL",
+    "eig_score": 0.0054,
+    "roi": null,
+    "executed": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  }
+]

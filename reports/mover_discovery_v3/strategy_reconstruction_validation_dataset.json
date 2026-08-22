@@ -1,0 +1,40 @@
+{
+  "study_id": "STRATEGY_RECONSTRUCTION_VALIDATION_001",
+  "generated": "2026-08-17",
+  "replay_period": {
+    "start": "2026-01-30",
+    "end": "2026-03-13"
+  },
+  "source_commit": "42ee4de",
+  "funnel": {
+    "raw_signals": 286,
+    "strategy_survivors": 82,
+    "strategy_rejections": 204,
+    "risk_survivors": 23,
+    "executed": 6
+  },
+  "reconstruction_rules": {
+    "D1_TYPE_LOW_RR": "OPTIONS/ARB signals \u2192 REJECT (structurally low RR)",
+    "D2_BEAR_EQUITY_BUY": "BEAR_MARKET + EQUITY + BUY \u2192 REJECT",
+    "D3_REGIME_MISMATCH": "strategy NOT in regime active set \u2192 REJECT",
+    "I1_PASS_NEEDS_RR": "passes D1-D3, RR unknown \u2192 INDETERMINATE"
+  },
+  "critical_finding": "OPTIONS/SPREAD RR exemption was NOT in original code (commit 42ee4de). Added 2026-03-27 in commit a2089c1. All options/arb signals failed RR check in replay because their computed RR (0.005-0.025) << min_rr (1.2-1.5).",
+  "accuracy": {
+    "signal_level": 0.965,
+    "day_level": 0.7667,
+    "days_exact_match": 23,
+    "total_days": 30
+  },
+  "verdict": "A",
+  "verdict_label": "RECONSTRUCTION_VALIDATED",
+  "rejection_breakdown": {
+    "D1_type_low_rr": 180,
+    "D2_bear_equity_buy": 0,
+    "D3_regime_mismatch": 14,
+    "total_deterministic": 194,
+    "indeterminate_total": 92,
+    "indet_actual_pass": 82,
+    "indet_actual_rr_fail": 10
+  }
+}

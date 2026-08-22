@@ -1,0 +1,190 @@
+﻿MI latency cols: ['id', 'date', 'cycle_time', 'mi_latency_ms', 'bucket', 'aborted', 'regime', 'vix', 'pcr', 'created_at']
+{'id': 2909, 'date': '2026-08-11', 'cycle_time': '2026-08-11T09:45:11.411110', 'mi_latency_ms': 1179.3, 'bucket': 'NORMAL', 'aborted': 0, 'regime': 'RegimeLabel.RANGE_MARKET', 'vix': 12.26, 'pcr': 0.85, 'created_at': '2026-08-11T09:45:11.411845'}
+{'id': 2910, 'date': '2026-08-11', 'cycle_time': '2026-08-11T10:30:06.979400', 'mi_latency_ms': 3164.7, 'bucket': 'NORMAL', 'aborted': 0, 'regime': 'RegimeLabel.RANGE_MARKET', 'vix': 12.18, 'pcr': 1.07, 'created_at': '2026-08-11T10:30:06.979903'}
+{'date': '2026-08-11', 'total_cycles': 2, 'normal_cycles': 2, 'slow_cycles': 0, 'critical_cycles': 0, 'aborted_cycles': 0, 'avg_latency_ms': 2172.0, 'max_latency_ms': 3164.7, 'p95_latency_ms': 1179.3, 'last_updated': '2026-08-11T10:30:07.003224'}
+
+All CT events today (184):
+  2026-08-11T00:04:15.283727 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:04:15.283704", "uptime": "ok"}
+  2026-08-11T00:09:15.326172 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:09:15.326141", "uptime": "ok"}
+  2026-08-11T00:14:15.367188 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:14:15.367034", "uptime": "ok"}
+  2026-08-11T00:19:15.469509 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:19:15.469484", "uptime": "ok"}
+  2026-08-11T00:24:15.513013 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:24:15.512989", "uptime": "ok"}
+  2026-08-11T00:29:15.526102 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:29:15.526037", "uptime": "ok"}
+  2026-08-11T00:34:15.570272 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:34:15.570222", "uptime": "ok"}
+  2026-08-11T00:39:15.601532 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:39:15.601510", "uptime": "ok"}
+  2026-08-11T00:44:15.636151 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:44:15.636044", "uptime": "ok"}
+  2026-08-11T00:49:15.657695 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:49:15.657582", "uptime": "ok"}
+  2026-08-11T00:54:15.676958 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:54:15.676934", "uptime": "ok"}
+  2026-08-11T00:59:15.775627 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T00:59:15.775512", "uptime": "ok"}
+  2026-08-11T01:04:15.807042 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:04:15.807018", "uptime": "ok"}
+  2026-08-11T01:09:15.831239 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:09:15.831216", "uptime": "ok"}
+  2026-08-11T01:14:15.844849 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:14:15.844785", "uptime": "ok"}
+  2026-08-11T01:19:15.885704 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:19:15.885665", "uptime": "ok"}
+  2026-08-11T01:24:15.909814 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:24:15.909748", "uptime": "ok"}
+  2026-08-11T01:29:15.931312 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:29:15.931225", "uptime": "ok"}
+  2026-08-11T01:34:15.950046 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:34:15.950008", "uptime": "ok"}
+  2026-08-11T01:39:15.978104 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:39:15.978037", "uptime": "ok"}
+  2026-08-11T01:44:16.019102 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:44:16.018992", "uptime": "ok"}
+  2026-08-11T01:49:16.092888 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:49:16.092862", "uptime": "ok"}
+  2026-08-11T01:54:16.109519 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:54:16.109498", "uptime": "ok"}
+  2026-08-11T01:59:16.123591 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T01:59:16.123509", "uptime": "ok"}
+  2026-08-11T02:04:16.182573 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:04:16.182534", "uptime": "ok"}
+  2026-08-11T02:09:16.213991 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:09:16.213944", "uptime": "ok"}
+  2026-08-11T02:14:16.246038 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:14:16.246013", "uptime": "ok"}
+  2026-08-11T02:19:16.267627 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:19:16.267603", "uptime": "ok"}
+  2026-08-11T02:24:16.301107 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:24:16.301033", "uptime": "ok"}
+  2026-08-11T02:29:16.342219 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:29:16.342189", "uptime": "ok"}
+  2026-08-11T02:34:16.403069 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:34:16.403046", "uptime": "ok"}
+  2026-08-11T02:39:16.500020 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:39:16.499989", "uptime": "ok"}
+  2026-08-11T02:44:16.659287 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:44:16.659135", "uptime": "ok"}
+  2026-08-11T02:49:16.873149 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:49:16.873112", "uptime": "ok"}
+  2026-08-11T02:54:16.895563 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:54:16.895540", "uptime": "ok"}
+  2026-08-11T02:59:16.930030 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T02:59:16.929968", "uptime": "ok"}
+  2026-08-11T03:04:16.947453 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:04:16.947425", "uptime": "ok"}
+  2026-08-11T03:09:17.020520 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:09:17.020488", "uptime": "ok"}
+  2026-08-11T03:14:17.076765 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:14:17.076670", "uptime": "ok"}
+  2026-08-11T03:19:17.102862 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:19:17.102839", "uptime": "ok"}
+  2026-08-11T03:24:17.131758 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:24:17.131722", "uptime": "ok"}
+  2026-08-11T03:29:17.209013 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:29:17.208935", "uptime": "ok"}
+  2026-08-11T03:34:17.239540 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:34:17.239518", "uptime": "ok"}
+  2026-08-11T03:39:17.270574 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:39:17.270551", "uptime": "ok"}
+  2026-08-11T03:44:17.292048 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:44:17.291985", "uptime": "ok"}
+  2026-08-11T03:49:17.314842 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:49:17.314818", "uptime": "ok"}
+  2026-08-11T03:54:17.364653 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:54:17.364630", "uptime": "ok"}
+  2026-08-11T03:59:17.408632 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T03:59:17.408573", "uptime": "ok"}
+  2026-08-11T04:04:17.438907 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:04:17.438885", "uptime": "ok"}
+  2026-08-11T04:09:17.460495 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:09:17.460472", "uptime": "ok"}
+  2026-08-11T04:14:17.770423 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:14:17.770319", "uptime": "ok"}
+  2026-08-11T04:19:17.843777 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:19:17.843745", "uptime": "ok"}
+  2026-08-11T04:24:17.962749 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:24:17.962679", "uptime": "ok"}
+  2026-08-11T04:29:17.993285 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:29:17.993143", "uptime": "ok"}
+  2026-08-11T04:34:18.169512 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:34:18.169486", "uptime": "ok"}
+  2026-08-11T04:39:18.211943 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:39:18.211918", "uptime": "ok"}
+  2026-08-11T04:44:18.235476 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:44:18.235410", "uptime": "ok"}
+  2026-08-11T04:49:18.261400 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:49:18.260980", "uptime": "ok"}
+  2026-08-11T04:54:18.279133 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:54:18.279106", "uptime": "ok"}
+  2026-08-11T04:59:18.326764 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T04:59:18.326735", "uptime": "ok"}
+  2026-08-11T05:04:18.382816 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:04:18.382744", "uptime": "ok"}
+  2026-08-11T05:09:18.407694 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:09:18.407670", "uptime": "ok"}
+  2026-08-11T05:14:18.422996 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:14:18.422959", "uptime": "ok"}
+  2026-08-11T05:19:18.439603 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:19:18.439520", "uptime": "ok"}
+  2026-08-11T05:24:18.458486 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:24:18.458463", "uptime": "ok"}
+  2026-08-11T05:29:18.479154 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:29:18.479130", "uptime": "ok"}
+  2026-08-11T05:34:18.570041 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:34:18.569978", "uptime": "ok"}
+  2026-08-11T05:39:18.587784 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:39:18.586551", "uptime": "ok"}
+  2026-08-11T05:44:18.633238 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:44:18.633209", "uptime": "ok"}
+  2026-08-11T05:49:18.697875 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:49:18.697853", "uptime": "ok"}
+  2026-08-11T05:54:18.740841 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:54:18.740801", "uptime": "ok"}
+  2026-08-11T05:59:18.773099 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T05:59:18.773036", "uptime": "ok"}
+  2026-08-11T06:04:18.808204 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:04:18.808092", "uptime": "ok"}
+  2026-08-11T06:09:18.828455 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:09:18.828365", "uptime": "ok"}
+  2026-08-11T06:14:18.846312 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:14:18.846291", "uptime": "ok"}
+  2026-08-11T06:19:18.864580 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:19:18.864505", "uptime": "ok"}
+  2026-08-11T06:24:18.902971 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:24:18.902948", "uptime": "ok"}
+  2026-08-11T06:29:18.921923 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:29:18.921898", "uptime": "ok"}
+  2026-08-11T06:34:18.951344 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:34:18.951219", "uptime": "ok"}
+  2026-08-11T06:39:18.976276 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:39:18.975142", "uptime": "ok"}
+  2026-08-11T06:44:18.998354 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:44:18.998226", "uptime": "ok"}
+  2026-08-11T06:49:19.013740 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:49:19.013718", "uptime": "ok"}
+  2026-08-11T06:54:19.040405 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:54:19.040297", "uptime": "ok"}
+  2026-08-11T06:59:19.059642 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T06:59:19.059621", "uptime": "ok"}
+  2026-08-11T07:04:19.109442 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:04:19.109384", "uptime": "ok"}
+  2026-08-11T07:09:19.130486 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:09:19.130464", "uptime": "ok"}
+  2026-08-11T07:14:19.148312 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:14:19.148182", "uptime": "ok"}
+  2026-08-11T07:19:19.162921 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:19:19.162897", "uptime": "ok"}
+  2026-08-11T07:24:19.187295 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:24:19.187223", "uptime": "ok"}
+  2026-08-11T07:29:19.200930 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:29:19.200871", "uptime": "ok"}
+  2026-08-11T07:34:19.223602 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:34:19.223578", "uptime": "ok"}
+  2026-08-11T07:39:19.241566 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:39:19.241543", "uptime": "ok"}
+  2026-08-11T07:44:19.284217 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:44:19.284145", "uptime": "ok"}
+  2026-08-11T07:49:19.311345 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:49:19.311320", "uptime": "ok"}
+  2026-08-11T07:54:19.338649 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:54:19.338622", "uptime": "ok"}
+  2026-08-11T07:59:19.357545 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T07:59:19.357473", "uptime": "ok"}
+  2026-08-11T08:04:36.209137 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:04:36.205134", "uptime": "ok"}
+  2026-08-11T08:09:36.231301 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:09:36.231278", "uptime": "ok"}
+  2026-08-11T08:14:36.248790 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:14:36.248657", "uptime": "ok"}
+  2026-08-11T08:19:36.267377 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:19:36.267241", "uptime": "ok"}
+  2026-08-11T08:24:36.288026 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:24:36.288002", "uptime": "ok"}
+  2026-08-11T08:29:36.320958 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:29:36.320935", "uptime": "ok"}
+  2026-08-11T08:34:38.197572 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:34:38.197471", "uptime": "ok"}
+  2026-08-11T08:39:38.215438 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:39:38.215374", "uptime": "ok"}
+  2026-08-11T08:44:38.233323 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:44:38.233302", "uptime": "ok"}
+  2026-08-11T08:45:30.702996 [system.premarket_refiner.run] PremarketRefiner | {"ok": true, "ts": "2026-08-11T08:45:30.702973"}
+  2026-08-11T08:50:00.980721 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:50:00.980610", "uptime": "ok"}
+  2026-08-11T08:55:01.019205 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T08:55:01.019172", "uptime": "ok"}
+  2026-08-11T09:00:06.250175 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:00:06.250155", "uptime": "ok"}
+  2026-08-11T09:00:33.885467 [market.price.update] MarketMonitor | {"signal_type": "BREAKOUT_TICK", "symbol": "NIFTY", "direction": "UP", "move_pct": 0.314, "ltp": 24661.1, "session_high": 24661.1, "session_low": 24583.8, "time": "09:00:33"}
+  2026-08-11T09:05:06.375171 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:05:06.375063", "uptime": "ok"}
+  2026-08-11T09:10:09.608211 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:10:09.608181", "uptime": "ok"}
+  2026-08-11T09:15:09.853894 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:15:09.853832", "uptime": "ok"}
+  2026-08-11T09:15:29.475713 [market.price.update] MarketMonitor | {"signal_type": "BREAKOUT_TICK", "symbol": "BANKNIFTY", "direction": "DOWN", "move_pct": -0.428, "ltp": 57440.0, "session_high": 57686.95, "session_low": 57440.0, "time": "09:15:28"}
+  2026-08-11T09:19:54.909863 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:20:09.905653 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:20:09.905628", "uptime": "ok"}
+  2026-08-11T09:24:54.928012 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:25:09.927714 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:25:09.927681", "uptime": "ok"}
+  2026-08-11T09:29:54.944592 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:30:09.944272 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:30:09.944218", "uptime": "ok"}
+  2026-08-11T09:34:54.978910 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:35:09.980888 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:35:09.980864", "uptime": "ok"}
+  2026-08-11T09:39:55.006087 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:40:10.008351 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:40:10.008292", "uptime": "ok"}
+  2026-08-11T09:44:55.044080 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:45:10.132411 [system.cycle.started] MasterOrchestrator | {"ts": "2026-08-11T09:45:10.132365"}
+  2026-08-11T09:45:10.231827 [global.distortion.detected] MarketDistortionScanner | {"risk_level": "NORMAL", "stress_score": 1, "any_distortion": false, "active_flags": [], "trading_allowed": true, "size_multiplier": 1.0, "max_new_trades": 10, "hedge_preferred": false, "sector_watche
+  2026-08-11T09:45:11.411110 [market.data.ready] MarketDataAI | {"vix": 12.26, "regime": "range_market", "breadth": 0.46, "pcr": 0.85}
+  2026-08-11T09:45:11.602063 [market.regime.classified] MarketRegimeAI | {"regime": "range_market", "volatility": "VolatilityLevel.LOW"}
+  2026-08-11T09:45:11.704489 [global.regime_probability.computed] RegimeProbabilityModel | {"trend_prob": 0.115, "range_prob": 0.8499, "volatile_prob": 0.0094, "bear_prob": 0.0257, "dominant": "range_market", "confidence": 0.7349, "stress_adjusted": true, "strategy_mix": {"momentum": 0.0633
+  2026-08-11T09:45:11.729371 [meta.learning.applied] MetaLearningEngine | {"top_strategy": "Breakout_Volume", "model_active": true, "allocations": {"Breakout_Volume": 0.25, "Momentum_Retest": 0.25, "Trend_Pullback": 0.25, "Mean_Reversion": 0.25}}
+  2026-08-11T09:45:13.815413 [opportunity.equity.found] EquityScannerAI | {"symbol": "BHARATFORG", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.3}
+  2026-08-11T09:45:13.827144 [opportunity.equity.found] EquityScannerAI | {"symbol": "INOXWIND", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 6.47}
+  2026-08-11T09:45:13.843824 [opportunity.equity.found] EquityScannerAI | {"symbol": "PAGEIND", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.779999999999999}
+  2026-08-11T09:45:13.855095 [opportunity.equity.found] EquityScannerAI | {"symbol": "CROMPTON", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.4399999999999995}
+  2026-08-11T09:45:13.859839 [opportunity.equity.found] EquityScannerAI | {"symbol": "OBEROIRLTY", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.2}
+  2026-08-11T09:45:13.874298 [opportunity.equity.found] EquityScannerAI | {"symbol": "ONGC", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.1}
+  2026-08-11T09:45:13.884532 [opportunity.equity.found] EquityScannerAI | {"symbol": "NTPC", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.37}
+  2026-08-11T09:45:13.898309 [opportunity.equity.found] EquityScannerAI | {"symbol": "MUTHOOTFIN", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.38}
+  2026-08-11T09:45:13.914516 [opportunity.equity.found] EquityScannerAI | {"symbol": "VOLTAS", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.3100000000000005}
+  2026-08-11T09:45:13.919664 [opportunity.equity.found] EquityScannerAI | {"symbol": "HDFCLIFE", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.62}
+  2026-08-11T09:45:13.947163 [opportunity.equity.found] EquityScannerAI | {"symbol": "MAXHEALTH", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.25}
+  2026-08-11T09:45:13.950535 [opportunity.equity.found] EquityScannerAI | {"symbol": "DABUR", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.18}
+  2026-08-11T09:45:13.961447 [opportunity.equity.found] EquityScannerAI | {"symbol": "TATACOMM", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.89}
+  2026-08-11T09:45:13.969231 [opportunity.equity.found] EquityScannerAI | {"symbol": "NHPC", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.32}
+  2026-08-11T09:45:13.976031 [opportunity.equity.found] EquityScannerAI | {"symbol": "COALINDIA", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.89}
+  2026-08-11T09:45:13.985315 [opportunity.equity.found] EquityScannerAI | {"symbol": "ADANIENT", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.07}
+  2026-08-11T09:45:14.026681 [opportunity.equity.found] EquityScannerAI | {"symbol": "RELIANCE", "direction": "SignalDirection.BUY", "strategy": "momentum_retest", "confidence": 6.0}
+  2026-08-11T09:45:14.028945 [opportunity.equity.found] EquityScannerAI | {"symbol": "ITC", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.63}
+  2026-08-11T09:45:14.030705 [opportunity.equity.found] EquityScannerAI | {"symbol": "POWERGRID", "direction": "SignalDirection.BUY", "strategy": "mean_reversion_bounce", "confidence": 5.1899999999999995}
+  2026-08-11T09:45:14.035179 [opportunity.equity.found] EquityScannerAI | {"symbol": "TITAN", "direction": "SignalDirection.BUY", "strategy": "breakout", "confidence": 7.48}
+  2026-08-11T09:45:14.039582 [opportunity.equity.found] EquityScannerAI | {"symbol": "HAVELLS", "direction": "SignalDirection.BUY", "strategy": "breakout", "confidence": 8.23}
+  2026-08-11T09:45:14.042943 [opportunity.equity.found] EquityScannerAI | {"symbol": "HAVELLS", "direction": "SignalDirection.BUY", "strategy": "breakout", "confidence": 8.23}
+  2026-08-11T09:45:14.047143 [opportunity.equity.found] EquityScannerAI | {"symbol": "NIFTY", "direction": "SignalDirection.SELL", "strategy": "Iron_Condor_Range", "confidence": 7.3}
+  2026-08-11T09:45:14.066650 [opportunity.equity.found] EquityScannerAI | {"symbol": "BANKNIFTY", "direction": "SignalDirection.SELL", "strategy": "Iron_Condor_Range", "confidence": 7.7}
+  2026-08-11T09:45:14.074532 [opportunity.equity.found] EquityScannerAI | {"symbol": "NIFTYBEES", "direction": "SignalDirection.BUY", "strategy": "unassigned", "confidence": 7.5}
+  2026-08-11T09:45:14.109611 [opportunity.equity.found] EquityScannerAI | {"symbol": "BANKBEES", "direction": "SignalDirection.SELL", "strategy": "unassigned", "confidence": 7.5}
+  2026-08-11T09:45:14.130918 [opportunity.scan.complete] MasterOrchestrator | {"equity": 22, "options": 2, "arb": 2, "total": 26}
+  2026-08-11T09:45:16.485760 [strategy.lab.complete] StrategyGeneratorAI | {"assigned": 6, "after_evo": 6, "after_bt": 6}
+  2026-08-11T09:45:16.710764 [risk.check.failed] RiskManagerAI | {"rejected": 1}
+  2026-08-11T09:45:16.758864 [simulation.complete] SimulationEngine | {"approved": 0, "rejected": 0, "rate": 0.0}
+  2026-08-11T09:45:16.792715 [risk.guardian.complete] RiskGuardian | {"approved": 0, "blocked": 0, "decision": "APPROVED"}
+  2026-08-11T09:45:16.851539 [risk.check.passed] CorrelationEngine | {"approved": 0, "before_correlation": 0, "after_correlation": 0, "sector_breakdown": {}}
+  2026-08-11T09:45:16.859426 [risk.portfolio.updated] SmartExecutionEngine | {"accepted_count": 0, "rejected_count": 0, "total_exposure": 0, "exposure_pct": 0.0, "sector_breakdown": {}, "direction_breakdown": {"BUY": 0.0, "SELL": 0.0}}
+  2026-08-11T09:45:16.867085 [system.cycle.complete] MasterOrchestrator | {"signals_processed": 0}
+  2026-08-11T09:45:17.581218 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:45:17.581201", "uptime": "ok"}
+  2026-08-11T09:50:02.776985 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:50:17.776800 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:50:17.776777", "uptime": "ok"}
+  2026-08-11T09:55:02.844996 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T09:55:18.006069 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T09:55:18.006043", "uptime": "ok"}
+  2026-08-11T10:00:03.293361 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:00:18.295713 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:00:18.295674", "uptime": "ok"}
+  2026-08-11T10:05:03.352280 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:05:18.350322 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:05:18.350300", "uptime": "ok"}
+  2026-08-11T10:10:03.381494 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:10:18.381794 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:10:18.381756", "uptime": "ok"}
+  2026-08-11T10:15:03.425518 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:15:18.423444 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:15:18.423409", "uptime": "ok"}
+  2026-08-11T10:20:03.450996 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:20:18.452334 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:20:18.452298", "uptime": "ok"}
+  2026-08-11T10:25:03.470618 [risk.portfolio.updated] TradeMonitor | {"drawdown_pct": 0.0, "open_positions": 0}
+  2026-08-11T10:25:18.487998 [system.heartbeat] MasterOrchestrator | {"ts": "2026-08-11T10:25:18.487974", "uptime": "ok"}
+  2026-08-11T10:30:03.550893 [system.cycle.started] MasterOrchestrator | {"ts": "2026-08-11T10:30:03.550854"}
+  2026-08-11T10:30:03.814657 [global.distortion.detected] MarketDistortionScanner | {"risk_level": "NORMAL", "stress_score": 1, "any_distortion": false, "active_flags": [], "trading_allowed": true, "size_multiplier": 1.0, "max_new_trades": 10, "hedge_preferred": false, "sector_watche

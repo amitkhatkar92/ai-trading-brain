@@ -1,0 +1,34 @@
+{
+  "research_id": "FINAL_TRADING_ARCHITECTURE_SHADOW_001",
+  "architecture": "FINAL_TRADING_ARCHITECTURE_SHADOW_001_v1",
+  "date_generated": "2026-08-21",
+  "shadow_days": 0,
+  "regimes_observed": [],
+  "strategy_question_status": "INSUFFICIENT",
+  "up_c2_total": 0,
+  "dn_c2_total": 0,
+  "strategy_pass_up_total": 0,
+  "strategy_reject_up_total": 0,
+  "model_a_up": {
+    "n": 0,
+    "dir_acc": null,
+    "ge2_rate": null
+  },
+  "model_a_down": {
+    "n": 0,
+    "dir_acc": null,
+    "ge2_rate": null
+  },
+  "model_b_up": {
+    "n": 0,
+    "dir_acc": null,
+    "ge2_rate": null
+  },
+  "safety": {
+    "broker_calls": 0,
+    "orders": 0,
+    "positions": 0,
+    "candidatestore_writes": 0,
+    "execution_calls": 0
+  }
+}

@@ -1,0 +1,5 @@
+direction,regime,strategy_filter,n,dir_acc,ge2_rate,ge3_rate,fp_rate,ev
+UP,BULL,strategy_pass,65,0.5538,0.2462,0.2,0.2,0.9803
+UP,BEAR,strategy_reject,95,0.5684,0.3263,0.2632,0.3579,0.6202
+UP,RANGE,strategy_pass,860,0.5674,0.2407,0.1721,0.2419,0.7741
+UP,RANGE,strategy_reject,45,0.7556,0.4889,0.2889,0.1111,1.6173

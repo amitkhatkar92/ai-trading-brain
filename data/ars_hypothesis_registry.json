@@ -1,0 +1,771 @@
+{
+  "version": "1.0",
+  "created_at": "2026-08-05T16:26:53.506712",
+  "last_updated": "2026-08-06T10:29:30.558174",
+  "hypothesis_count": 16,
+  "hypotheses": {
+    "H2026-08-001": {
+      "hypothesis_id": "H2026-08-001",
+      "title": "Loser DNA cross-year validation",
+      "research_question": "Do loser DNA conditions derived from 2021-2025 persist in 2026 and beyond?",
+      "description": "Study-003 derived 0 loser DNA patterns from 2021-2025 data. This hypothesis tests whether these patterns remain predictive in out-of-sample years.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.554420",
+      "created_by": "KMP-001",
+      "priority": "CRITICAL",
+      "confidence": 0.48,
+      "status": "CONFIRMED",
+      "classification": "TEMPORAL_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "ars_study_003",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from ars_study_003",
+          "added_at": "2026-08-05T16:26:53.552156",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Loser DNA not yet validated across time periods",
+      "expected_knowledge_gain": "Establish cross-year loser DNA confidence and retire patterns that do not persist",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "HKAP 2026 backtest on loser conditions from study003",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "86C540C4",
+          "timestamp": "2026-08-05T16:26:53.554420",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        },
+        {
+          "event_id": "EDAFBC57",
+          "timestamp": "2026-08-05T17:10:48.116328",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → UNDER_REVIEW",
+          "reason": "H001 research cycle initiated",
+          "previous_status": "PROPOSED",
+          "new_status": "UNDER_REVIEW",
+          "metadata": {}
+        },
+        {
+          "event_id": "AED2FA05",
+          "timestamp": "2026-08-05T17:10:48.120314",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → APPROVED",
+          "reason": "Scientific Director approved for execution",
+          "previous_status": "UNDER_REVIEW",
+          "new_status": "APPROVED",
+          "metadata": {}
+        },
+        {
+          "event_id": "F58DFDB2",
+          "timestamp": "2026-08-05T17:10:48.123200",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → PLANNED",
+          "reason": "Study plan SP created, dataset: 500 records",
+          "previous_status": "APPROVED",
+          "new_status": "PLANNED",
+          "metadata": {}
+        },
+        {
+          "event_id": "283DCDC1",
+          "timestamp": "2026-08-05T17:10:48.125501",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → RUNNING",
+          "reason": "Year-split validation running: 2025 train / 2026 test",
+          "previous_status": "PLANNED",
+          "new_status": "RUNNING",
+          "metadata": {}
+        },
+        {
+          "event_id": "9D0B37A1",
+          "timestamp": "2026-08-05T17:10:48.127947",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → VALIDATED",
+          "reason": "Validation complete: 1/20 confirmed",
+          "previous_status": "RUNNING",
+          "new_status": "VALIDATED",
+          "metadata": {}
+        },
+        {
+          "event_id": "9980DA7C",
+          "timestamp": "2026-08-05T17:10:48.129939",
+          "actor": "H-CRITICAL-001",
+          "action": "STATUS_CHANGE → CONFIRMED",
+          "reason": "First autonomous research cycle complete. Conditions tested: 20. Validated: 1 / Rejected: 9 / Partial: 8. Verdict: PARTIALLY_CONFIRMED",
+          "previous_status": "VALIDATED",
+          "new_status": "CONFIRMED",
+          "metadata": {
+            "study_id": "ars_study_h001",
+            "conditions_tested": 20,
+            "conditions_validated": 1,
+            "conditions_rejected": 9,
+            "train_year": "2025",
+            "valid_year": "2026",
+            "rc_run_id": "rc-20260805-cc8b59fc"
+          }
+        },
+        {
+          "event_id": "9032466A",
+          "timestamp": "2026-08-05T17:11:41.766609",
+          "actor": "H-CRITICAL-001",
+          "action": "UPDATE_CONFIDENCE",
+          "reason": "Post-validation confidence update: -0.40 net",
+          "previous_status": "CONFIRMED",
+          "new_status": "CONFIRMED",
+          "metadata": {
+            "old_confidence": 0.6,
+            "new_confidence": 0.48
+          }
+        }
+      ],
+      "last_reviewed": "2026-08-05T17:10:48.129943",
+      "notes": [
+        "[2026-08-06 10:29] system: [IRP-002 2026-08-06] IRP-002: No significant difference (winner=1.086, loser=1.050, delta=+0.036). H001 conclusion 'loser DNA more ephemeral' NOT SUPPORTED. H001 downgraded: PARTIALLY_CONFIRMED with caveat."
+      ]
+    },
+    "H2026-08-002": {
+      "hypothesis_id": "H2026-08-002",
+      "title": "High-OOS low-support statistical significance",
+      "research_question": "Are 100% OOS win rate edges with n<25 statistically real or sampling artefacts?",
+      "description": "16 edges achieve ≥90% OOS win rate with fewer than 25 test samples. Bootstrap confidence intervals are required to establish significance.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.556020",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "PERFORMANCE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "EDG_COMPOS_86_EE0001",
+          "evidence_type": "EDGE",
+          "description": "Supporting evidence from EDG_COMPOS_86_EE0001",
+          "added_at": "2026-08-05T16:26:53.555969",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "No significance testing on high-OOS low-support edges",
+      "expected_knowledge_gain": "Establish minimum sample size threshold for OOS win rate reliability",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Bootstrap resampling with 1000 iterations on each high-OOS edge",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "EAD17C32",
+          "timestamp": "2026-08-05T16:26:53.556020",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-003": {
+      "hypothesis_id": "H2026-08-003",
+      "title": "Regime transition prediction",
+      "research_question": "What feature combinations reliably predict regime transitions 2-5 days in advance?",
+      "description": "Regime detection confidence is bimodal: 124 records ≥0.80 and 140 records ≤0.25. Predicting regime change ahead of the change would allow IIOS to reposition before the shift.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.560147",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "COVERAGE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "re001a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from re001a",
+          "added_at": "2026-08-05T16:26:53.560127",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "No predictive model for regime transitions",
+      "expected_knowledge_gain": "Add 2-5 day regime prediction lead time; improve RANGE_MARKET capture",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Time-lagged feature correlation vs regime-change indicator",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "703F0E1F",
+          "timestamp": "2026-08-05T16:26:53.560147",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-004": {
+      "hypothesis_id": "H2026-08-004",
+      "title": "Edge decay mechanism investigation",
+      "research_question": "What mechanism causes DECAYING edges to lose predictive power?",
+      "description": "132 edges are DECAYING (51% of library). Understanding the decay mechanism enables proactive edge retirement and regeneration.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.562887",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "DEGRADATION",
+      "supporting_evidence": [
+        {
+          "evidence_id": "re001a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from re001a",
+          "added_at": "2026-08-05T16:26:53.562878",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Decay mechanism unknown; no predictive early-warning system",
+      "expected_knowledge_gain": "Implement decay early-warning indicator; reduce stale edge trading",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Time-series analysis of edge OOS performance vs composite_score trajectory",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "6381247B",
+          "timestamp": "2026-08-05T16:26:53.562887",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-005": {
+      "hypothesis_id": "H2026-08-005",
+      "title": "Signal approval rate optimisation",
+      "research_question": "Why does only 2.1% of signals reach execution, and is this rate correctly calibrated?",
+      "description": "The replay approval rate was 2.1%. Despite high signal count, very few trades executed. This could indicate overly conservative kill conditions or insufficient regime alignment.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.566343",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "PERFORMANCE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "re001a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from re001a",
+          "added_at": "2026-08-05T16:26:53.566334",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Kill condition calibration not validated scientifically",
+      "expected_knowledge_gain": "Increase approved trade count without degrading win rate",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Sensitivity analysis on each kill condition threshold",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "94EC6E0A",
+          "timestamp": "2026-08-05T16:26:53.566343",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-006": {
+      "hypothesis_id": "H2026-08-006",
+      "title": "Sector rotation cycle mapping",
+      "research_question": "Can IIOS identify recurring sector rotation cycles from historical data?",
+      "description": "Current sector analysis covers only 2 sectors (IT, METALS). A sector rotation map would allow sector-timed entries.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.568917",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "COVERAGE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002a",
+          "added_at": "2026-08-05T16:26:53.568909",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "No sector rotation model",
+      "expected_knowledge_gain": "Enable sector-timed entry signals; improve sector intelligence score",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Cross-sector correlation matrix across 2015-2026 with rolling windows",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "46741034",
+          "timestamp": "2026-08-05T16:26:53.568917",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-007": {
+      "hypothesis_id": "H2026-08-007",
+      "title": "Feature interaction mining for multi-condition edges",
+      "research_question": "Which specific 2-3 feature combinations produce the highest synergistic lift?",
+      "description": "243 edges use 3+ conditions. The synergy mechanism is not fully understood. Systematic pairwise and triplet mining would reveal the most powerful interactions.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.571809",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "EXPLORATORY",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002",
+          "added_at": "2026-08-05T16:26:53.571802",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Feature interaction landscape not systematically mapped",
+      "expected_knowledge_gain": "Discover 10+ new high-confidence multi-condition edges",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Exhaustive pairwise feature combination testing with OOS validation",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "88D31C4A",
+          "timestamp": "2026-08-05T16:26:53.571809",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-008": {
+      "hypothesis_id": "H2026-08-008",
+      "title": "Mean-reversion signal quantification",
+      "research_question": "After how many consecutive up days does mean-reversion become statistically significant?",
+      "description": "Feature 'cons_up_days' shows negative correlation with forward return. The exact threshold (3 days? 5 days?) where this becomes tradeable is unknown.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.574259",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "EXPLORATORY",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002a",
+          "added_at": "2026-08-05T16:26:53.574251",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Mean-reversion threshold not quantified",
+      "expected_knowledge_gain": "Add mean-reversion signals to edge library; exploit identified pattern",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Conditional return analysis: forward return by cons_up_days quintile",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "4351D121",
+          "timestamp": "2026-08-05T16:26:53.574259",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-009": {
+      "hypothesis_id": "H2026-08-009",
+      "title": "Cross-regime loser DNA persistence",
+      "research_question": "Do loser conditions from bear markets predict losses in bull and range markets?",
+      "description": "Loser DNA from Study-003 was derived from mixed regime data. Regime-specific loser validation would enable regime-conditional risk management.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.576469",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "TEMPORAL_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "ars_study_003",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from ars_study_003",
+          "added_at": "2026-08-05T16:26:53.576458",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Loser DNA not regime-stratified",
+      "expected_knowledge_gain": "Build regime-specific loser DNA libraries; improve risk filtering",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Stratify feature records by dominant regime, re-derive loser DNA per regime",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "378D6B10",
+          "timestamp": "2026-08-05T16:26:53.576469",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-010": {
+      "hypothesis_id": "H2026-08-010",
+      "title": "Institutional DNA consensus formation",
+      "research_question": "At what evidence threshold does a pattern qualify as Institutional Knowledge?",
+      "description": "Currently DNA is promoted by KMP governance thresholds (conf>=0.50, lift>=2.0). A scientific consensus protocol would make promotion objective and reproducible.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.578420",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "MANUAL",
+      "supporting_evidence": [
+        {
+          "evidence_id": "ars_study_003",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from ars_study_003",
+          "added_at": "2026-08-05T16:26:53.578412",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "DNA promotion criteria not scientifically grounded",
+      "expected_knowledge_gain": "Establish evidence-based governance standard for IIOS V2 DNA promotion",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Bayesian prior update model: P(institutional) = f(confidence, lift, replications)",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "83748F33",
+          "timestamp": "2026-08-05T16:26:53.578420",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-011": {
+      "hypothesis_id": "H2026-08-011",
+      "title": "BEAR_MARKET DNA coverage gap",
+      "research_question": "Which features and edges perform in BEAR_MARKET regime?",
+      "description": "Replay data shows 0 trades in BEAR_MARKET across 4 days. IIOS currently has no bear-market-specific DNA.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.580293",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "COVERAGE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "re001a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from re001a",
+          "added_at": "2026-08-05T16:26:53.580285",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "No BEAR_MARKET DNA in library",
+      "expected_knowledge_gain": "Add short/defensive DNA to enable trading in bear regimes",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Replay on 2020 COVID crash and 2022 rate-hike bear market",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "44413934",
+          "timestamp": "2026-08-05T16:26:53.580293",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-012": {
+      "hypothesis_id": "H2026-08-012",
+      "title": "DNA replication across independent studies",
+      "research_question": "Which DNA patterns appear in all three studies (re001a, study002, study002a)?",
+      "description": "Cross-study replication is the gold standard for institutional DNA. Patterns replicated across all 3 studies should receive highest confidence.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.582463",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "MANUAL",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002a",
+          "added_at": "2026-08-05T16:26:53.582455",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Cross-study DNA replication not assessed",
+      "expected_knowledge_gain": "Identify 5+ patterns replicated across all studies; promote to gold-tier DNA",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "DNA pattern matching across study002, study002a, and re001a feature conditions",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "25A8A7DF",
+          "timestamp": "2026-08-05T16:26:53.582463",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-013": {
+      "hypothesis_id": "H2026-08-013",
+      "title": "10-year historical knowledge expansion",
+      "research_question": "What institutional patterns are visible in 2015-2020 data not yet studied?",
+      "description": "Current knowledge covers 2021-2026. The 2015-2020 period includes bull market, trade war, COVID events absent from current knowledge.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.584757",
+      "created_by": "KMP-001",
+      "priority": "HIGH",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "TEMPORAL_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002a",
+          "added_at": "2026-08-05T16:26:53.584751",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "10 years of history not yet incorporated",
+      "expected_knowledge_gain": "Expand knowledge base to 10 years; achieve 80+ research coverage",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "HKAP run on 2015-2020 data with full feature extraction",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "3FC3C64F",
+          "timestamp": "2026-08-05T16:26:53.584757",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-014": {
+      "hypothesis_id": "H2026-08-014",
+      "title": "Edge approval → live execution gap analysis",
+      "research_question": "What happens between edge approval and live execution, and why is the gap so large?",
+      "description": "259 edges exist; only 6 trades executed in 30-day replay. The full pipeline from edge to execution needs end-to-end profiling.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.587103",
+      "created_by": "KMP-001",
+      "priority": "CRITICAL",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "PERFORMANCE_GAP",
+      "supporting_evidence": [
+        {
+          "evidence_id": "re001a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from re001a",
+          "added_at": "2026-08-05T16:26:53.587096",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Pipeline execution gap not understood",
+      "expected_knowledge_gain": "Increase executed trades by 5× without degrading win rate",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Decision trace analysis: log kill-switch activations per signal",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "91AA9B22",
+          "timestamp": "2026-08-05T16:26:53.587103",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-015": {
+      "hypothesis_id": "H2026-08-015",
+      "title": "Winner DNA regime-specific enhancement",
+      "research_question": "Do winner DNA patterns perform differently across regimes?",
+      "description": "8 winner DNA records promoted. Regime-stratified winner DNA would enable regime-timed entries.",
+      "origin": "KMP-001/scientific_director",
+      "origin_study": "KMP-001",
+      "created_at": "2026-08-05T16:26:53.589421",
+      "created_by": "KMP-001",
+      "priority": "MEDIUM",
+      "confidence": 0.6,
+      "status": "PROPOSED",
+      "classification": "EXPLORATORY",
+      "supporting_evidence": [
+        {
+          "evidence_id": "study002a",
+          "evidence_type": "STUDY",
+          "description": "Supporting evidence from study002a",
+          "added_at": "2026-08-05T16:26:53.589414",
+          "added_by": "KMP-001"
+        }
+      ],
+      "knowledge_gap": "Winner DNA not regime-stratified",
+      "expected_knowledge_gain": "Build regime-specific winner DNA sets; improve timing accuracy",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "Re-derive winner DNA per dominant regime from study002a feature records",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "51222EDD",
+          "timestamp": "2026-08-05T16:26:53.589421",
+          "actor": "KMP-001",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    },
+    "H2026-08-016": {
+      "hypothesis_id": "H2026-08-016",
+      "title": "Winner DNA cross-year lift comparison (multi-year expansion)",
+      "research_question": "Does a 10-year feature record expansion (2016-2026) provide sufficient statistical power to detect a significant difference in cross-year persistence between winner DNA and loser DNA?",
+      "description": "IRP-002 returned outcome B/C due to insufficient feature records (500 records, 2025-2026 only). Expanding to a 10-year dataset will provide the statistical power needed for a conclusive comparison.",
+      "origin": "IRP-002",
+      "origin_study": "ars_study_irp002",
+      "created_at": "2026-08-06T10:29:30.558081",
+      "created_by": "IRP-002",
+      "priority": "HIGH",
+      "confidence": 0.5,
+      "status": "PROPOSED",
+      "classification": "TEMPORAL_GAP",
+      "supporting_evidence": [],
+      "knowledge_gap": "Feature record database covers only 2025-2026 (500 records). atr_14 is not available in the feature record schema. 10-year expansion required for definitive conclusion.",
+      "expected_knowledge_gain": "Definitive symmetric comparison of winner vs loser DNA persistence. Resolves H001 partially-confirmed status.",
+      "required_data": {},
+      "dependencies": [],
+      "validation_method": "feature_match on expanded 10-year feature DB, year-split validation.",
+      "validation_result": null,
+      "decision_history": [
+        {
+          "event_id": "6B4C5B95",
+          "timestamp": "2026-08-06T10:29:30.558081",
+          "actor": "IRP-002",
+          "action": "CREATE",
+          "reason": "Initial creation",
+          "previous_status": "PROPOSED",
+          "new_status": "PROPOSED",
+          "metadata": {}
+        }
+      ],
+      "last_reviewed": null,
+      "notes": []
+    }
+  }
+}

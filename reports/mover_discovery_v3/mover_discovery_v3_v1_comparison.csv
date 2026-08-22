@@ -1,0 +1,16 @@
+metric,old_scanner_run1,v3_run1,notes
+trading_date,2026-08-13,2026-08-13,Same date
+candidate_count,52,40,"Old scanner: 52 (after score floor). V3: 40 (20 UP + 20 DOWN)."
+overlap_count,0,0,Zero overlap — completely disjoint selection mechanisms
+overlap_pct,0.0,0.0,
+universe_processed,165,200,"Old scanner: 165/230 had sufficient data. V3: 200/230 had sufficient OHLCV."
+selection_mechanism,bucket_gates_plus_score_floor,continuous_percentile_rank,"Old: bucket classification (BREAKOUT/MOMENTUM/etc.) + score>=0.55. V3: continuous atr_pct/mom/vol ranking."
+t1_avg_return_pct,NOT_AVAILABLE,0.381 (UP) / 0.461 adverse (DOWN),"Old scanner symbol list not retained — cannot compute outcomes. Gap."
+t1_ge2pct_count,NOT_AVAILABLE,2 UP / 2 DOWN (1 day only),
+t1_top5_capture,NOT_AVAILABLE,2/5 UP / 0/5 DOWN (1 day only),
+strong_up_capture_ge2pct,NOT_AVAILABLE,2/19 (10.5%),
+strong_dn_capture_le_neg2pct,NOT_AVAILABLE,2/21 (9.5%),
+direction_distinction,single_pool,separate_UP_and_DOWN_pools,"Old scanner does not separate UP and DOWN. V3 provides directional hypothesis for each candidate."
+score_range,0.55_to_1.0,0.0_to_1.0,
+methodology_verdict,ESTABLISHED_PRODUCTION,RESEARCH_SHADOW_ONLY,
+comparison_verdict,CANNOT_ASSESS_INSUFFICIENT_DATA,CANNOT_ASSESS_INSUFFICIENT_DATA,"Minimum 20 days required for valid comparison."

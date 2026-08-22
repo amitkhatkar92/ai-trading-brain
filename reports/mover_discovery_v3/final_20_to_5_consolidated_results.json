@@ -1,0 +1,112 @@
+{
+  "research_id": "FINAL_20_TO_5_CONSOLIDATED_RESEARCH_001",
+  "date": "2026-08-17",
+  "mode": "READ_ONLY_CONSOLIDATION",
+  "source_studies": [
+    "V3_RETRO_001",
+    "POST_OPEN_SELECTION_001",
+    "V3_KNOWLEDGE_2ND_PASS_001",
+    "V3_ORTHOGONAL_DIRECTION_001",
+    "V3_SHADOW_AUDIT_001",
+    "KNOWLEDGE_VS_STRATEGY_002",
+    "KNOWLEDGE_VS_STRATEGY_003",
+    "STRATEGY_RECONSTRUCTION_VALIDATION_001"
+  ],
+  "contradictions_found": 0,
+  "new_experiments_run": 0,
+  "model_ranking_oos_UP": {
+    "rank1_winner": {
+      "model": "C2_Top5",
+      "description": "Post-open gap magnitude (direction-signed), Top 5",
+      "timing": "POST_OPEN",
+      "dir_acc": 0.6151,
+      "ge2_rate": 0.2906,
+      "ge3_rate": 0.2113,
+      "lift_vs_pool": 1.7149,
+      "n": 265,
+      "delta_vs_v3top5_dir": 0.1057,
+      "delta_vs_v3top5_ge2": 0.0642,
+      "evidence_quality": "VALIDATED"
+    },
+    "rank2": {
+      "model": "C1_Top5",
+      "description": "Post-open gap direction (binary), Top 5",
+      "timing": "POST_OPEN",
+      "dir_acc": 0.5472,
+      "ge2_rate": 0.2415
+    },
+    "rank3": {
+      "model": "A_V3_Top5",
+      "description": "V3 score only (pre-market baseline)",
+      "timing": "PRE_MARKET",
+      "dir_acc": 0.5094,
+      "ge2_rate": 0.2264
+    },
+    "failed_models": [
+      "Know_Top5 (-5.7pp)",
+      "A1_Sector (-0.4pp)",
+      "F1_InvKn (-5.6pp)"
+    ]
+  },
+  "model_ranking_oos_DOWN": {
+    "rank1_winner": {
+      "model": "C2_Top5",
+      "description": "Post-open gap magnitude (direction-signed), Top 5",
+      "timing": "POST_OPEN",
+      "dir_acc": 0.6038,
+      "ge2_rate": 0.2415,
+      "ge3_rate": 0.1509,
+      "lift_vs_pool": 1.746,
+      "n": 265,
+      "delta_vs_v3top5_dir": 0.117,
+      "delta_vs_v3top5_ge2": 0.0604,
+      "evidence_quality": "VALIDATED"
+    },
+    "rank2": {
+      "model": "C1_Top5",
+      "description": "Post-open gap direction (binary), Top 5",
+      "timing": "POST_OPEN",
+      "dir_acc": 0.5434,
+      "ge2_rate": 0.234
+    },
+    "rank3": {
+      "model": "A_V3_Top5",
+      "description": "V3 score only (pre-market baseline)",
+      "timing": "PRE_MARKET",
+      "dir_acc": 0.4868,
+      "ge2_rate": 0.1811
+    },
+    "failed_models": [
+      "A1_Sector (mixed)",
+      "F1_InvKn (WORSE)",
+      "Know_Top5 (negative)"
+    ]
+  },
+  "post_open_gap_required": true,
+  "post_open_gap_reason": "C2_score = T+1_open/T_close - 1. All top models require post-open observation. No validated pre-market alternative exists.",
+  "strategy_layer_status": {
+    "question1_resolved": false,
+    "oos_evidence": "INSUFFICIENT (0 BEAR/VOLATILE days in OOS window)",
+    "full_period_delta_ge2_UP": -0.0066,
+    "bear_up_false_rejection_rate": 0.3263,
+    "recommendation": "Do not insert as hard gate for UP until OOS evidence available. Does not block 20\u21925 C2 decision."
+  },
+  "separate_models_required": false,
+  "reason_same_model": "C2_Top5 is the winner for BOTH UP and DOWN. Same formula, symmetric application.",
+  "architecture": {
+    "step1": "V3 Discovery \u2192 20 UP + 20 DOWN pools (T close)",
+    "step2": "Wait for T+1 market open",
+    "step3": "Observe opening gap for each of 40 candidates",
+    "step4_UP": "Rank 20 UP candidates by gap_pct (largest gap-UP first); Select top 5",
+    "step4_DOWN": "Rank 20 DOWN candidates by (-gap_pct) (largest gap-DOWN first); Select top 5",
+    "step5": "Final: 5 UP + 5 DOWN",
+    "note": "Strategy placement is optional / still under Q1 observation. Does NOT change the 20\u21925 selection."
+  },
+  "final_verdict": "FINAL_SELECTION_ARCHITECTURE_CAN_BE_FROZEN_FOR_SHADOW_VALIDATION",
+  "blocker_remaining": null,
+  "production_isolation": {
+    "production_changes": 0,
+    "orders": 0,
+    "broker_calls": 0
+  }
+}

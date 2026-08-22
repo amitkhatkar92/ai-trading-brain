@@ -1,0 +1,259 @@
+{
+  "audit_id": "TOP_MOVER_SELECTION_AUDIT_001",
+  "date": "2026-08-14",
+  "data_range": {
+    "start": "2021-02-05",
+    "end": "2025-12-22",
+    "n_dates": 1204
+  },
+  "summary_a": {
+    "model": "MODEL_A",
+    "n_dates": 1204,
+    "pool_up_count": 17.7284,
+    "sel_up_count": 5.8837,
+    "pool_down_count": 0.0,
+    "sel_down_count": 0.0,
+    "up_dir_acc_5d": 0.5126,
+    "down_dir_acc_5d": null,
+    "smcr_up_1pct_pool": 0.0931,
+    "smcr_up_1pct_sel": 0.0311,
+    "smcr_up_2pct_pool": 0.0982,
+    "smcr_up_2pct_sel": 0.0337,
+    "smcr_up_3pct_pool": 0.1004,
+    "smcr_up_3pct_sel": 0.0353,
+    "smcr_down_1pct_pool": 0.0,
+    "smcr_down_1pct_sel": 0.0,
+    "smcr_down_2pct_pool": 0.0,
+    "smcr_down_2pct_sel": 0.0,
+    "smcr_down_3pct_pool": 0.0,
+    "smcr_down_3pct_sel": 0.0,
+    "pool_precision_up": 0.3316,
+    "sel_precision_up": 0.3356,
+    "sel_lift_up": 1.1783,
+    "pool_precision_down": 0.0,
+    "sel_precision_down": 0.0,
+    "top1_up_capture": 0.0897,
+    "top3_up_capture": 0.2234,
+    "top5_up_capture": 0.3214,
+    "top1_down_capture": 0.0,
+    "top3_down_capture": 0.0,
+    "top5_down_capture": 0.0,
+    "sel_up_avg_ret_1d": 0.1859,
+    "sel_up_avg_ret_3d": 0.39,
+    "sel_up_avg_ret_5d": 0.6192,
+    "sel_up_avg_mfe": 5.3782,
+    "sel_up_avg_mae": -4.0305
+  },
+  "summary_b": {
+    "model": "MODEL_B",
+    "n_dates": 1204,
+    "pool_up_count": 20.0,
+    "sel_up_count": 6.0,
+    "pool_down_count": 20.0,
+    "sel_down_count": 6.0,
+    "up_dir_acc_5d": 0.5037,
+    "down_dir_acc_5d": 0.4857,
+    "smcr_up_1pct_pool": 0.1002,
+    "smcr_up_1pct_sel": 0.031,
+    "smcr_up_2pct_pool": 0.1042,
+    "smcr_up_2pct_sel": 0.0326,
+    "smcr_up_3pct_pool": 0.1069,
+    "smcr_up_3pct_sel": 0.0337,
+    "smcr_down_1pct_pool": 0.1057,
+    "smcr_down_1pct_sel": 0.0354,
+    "smcr_down_2pct_pool": 0.1149,
+    "smcr_down_2pct_sel": 0.0404,
+    "smcr_down_3pct_pool": 0.1258,
+    "smcr_down_3pct_sel": 0.0461,
+    "pool_precision_up": 0.3147,
+    "sel_precision_up": 0.3241,
+    "sel_lift_up": 1.1258,
+    "pool_precision_down": 0.2907,
+    "sel_precision_down": 0.3108,
+    "top1_up_capture": 0.0706,
+    "top3_up_capture": 0.1628,
+    "top5_up_capture": 0.2409,
+    "top1_down_capture": 0.0822,
+    "top3_down_capture": 0.2151,
+    "top5_down_capture": 0.3646,
+    "sel_up_avg_ret_1d": 0.2153,
+    "sel_up_avg_ret_3d": 0.2976,
+    "sel_up_avg_ret_5d": 0.4171,
+    "sel_up_avg_mfe": 4.8476,
+    "sel_up_avg_mae": -3.7292
+  },
+  "summary_c": {
+    "model": "MODEL_C",
+    "n_dates": 1204,
+    "pool_up_count": 20.0,
+    "sel_up_count": 6.0,
+    "pool_down_count": 20.0,
+    "sel_down_count": 6.0,
+    "up_dir_acc_5d": 0.5096,
+    "down_dir_acc_5d": 0.49,
+    "smcr_up_1pct_pool": 0.1022,
+    "smcr_up_1pct_sel": 0.0317,
+    "smcr_up_2pct_pool": 0.1062,
+    "smcr_up_2pct_sel": 0.0348,
+    "smcr_up_3pct_pool": 0.1087,
+    "smcr_up_3pct_sel": 0.0372,
+    "smcr_down_1pct_pool": 0.1105,
+    "smcr_down_1pct_sel": 0.037,
+    "smcr_down_2pct_pool": 0.1219,
+    "smcr_down_2pct_sel": 0.0431,
+    "smcr_down_3pct_pool": 0.1348,
+    "smcr_down_3pct_sel": 0.0505,
+    "pool_precision_up": 0.323,
+    "sel_precision_up": 0.3414,
+    "sel_lift_up": 1.2023,
+    "pool_precision_down": 0.3,
+    "sel_precision_down": 0.3239,
+    "top1_up_capture": 0.0847,
+    "top3_up_capture": 0.2068,
+    "top5_up_capture": 0.3123,
+    "top1_down_capture": 0.0939,
+    "top3_down_capture": 0.2467,
+    "top5_down_capture": 0.4045,
+    "sel_up_avg_ret_1d": 0.2237,
+    "sel_up_avg_ret_3d": 0.3715,
+    "sel_up_avg_ret_5d": 0.5869,
+    "sel_up_avg_mfe": 5.3174,
+    "sel_up_avg_mae": -3.9651
+  },
+  "regime_stats": {
+    "MODEL_A": {
+      "TRENDING_UP": {
+        "n_dates": 401,
+        "smcr_up_2pct_sel": 0.0357259734238554,
+        "up_dir_acc_5d": 0.5216126350789693,
+        "sel_up_avg_ret_5d": 1.036915170407315
+      },
+      "SIDEWAYS": {
+        "n_dates": 719,
+        "smcr_up_2pct_sel": 0.03357010977757689,
+        "up_dir_acc_5d": 0.49900324524802964,
+        "sel_up_avg_ret_5d": 0.40190429299953634
+      },
+      "TRENDING_DOWN": {
+        "n_dates": 84,
+        "smcr_up_2pct_sel": 0.024501150219951456,
+        "up_dir_acc_5d": 0.5865079365079365,
+        "sel_up_avg_ret_5d": 0.4849121825396825
+      }
+    },
+    "MODEL_B": {
+      "TRENDING_UP": {
+        "n_dates": 401,
+        "smcr_up_2pct_sel": 0.03363152677703228,
+        "up_dir_acc_5d": 0.5174563591022444,
+        "sel_up_avg_ret_5d": 0.8615359517871987
+      },
+      "SIDEWAYS": {
+        "n_dates": 719,
+        "smcr_up_2pct_sel": 0.03280228197309218,
+        "up_dir_acc_5d": 0.4935095039406584,
+        "sel_up_avg_ret_5d": 0.16411006026889202
+      },
+      "TRENDING_DOWN": {
+        "n_dates": 84,
+        "smcr_up_2pct_sel": 0.0253350481865673,
+        "up_dir_acc_5d": 0.5257936507936508,
+        "sel_up_avg_ret_5d": 0.46050674603174596
+      }
+    },
+    "MODEL_C": {
+      "TRENDING_UP": {
+        "n_dates": 401,
+        "smcr_up_2pct_sel": 0.037093504035836375,
+        "up_dir_acc_5d": 0.5266001662510391,
+        "sel_up_avg_ret_5d": 1.0288504156275977
+      },
+      "SIDEWAYS": {
+        "n_dates": 719,
+        "smcr_up_2pct_sel": 0.03409163660389626,
+        "up_dir_acc_5d": 0.49536393138618456,
+        "sel_up_avg_ret_5d": 0.35230261937876683
+      },
+      "TRENDING_DOWN": {
+        "n_dates": 84,
+        "smcr_up_2pct_sel": 0.029297303808036006,
+        "up_dir_acc_5d": 0.5496031746031746,
+        "sel_up_avg_ret_5d": 0.48568710317460323
+      }
+    }
+  },
+  "leakage_tests": [
+    {
+      "test_id": "L1",
+      "name": "No future returns in feature columns",
+      "passed": true,
+      "detail": "overlap=set()"
+    },
+    {
+      "test_id": "L2",
+      "name": "Model B scoring uses only feature inputs",
+      "passed": true,
+      "detail": "score_model_b() signature verified: accepts only feat_row (no return data)"
+    },
+    {
+      "test_id": "L3",
+      "name": "Model A uses only signal birth date for selection",
+      "passed": true,
+      "detail": "signal_births.detected_at is T; base_score is T-context; no future data used"
+    },
+    {
+      "test_id": "L4",
+      "name": "Ground truth top-movers computed after selection only",
+      "passed": true,
+      "detail": "evaluate_date() computes gt after feat_day selection; gt is used only in metrics"
+    },
+    {
+      "test_id": "L5",
+      "name": "Technical features use backward-looking windows only",
+      "passed": true,
+      "detail": "compute_technical_features() uses closes[max(0,i-28):i+1] \u2014 no forward index"
+    },
+    {
+      "test_id": "L6",
+      "name": "Model B score-return correlation not suspiciously high",
+      "passed": "True",
+      "detail": "corr(score_b_up, ret_5d)=-0.0095 \u2014 expected |corr|<0.30 for non-leaky model"
+    },
+    {
+      "test_id": "L7",
+      "name": "signal_births.actual_move_pct not used for Model A ranking",
+      "passed": true,
+      "detail": "Model A ranked by base_score only; actual_move_pct not consulted"
+    }
+  ],
+  "leakage_all_pass": true,
+  "limitations": [
+    "ALL signal_births in replay.db are LONG \u2014 Model A cannot test DOWN selection",
+    "expected_move_pct=8.0 hardcoded for all signals \u2014 magnitude estimation not present in replay.db era",
+    "Universe is a static snapshot (2026) applied to 2021-2025 history \u2014 survivorship bias possible",
+    "MLS pipeline was never scheduled \u2014 PIG vote is near-zero historically",
+    "No intraday data available \u2014 MFE/MAE computed from daily OHLCV only"
+  ],
+  "primary_verdict": "TOP_MOVER_SELECTION_WORKING_BUT_NEEDS_REFINEMENT",
+  "secondary_verdicts": [
+    "STRATEGY_ADDS_LITTLE_INCREMENTAL_VALUE",
+    "MAGNITUDE_SELECTION_FAILURE",
+    "KNOWLEDGE_COMPILATION_FAILURE"
+  ],
+  "key_findings": {
+    "model_a_beats_model_b": true,
+    "model_a_smcr_2pct_sel": 0.0337,
+    "model_b_smcr_2pct_sel": 0.0326,
+    "model_c_smcr_2pct_sel": 0.0348,
+    "model_a_direction_acc_t5": 0.5126,
+    "model_a_sel_lift_over_random": 1.1783,
+    "model_c_best_lift": 1.2023,
+    "expected_move_pct_is_constant": true,
+    "mls_pipeline_never_ran": true,
+    "all_historical_signals_long": true,
+    "direction_accuracy_near_random": true,
+    "model_a_avg_t5_ret": 0.6192,
+    "model_a_avg_mfe": 5.3782,
+    "model_a_avg_mae": -4.0305
+  }
+}

@@ -57,7 +57,7 @@ _DEFAULT_DAYS = 30
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def main(target_days: int = _DEFAULT_DAYS) -> None:
+def main(target_days: int = _DEFAULT_DAYS, strict_validation: bool = False) -> None:
     # Ensure box-drawing characters survive on Windows cp1252 terminals
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -91,7 +91,7 @@ def main(target_days: int = _DEFAULT_DAYS) -> None:
 
     log.info("\n[2/3]  Initialising ReplayOrchestrator …")
     try:
-        orch = ReplayOrchestrator()
+        orch = ReplayOrchestrator(strict_validation=strict_validation)
     except Exception as exc:
         log.error("Failed to initialise ReplayOrchestrator: %s\n%s",
                   exc, traceback.format_exc())
@@ -102,10 +102,20 @@ def main(target_days: int = _DEFAULT_DAYS) -> None:
         log.info("\n%s", "─" * 60)
         log.info("  DAY %d / %d  —  %s", day.day_num, len(days), day.date)
         log.info("%s", "─" * 60)
-        result = orch.run_replay_day(day)
+        try:
+            result = orch.run_replay_day(day)
+        except Exception as _day_exc:
+            from simulation_replay.integrity_validator import ReplayIntegrityError
+            if isinstance(_day_exc, ReplayIntegrityError):
+                log.error("[Replay] Strict integrity check failed — aborting: %s", _day_exc)
+                orch.get_integrity_summary()
+                sys.exit(2)
+            raise
         day_results.append(result)
 
     # ── Step 3: Metrics + Report ──────────────────────────────────────────────
+    orch.get_integrity_summary()
+
     from simulation_replay.metrics import calculate_metrics, format_metrics_table
 
     log.info("\n[3/3]  Calculating metrics …")
@@ -891,6 +901,12 @@ if __name__ == "__main__":
             "Fetch window is computed automatically."
         ),
     )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        default=False,
+        help="Abort replay immediately if any day fails a learning integrity check.",
+    )
     args = parser.parse_args()
-    main(target_days=args.days)
+    main(target_days=args.days, strict_validation=args.strict)
     sys.exit(0)   # override any daemon-thread exit codes — replay completed cleanly

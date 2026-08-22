@@ -1,0 +1,6 @@
+FOUND: True
+win_rate: 0.6
+overfitting_ratio: 1.2
+wf_consistency: 0.8
+cross_market_pass_rate: 0.75
+passes_gate: True

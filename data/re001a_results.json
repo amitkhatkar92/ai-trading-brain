@@ -1,0 +1,92 @@
+{
+  "baseline": {
+    "label": "BEFORE",
+    "ts": "2026-08-01T18:38:41.905185",
+    "feat_total": 5000,
+    "feat_labeled": 0,
+    "feat_symbols": 20,
+    "edges_total": 257,
+    "edges_by_status": {
+      "DECAYING": 127,
+      "CANDIDATE": 124,
+      "ACTIVE": 6
+    },
+    "strats_total": 176,
+    "perf_tracked": 2,
+    "ml_records": 0
+  },
+  "final": {
+    "label": "AFTER",
+    "ts": "2026-08-01T18:38:49.674360",
+    "feat_total": 5000,
+    "feat_labeled": 4964,
+    "feat_symbols": 228,
+    "edges_total": 257,
+    "edges_by_status": {
+      "DECAYING": 133,
+      "CANDIDATE": 124
+    },
+    "strats_total": 176,
+    "perf_tracked": 2,
+    "ml_records": 0
+  },
+  "stage1": {
+    "feat_before": 5000,
+    "feat_after": 10039,
+    "feat_added": 5039,
+    "labeled_before": 0,
+    "labeled_after": 5023,
+    "positive_labels": 1452,
+    "negative_labels": 3587,
+    "positive_rate": 0.2882,
+    "symbols_added": 210,
+    "dates_covered": 24
+  },
+  "stage2_6": {
+    "report": "\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n  EDGE DISCOVERY REPORT   [2026-08-01 18:38:49]\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n  Patterns mined:     3\n  Candidates tested:  3\n  Approved:           0  (promoted to strategy library)\n  Deprecated:         0\n  Elapsed:            6.6 s\n\n\n\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n  EDGE DISCOVERY RANKING   [2026-08-01 18:38]\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n  Name                             Cat            Status        Score  Sharpe     WR   Exp_R  FatTail\n  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  EDG_VOLATI_99_EE0003             volatility     \ud83d\udd2c CANDIDATE    2.94   32.22  100% + 0.749R      0%\n  EDG_MOMENT_100_EE0005            momentum_volume \u26a0\ufe0f DECAYING     2.71   62.38  100% + 0.935R      0%\n  EDG_MOMENT_100_EE0004            momentum_volume \u26a0\ufe0f DECAYING     2.69   43.00  100% + 0.924R      0%\n  EDG_MOMENT_100_EE0003            momentum_volume \u26a0\ufe0f DECAYING     2.69   43.00  100% + 0.924R      0%\n  EDG_MOMENT_95_EE0004             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_98_EE0003             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_98_EE0004             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_96_EE0002             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_95_EE0002             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_97_EE0003             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_95_EE0005             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_96_EE0004             momentum_volume \u26a0\ufe0f DECAYING     2.63   47.41  100% + 0.877R      0%\n  EDG_MOMENT_98_EE0002             momentum_volume \u26a0\ufe0f DECAYING     2.58   37.28  100% + 0.840R      0%\n  EDG_VOLATI_93_EE0003             volatility     \ud83d\udd2c CANDIDATE    2.53   20.20   90% + 0.557R      0%\n  EDG_VOLATI_94_EE0003             volatility     \ud83d\udd2c CANDIDATE    2.53   20.20   90% + 0.557R      0%\n  \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\n  Active: 0  Decaying: 133  Deprecated: 0\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550",
+    "edges_before": 257,
+    "edges_after": 257,
+    "new_edges": [],
+    "updated_edges": [
+      "EDG_MOMENT_98_EE0004",
+      "EDG_MOMENT_100_EE0005",
+      "EDG_MOMENT_96_EE0002",
+      "EDG_MOMENT_95_EE0002",
+      "EDG_MOMENT_95_EE0005",
+      "EDG_MOMENT_100_EE0003"
+    ],
+    "removed_edges": [],
+    "strats_before": 176,
+    "strats_after": 176,
+    "new_strats": [],
+    "edges_by_status_after": {
+      "ACTIVE": 0,
+      "CANDIDATE": 124,
+      "DECAYING": 133,
+      "DEPRECATED": 0
+    }
+  },
+  "stage6_meta": {
+    "ml_dataset_exists": false,
+    "ml_records": 0,
+    "model_trained": false,
+    "min_required": 10,
+    "reason_not_trained": "No trade outcomes available from RE001 \u2014 all opportunities remained open at window end. ml_performance_dataset.json not yet created."
+  },
+  "stage7": {
+    "feat_total": 5000,
+    "feat_labeled": 4964,
+    "feat_re001": 4980,
+    "feat_symbols": 228,
+    "edges_total": 257,
+    "edges_active": 0,
+    "edges_candidate": 124,
+    "edges_decaying": 133,
+    "edges_deprecated": 0,
+    "strats_total": 176,
+    "perf_tracked": 2,
+    "ml_exists": false,
+    "ml_records": 0
+  },
+  "elapsed_s": 7.815028
+}

@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.database
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.database"
+version: "0.1.0"
+purpose: "Database abstraction -- SQLite query builder, connection pool, parameterized queries (OWASP-compliant, no SQL injection)"
+architecture_reference: "IIOS-CIS-001 INFRA-STG-001"
+layer: "DATABASE"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "sqlite_adapter"
+  - "query_builder"
+  - "connection_pool"
+  - "migration_runner"
+  - "schema_validator"
+dependencies:
+  - "iios.core"
+  - "iios.config"

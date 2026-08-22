@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.replay
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.replay"
+version: "0.1.0"
+purpose: "Trade replay system -- replays historical sessions for debugging, strategy evaluation, compliance"
+architecture_reference: "IIOS-IMP-001 Wave 10"
+layer: "REPLAY"
+owner: "Platform"
+wave: 10
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "replay_engine"
+  - "session_replayer"
+  - "replay_config"
+  - "replay_result"
+  - "historical_loader"
+dependencies:
+  - "iios.core"
+  - "iios.execution"
+  - "iios.learning"
+  - "iios.database"

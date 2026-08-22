@@ -1,0 +1,527 @@
+{
+  "meta": {
+    "run_date": "2026-08-13T13:29:45.122598",
+    "db": "data/replay.db",
+    "period": "2021-06-01 to 2025-12-30",
+    "symbols_scanned": 210,
+    "symbols_skipped": 1,
+    "nifty_trading_days": 1135,
+    "setup": "Setup_4_High_RSI_Short",
+    "parameters": {
+      "RSI_thresh": 67.0,
+      "resist_prox": 0.99,
+      "rr": 2.5,
+      "atr_stop_mult": 1.5,
+      "vol_guard_pct": 4.0,
+      "resistance_window": 20,
+      "max_hold_days": 10,
+      "min_adv_crore": 15
+    }
+  },
+  "test_a": {
+    "stats": {
+      "label": "Test_A_Strategy_Only",
+      "trades": 1394,
+      "win_rate": 0.4118,
+      "win_rate_pct": 41.2,
+      "total_r": -33.312,
+      "avg_r": -0.0239,
+      "expectancy_pct": -2.39,
+      "profit_factor": 0.954,
+      "sharpe": -0.322,
+      "max_dd_r": 121.3,
+      "avg_win_r": 1.2082,
+      "avg_loss_r": -0.8864,
+      "max_win_streak": 17,
+      "max_loss_streak": 18,
+      "avg_hold_days": 6.9
+    },
+    "regime_breakdown": {
+      "RANGE_MARKET": {
+        "label": "RANGE_MARKET",
+        "trades": 1322,
+        "win_rate": 0.4145,
+        "win_rate_pct": 41.5,
+        "total_r": -16.214,
+        "avg_r": -0.0123,
+        "expectancy_pct": -1.226,
+        "profit_factor": 0.977,
+        "sharpe": -0.163,
+        "max_dd_r": 120.162,
+        "avg_win_r": 1.2301,
+        "avg_loss_r": -0.8919,
+        "max_win_streak": 17,
+        "max_loss_streak": 18,
+        "avg_hold_days": 6.9
+      },
+      "VOLATILE": {
+        "label": "VOLATILE",
+        "trades": 72,
+        "win_rate": 0.3611,
+        "win_rate_pct": 36.1,
+        "total_r": -17.098,
+        "avg_r": -0.2375,
+        "expectancy_pct": -23.747,
+        "profit_factor": 0.532,
+        "sharpe": -4.474,
+        "max_dd_r": 20.353,
+        "avg_win_r": 0.7474,
+        "avg_loss_r": -0.7942,
+        "max_win_streak": 3,
+        "max_loss_streak": 12,
+        "avg_hold_days": 7.8
+      }
+    },
+    "walk_forward": [
+      {
+        "label": "fold_1",
+        "trades": 278,
+        "win_rate": 0.3849,
+        "win_rate_pct": 38.5,
+        "total_r": -13.886,
+        "avg_r": -0.0499,
+        "expectancy_pct": -4.995,
+        "profit_factor": 0.911,
+        "sharpe": -0.649,
+        "max_dd_r": 37.761,
+        "avg_win_r": 1.3227,
+        "avg_loss_r": -0.9089,
+        "max_win_streak": 14,
+        "max_loss_streak": 18,
+        "avg_hold_days": 6.7,
+        "date_start": "2021-07-22",
+        "date_end": "2022-10-31"
+      },
+      {
+        "label": "fold_2",
+        "trades": 278,
+        "win_rate": 0.3489,
+        "win_rate_pct": 34.9,
+        "total_r": -57.506,
+        "avg_r": -0.2069,
+        "expectancy_pct": -20.686,
+        "profit_factor": 0.632,
+        "sharpe": -3.135,
+        "max_dd_r": 80.138,
+        "avg_win_r": 1.0165,
+        "avg_loss_r": -0.8625,
+        "max_win_streak": 10,
+        "max_loss_streak": 17,
+        "avg_hold_days": 6.8,
+        "date_start": "2022-10-31",
+        "date_end": "2023-07-06"
+      },
+      {
+        "label": "fold_3",
+        "trades": 278,
+        "win_rate": 0.3957,
+        "win_rate_pct": 39.6,
+        "total_r": -11.462,
+        "avg_r": -0.0412,
+        "expectancy_pct": -4.123,
+        "profit_factor": 0.924,
+        "sharpe": -0.549,
+        "max_dd_r": 40.676,
+        "avg_win_r": 1.2679,
+        "avg_loss_r": -0.8984,
+        "max_win_streak": 9,
+        "max_loss_streak": 16,
+        "avg_hold_days": 6.8,
+        "date_start": "2023-07-06",
+        "date_end": "2024-04-02"
+      },
+      {
+        "label": "fold_4",
+        "trades": 278,
+        "win_rate": 0.4604,
+        "win_rate_pct": 46.0,
+        "total_r": 32.161,
+        "avg_r": 0.1157,
+        "expectancy_pct": 11.569,
+        "profit_factor": 1.232,
+        "sharpe": 1.436,
+        "max_dd_r": 33.517,
+        "avg_win_r": 1.3349,
+        "avg_loss_r": -0.9247,
+        "max_win_streak": 17,
+        "max_loss_streak": 15,
+        "avg_hold_days": 6.8,
+        "date_start": "2024-04-02",
+        "date_end": "2025-03-21"
+      },
+      {
+        "label": "fold_5",
+        "trades": 282,
+        "win_rate": 0.4681,
+        "win_rate_pct": 46.8,
+        "total_r": 17.381,
+        "avg_r": 0.0616,
+        "expectancy_pct": 6.163,
+        "profit_factor": 1.138,
+        "sharpe": 0.876,
+        "max_dd_r": 27.165,
+        "avg_win_r": 1.0838,
+        "avg_loss_r": -0.8379,
+        "max_win_streak": 11,
+        "max_loss_streak": 17,
+        "avg_hold_days": 7.5,
+        "date_start": "2025-03-24",
+        "date_end": "2025-12-22"
+      }
+    ],
+    "monte_carlo": {
+      "n_sims": 1000,
+      "total_r_p5": -104.778,
+      "total_r_p50": -30.232,
+      "total_r_p95": 43.28,
+      "max_dd_p50": 64.559,
+      "max_dd_p95": 124.277,
+      "win_rate_p5": 39.1,
+      "win_rate_p50": 41.2,
+      "win_rate_p95": 43.5,
+      "pct_positive_outcomes": 22.3
+    },
+    "governance_gates": {
+      "min_trades_20": [
+        "PASS",
+        "n=1394"
+      ],
+      "win_rate_50pct": [
+        "FAIL",
+        "WR=41.2%"
+      ],
+      "expectancy_0_1pct": [
+        "FAIL",
+        "Exp=-2.390%"
+      ],
+      "max_dd_15pct": [
+        "FAIL",
+        "MaxDD=121.30R"
+      ],
+      "profit_factor_1_0": [
+        "FAIL",
+        "PF=0.954"
+      ],
+      "sharpe_positive": [
+        "FAIL",
+        "Sharpe=-0.322"
+      ],
+      "wf_consistency_60": [
+        "FAIL",
+        "WF=0%  (0/5 folds)"
+      ],
+      "overfitting_ratio_1_5": [
+        "PASS",
+        "OvFit=99.00  IS_exp=-0.0239  OOS_exp=-0.0241"
+      ],
+      "mc_pct_positive": [
+        "FAIL",
+        "MC 55% pos sims: 22.3%"
+      ]
+    }
+  },
+  "test_b": {
+    "stats": {
+      "label": "Test_B_Strategy_Plus_DNA",
+      "trades": 1394,
+      "win_rate": 0.4118,
+      "win_rate_pct": 41.2,
+      "total_r": -33.312,
+      "avg_r": -0.0239,
+      "expectancy_pct": -2.39,
+      "profit_factor": 0.954,
+      "sharpe": -0.322,
+      "max_dd_r": 121.3,
+      "avg_win_r": 1.2082,
+      "avg_loss_r": -0.8864,
+      "max_win_streak": 17,
+      "max_loss_streak": 18,
+      "avg_hold_days": 6.9
+    },
+    "regime_breakdown": {
+      "RANGE_MARKET": {
+        "label": "RANGE_MARKET",
+        "trades": 1322,
+        "win_rate": 0.4145,
+        "win_rate_pct": 41.5,
+        "total_r": -16.214,
+        "avg_r": -0.0123,
+        "expectancy_pct": -1.226,
+        "profit_factor": 0.977,
+        "sharpe": -0.163,
+        "max_dd_r": 120.162,
+        "avg_win_r": 1.2301,
+        "avg_loss_r": -0.8919,
+        "max_win_streak": 17,
+        "max_loss_streak": 18,
+        "avg_hold_days": 6.9
+      },
+      "VOLATILE": {
+        "label": "VOLATILE",
+        "trades": 72,
+        "win_rate": 0.3611,
+        "win_rate_pct": 36.1,
+        "total_r": -17.098,
+        "avg_r": -0.2375,
+        "expectancy_pct": -23.747,
+        "profit_factor": 0.532,
+        "sharpe": -4.474,
+        "max_dd_r": 20.353,
+        "avg_win_r": 0.7474,
+        "avg_loss_r": -0.7942,
+        "max_win_streak": 3,
+        "max_loss_streak": 12,
+        "avg_hold_days": 7.8
+      }
+    },
+    "walk_forward": [
+      {
+        "label": "fold_1",
+        "trades": 278,
+        "win_rate": 0.3849,
+        "win_rate_pct": 38.5,
+        "total_r": -13.886,
+        "avg_r": -0.0499,
+        "expectancy_pct": -4.995,
+        "profit_factor": 0.911,
+        "sharpe": -0.649,
+        "max_dd_r": 37.761,
+        "avg_win_r": 1.3227,
+        "avg_loss_r": -0.9089,
+        "max_win_streak": 14,
+        "max_loss_streak": 18,
+        "avg_hold_days": 6.7,
+        "date_start": "2021-07-22",
+        "date_end": "2022-10-31"
+      },
+      {
+        "label": "fold_2",
+        "trades": 278,
+        "win_rate": 0.3489,
+        "win_rate_pct": 34.9,
+        "total_r": -57.506,
+        "avg_r": -0.2069,
+        "expectancy_pct": -20.686,
+        "profit_factor": 0.632,
+        "sharpe": -3.135,
+        "max_dd_r": 80.138,
+        "avg_win_r": 1.0165,
+        "avg_loss_r": -0.8625,
+        "max_win_streak": 10,
+        "max_loss_streak": 17,
+        "avg_hold_days": 6.8,
+        "date_start": "2022-10-31",
+        "date_end": "2023-07-06"
+      },
+      {
+        "label": "fold_3",
+        "trades": 278,
+        "win_rate": 0.3957,
+        "win_rate_pct": 39.6,
+        "total_r": -11.462,
+        "avg_r": -0.0412,
+        "expectancy_pct": -4.123,
+        "profit_factor": 0.924,
+        "sharpe": -0.549,
+        "max_dd_r": 40.676,
+        "avg_win_r": 1.2679,
+        "avg_loss_r": -0.8984,
+        "max_win_streak": 9,
+        "max_loss_streak": 16,
+        "avg_hold_days": 6.8,
+        "date_start": "2023-07-06",
+        "date_end": "2024-04-02"
+      },
+      {
+        "label": "fold_4",
+        "trades": 278,
+        "win_rate": 0.4604,
+        "win_rate_pct": 46.0,
+        "total_r": 32.161,
+        "avg_r": 0.1157,
+        "expectancy_pct": 11.569,
+        "profit_factor": 1.232,
+        "sharpe": 1.436,
+        "max_dd_r": 33.517,
+        "avg_win_r": 1.3349,
+        "avg_loss_r": -0.9247,
+        "max_win_streak": 17,
+        "max_loss_streak": 15,
+        "avg_hold_days": 6.8,
+        "date_start": "2024-04-02",
+        "date_end": "2025-03-21"
+      },
+      {
+        "label": "fold_5",
+        "trades": 282,
+        "win_rate": 0.4681,
+        "win_rate_pct": 46.8,
+        "total_r": 17.381,
+        "avg_r": 0.0616,
+        "expectancy_pct": 6.163,
+        "profit_factor": 1.138,
+        "sharpe": 0.876,
+        "max_dd_r": 27.165,
+        "avg_win_r": 1.0838,
+        "avg_loss_r": -0.8379,
+        "max_win_streak": 11,
+        "max_loss_streak": 17,
+        "avg_hold_days": 7.5,
+        "date_start": "2025-03-24",
+        "date_end": "2025-12-22"
+      }
+    ],
+    "monte_carlo": {
+      "n_sims": 1000,
+      "total_r_p5": -104.778,
+      "total_r_p50": -30.232,
+      "total_r_p95": 43.28,
+      "max_dd_p50": 64.559,
+      "max_dd_p95": 124.277,
+      "win_rate_p5": 39.1,
+      "win_rate_p50": 41.2,
+      "win_rate_p95": 43.5,
+      "pct_positive_outcomes": 22.3
+    },
+    "governance_gates": {
+      "min_trades_20": [
+        "PASS",
+        "n=1394"
+      ],
+      "win_rate_50pct": [
+        "FAIL",
+        "WR=41.2%"
+      ],
+      "expectancy_0_1pct": [
+        "FAIL",
+        "Exp=-2.390%"
+      ],
+      "max_dd_15pct": [
+        "FAIL",
+        "MaxDD=121.30R"
+      ],
+      "profit_factor_1_0": [
+        "FAIL",
+        "PF=0.954"
+      ],
+      "sharpe_positive": [
+        "FAIL",
+        "Sharpe=-0.322"
+      ],
+      "wf_consistency_60": [
+        "FAIL",
+        "WF=0%  (0/5 folds)"
+      ],
+      "overfitting_ratio_1_5": [
+        "PASS",
+        "OvFit=99.00  IS_exp=-0.0239  OOS_exp=-0.0241"
+      ],
+      "mc_pct_positive": [
+        "FAIL",
+        "MC 55% pos sims: 22.3%"
+      ]
+    }
+  },
+  "data_leakage": "NONE_FOUND",
+  "sample_trades_a": [
+    {
+      "symbol": "COLPAL.NS",
+      "entry_date": "2021-07-22",
+      "entry_price": 1788.65,
+      "resistance": 1795.0,
+      "stop_loss": 1835.63,
+      "target": 1671.19,
+      "rsi": 69.91,
+      "atr_pct": 1.75,
+      "vol_ratio": 1.07,
+      "regime": "RANGE_MARKET",
+      "confidence": 8.5,
+      "dna_boost": 0.0,
+      "outcome_r": 2.5,
+      "exit_reason": "target_hit",
+      "hold_days": 6,
+      "win": true,
+      "stop_dist": 46.9841
+    },
+    {
+      "symbol": "INTELLECT.NS",
+      "entry_date": "2021-07-22",
+      "entry_price": 803.3,
+      "resistance": 810.0,
+      "stop_loss": 848.83,
+      "target": 689.48,
+      "rsi": 67.44,
+      "atr_pct": 3.78,
+      "vol_ratio": 1.43,
+      "regime": "RANGE_MARKET",
+      "confidence": 8.5,
+      "dna_boost": 0.0,
+      "outcome_r": -1.0,
+      "exit_reason": "stop_hit",
+      "hold_days": 1,
+      "win": false,
+      "stop_dist": 45.5268
+    },
+    {
+      "symbol": "NESTLEIND.NS",
+      "entry_date": "2021-07-23",
+      "entry_price": 907.1975,
+      "resistance": 911.2,
+      "stop_loss": 924.18,
+      "target": 864.75,
+      "rsi": 67.13,
+      "atr_pct": 1.25,
+      "vol_ratio": 1.68,
+      "regime": "RANGE_MARKET",
+      "confidence": 8.5,
+      "dna_boost": 0.0,
+      "outcome_r": 0.363,
+      "exit_reason": "max_hold_close",
+      "hold_days": 10,
+      "win": "True",
+      "stop_dist": 16.9785
+    },
+    {
+      "symbol": "NESTLEIND.NS",
+      "entry_date": "2021-07-26",
+      "entry_price": 905.0675,
+      "resistance": 911.2,
+      "stop_loss": 921.54,
+      "target": 863.87,
+      "rsi": 70.1,
+      "atr_pct": 1.21,
+      "vol_ratio": 1.72,
+      "regime": "RANGE_MARKET",
+      "confidence": 8.5,
+      "dna_boost": 0.0,
+      "outcome_r": -1.0,
+      "exit_reason": "stop_hit",
+      "hold_days": 1,
+      "win": false,
+      "stop_dist": 16.4772
+    },
+    {
+      "symbol": "SUNPHARMA.NS",
+      "entry_date": "2021-07-26",
+      "entry_price": 703.4,
+      "resistance": 705.0,
+      "stop_loss": 721.84,
+      "target": 657.31,
+      "rsi": 67.16,
+      "atr_pct": 1.75,
+      "vol_ratio": 1.13,
+      "regime": "RANGE_MARKET",
+      "confidence": 8.5,
+      "dna_boost": 0.0,
+      "outcome_r": -1.0,
+      "exit_reason": "stop_hit",
+      "hold_days": 4,
+      "win": false,
+      "stop_dist": 18.4365
+    }
+  ],
+  "regime_signal_count": {
+    "RANGE_MARKET": 1322,
+    "VOLATILE": 72
+  }
+}

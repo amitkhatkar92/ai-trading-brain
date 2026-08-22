@@ -1,0 +1,27 @@
+﻿# Package Manifest: iios.cli
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.cli"
+version: "0.1.0"
+purpose: "CLI and Telegram bot -- all 13 IIOS operator commands: /health /pnl /perf /safe /resume /status /learn /diag /mode /strategies /positions /signals /help"
+architecture_reference: "IIOS-ARC-001 13 Telegram commands"
+layer: "CLI"
+owner: "Platform"
+wave: 4
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "telegram_bot"
+  - "command_handler"
+  - "status_command"
+  - "health_command"
+  - "pnl_command"
+  - "perf_command"
+  - "safe_command"
+  - "resume_command"
+dependencies:
+  - "iios.core"
+  - "iios.monitoring"
+  - "iios.security"
+  - "iios.infrastructure"

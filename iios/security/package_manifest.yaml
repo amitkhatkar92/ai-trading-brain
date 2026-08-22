@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.security
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.security"
+version: "0.1.0"
+purpose: "Application security -- Telegram whitelist enforcement, command authorization, OWASP compliance, audit"
+architecture_reference: "IIOS-CIS-001 Section 10.4, IIOS-AZN-001"
+layer: "SECURITY"
+owner: "Security"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "telegram_auth"
+  - "command_authorizer"
+  - "whitelist_manager"
+  - "security_audit"
+  - "api_key_manager"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.infra_security"

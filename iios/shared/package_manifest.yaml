@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.shared
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.shared"
+version: "0.1.0"
+purpose: "Shared utility functions, helper classes, decorators, and cross-cutting concerns used by all IIOS packages"
+architecture_reference: "IIOS-RCS-001"
+layer: "SHARED"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "utils"
+  - "decorators"
+  - "helpers"
+  - "validators"
+  - "formatters"
+  - "converters"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"

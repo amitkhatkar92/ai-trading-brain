@@ -1,0 +1,27 @@
+﻿# Package Manifest: iios.agents
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.agents"
+version: "0.1.0"
+purpose: "All ~62 AI agents: BaseAgent, exactly 5 debate agents (Bull, Bear, Neutral, Risk, Regime), strategy agents, monitoring agents"
+architecture_reference: "IIOS-ARC-001 all layers, IIOS-EON-001"
+layer: "AGENTS"
+owner: "Platform"
+wave: 4
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "base_agent"
+  - "bull_agent"
+  - "bear_agent"
+  - "neutral_agent"
+  - "risk_agent"
+  - "regime_agent"
+  - "strategy_agent"
+  - "opportunity_agent"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.knowledge"
+  - "iios.reasoning"

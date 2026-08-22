@@ -1,0 +1,5 @@
+passes_gate: False
+cross_market_pass_rate: 0.25
+cross_market_min: 0.25
+win_rate: 0.4429
+overfitting_ratio: 2.851

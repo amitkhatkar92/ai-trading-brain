@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.core
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.core"
+version: "0.1.0"
+purpose: "Base classes, type definitions, shared interfaces, and enumerations -- the dependency root for all IIOS packages"
+architecture_reference: "IIOS-RCS-001 Section 3.2, IIOS-FCR-001"
+layer: "CORE"
+owner: "Platform"
+wave: 1
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "base_agent"
+  - "base_strategy"
+  - "base_feed"
+  - "types"
+  - "enums"
+  - "constants"
+  - "interfaces"
+  - "validators"
+dependencies:
+  - "None"

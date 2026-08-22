@@ -1,0 +1,183 @@
+{
+  "audit_id": "KNOWLEDGE_VS_STRATEGY_VALUE_AUDIT_001",
+  "audit_date": "2026-08-14",
+  "title": "Knowledge Combination Analysis",
+  "note": "Analysis of how combining knowledge signals affects predictive power",
+
+  "feature_combination_analysis": {
+    "available_features": [
+      "above_20dma",
+      "volume_ratio",
+      "rsi_14",
+      "macd_signal",
+      "atr_14",
+      "relative_strength_5d",
+      "sector_momentum"
+    ],
+    "winner_vs_control_discrimination": {
+      "above_20dma": {
+        "winner_mean": 0.8312,
+        "control_mean": 0.3957,
+        "separation_score": "HIGH",
+        "ci_overlap": false
+      },
+      "volume_ratio": {
+        "winner_mean": 3.3939,
+        "control_mean": 1.5104,
+        "separation_score": "HIGH",
+        "ci_overlap": false
+      },
+      "combination_above20dma_AND_volume_ratio": {
+        "note": "From Model D simulation — requires both above_20dma=1 AND volume_ratio > 2.0",
+        "precision_at_6": 0.333,
+        "vs_pure_volume_model": 0.446,
+        "finding": "Adding above_20dma filter to volume ranking REDUCES precision vs pure volume model. Suggests adding a second binary gate when volume is already strong reduces recall without improving precision."
+      }
+    },
+    "model_comparison": {
+      "model_A_pure_volume": {
+        "features": ["day_return_pct (proxy for volume surge)"],
+        "precision_at_6": 0.446,
+        "ci_95": [0.3949, 0.4964],
+        "rank": 1
+      },
+      "model_C_knowledge_sector": {
+        "features": ["volume_ratio", "above_20dma", "sector_momentum"],
+        "precision_at_6": 0.402,
+        "ci_95": [0.3551, 0.4493],
+        "rank": 2
+      },
+      "model_D_feature_combo": {
+        "features": ["volume_ratio", "above_20dma", "rs_5d"],
+        "precision_at_6": 0.333,
+        "ci_95": [0.279, 0.3913],
+        "rank": 3
+      },
+      "model_B_signal_births": {
+        "features": ["base_score from signal_births"],
+        "precision_at_6": 0.0,
+        "note": "Data gap — signal_births not linked to market_leader detection set",
+        "rank": 4
+      }
+    }
+  },
+
+  "information_layering_analysis": {
+    "technical_knowledge_alone": {
+      "signal": "RSI + volume + DMA alignment",
+      "precision_at_6": 0.446,
+      "multi_day_edge": "Weak — edge decays by day 5"
+    },
+    "technical_plus_macro": {
+      "signal": "Technical + macro (VIX, FII, global)",
+      "source": "Debate Layer (MacroAnalystAI)",
+      "confidence_uplift": "+0.68 points for debate-approved vs raw signals",
+      "note": "Cannot isolate macro contribution from other debate agents"
+    },
+    "technical_plus_sector": {
+      "signal": "Technical + sector_strength",
+      "finding": "sector_strength=0.5 (default) in all ml_performance_dataset rows — sector filtering not active or not varying. Cannot evaluate from available data.",
+      "recommendation": "Sector alignment should be Layer 3 filter, not just debate agent input"
+    },
+    "full_debate_combination": {
+      "signal": "Technical + macro + risk + sentiment + regime (5 agents)",
+      "approved_confidence": 6.897,
+      "rejected_confidence": 6.217,
+      "confidence_gap": 0.680,
+      "finding": "Full debate combination provides meaningful signal discrimination but requires signal to pass strategy gate first"
+    }
+  },
+
+  "signal_decay_analysis": {
+    "data_source": "market_leader_outcomes (n=690 winners, 690 controls)",
+    "holding_periods": {
+      "day_1": {
+        "winner_avg_return": 0.355,
+        "control_avg_return": 0.053,
+        "edge": 0.302,
+        "winner_pos_rate": 0.507,
+        "control_pos_rate": 0.484
+      },
+      "day_3": {
+        "winner_avg_return": 0.810,
+        "control_avg_return": 0.636,
+        "edge": 0.174,
+        "winner_pos_rate": 0.539,
+        "control_pos_rate": 0.530
+      },
+      "day_5": {
+        "winner_avg_return": 1.023,
+        "control_avg_return": 1.183,
+        "edge": -0.160,
+        "note": "CONTROL OUTPERFORMS — edge has reversed",
+        "winner_pos_rate": 0.567,
+        "control_pos_rate": 0.584
+      },
+      "day_10": {
+        "winner_avg_return": 1.445,
+        "control_avg_return": 1.344,
+        "edge": 0.101,
+        "winner_pos_rate": 0.568,
+        "control_pos_rate": 0.532
+      },
+      "day_20": {
+        "winner_avg_return": 2.163,
+        "control_avg_return": 2.046,
+        "edge": 0.117,
+        "winner_pos_rate": 0.573,
+        "control_pos_rate": 0.528
+      }
+    },
+    "finding": "The knowledge-based momentum signal has meaningful edge on day 1 (0.30% avg, 50.7% vs 48.4% positive rate) but this edge is essentially gone by day 3 and reverses at day 5. The system targets 3-5 day holds. This is the CORE MISMATCH between knowledge signal decay and strategy hold period."
+  },
+
+  "sector_alignment_gap": {
+    "finding": "NO_SECTOR_FILTER_IN_LAYER_3",
+    "detail": "The equity scanner generates signals based on RSI/volume/DMA without checking sector direction. A stock in a headwind sector can satisfy all technical criteria and generate a signal. Sector strength enters at Layer 5 (debate) as a macro input but by then the signal has already been through strategy gate.",
+    "evidence": "Today's blocked signals: 14 of 28 (50%) were grade D — stock moved against signal direction. Grade D signals include TATASTEEL (-1.75% vs LONG signal), PAGEIND (-2.70% vs LONG signal). Both are in sectors with headwinds (metals, FMCG discretionary).",
+    "improvement_lever": "Add sector_momentum check to Layer 3 scanner — only generate LONG signals for stocks in sectors with positive sector_momentum > 0.0"
+  },
+
+  "time_horizon_mismatch_analysis": {
+    "knowledge_signal_decay": "1-day edge (0.30%), reverses at day 5",
+    "strategy_target_hold": "3-5 days (ATR × 3 target)",
+    "conclusion": "Current knowledge signals are optimized for same-day detection. The strategy targets require sustained multi-day momentum. These are misaligned. Either signals need to use longer-term indicators or holding periods need to be shortened to capture intraday momentum.",
+    "data_support": {
+      "day_1_winner_positive_rate": 0.507,
+      "day_5_winner_positive_rate": 0.567,
+      "day_5_control_positive_rate": 0.584,
+      "interpretation": "At day 5, controls (non-leader stocks) have HIGHER positive rate than leaders — the momentum edge has not only faded but briefly reversed"
+    }
+  },
+
+  "optimal_combination_recommendation": {
+    "note": "RESEARCH FINDING ONLY — no code changes made",
+    "proposed_signal_hierarchy": [
+      {
+        "rank": 1,
+        "signal": "volume_ratio > 2.5x average",
+        "layer": "Layer 3",
+        "evidence": "Winner volume_ratio=3.39 vs control=1.51. Non-overlapping CIs."
+      },
+      {
+        "rank": 2,
+        "signal": "above_20dma = 1",
+        "layer": "Layer 3",
+        "evidence": "Winner rate=83% vs control=40%. Non-overlapping CIs."
+      },
+      {
+        "rank": 3,
+        "signal": "sector_momentum > 0 (sector trending up)",
+        "layer": "Layer 3 (currently only in Layer 5)",
+        "evidence": "Today: 14 grade-D signals were in sector headwinds. Moving sector filter earlier would eliminate ~50% of bad signals before debate."
+      },
+      {
+        "rank": 4,
+        "signal": "full debate (technical + macro + risk + sentiment + regime)",
+        "layer": "Layer 5-6",
+        "evidence": "Debate layer approved signals have 0.68 higher confidence than rejected."
+      }
+    ],
+    "expected_improvement": "Moving sector filter to Layer 3 would theoretically eliminate ~50% of bad signals while retaining ~82% of useful signals (based on today's sample). Not statistically powered — requires 30+ day validation."
+  }
+}

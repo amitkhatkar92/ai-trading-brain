@@ -1,0 +1,128 @@
+[
+  {
+    "action_id": "PGA-3E05FAC9",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "HCLTECH",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for HCLTECH: moved +4.1% with zero DNA coverage",
+    "payload": {
+      "symbol": "HCLTECH",
+      "return_pct": 4.1,
+      "direction": "UP",
+      "volume": 6509389.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-E59C1A35",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "TECHM",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for TECHM: moved +3.7% with zero DNA coverage",
+    "payload": {
+      "symbol": "TECHM",
+      "return_pct": 3.71,
+      "direction": "UP",
+      "volume": 2501510.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-36A6380B",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "INFY",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for INFY: moved +3.2% with zero DNA coverage",
+    "payload": {
+      "symbol": "INFY",
+      "return_pct": 3.24,
+      "direction": "UP",
+      "volume": 12873492.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-6037DBA5",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "HDFCBANK",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for HDFCBANK: moved +2.9% with zero DNA coverage",
+    "payload": {
+      "symbol": "HDFCBANK",
+      "return_pct": 2.86,
+      "direction": "UP",
+      "volume": 49310300.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-8E93C61D",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "TCS",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for TCS: moved +2.7% with zero DNA coverage",
+    "payload": {
+      "symbol": "TCS",
+      "return_pct": 2.71,
+      "direction": "UP",
+      "volume": 5378361.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-C87ED776",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "EICHERMOT",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for EICHERMOT: moved -1.7% with zero DNA coverage",
+    "payload": {
+      "symbol": "EICHERMOT",
+      "return_pct": -1.72,
+      "direction": "DOWN",
+      "volume": 660432.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-9DB60A0B",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "HEROMOTOCO",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for HEROMOTOCO: moved -1.3% with zero DNA coverage",
+    "payload": {
+      "symbol": "HEROMOTOCO",
+      "return_pct": -1.27,
+      "direction": "DOWN",
+      "volume": 753867.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  }
+]

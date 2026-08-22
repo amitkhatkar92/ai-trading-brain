@@ -1,0 +1,221 @@
+{
+  "audit_id": "KNOWLEDGE_SYSTEM_EXISTING_CAPABILITY_AUDIT_001",
+  "audit_date": "2026-08-18",
+  "auditor": "read-only-audit",
+  "safety": {
+    "broker_calls": 0,
+    "orders": 0,
+    "production_changes": 0,
+    "candidatestore_writes": 0
+  },
+  "final_verdict": "C_KNOWLEDGE_INFRASTRUCTURE_PARTIAL",
+  "summary": {
+    "implemented": 14,
+    "partially_implemented": 3,
+    "research_only": 7,
+    "missing": 8,
+    "total_capabilities_assessed": 32
+  },
+  "verified_files": {
+    "analysis_rejection_classifier": "analysis/rejection_classifier.py",
+    "analysis_pattern_miner": "analysis/pattern_miner.py",
+    "analysis_edge_detector": "analysis/edge_detector.py",
+    "analysis_rejection_tracker": "analysis/rejection_tracker.py",
+    "analysis_rejection_audit": "analysis/rejection_audit.py",
+    "hypothesis_registry": "autonomous_research/hypothesis_registry.py",
+    "hypothesis_models": "autonomous_research/hypothesis_models.py",
+    "scientific_director": "autonomous_research/scientific_director.py",
+    "research_coordinator": "autonomous_research/research_coordinator.py",
+    "signal_outcome_tracker": "oios/engine/signal_outcome_tracker.py",
+    "counterfactual_engine": "oios/engine/counterfactual_engine.py",
+    "mop_rc001_observer": "opportunity_engine/mop_rc001_observer.py",
+    "mover_discovery_v3": "opportunity_engine/mover_discovery_v3.py",
+    "v3_shadow_runner": "opportunity_engine/mover_discovery_v3_shadow_runner.py",
+    "shadow_script": "scripts/final_trading_architecture_shadow_001.py",
+    "hypothesis_registry_store": "data/ars_hypothesis_registry.json",
+    "rejection_audit_db": "data/rejection_audit.db",
+    "iios_db": "data/iios.db",
+    "replay_db": "data/study002_replay.db",
+    "shadow_jsonl": "data/logs/final_trading_architecture_shadow_001.jsonl",
+    "v3_shadow_jsonl": "data/mover_discovery_v3_shadow.jsonl",
+    "rc_history": "data/ars/rc/history.json"
+  },
+  "verified_absent": {
+    "data_oios_db": "data/oios.db (does not exist; correct name is data/iios.db)",
+    "data_mop_rc001_dir": "data/mop_rc001/ (directory does not exist; observer code present but never ran in current env)",
+    "knowledge_vs_strategy_001": "scripts/knowledge_vs_strategy_001.py (does not exist)"
+  },
+  "evidence_stores": {
+    "shadow_jsonl": {
+      "path": "data/logs/final_trading_architecture_shadow_001.jsonl",
+      "size_lines": 861,
+      "record_types": ["SHADOW_CANDIDATE", "SHADOW_DAILY_SUMMARY"],
+      "shadow_candidate_count": 840,
+      "shadow_daily_summary_count": 21,
+      "candidate_fields": [
+        "run_id", "trade_date", "t1_date", "selection_timestamp", "architecture_version",
+        "record_type", "no_trades_generated", "no_broker_calls", "symbol", "direction",
+        "universe_membership", "v3_score", "v3_rank", "v3_model_version", "pool_size",
+        "pool_rank", "pool_direction", "previous_close", "opening_price", "gap_pct",
+        "gap_rank", "c2_score", "c2_rank", "selected_final_5", "strategy_status",
+        "strategy_name", "strategy_reason", "strategy_regime", "strategy_rejected",
+        "model_b_included", "t1_ret_pct", "mfe_pct", "mae_pct"
+      ],
+      "has_outcome_fields": true,
+      "missing_fields": ["knowledge_strategy_disagreement", "risk_status", "execution_status"]
+    },
+    "hypothesis_registry": {
+      "path": "data/ars_hypothesis_registry.json",
+      "hypothesis_count": 16,
+      "fields_per_hypothesis": [
+        "hypothesis_id", "title", "research_question", "description", "origin",
+        "origin_study", "created_at", "created_by", "priority", "confidence", "status",
+        "classification", "supporting_evidence", "knowledge_gap", "expected_knowledge_gain",
+        "required_data", "dependencies", "validation_method", "validation_result",
+        "decision_history", "last_reviewed", "notes"
+      ],
+      "status_lifecycle": [
+        "PROPOSED", "UNDER_REVIEW", "APPROVED", "PLANNED", "RUNNING",
+        "VALIDATED", "CONFIRMED", "ARCHIVED", "REJECTED"
+      ]
+    },
+    "replay_db_signal_births": {
+      "path": "data/study002_replay.db",
+      "table": "signal_births",
+      "row_count": 8562,
+      "key_columns": [
+        "signal_id", "opportunity_id", "symbol", "archetype_id", "signal_type",
+        "detected_at", "birth_price", "base_score", "regime_at_birth", "expected_move_pct",
+        "expected_move_direction", "actual_move_pct", "final_state", "peak_move_pct",
+        "max_adverse_pct", "days_to_peak", "trade_executed", "invalidation_reason"
+      ]
+    },
+    "replay_db_decision_log": {
+      "path": "data/study002_replay.db",
+      "table": "decision_log",
+      "row_count": 0,
+      "note": "Table exists with correct schema but is not populated in current configuration"
+    },
+    "research_csv_primary": {
+      "path": "reports/mover_discovery_v3/post_open_gap_analysis.csv",
+      "rows": 8560,
+      "description": "214 trading days x 40 candidates; C2 scores + outcomes",
+      "splits": {
+        "TRAIN": 107,
+        "VAL": 53,
+        "OOS": 54
+      },
+      "oos_period": "2026-05-14 to 2026-07-30"
+    }
+  },
+  "capability_matrix": {
+    "automatic_observation_selection": "IMPLEMENTED",
+    "automatic_observation_shadow_candidates": "IMPLEMENTED",
+    "automatic_observation_missed_movers": "RESEARCH_ONLY",
+    "automatic_observation_false_rejections": "RESEARCH_ONLY",
+    "automatic_observation_strategy_overrides": "IMPLEMENTED",
+    "automatic_observation_risk_rejections": "PARTIAL",
+    "automatic_observation_discovery_failures": "RESEARCH_ONLY",
+    "automatic_observation_adverse_gaps": "IMPLEMENTED",
+    "failure_reason_taxonomy_selection": "IMPLEMENTED",
+    "failure_reason_taxonomy_rejection": "IMPLEMENTED",
+    "failure_reason_taxonomy_strategy": "RESEARCH_ONLY",
+    "persistent_evidence_record_shadow": "IMPLEMENTED",
+    "persistent_evidence_record_oios_lifecycle": "IMPLEMENTED",
+    "persistent_evidence_record_unified_single_row": "MISSING",
+    "pattern_detection_failure_patterns": "PARTIAL",
+    "pattern_detection_cross_audit_accumulation": "MISSING",
+    "hypothesis_generation_manual": "IMPLEMENTED",
+    "hypothesis_generation_automatic": "MISSING",
+    "hypothesis_storage_with_ids": "IMPLEMENTED",
+    "hypothesis_testing_train_val_oos": "IMPLEMENTED",
+    "hypothesis_testing_leakage_check": "IMPLEMENTED",
+    "hypothesis_testing_robustness_regime": "IMPLEMENTED",
+    "hypothesis_testing_shadow_stage": "RESEARCH_ONLY",
+    "authentication_gate_v3_c2": "MISSING",
+    "authentication_gate_strategy": "PARTIAL",
+    "promotion_control_strategy": "IMPLEMENTED",
+    "promotion_control_v3_c2_selection": "MISSING",
+    "shadow_feedback_write": "IMPLEMENTED",
+    "shadow_feedback_read_to_update_research": "MISSING",
+    "knowledge_accumulation_hypothesis_registry": "IMPLEMENTED",
+    "knowledge_accumulation_strategy_dna": "IMPLEMENTED",
+    "knowledge_accumulation_cross_audit_digest": "MISSING",
+    "counterfactual_analysis": "PARTIAL"
+  },
+  "gaps_ranked_by_research_value": [
+    {
+      "rank": 1,
+      "gap_id": "GAP_B",
+      "name": "Shadow Feedback Loop",
+      "description": "No process reads shadow JSONL back to update hypothesis registry or research patterns",
+      "value": "Would automate the manual research cycle that currently takes researcher days to complete",
+      "pre_requisite_data_exists": true,
+      "implementation_risk": "LOW"
+    },
+    {
+      "rank": 2,
+      "gap_id": "GAP_A",
+      "name": "Automatic Missed Mover Recording (live)",
+      "description": "Shadow JSONL has all needed fields; no process classifies RANKING_MISS per live day",
+      "value": "Would provide daily signal quality metric without manual audit runs",
+      "pre_requisite_data_exists": true,
+      "implementation_risk": "LOW"
+    },
+    {
+      "rank": 3,
+      "gap_id": "GAP_E",
+      "name": "Automatic Hypothesis Generation from Patterns",
+      "description": "pattern_miner.py output never creates hypothesis entries",
+      "value": "Would close research loop: observation -> pattern -> hypothesis -> test -> conclusion",
+      "pre_requisite_data_exists": true,
+      "implementation_risk": "MEDIUM"
+    },
+    {
+      "rank": 4,
+      "gap_id": "GAP_D",
+      "name": "Unified Per-Candidate Evidence Record",
+      "description": "No single queryable row linking all pipeline stages for live trading runs",
+      "value": "Enables root-cause analysis per individual trading day",
+      "pre_requisite_data_exists": true,
+      "implementation_risk": "LOW"
+    },
+    {
+      "rank": 5,
+      "gap_id": "GAP_C",
+      "name": "Authentication Gate for V3/C2",
+      "description": "Promotion policy is a text document; no code enforces it",
+      "value": "Prevents accidental production changes without OOS evidence",
+      "pre_requisite_data_exists": false,
+      "implementation_risk": "MEDIUM"
+    },
+    {
+      "rank": 6,
+      "gap_id": "GAP_F",
+      "name": "Cross-Audit Knowledge Digest",
+      "description": "45 per-audit CSV/JSON files; no unified store grows across cycles",
+      "value": "Enables trend analysis across multiple research cycles",
+      "pre_requisite_data_exists": true,
+      "implementation_risk": "LOW"
+    }
+  ],
+  "test_coverage_inventory": {
+    "test_mop_rc001.py": {"tests": 15, "status": "PASSING"},
+    "test_outcome_tracking_001.py": {"tests": 20, "status": "PASSING"},
+    "tests/test_final_knowledge_led_c2_001.py": {"tests": 95, "status": "PASSING"},
+    "tests/test_final_trading_architecture_shadow_001.py": {"tests": 77, "status": "PASSING"},
+    "tests/test_daily_selection_quality_audit_001.py": {"tests": 80, "status": "PASSING"},
+    "autonomous_research/hypothesis_registry.py": {"tests": 0, "status": "NO_DEDICATED_TEST"},
+    "analysis/rejection_classifier.py": {"tests": 0, "status": "NO_DEDICATED_TEST"}
+  },
+  "oos_performance_anchors_confirmed": {
+    "up_dir_acc": 0.6151,
+    "up_ge2_rate": 0.2906,
+    "down_dir_acc": 0.6038,
+    "down_ge2_rate": 0.2415,
+    "leakage_check": "PASS",
+    "spearman_up": 0.359,
+    "spearman_down": 0.355,
+    "verdict": "B_ARCHITECTURE_PERFORMING_WITH_MINOR_REFINEMENT"
+  }
+}

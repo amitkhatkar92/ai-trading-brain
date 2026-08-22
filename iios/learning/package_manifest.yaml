@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.learning
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.learning"
+version: "0.1.0"
+purpose: "Layers 13-14: LearningSystem (win rate, auto-disable) and PerformanceAnalytics (Sharpe, DrawdownAnalyzer, WalkForward)"
+architecture_reference: "IIOS-ARC-001 Layers 13-14, IIOS-LON-001"
+layer: "LAYERS-13-14"
+owner: "Platform"
+wave: 8
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "learning_engine"
+  - "strategy_performance_tracker"
+  - "win_rate_tracker"
+  - "auto_disable"
+  - "drawdown_analyzer"
+  - "walk_forward_tester"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.knowledge"
+  - "iios.execution"

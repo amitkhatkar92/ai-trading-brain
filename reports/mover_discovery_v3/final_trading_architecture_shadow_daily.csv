@@ -1,0 +1,2 @@
+run_id,trade_date,architecture_version,universe_size,v3_up_count,v3_down_count,c2_up_selected,c2_down_selected,regime,strategy_pass_up,strategy_reject_up,strategy_unavailable_up,model_b_up_count,model_b_down_count,t1_dir_acc_model_a_up,t1_dir_acc_model_a_down,t1_dir_acc_model_b_up,t1_dir_acc_model_b_down,t1_ge2_model_a_up,t1_ge2_model_a_down,t1_ge2_model_b_up,t1_ge2_model_b_down
+5d62962fb3dd8e71,2026-05-14,FINAL_TRADING_ARCHITECTURE_SHADOW_001_v1,40,20,20,5,5,RANGE,20,0,0,5,5,0.2,0.6,0.2,0.6,0.0,0.2,0.0,0.2

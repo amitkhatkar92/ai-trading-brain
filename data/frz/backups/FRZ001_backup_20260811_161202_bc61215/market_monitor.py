@@ -1,0 +1,351 @@
+"""
+Market Monitor — Continuous Scan Layer
+=======================================
+Runs two scan modes simultaneously (Q2 answer):
+
+  1. Continuous Monitoring  — light scan every TICK_INTERVAL seconds
+     • watches price movement vs previous close
+     • detects sudden volume spikes
+     • detects breakout events (price crosses recent high/low)
+     • fires MarketEvent onto EventBus for any downstream agent
+
+  2. Deep Analysis  — scheduled at specific intraday times (opening window only)
+       09:05  market open regime detection
+       09:10  first opportunity scan
+       09:20  strategy evaluation
+     All later cycles (10:30 / 11:30 / 13:00 / 14:00 / 15:00) are owned
+     exclusively by sched_lib in master_orchestrator.py.
+
+Usage:
+    monitor = MarketMonitor(feed)
+    monitor.start()          # spawns background thread
+    monitor.stop()
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from datetime import datetime, date
+from typing import Callable, Dict, List, Optional
+
+from utils import get_logger
+
+log = get_logger(__name__)
+
+# ── Tuning constants ──────────────────────────────────────────────────────────
+TICK_INTERVAL       = 30        # seconds between continuous scans
+VOLUME_SPIKE_MULT   = 2.0       # volume > 2× average → spike alert
+BREAKOUT_PCT        = 0.3       # price > 0.3% beyond session high/low → breakout
+CIRCUIT_DROP_PCT    = -2.0      # NIFTY drop > 2% in one tick → circuit alert
+
+# Deep analysis schedule (24h HH:MM)
+# MarketMonitor owns ONLY the opening-window deep scans (09:05–09:20).
+# All subsequent full cycles (10:30 onward) are owned exclusively by
+# the sched_lib scheduler in master_orchestrator.py to prevent double-firing.
+# FRZ-001: removed 10:30/11:30/13:00/14:00/15:00 — owned by sched_lib only.
+DEEP_SCAN_SCHEDULE: List[str] = [
+    "09:05",   # market open — regime detection
+    "09:10",   # first opportunity scan
+    "09:20",   # strategy evaluation
+]
+
+# Symbols watched in continuous mode
+WATCH_SYMBOLS = ["NIFTY", "BANKNIFTY", "INDIAVIX"]
+
+
+class MarketMonitor:
+    """
+    Two-level market scanner.
+
+    Parameters
+    ----------
+    feed : DhanFeed (or any object with get_quote / get_ltp methods)
+    on_signal : optional callback(event_type: str, data: dict) for signals
+    on_deep_scan : optional callback(scan_name: str) for scheduled scans
+    """
+
+    def __init__(
+        self,
+        feed,
+        on_signal:    Optional[Callable[[str, dict], None]] = None,
+        on_deep_scan: Optional[Callable[[str], None]] = None,
+    ) -> None:
+        self._feed        = feed
+        self._on_signal   = on_signal
+        self._on_deep_scan = on_deep_scan
+        self._running     = False
+        self._thread:     Optional[threading.Thread] = None
+
+        # State for continuous monitoring
+        self._prev_prices: Dict[str, float] = {}
+        self._session_high: Dict[str, float] = {}
+        self._session_low:  Dict[str, float] = {}
+        self._vol_baseline: Dict[str, float] = {}     # rolling avg volume
+
+        # Track which deep scans have already fired today
+        self._scans_fired: Dict[str, date] = {}
+        # Retry tracking — how many times each scan slot was retried today
+        self._scan_retry_count: Dict[str, int] = {}
+        self._scan_retry_date: Optional[date] = None
+
+        # Cooldown tracking — suppress duplicate signal alerts
+        self._last_alert_ts: Dict[str, float] = {}
+
+        log.info("[MarketMonitor] Initialised — tick=%ds, deep scans=%s",
+                 TICK_INTERVAL, DEEP_SCAN_SCHEDULE)
+
+    # ── Lifecycle ─────────────────────────────────────────────────────────────
+
+    def start(self) -> None:
+        if self._running:
+            return
+        self._running = True
+        # Pre-mark scan slots that have already passed today so a mid-day
+        # restart does not replay morning scans (e.g. 09:05/09:10/09:20
+        # replaying at 14:23).  Only future slots will fire after restart.
+        _now_hhmm = datetime.now().strftime("%H:%M")
+        _today    = datetime.now().date()
+        for _slot in DEEP_SCAN_SCHEDULE:
+            if _slot < _now_hhmm:
+                self._scans_fired[_slot] = _today
+                log.info("[MarketMonitor] Restart: marking past slot %s as fired "
+                         "(current time %s)", _slot, _now_hhmm)
+        self._thread  = threading.Thread(
+            target=self._loop, daemon=True, name="MarketMonitor"
+        )
+        self._thread.start()
+        log.info("[MarketMonitor] Started — continuous monitoring active.")
+
+    def stop(self) -> None:
+        self._running = False
+        log.info("[MarketMonitor] Stopped.")
+
+    @property
+    def is_running(self) -> bool:
+        return self._running
+
+    # ── Main loop ─────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _is_market_hours() -> bool:
+        """Returns True only on weekdays (non-holiday) between 09:00 and 15:35 IST."""
+        from config import is_nse_holiday
+        now = datetime.now()
+        # Skip weekends (Mon=0 … Sun=6)
+        if now.weekday() >= 5:
+            return False
+        # Skip NSE public holidays
+        if is_nse_holiday(now.date()):
+            return False
+        start = now.replace(hour=9,  minute=0,  second=0, microsecond=0)
+        end   = now.replace(hour=15, minute=35, second=0, microsecond=0)
+        return start <= now <= end
+
+    def _loop(self) -> None:
+        while self._running:
+            try:
+                if self._is_market_hours():
+                    self._tick()
+                    self._check_deep_schedule()
+                else:
+                    log.debug("[MarketMonitor] Outside market hours — scan skipped.")
+            except Exception as exc:
+                log.warning("[MarketMonitor] Tick error: %s", exc)
+            time.sleep(TICK_INTERVAL)
+
+    # ── Continuous scan (every TICK_INTERVAL seconds) ─────────────────────────
+
+    def _tick(self) -> None:
+        now_str = datetime.now().strftime("%H:%M:%S")
+        for sym in WATCH_SYMBOLS:
+            try:
+                if sym == "INDIAVIX":
+                    ltp = self._feed.get_ltp(sym)
+                    self._check_vix_spike(ltp)
+                    self._prev_prices[sym] = ltp
+                    continue
+
+                q = self._feed.get_quote(sym)
+                if not q:
+                    continue
+                ltp = q.ltp
+
+                # Initialise session high/low on first tick
+                if sym not in self._session_high:
+                    self._session_high[sym] = ltp
+                    self._session_low[sym]  = ltp
+                else:
+                    self._session_high[sym] = max(self._session_high[sym], ltp)
+                    self._session_low[sym]  = min(self._session_low[sym], ltp)
+
+                # ── Volume spike detection ──────────────────────────────────
+                if q.volume and q.volume > 0:
+                    baseline = self._vol_baseline.get(sym, q.volume)
+                    if q.volume > baseline * VOLUME_SPIKE_MULT:
+                        self._fire("VOLUME_SPIKE", {
+                            "symbol":   sym,
+                            "volume":   q.volume,
+                            "baseline": baseline,
+                            "ltp":      ltp,
+                            "time":     now_str,
+                        })
+                    # Update rolling baseline (EMA-style)
+                    self._vol_baseline[sym] = baseline * 0.9 + q.volume * 0.1
+
+                # ── Price move vs previous close ───────────────────────────
+                if q.change_pct is not None:
+                    if q.change_pct <= CIRCUIT_DROP_PCT:
+                        self._fire("CIRCUIT_DROP_ALERT", {
+                            "symbol":     sym,
+                            "change_pct": q.change_pct,
+                            "ltp":        ltp,
+                            "time":       now_str,
+                        })
+
+                # ── Breakout detection ─────────────────────────────────────
+                prev_ltp = self._prev_prices.get(sym)
+                if prev_ltp and prev_ltp > 0:
+                    tick_move_pct = (ltp - prev_ltp) / prev_ltp * 100
+                    if abs(tick_move_pct) >= BREAKOUT_PCT:
+                        direction = "UP" if tick_move_pct > 0 else "DOWN"
+                        self._fire("BREAKOUT_TICK", {
+                            "symbol":        sym,
+                            "direction":     direction,
+                            "move_pct":      round(tick_move_pct, 3),
+                            "ltp":           ltp,
+                            "session_high":  self._session_high.get(sym),
+                            "session_low":   self._session_low.get(sym),
+                            "time":          now_str,
+                        })
+
+                self._prev_prices[sym] = ltp
+
+            except Exception as exc:
+                log.debug("[MarketMonitor] Tick error for %s: %s", sym, exc)
+
+    def _check_vix_spike(self, vix: float) -> None:
+        prev_vix = self._prev_prices.get("INDIAVIX", vix)
+        if prev_vix and (vix - prev_vix) / max(prev_vix, 0.1) > 0.05:  # > 5% jump
+            self._fire("VIX_SPIKE", {
+                "vix":      vix,
+                "prev_vix": prev_vix,
+                "jump_pct": round((vix - prev_vix) / prev_vix * 100, 2),
+                "time":     datetime.now().strftime("%H:%M:%S"),
+            })
+
+    # ── Deep analysis schedule ────────────────────────────────────────────────
+
+    # Maximum retries per scan slot per day before giving up
+    _MAX_SCAN_RETRIES: int = 3
+
+    def _check_deep_schedule(self) -> None:
+        now    = datetime.now()
+        hhmm   = now.strftime("%H:%M")
+        today  = now.date()
+
+        # Reset retry counters on a new trading day
+        if self._scan_retry_date != today:
+            self._scan_retry_count.clear()
+            self._scan_retry_date = today
+
+        for scan_time in DEEP_SCAN_SCHEDULE:
+            key = scan_time
+            # Already completed today → skip
+            if self._scans_fired.get(key) == today:
+                continue
+            if hhmm >= scan_time:
+                retries   = self._scan_retry_count.get(key, 0)
+                scan_name = self._scan_name(scan_time)
+
+                if retries == 0:
+                    log.info("[MarketMonitor] Deep scan triggered: %s @ %s",
+                             scan_name, scan_time)
+                else:
+                    log.warning("[MarketMonitor] [ScanRetry] attempt=%d/%d scan=%s slot=%s",
+                                retries + 1, self._MAX_SCAN_RETRIES, scan_name, scan_time)
+
+                if self._on_deep_scan:
+                    # Embed a correlation ID so submission → execution can be paired in logs.
+                    # Format: "{scan_name}#{scan_name}_{HHMMSS}" — orchestrator strips after '#'.
+                    scan_id  = f"{scan_name}_{now.strftime('%H%M%S')}"
+                    payload  = f"{scan_name}#{scan_id}"
+                    log.info("[MarketMonitor] [ScanSubmit] id=%s slot=%s retry=%d",
+                             scan_id, scan_time, retries)
+                    try:
+                        self._on_deep_scan(payload)
+                        # Mark complete only after successful submission
+                        self._scans_fired[key] = today
+                    except Exception as exc:
+                        self._scan_retry_count[key] = retries + 1
+                        if retries + 1 >= self._MAX_SCAN_RETRIES:
+                            log.error(
+                                "[MarketMonitor] Scan %s failed after %d retries — skipping.",
+                                scan_name, self._MAX_SCAN_RETRIES)
+                            self._scans_fired[key] = today   # give up, don't loop forever
+                        else:
+                            log.warning(
+                                "[MarketMonitor] Scan %s callback error (retry in ~%ds): %s",
+                                scan_name, TICK_INTERVAL, exc)
+                else:
+                    self._scans_fired[key] = today
+
+    @staticmethod
+    def _scan_name(hhmm: str) -> str:
+        names = {
+            "09:05": "market_open_regime",
+            "09:10": "first_opportunity_scan",
+            "09:20": "strategy_evaluation",
+            "10:30": "mid_morning_scan",
+            "11:30": "mid_session_scan",
+            "13:00": "afternoon_scan",
+            "14:00": "early_afternoon_scan",
+            "15:00": "closing_analysis",
+        }
+        return names.get(hhmm, f"scan_{hhmm.replace(':', '')}")
+
+    # ── Signal dispatcher ─────────────────────────────────────────────────────
+
+    # Minimum seconds between repeated Telegram alerts.
+    # Keyed per-symbol for CIRCUIT_DROP_ALERT/VIX_SPIKE so that a BANKNIFTY
+    # alert does NOT reset the cooldown timer for NIFTY (and vice versa).
+    _ALERT_COOLDOWN_S: Dict[str, int] = {
+        "CIRCUIT_DROP_ALERT": 3600,  # 1 hour — persistent drop should alert once/hour
+        "VIX_SPIKE":           600,  # 10 min
+        "VOLUME_SPIKE":        120,  # 2 min
+        "BREAKOUT":             60,  # 1 min
+    }
+
+    def _fire(self, event_type: str, data: dict) -> None:
+        import time as _time
+        now = _time.monotonic()
+        cooldown = self._ALERT_COOLDOWN_S.get(event_type, 0)
+        # Use per-symbol key so BANKNIFTY and NIFTY cooldowns don't share state
+        symbol = data.get("symbol", "")
+        cooldown_key = f"{event_type}:{symbol}" if symbol else event_type
+        last = self._last_alert_ts.get(cooldown_key, 0.0)
+        if cooldown and (now - last) < cooldown:
+            log.debug("[MarketMonitor] %s suppressed (cooldown %ds, key=%s)",
+                      event_type, cooldown, cooldown_key)
+            return
+        if cooldown:
+            self._last_alert_ts[cooldown_key] = now
+        log.info("[MarketMonitor] ⚡ %s — %s", event_type, data)
+        if self._on_signal:
+            try:
+                self._on_signal(event_type, data)
+            except Exception as exc:
+                log.warning("[MarketMonitor] Signal callback error: %s", exc)
+
+    # ── Status ────────────────────────────────────────────────────────────────
+
+    def get_status(self) -> dict:
+        return {
+            "running":        self._running,
+            "tick_interval":  TICK_INTERVAL,
+            "deep_schedule":  DEEP_SCAN_SCHEDULE,
+            "scans_fired_today": [k for k, v in self._scans_fired.items()
+                                  if v == date.today()],
+            "session_high":   dict(self._session_high),
+            "session_low":    dict(self._session_low),
+        }

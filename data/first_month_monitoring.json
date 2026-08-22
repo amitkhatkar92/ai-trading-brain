@@ -1,0 +1,11 @@
+{
+  "uptime_events": [
+    {
+      "timestamp": "2026-03-18T12:37:34.855995",
+      "type": "startup",
+      "total_trades": 273
+    }
+  ],
+  "last_update": "2026-03-18T12:56:36.436249",
+  "initial_capital": 1000000
+}

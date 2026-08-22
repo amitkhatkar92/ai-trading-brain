@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.models
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.models"
+version: "0.1.0"
+purpose: "ML models, strategy models, k-NN regime predictor, Monte Carlo engine, pattern recognition models"
+architecture_reference: "IIOS-ARC-001 Layer 3, IIOS-RZN-001"
+layer: "MODELS"
+owner: "Platform"
+wave: 5
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "knn_regime_predictor"
+  - "monte_carlo_engine"
+  - "technical_indicators"
+  - "pattern_models"
+  - "strategy_models"
+  - "prediction_models"
+dependencies:
+  - "iios.core"
+  - "iios.knowledge"

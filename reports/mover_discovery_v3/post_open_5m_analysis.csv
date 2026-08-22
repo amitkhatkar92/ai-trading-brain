@@ -1,0 +1,2 @@
+model,status,reason,recommendation
+D_5m,DATA_UNAVAILABLE,No 5-minute OHLCV in study002_replay.db. Only daily bars available. Gap at 09:15 is the finest time resolution possible with this dataset.,Load NSE 1-min OHLCV for 2025-09-16 to 2026-07-30 before re-running.

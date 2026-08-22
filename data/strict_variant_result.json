@@ -1,0 +1,536 @@
+{
+  "meta": {
+    "run_date": "2026-08-13T13:40:51.155374",
+    "study": "SHORT_DNA_STRICT_VARIANT_RESEARCH_001",
+    "db": "data/replay.db",
+    "period": "2021-06-01 to 2025-12-30",
+    "temporal_splits": {
+      "train_end": "2023-06-30",
+      "val_end": "2024-06-30"
+    },
+    "groups": {
+      "A": "RSI>=67 + RANGE/VOLATILE, no DNA",
+      "B": "RSI>=67 + RANGE/VOLATILE + vol_ratio>=1.5x",
+      "BRM": "RSI>=67 + RANGE_MARKET + vol_ratio>=1.5x",
+      "E": "RSI>=70 + RANGE_MARKET, no DNA  [research baseline]",
+      "C": "RSI>=70 + RANGE_MARKET + vol_ratio>=1.5x  [STRICT VARIANT]"
+    },
+    "verdict": "FAIL"
+  },
+  "group_stats": {
+    "A": {
+      "label": "A_Original",
+      "trades": 1394,
+      "win_rate": 0.4118,
+      "win_rate_pct": 41.2,
+      "total_r": -33.312,
+      "avg_r": -0.0239,
+      "expectancy_pct": -2.39,
+      "profit_factor": 0.954,
+      "sharpe": -0.322,
+      "max_dd_r": 51.584,
+      "avg_win_r": 1.2082,
+      "avg_loss_r": -0.8864,
+      "max_win_streak": 8,
+      "max_loss_streak": 17,
+      "avg_hold_days": 6.9
+    },
+    "B": {
+      "label": "B_DNA_subset",
+      "trades": 265,
+      "win_rate": 0.4264,
+      "win_rate_pct": 42.6,
+      "total_r": 8.592,
+      "avg_r": 0.0324,
+      "expectancy_pct": 3.242,
+      "profit_factor": 1.066,
+      "sharpe": 0.438,
+      "max_dd_r": 18.38,
+      "avg_win_r": 1.223,
+      "avg_loss_r": -0.8527,
+      "max_win_streak": 6,
+      "max_loss_streak": 13,
+      "avg_hold_days": 7.1
+    },
+    "BRM": {
+      "label": "B_RM_DNA_RangeOnly",
+      "trades": 255,
+      "win_rate": 0.4235,
+      "win_rate_pct": 42.4,
+      "total_r": 8.18,
+      "avg_r": 0.0321,
+      "expectancy_pct": 3.208,
+      "profit_factor": 1.065,
+      "sharpe": 0.43,
+      "max_dd_r": 18.506,
+      "avg_win_r": 1.2395,
+      "avg_loss_r": -0.855,
+      "max_win_streak": 6,
+      "max_loss_streak": 13,
+      "avg_hold_days": 7.0
+    },
+    "E": {
+      "label": "E_RSI70_Range_NoDNA",
+      "trades": 661,
+      "win_rate": 0.3949,
+      "win_rate_pct": 39.5,
+      "total_r": -47.481,
+      "avg_r": -0.0718,
+      "expectancy_pct": -7.183,
+      "profit_factor": 0.869,
+      "sharpe": -0.971,
+      "max_dd_r": 53.276,
+      "avg_win_r": 1.2052,
+      "avg_loss_r": -0.9051,
+      "max_win_streak": 7,
+      "max_loss_streak": 19,
+      "avg_hold_days": 6.8
+    },
+    "C": {
+      "label": "C_Strict_RSI70_DNA_Range",
+      "trades": 133,
+      "win_rate": 0.4286,
+      "win_rate_pct": 42.9,
+      "total_r": 4.708,
+      "avg_r": 0.0354,
+      "expectancy_pct": 3.54,
+      "profit_factor": 1.071,
+      "sharpe": 0.479,
+      "max_dd_r": 19.079,
+      "avg_win_r": 1.2386,
+      "avg_loss_r": -0.867,
+      "max_win_streak": 3,
+      "max_loss_streak": 14,
+      "avg_hold_days": 7.0
+    }
+  },
+  "group_C_temporal": {
+    "train": {
+      "label": "C_Train",
+      "trades": 52,
+      "win_rate": 0.4038,
+      "win_rate_pct": 40.4,
+      "total_r": -0.564,
+      "avg_r": -0.0108,
+      "expectancy_pct": -1.085,
+      "profit_factor": 0.98,
+      "sharpe": -0.144,
+      "max_dd_r": 8.229,
+      "avg_win_r": 1.2871,
+      "avg_loss_r": -0.8901,
+      "max_win_streak": 5,
+      "max_loss_streak": 10,
+      "avg_hold_days": 6.5
+    },
+    "val": {
+      "label": "C_Val",
+      "trades": 43,
+      "win_rate": 0.3721,
+      "win_rate_pct": 37.2,
+      "total_r": -6.557,
+      "avg_r": -0.1525,
+      "expectancy_pct": -15.249,
+      "profit_factor": 0.711,
+      "sharpe": -2.396,
+      "max_dd_r": 11.784,
+      "avg_win_r": 1.0101,
+      "avg_loss_r": -0.8414,
+      "max_win_streak": 3,
+      "max_loss_streak": 7,
+      "avg_hold_days": 7.5
+    },
+    "oos": {
+      "label": "C_OOS",
+      "trades": 38,
+      "win_rate": 0.5263,
+      "win_rate_pct": 52.6,
+      "total_r": 11.829,
+      "avg_r": 0.3113,
+      "expectancy_pct": 31.129,
+      "profit_factor": 1.759,
+      "sharpe": 3.916,
+      "max_dd_r": 6.04,
+      "avg_win_r": 1.3706,
+      "avg_loss_r": -0.8657,
+      "max_win_streak": 6,
+      "max_loss_streak": 7,
+      "avg_hold_days": 7.2
+    },
+    "train_n": 52,
+    "val_n": 43,
+    "oos_n": 38
+  },
+  "group_E_temporal": {
+    "train": {
+      "label": "E_Train",
+      "trades": 271,
+      "win_rate": 0.3542,
+      "win_rate_pct": 35.4,
+      "total_r": -48.808,
+      "avg_r": -0.1801,
+      "expectancy_pct": -18.01,
+      "profit_factor": 0.688,
+      "sharpe": -2.593,
+      "max_dd_r": 49.045,
+      "avg_win_r": 1.1234,
+      "avg_loss_r": -0.8951,
+      "max_win_streak": 6,
+      "max_loss_streak": 14,
+      "avg_hold_days": 6.7
+    },
+    "val": {
+      "label": "E_Val",
+      "trades": 187,
+      "win_rate": 0.385,
+      "win_rate_pct": 38.5,
+      "total_r": -4.533,
+      "avg_r": -0.0242,
+      "expectancy_pct": -2.424,
+      "profit_factor": 0.956,
+      "sharpe": -0.312,
+      "max_dd_r": 15.721,
+      "avg_win_r": 1.3731,
+      "avg_loss_r": -0.8991,
+      "max_win_streak": 6,
+      "max_loss_streak": 10,
+      "avg_hold_days": 6.8
+    },
+    "oos": {
+      "label": "E_OOS",
+      "trades": 203,
+      "win_rate": 0.4581,
+      "win_rate_pct": 45.8,
+      "total_r": 5.86,
+      "avg_r": 0.0289,
+      "expectancy_pct": 2.887,
+      "profit_factor": 1.057,
+      "sharpe": 0.381,
+      "max_dd_r": 27.317,
+      "avg_win_r": 1.1596,
+      "avg_loss_r": -0.9271,
+      "max_win_streak": 9,
+      "max_loss_streak": 8,
+      "avg_hold_days": 6.9
+    }
+  },
+  "walk_forward_C": [
+    {
+      "label": "fold_1",
+      "trades": 26,
+      "win_rate": 0.5385,
+      "win_rate_pct": 53.8,
+      "total_r": 7.351,
+      "avg_r": 0.2827,
+      "expectancy_pct": 28.273,
+      "profit_factor": 1.613,
+      "sharpe": 3.421,
+      "max_dd_r": 6.411,
+      "avg_win_r": 1.3822,
+      "avg_loss_r": -1.0,
+      "max_win_streak": 4,
+      "max_loss_streak": 4,
+      "avg_hold_days": 6.5,
+      "date_start": "2021-07-26",
+      "date_end": "2022-09-01"
+    },
+    {
+      "label": "fold_2",
+      "trades": 26,
+      "win_rate": 0.2692,
+      "win_rate_pct": 26.9,
+      "total_r": -7.915,
+      "avg_r": -0.3044,
+      "expectancy_pct": -30.442,
+      "profit_factor": 0.492,
+      "sharpe": -4.967,
+      "max_dd_r": 9.461,
+      "avg_win_r": 1.0969,
+      "avg_loss_r": -0.8207,
+      "max_win_streak": 3,
+      "max_loss_streak": 6,
+      "avg_hold_days": 6.5,
+      "date_start": "2022-09-01",
+      "date_end": "2023-06-30"
+    },
+    {
+      "label": "fold_3",
+      "trades": 26,
+      "win_rate": 0.4231,
+      "win_rate_pct": 42.3,
+      "total_r": -2.914,
+      "avg_r": -0.1121,
+      "expectancy_pct": -11.208,
+      "profit_factor": 0.772,
+      "sharpe": -1.889,
+      "max_dd_r": 9.3,
+      "avg_win_r": 0.8961,
+      "avg_loss_r": -0.8514,
+      "max_win_streak": 4,
+      "max_loss_streak": 6,
+      "avg_hold_days": 8.0,
+      "date_start": "2023-07-06",
+      "date_end": "2024-01-29"
+    },
+    {
+      "label": "fold_4",
+      "trades": 26,
+      "win_rate": 0.3462,
+      "win_rate_pct": 34.6,
+      "total_r": -3.191,
+      "avg_r": -0.1227,
+      "expectancy_pct": -12.273,
+      "profit_factor": 0.787,
+      "sharpe": -1.622,
+      "max_dd_r": 8.644,
+      "avg_win_r": 1.3062,
+      "avg_loss_r": -0.8792,
+      "max_win_streak": 2,
+      "max_loss_streak": 6,
+      "avg_hold_days": 6.6,
+      "date_start": "2024-01-31",
+      "date_end": "2024-10-01"
+    },
+    {
+      "label": "fold_5",
+      "trades": 29,
+      "win_rate": 0.5517,
+      "win_rate_pct": 55.2,
+      "total_r": 11.377,
+      "avg_r": 0.3923,
+      "expectancy_pct": 39.231,
+      "profit_factor": 2.075,
+      "sharpe": 5.095,
+      "max_dd_r": 5.04,
+      "avg_win_r": 1.3725,
+      "avg_loss_r": -0.8141,
+      "max_win_streak": 3,
+      "max_loss_streak": 6,
+      "avg_hold_days": 7.5,
+      "date_start": "2024-11-27",
+      "date_end": "2025-11-28"
+    }
+  ],
+  "walk_forward_E": [
+    {
+      "label": "fold_1",
+      "trades": 132,
+      "win_rate": 0.3485,
+      "win_rate_pct": 34.8,
+      "total_r": -21.369,
+      "avg_r": -0.1619,
+      "expectancy_pct": -16.189,
+      "profit_factor": 0.732,
+      "sharpe": -2.201,
+      "max_dd_r": 30.692,
+      "avg_win_r": 1.2667,
+      "avg_loss_r": -0.926,
+      "max_win_streak": 8,
+      "max_loss_streak": 18,
+      "avg_hold_days": 6.4,
+      "date_start": "2021-07-26",
+      "date_end": "2022-09-05"
+    },
+    {
+      "label": "fold_2",
+      "trades": 132,
+      "win_rate": 0.3788,
+      "win_rate_pct": 37.9,
+      "total_r": -20.439,
+      "avg_r": -0.1548,
+      "expectancy_pct": -15.484,
+      "profit_factor": 0.708,
+      "sharpe": -2.347,
+      "max_dd_r": 33.521,
+      "avg_win_r": 0.9915,
+      "avg_loss_r": -0.8539,
+      "max_win_streak": 5,
+      "max_loss_streak": 12,
+      "avg_hold_days": 7.0,
+      "date_start": "2022-09-06",
+      "date_end": "2023-06-12"
+    },
+    {
+      "label": "fold_3",
+      "trades": 132,
+      "win_rate": 0.3258,
+      "win_rate_pct": 32.6,
+      "total_r": -31.139,
+      "avg_r": -0.2359,
+      "expectancy_pct": -23.59,
+      "profit_factor": 0.615,
+      "sharpe": -3.472,
+      "max_dd_r": 38.11,
+      "avg_win_r": 1.1556,
+      "avg_loss_r": -0.9082,
+      "max_win_streak": 7,
+      "max_loss_streak": 20,
+      "avg_hold_days": 6.6,
+      "date_start": "2023-06-12",
+      "date_end": "2024-01-12"
+    },
+    {
+      "label": "fold_4",
+      "trades": 132,
+      "win_rate": 0.4091,
+      "win_rate_pct": 40.9,
+      "total_r": -2.64,
+      "avg_r": -0.02,
+      "expectancy_pct": -2.0,
+      "profit_factor": 0.964,
+      "sharpe": -0.256,
+      "max_dd_r": 26.002,
+      "avg_win_r": 1.2956,
+      "avg_loss_r": -0.9308,
+      "max_win_streak": 6,
+      "max_loss_streak": 8,
+      "avg_hold_days": 6.6,
+      "date_start": "2024-01-19",
+      "date_end": "2024-09-17"
+    },
+    {
+      "label": "fold_5",
+      "trades": 133,
+      "win_rate": 0.5113,
+      "win_rate_pct": 51.1,
+      "total_r": 28.106,
+      "avg_r": 0.2113,
+      "expectancy_pct": 21.132,
+      "profit_factor": 1.477,
+      "sharpe": 2.64,
+      "max_dd_r": 16.584,
+      "avg_win_r": 1.2801,
+      "avg_loss_r": -0.9068,
+      "max_win_streak": 9,
+      "max_loss_streak": 11,
+      "avg_hold_days": 7.3,
+      "date_start": "2024-09-20",
+      "date_end": "2025-12-22"
+    }
+  ],
+  "monte_carlo_C": {
+    "n_sims": 1000,
+    "total_r_p5": -16.805,
+    "total_r_p50": 4.454,
+    "total_r_p95": 27.849,
+    "max_dd_p50": 12.175,
+    "max_dd_p95": 25.255,
+    "win_rate_p5": 35.3,
+    "win_rate_p50": 42.9,
+    "win_rate_p95": 50.4,
+    "pct_positive_outcomes": 64.2
+  },
+  "governance_C": {
+    "min_trades_20": [
+      "PASS",
+      "n=133"
+    ],
+    "win_rate_50pct": [
+      "FAIL",
+      "WR=42.9%"
+    ],
+    "expectancy_0_1pct": [
+      "PASS",
+      "Exp=3.540%"
+    ],
+    "max_dd_15r": [
+      "FAIL",
+      "MaxDD=19.08R"
+    ],
+    "profit_factor_1_0": [
+      "PASS",
+      "PF=1.071"
+    ],
+    "sharpe_positive": [
+      "PASS",
+      "Sharpe=0.479"
+    ],
+    "wf_consistency_60": [
+      "FAIL",
+      "WF=40% (2/5)"
+    ],
+    "overfitting_1_50": [
+      "PASS",
+      "OvFit=1.30"
+    ],
+    "mc_positive_55pct": [
+      "PASS",
+      "MC_pos=64.2%"
+    ]
+  },
+  "governance_E": {
+    "min_trades_20": [
+      "PASS",
+      "n=661"
+    ],
+    "win_rate_50pct": [
+      "FAIL",
+      "WR=39.5%"
+    ],
+    "expectancy_0_1pct": [
+      "FAIL",
+      "Exp=-7.183%"
+    ],
+    "max_dd_15r": [
+      "FAIL",
+      "MaxDD=53.28R"
+    ],
+    "profit_factor_1_0": [
+      "FAIL",
+      "PF=0.869"
+    ],
+    "sharpe_positive": [
+      "FAIL",
+      "Sharpe=-0.971"
+    ],
+    "wf_consistency_60": [
+      "FAIL",
+      "WF=20% (1/5)"
+    ],
+    "overfitting_1_50": [
+      "PASS",
+      "OvFit=0.00"
+    ],
+    "mc_positive_55pct": [
+      "FAIL",
+      "MC_pos=5.1%"
+    ]
+  },
+  "regime_C": {
+    "RANGE_MARKET": {
+      "label": "RANGE_MARKET",
+      "trades": 133,
+      "win_rate": 0.4286,
+      "win_rate_pct": 42.9,
+      "total_r": 4.708,
+      "avg_r": 0.0354,
+      "expectancy_pct": 3.54,
+      "profit_factor": 1.071,
+      "sharpe": 0.479,
+      "max_dd_r": 19.079,
+      "avg_win_r": 1.2386,
+      "avg_loss_r": -0.867,
+      "max_win_streak": 3,
+      "max_loss_streak": 14,
+      "avg_hold_days": 7.0
+    }
+  },
+  "data_leakage": "NONE_FOUND",
+  "leakage_checks": [
+    "RSI(14) computed on closes[0..t] only \u2014 no future bars",
+    "ATR computed on H/L/C[0..t] only",
+    "Resistance = 20d rolling HIGH of highs ending at t",
+    "vol_ratio uses 3d/20d avg of volumes[0..t]",
+    "Regime: NIFTY vix_proxy uses log-returns of closes[0..t]",
+    "Regime: nifty_chg uses close[t] vs close[t-1]",
+    "DNA: vol_ratio >= 1.5 is a structural condition (no outcome knowledge used)",
+    "DNA evidence in institutional_dna.db dated BEFORE backtest start (2026-08-05 entry)",
+    "Entry price = close[t] (EOD; no next-open look-ahead in outcome calc)",
+    "Exit: stop/target evaluated on sequential FUTURE bars only",
+    "Conservative exit: same-bar stop+target \u2192 stop hit (pessimistic)",
+    "ADV filter uses volumes[-20:] ending at t",
+    "No future bar used to classify regime at signal date",
+    "Strict variant RSI>=70 uses SAME RSI computation \u2014 no extra data",
+    "vol_ratio used in DNA gate NOT derived from exit-bar volumes"
+  ],
+  "verdict": "FAIL"
+}

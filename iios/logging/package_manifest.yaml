@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.logging
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.logging"
+version: "0.1.0"
+purpose: "Logging service -- daily rotation, structured JSON, sensitive data redaction, context propagation with trace_id"
+architecture_reference: "IIOS-CIS-001 INFRA-LOG-001"
+layer: "LOGGING"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "iios_logger"
+  - "log_formatter"
+  - "log_rotator"
+  - "log_redactor"
+  - "structured_logger"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.observability"

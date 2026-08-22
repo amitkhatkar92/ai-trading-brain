@@ -1,0 +1,69 @@
+{
+  "audit_id": "MOVER_DISCOVERY_V3_SHADOW_AUDIT_001",
+  "section": "MISSED_AND_RECOVERED",
+  "data_date": "2026-08-17",
+  "warning": "SINGLE_DAY_SAMPLE — do not draw conclusions",
+
+  "run1_trading_date": "2026-08-13",
+  "t1_date": "2026-08-14",
+  "universe_total_on_t1": 209,
+
+  "v3_recovered_up": {
+    "description": "Symbols in V3 UP pool that were NOT in old scanner AND became >=1% UP movers on T+1",
+    "threshold_pct": 1.0,
+    "candidates": [
+      {"symbol": "GALAXYSURF.NS", "v3_rank": 1, "v3_score": 0.8814, "ret_1d": 20.0, "in_old_scanner": false},
+      {"symbol": "IDEA.NS",       "v3_rank": 5, "v3_score": 0.856,  "ret_1d": 4.44,  "in_old_scanner": false},
+      {"symbol": "BDL.NS",        "v3_rank": 12,"v3_score": 0.7201, "ret_1d": 1.64,  "in_old_scanner": false},
+      {"symbol": "AJANTPHARM.NS", "v3_rank": 16,"v3_score": 0.6892, "ret_1d": 1.61,  "in_old_scanner": false}
+    ],
+    "count": 4,
+    "note": "All 40 V3 candidates were V3-only (overlap=0). These 4 became >=1% UP movers."
+  },
+
+  "v3_recovered_down": {
+    "description": "Symbols in V3 DOWN pool that were NOT in old scanner AND became >=1% DOWN movers on T+1",
+    "threshold_pct": -1.0,
+    "candidates": [
+      {"symbol": "HINDZINC.NS",  "v3_rank": 9,  "v3_score": 0.7312, "ret_1d": -2.84, "in_old_scanner": false},
+      {"symbol": "CRAFTSMAN.NS", "v3_rank": 10, "v3_score": 0.7201, "ret_1d": -1.8,  "in_old_scanner": false},
+      {"symbol": "ASHOKLEY.NS",  "v3_rank": 15, "v3_score": 0.669,  "ret_1d": -1.3,  "in_old_scanner": false},
+      {"symbol": "WHIRLPOOL.NS", "v3_rank": 8,  "v3_score": 0.7401, "ret_1d": -1.1,  "in_old_scanner": false},
+      {"symbol": "BAJFINANCE.NS","v3_rank": 4,  "v3_score": 0.811,  "ret_1d": -1.05, "in_old_scanner": false}
+    ],
+    "count": 5,
+    "note": "All 40 V3 candidates were V3-only. These 5 became >=1% DOWN movers."
+  },
+
+  "v3_directional_misclassifications_day1": {
+    "description": "V3 placed these in DOWN pool but they were top UP movers on T+1",
+    "items": [
+      {"symbol": "RATEGAIN.NS",   "v3_rank_down": 11, "actual_ret_1d": 6.5,  "severity": "HIGH"},
+      {"symbol": "SUDARSCHEM.NS", "v3_rank_down": 6,  "actual_ret_1d": 6.2,  "severity": "HIGH"},
+      {"symbol": "IDEAFORGE.NS",  "v3_rank_down": 3,  "actual_ret_1d": 4.99, "severity": "HIGH"},
+      {"symbol": "DEEPAKFERT.NS", "v3_rank_down": 5,  "actual_ret_1d": 2.74, "severity": "MEDIUM"},
+      {"symbol": "NATCOPHARM.NS", "v3_rank_up": 20,   "actual_ret_1d": -5.1, "severity": "MEDIUM", "note": "V3 UP but moved strongly DOWN"}
+    ],
+    "warning": "SINGLE_DAY — these stocks may have been in counter-trend situations. Do not tune V3 based on 1 day."
+  },
+
+  "old_scanner_missed": {
+    "description": "Symbols NOT in V3 that were in actual top-10 movers on T+1",
+    "up_missed": [
+      {"symbol": "BATAINDIA.NS",  "actual_ret_1d": 3.85},
+      {"symbol": "OFSS.NS",       "actual_ret_1d": 3.57},
+      {"symbol": "GNFC.NS",       "actual_ret_1d": 3.37},
+      {"symbol": "GODREJAGRO.NS", "actual_ret_1d": 3.26}
+    ],
+    "down_missed": [
+      {"symbol": "CENTUM.NS",     "actual_ret_1d": -6.66},
+      {"symbol": "MIDHANI.NS",    "actual_ret_1d": -6.33},
+      {"symbol": "NATIONALUM.NS", "actual_ret_1d": -6.12},
+      {"symbol": "OLECTRA.NS",    "actual_ret_1d": -5.5},
+      {"symbol": "LTTS.NS",       "actual_ret_1d": -3.55}
+    ],
+    "note": "Neither V3 nor old scanner captured these. They represent the irreducible uncertainty from a 20-stock pool over 209-symbol universe."
+  },
+
+  "sample_size_warning": "INSUFFICIENT — 1 day of T+1 outcomes. Findings are directional only. Minimum 20 trading days required before drawing conclusions."
+}

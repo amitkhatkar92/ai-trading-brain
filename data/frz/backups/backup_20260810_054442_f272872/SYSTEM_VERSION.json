@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "platform_version": "1.0.0",
+  "build_number": 2,
+  "git_commit": "92665fa",
+  "git_commit_full": "92665fa42e36e9414b34d9e336e432033d5111ee",
+  "release_date": "2026-08-10",
+  "release_name": "IIOS-V1.0.0",
+  "db_versions": {
+    "control_tower": "0",
+    "institutional_dna": "0",
+    "schema_version": 1
+  },
+  "research_version": "H001:CONFIRMED",
+  "dna_version": "124-records",
+  "knowledge_version": "259-edges",
+  "config_version": "92665fa",
+  "container_version": "1.0.0",
+  "certification_status": "PRODUCTION_READY_WITH_OBSERVATIONS",
+  "frz_status": "FROZEN",
+  "previous_version": "1.0.0",
+  "release_notes": "Protected modules updated: FailSafeRiskGuardian: total_capital=TOTAL_CAPITAL \u2014 authorized fix",
+  "protected_module_hashes": {
+    "risk_guardian/risk_guardian.py": "465760e0f9c623b6",
+    "strategy_lab/backtesting_ai.py": "12df34ede0158531",
+    "validation_engine\\__init__.py": "fcf4b85b739c6a86",
+    "validation_engine\\backtest_engine.py": "fb493483c3c96cbd",
+    "validation_engine\\cross_market_test.py": "c1a46f2ffd28fbe8",
+    "validation_engine\\monte_carlo_simulator.py": "ab7135bed8cc83be",
+    "validation_engine\\parameter_sensitivity.py": "8ccf05b7ba626b63",
+    "validation_engine\\regime_robustness_test.py": "718bb7089ebd9099",
+    "validation_engine\\validation_report.py": "4eed420f0b360524",
+    "validation_engine\\walkforward_test.py": "04b733ba6d6e8d4f",
+    "data_feeds/dhan_feed.py": "a368eeb1e5023c95",
+    "main.py": "5186d0380f386755",
+    "config.py": "57e6071d420784bb",
+    "orchestrator/master_orchestrator.py": "0f3df2cba275c771",
+    "execution_engine/order_manager.py": "459e44887f3b0552"
+  }
+}

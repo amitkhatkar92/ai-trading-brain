@@ -1,0 +1,53 @@
+{
+  "strategy_stats": {
+    "Mean_Reversion": {
+      "total_trades": 36,
+      "wins": 6,
+      "total_pnl": 0.09006262620477579,
+      "win_rate": 0.16666666666666666,
+      "expectancy": 0.0025017396167993275,
+      "last_updated": "2026-06-16T15:35:12.738651"
+    },
+    "Bull_Call_Spread": {
+      "total_trades": 4,
+      "wins": 0,
+      "total_pnl": 0.0,
+      "win_rate": 0.0,
+      "expectancy": 0.0,
+      "last_updated": "2026-04-22T15:35:09.978602"
+    },
+    "Momentum_Retest": {
+      "total_trades": 43,
+      "wins": 3,
+      "total_pnl": -0.7382286296158814,
+      "win_rate": 0.06976744186046512,
+      "expectancy": -0.017168107665485613,
+      "last_updated": "2026-08-10T15:35:08.890648"
+    },
+    "EDG_MOMENT_100_EE0005": {
+      "total_trades": 8,
+      "wins": 0,
+      "total_pnl": -0.2510521601596059,
+      "win_rate": 0.0,
+      "expectancy": -0.03138152001995074,
+      "last_updated": "2026-06-16T15:35:12.738854"
+    },
+    "Trend_Pullback": {
+      "total_trades": 5,
+      "wins": 0,
+      "total_pnl": -0.20172415198373028,
+      "win_rate": 0.0,
+      "expectancy": -0.04034483039674606,
+      "last_updated": "2026-05-29T15:35:13.741889"
+    },
+    "EDG_MOMENT_95_EE0000": {
+      "total_trades": 8,
+      "wins": 1,
+      "total_pnl": -0.10285269013727949,
+      "win_rate": 0.125,
+      "expectancy": -0.012856586267159936,
+      "last_updated": "2026-07-08T15:35:10.841006"
+    }
+  },
+  "created": "2026-04-10T12:22:59.090775"
+}

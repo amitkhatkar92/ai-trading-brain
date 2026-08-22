@@ -23,6 +23,9 @@ from typing import Any, Dict, List, Optional
 
 from orchestrator.master_orchestrator import MasterOrchestrator
 from simulation_replay.historical_loader import DayData
+from simulation_replay.integrity_validator import (
+    IntegrityValidator, ReplayIntegritySummary, ReplayIntegrityError,
+)
 from simulation_replay.trace_logger import TraceCollector
 from utils import get_logger
 
@@ -90,11 +93,21 @@ class ReplayOrchestrator(MasterOrchestrator):
         result = orch.run_replay_day(day_data)
     """
 
-    def __init__(self) -> None:
+    def __init__(self, strict_validation: bool = False) -> None:
         log.info("[ReplayOrchestrator] Initialising (paper mode) …")
         super().__init__()
         self._replay_raw_data: Optional[Dict[str, Any]] = None
         self.collector = TraceCollector(self.bus)
+        # Closed trades for the current replay day — set by _close_replay_positions_with_outcomes()
+        self._current_day_trades: list = []
+        # Per-day learning measurements read by the integrity validator after _do_eod_learning()
+        self._last_feature_rows_before: int = 0
+        self._last_labels_updated:      int = 0
+        self._last_ede_completed:       bool = False
+        self._last_ede_report:          str  = ""
+        self._current_replay_date:      Optional[str] = None
+        self._validator = IntegrityValidator(strict=strict_validation)
+        self._validator.snapshot_start()
 
     # ── Data injection helpers ────────────────────────────────────────────────
 
@@ -146,7 +159,170 @@ class ReplayOrchestrator(MasterOrchestrator):
                 pass
             self._original_live_watchlist = None
 
+    # ── Replay-specific EOD helpers ───────────────────────────────────────────
+
+    def _close_replay_positions_with_outcomes(self, day_data: DayData) -> int:
+        """
+        Close all open positions using real historical OHLC price resolution.
+        Resets portfolio heat.  Must be called BEFORE _do_eod_learning() so
+        _current_day_trades is populated with evidence-based outcomes.
+        """
+        self._current_day_trades = []
+        self._current_replay_date = str(day_data.date)
+        open_orders = self.order_manager.get_open_orders()
+        if not open_orders:
+            log.info("[ReplayOrchestrator] EOD close: no open positions this day.")
+            self.risk_manager.update_portfolio_heat(0.0)
+            return 0
+
+        # Per-symbol OHLC from today's historical data
+        _ohlc: Dict[str, tuple] = {
+            item.get("symbol", ""): (
+                float(item.get("day_high", item.get("ltp", 0.0)) or 0.0),
+                float(item.get("day_low",  item.get("ltp", 0.0)) or 0.0),
+                float(item.get("ltp", 0.0) or 0.0),
+            )
+            for item in day_data.stock_watchlist
+            if item.get("symbol")
+        }
+
+        for rec in list(open_orders):
+            entry  = rec.entry_price
+            sl     = rec.initial_stop_loss if rec.initial_stop_loss > 0 else rec.stop_loss
+            target = rec.target
+            qty    = rec.quantity
+            symbol = rec.symbol
+
+            if entry <= 0 or sl <= 0 or target <= 0:
+                # Incomplete signal — close at entry, exclude from learning
+                self.order_manager.close_position(rec.order_id, entry, reason="ORPHAN_CLOSE")
+                continue
+
+            day_high, day_low, eod_close = _ohlc.get(symbol, (0.0, 0.0, 0.0))
+            exit_price, reason = _resolve_historical_outcome(
+                entry, sl, target, rec.direction, day_high, day_low, eod_close
+            )
+            self.order_manager.close_position(rec.order_id, exit_price, reason=reason)
+
+            if reason == "ORPHAN_CLOSE":
+                # No historical OHLC for this symbol — exclude from learning
+                continue
+
+            # close_position() does not set r_multiple; compute it here for learning.
+            # OrderRecord is a plain @dataclass (no __slots__) so dynamic attr works at runtime.
+            risk = abs(entry - sl) * max(qty, 1)
+            rec.r_multiple = round(rec.pnl / risk, 3) if risk > 0 else 0.0  # type: ignore[attr-defined]
+
+            self._current_day_trades.append(rec)
+
+        n = len(self._current_day_trades)
+        log.info("[ReplayOrchestrator] EOD close: %d position(s) with historical outcomes.", n)
+        self.risk_manager.update_portfolio_heat(0.0)
+        return n
+
+    def _do_eod_learning(self) -> None:
+        """
+        Replay-specific EOD learning override.
+
+        Uses _current_day_trades (set by _close_replay_positions_with_outcomes)
+        instead of the production CSV-recovery path.  The CSV path is bypassed
+        because all replay days share datetime.now() as their write timestamp,
+        causing cross-day label contamination when more than one day has run.
+        All production learning APIs are called with unchanged signatures.
+        """
+        self._last_feature_rows_before = 0
+        self._last_labels_updated      = 0
+        self._last_ede_completed       = False
+        self._last_ede_report          = ""
+
+        trades = list(self._current_day_trades)
+        if not trades:
+            log.info("[ReplayOrchestrator] EOD learning: no closed trades — skipped.")
+            return
+
+        log.info("[ReplayOrchestrator] EOD learning: %d trade(s).", len(trades))
+
+        # Core learning engine
+        self.learning_engine.learn(trades)
+
+        # Per-trade performance tracking
+        for trade in trades:
+            strategy   = (getattr(trade, "strategy",      None)
+                          or getattr(trade, "strategy_name", "unknown"))
+            regime     = (getattr(trade, "signal_regime", None)
+                          or getattr(trade, "regime",       "unknown"))
+            pnl        = getattr(trade, "pnl",        0.0)
+            r_multiple = getattr(trade, "r_multiple",  0.0)
+            won        = pnl > 0
+            self.performance_evaluator.record_trade(
+                strategy=strategy, regime=regime,
+                pnl=pnl, r_multiple=r_multiple, won=won,
+            )
+            self.perf_tracker.record_trade(
+                strategy, pnl_r=r_multiple,
+                order_id=getattr(trade, "order_id", ""),
+            )
+            if regime and regime != "unknown":
+                self.regime_strategy_map.record(regime, strategy, pnl_r=r_multiple)
+
+        # Meta-Learning feedback — accumulates verified historical outcomes into k-NN model
+        for trade in trades:
+            strategy   = (getattr(trade, "strategy",      None)
+                          or getattr(trade, "strategy_name", "unknown"))
+            pnl        = getattr(trade, "pnl",        0.0)
+            r_multiple = getattr(trade, "r_multiple",  0.0)
+            self.meta_learning.record_result(
+                strategy   = strategy,
+                snapshot   = None,   # uses MetaLearningEngine._last_snapshot from run_full_cycle
+                r_multiple = r_multiple,
+                return_pct = pnl / 1_000_000 * 100,
+                won        = pnl > 0,
+                trade_date = self._current_replay_date,
+            )
+        self.meta_learning.retrain_if_due()
+
+        # Edge Discovery: back-fill labels then mine patterns
+        ede_snapshot = self._last_snapshot
+        if ede_snapshot is not None:
+            _traded_syms = {getattr(t, "symbol", "") for t in trades if getattr(t, "symbol", "")}
+            _zero_before = _count_zero_labels(_traded_syms)
+            self._last_feature_rows_before = _zero_before
+
+            for trade in trades:
+                sym     = getattr(trade, "symbol",       "?")
+                pnl     = getattr(trade, "pnl",          0.0)
+                entry   = getattr(trade, "entry_price",  1.0) or 1.0
+                ret_pct = pnl / entry if entry else 0.0
+                strat   = (getattr(trade, "strategy",      "")
+                           or getattr(trade, "strategy_name", ""))
+                self.edge_discovery.enrich_with_outcomes(sym, ret_pct)
+                self.edge_discovery.record_outcome(strat, pnl > 0)
+
+            self._last_labels_updated = max(0, _zero_before - _count_zero_labels(_traded_syms))
+
+            ede_report = self.edge_discovery.run_discovery_cycle(
+                ede_snapshot, publish_event=True)
+            self._last_ede_completed = True
+            self._last_ede_report    = ede_report
+            log.info("[ReplayOrchestrator] EDE: %s", ede_report)
+        else:
+            log.info("[ReplayOrchestrator] No snapshot cached — EDE skipped this day.")
+
+        try:
+            from communication import EventType, LearningEvent
+            self.bus.publish(LearningEvent(
+                event_type=EventType.LEARNING_CYCLE_COMPLETE,
+                source_agent="LearningEngine",
+                payload={"trades_processed": len(trades)},
+            ))
+        except Exception:
+            pass
+
     # ── Public API ────────────────────────────────────────────────────────────
+
+    def get_integrity_summary(self) -> ReplayIntegritySummary:
+        """Generate and log the Replay Learning Integrity Report."""
+        return self._validator.generate_summary()
 
     def run_replay_day(self, day_data: DayData) -> DayCycleResult:
         """
@@ -186,14 +362,15 @@ class ReplayOrchestrator(MasterOrchestrator):
                         approved_strategy[sym]  = p.get("strategy", "")
                         approved_score[sym]     = p.get("confidence_score", 0.0)
 
-            # Build intraday H/L lookup from today's watchlist (populated by historical loader)
+            # Build intraday H/L/close lookup from today's watchlist
             hl_lookup: Dict[str, tuple] = {}
             for wl_item in day_data.stock_watchlist:
-                s_sym  = wl_item.get("symbol", "")
-                s_high = float(wl_item.get("day_high", wl_item.get("ltp", 0.0)) or 0.0)
-                s_low  = float(wl_item.get("day_low",  wl_item.get("ltp", 0.0)) or 0.0)
+                s_sym   = wl_item.get("symbol", "")
+                s_high  = float(wl_item.get("day_high", wl_item.get("ltp", 0.0)) or 0.0)
+                s_low   = float(wl_item.get("day_low",  wl_item.get("ltp", 0.0)) or 0.0)
+                s_close = float(wl_item.get("ltp", 0.0) or 0.0)
                 if s_sym:
-                    hl_lookup[s_sym] = (s_high, s_low)
+                    hl_lookup[s_sym] = (s_high, s_low, s_close)
 
             # Deduplicate ORDER_PLACED events by symbol (subscription leak)
             seen_symbols: set = set()
@@ -213,8 +390,13 @@ class ReplayOrchestrator(MasterOrchestrator):
                         dirn   = str(payload.get("direction", "BUY"))
                         strat  = payload.get("strategy", "") or approved_strategy.get(sym, "")
                         score  = float(payload.get("confidence", 0.0) or approved_score.get(sym, 0.0))
-                        pnl    = _sim_pnl(entry, sl, target, qty, dirn, day_data.date, sym)
-                        day_high, day_low = hl_lookup.get(sym, (0.0, 0.0))
+                        day_high, day_low, eod_close = hl_lookup.get(sym, (0.0, 0.0, 0.0))
+                        _exit_p, _ = _resolve_historical_outcome(
+                            entry, sl, target, dirn, day_high, day_low, eod_close)
+                        if dirn.upper() in ("BUY", "LONG"):
+                            pnl = round((_exit_p - entry) * qty, 2)
+                        else:
+                            pnl = round((entry - _exit_p) * qty, 2)
                         executed_rows.append({
                             "symbol":   sym,
                             "strategy": strat,
@@ -233,29 +415,41 @@ class ReplayOrchestrator(MasterOrchestrator):
             result.regime = str(getattr(self._last_snapshot, "regime", "UNKNOWN"))
             result.signals_found = _count_signals_from_trace(trace)
 
-            # ── EOD learning on this day's data ───────────────────────
+            # ── EOD close with historical outcomes (MUST precede EOD learning) ──
+            # Resolves each position's exit using real OHLC: SL hit, target hit, or EOD close.
+            _n_closed = 0
+            try:
+                _n_closed = self._close_replay_positions_with_outcomes(day_data)
+            except Exception as eod_close_exc:
+                log.warning("[ReplayOrchestrator] EOD close error: %s", eod_close_exc)
+                result.errors.append(f"eod_close: {eod_close_exc}")
+
+            # ── EOD learning — positions are closed, labels are non-zero ──
             try:
                 self._do_eod_learning()
             except Exception as eod_exc:
                 log.warning("[ReplayOrchestrator] EOD learning error: %s", eod_exc)
                 result.errors.append(f"eod_learning: {eod_exc}")
 
-            # ── EOD position close + heat reset ───────────────────────
-            # In replay each day is self-contained.  All open orders are
-            # closed at EOD (realistic intraday behaviour) and portfolio
-            # heat is zeroed so the next day starts with a clean slate.
-            # Without this the heat accumulates permanently across 180
-            # days and the portfolio heat gate rejects every signal after
-            # the 5th trade ever placed.
+            # ── Integrity validation (read-only, does not affect learning) ──
             try:
-                open_before = len(self.order_manager.get_open_orders())
-                if open_before:
-                    self.order_manager.close_all_positions()
-                    log.info("[ReplayOrchestrator] EOD: closed %d open position(s).",
-                             open_before)
-                self.risk_manager.update_portfolio_heat(0.0)
-            except Exception as eod_close_exc:
-                log.warning("[ReplayOrchestrator] EOD close error: %s", eod_close_exc)
+                _int_result = self._validator.check_day(
+                    day_num=day_data.day_num,
+                    trading_date=day_data.date,
+                    n_closed=_n_closed,
+                    n_fed=len(self._current_day_trades),
+                    feature_rows_available=self._last_feature_rows_before,
+                    n_labels_updated=self._last_labels_updated,
+                    ede_completed=self._last_ede_completed,
+                    ede_report=self._last_ede_report,
+                )
+                if not _int_result.passed:
+                    result.errors.extend(_int_result.failures)
+            except ReplayIntegrityError:
+                raise   # strict mode — propagate to abort the replay
+            except Exception as _val_exc:
+                log.warning("[ReplayIntegrity] Validation error day %d: %s",
+                            day_data.day_num, _val_exc)
 
         except Exception as exc:
             tb = traceback.format_exc()
@@ -288,6 +482,62 @@ class ReplayOrchestrator(MasterOrchestrator):
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _resolve_historical_outcome(
+    entry:     float,
+    sl:        float,
+    target:    float,
+    direction: str,
+    day_high:  float,
+    day_low:   float,
+    eod_close: float,
+) -> tuple[float, str]:
+    """
+    Resolve trade outcome from real historical OHLC prices.
+
+    Priority: SL hit > target hit > EOD close.
+    When both SL and target fall within the day range (ambiguous candle),
+    the stop loss is conservatively assumed to have hit first.
+    Returns (exit_price, close_reason).
+    """
+    is_long  = direction.upper() in ("BUY", "LONG")
+    has_ohlc = day_high > 0 and day_low > 0
+
+    if not has_ohlc:
+        # No historical data available — caller should exclude from learning
+        return entry, "ORPHAN_CLOSE"
+
+    if is_long:
+        sl_hit     = day_low  <= sl
+        target_hit = day_high >= target
+    else:
+        sl_hit     = day_high >= sl
+        target_hit = day_low  <= target
+
+    if sl_hit:
+        # SL takes priority over target on ambiguous candles (conservative)
+        return sl, "close_sl"
+    if target_hit:
+        return target, "close_target"
+
+    # Neither level reached — EOD exit at closing price
+    close = eod_close if eod_close > 0 else entry
+    return close, "eod_close"
+
+
+def _count_zero_labels(symbols: set) -> int:
+    """Count EDE feature DB rows with forward_return==0.0 for the given symbols."""
+    try:
+        from edge_discovery.pattern_miner import load_feature_db
+        db = load_feature_db()
+        return sum(
+            1 for r in db
+            if r.get("symbol") in symbols and r.get("forward_return", 0.0) == 0.0
+        )
+    except Exception:
+        return 0
+
 
 def _positions_to_dicts(positions: Dict) -> List[Dict[str, Any]]:
     rows = []

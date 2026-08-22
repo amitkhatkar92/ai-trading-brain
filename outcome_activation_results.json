@@ -1,0 +1,155 @@
+{
+  "activation_id": "OUTCOME_TRACKING_ACTIVATION_001",
+  "date": "2026-08-14",
+  "verdict": "OUTCOME_INFRASTRUCTURE_ACTIVATED",
+
+  "git_state": {
+    "local_head": "5e9ab8a",
+    "vps_head_at_snapshot": "8ac54e7b6b9b99b1be4c473f4dd59a57c2e36bd9",
+    "pushed_to_origin": true,
+    "commit_message": "OUTCOME_TRACKING_ACTIVATION_001: backfill 3253 signals, wire daily resolver to EOD"
+  },
+
+  "phase1_pre_snapshot": {
+    "total_signals_pre": 3335,
+    "final_state_null_pre": 3335,
+    "actual_move_pct_populated_pre": 0,
+    "db_md5_pre": "f412ee044acecae2281ea9ca1d79932a",
+    "db_size_bytes": 23543808,
+    "vps_git_head": "8ac54e7b6b9b99b1be4c473f4dd59a57c2e36bd9",
+    "container_image": "ai-trading-brain-ai-trading-brain",
+    "backup_path": "/root/ai-trading-brain/data/market_behavior_pre_backfill_2026-08-14.db",
+    "backup_verified": true
+  },
+
+  "phase2_backfill": {
+    "as_of_date": "2026-08-13",
+    "total_processed": 3335,
+    "resolved": 3253,
+    "wins": 1046,
+    "losses": 934,
+    "expired": 268,
+    "pending": 1005,
+    "no_data": 82,
+    "errors": 0,
+    "win_rate_closed": 0.4653,
+    "method": "resolve_signal_outcomes(conn, '2026-08-13', dry_run=False)",
+    "mutation_detected": false,
+    "rollback_triggered": false
+  },
+
+  "phase3_validation": {
+    "total_signals_post": 3335,
+    "final_state_null_post": 82,
+    "final_state_set_post": 3253,
+    "counts_match_approved_preview": true,
+    "counts": {
+      "WIN": 1046, "LOSS": 934, "EXPIRED": 268,
+      "PENDING": 1005, "NO_DATA_null": 82
+    },
+    "immutable_hash_changes": 0,
+    "immutability_confirmed": true,
+    "idempotency_run2_resolved": 0,
+    "idempotency_confirmed": true
+  },
+
+  "phase4_orchestrator_wiring": {
+    "file": "orchestrator/master_orchestrator.py",
+    "function": "run_daily_outcome_resolution",
+    "hook": "_do_eod_learning (post-scan, 16:45 IST slot)",
+    "position": "After signal scan, before _run_premarket_refiner",
+    "failure_handling": "Non-critical try/except — failure logged, not re-raised",
+    "log_format": "[OutcomeResolver] as_of=? eligible=N resolved=N pending=N no_data=N errors=N",
+    "separate_scheduler_created": false
+  },
+
+  "phase5_resolver_properties": {
+    "resolves_eligible_pending": true,
+    "leaves_within_ttl_untouched": true,
+    "resolves_no_data_when_ohlcv_available": true,
+    "idempotent": true,
+    "tolerates_missing_symbol": true,
+    "tolerates_missing_market_data": true,
+    "survives_restart": true,
+    "one_bad_record_does_not_stop_batch": true
+  },
+
+  "phase6_isolation": {
+    "orchestrator_references": ["shadow_scorer", "outcome_distributor", "adaptive_intelligence", "e_readiness"],
+    "orchestrator_matches": 0,
+    "forbidden_imports_in_tracker": [],
+    "forbidden_tables_in_tracker_code": [],
+    "data_flow": "TRADING_DECISION -> SIGNAL_BIRTH -> OUTCOME_TRACKING -> RESEARCH_DATA",
+    "reverse_path_exists": false
+  },
+
+  "phase7_broker_writes": {
+    "dhan_write_calls": 0,
+    "orders_placed": 0,
+    "positions_created": 0,
+    "place_order_in_tracker": false,
+    "close_position_in_tracker": false
+  },
+
+  "phase8_failure_tests": {
+    "A_normal_run": "PASS",
+    "B_double_run": "PASS (resolved=0)",
+    "C_interrupted_rollback": "PASS (count unchanged after rollback)",
+    "D_container_restart": "PASS (resolved=0 after restart)",
+    "E_missing_ohlcv": "PASS (no_data=1, errors=0)",
+    "F_malformed_record": "PASS (errors=1, no crash, batch continues)",
+    "G_duplicate_invocation": "PASS (same as B)"
+  },
+
+  "phase9_tests": {
+    "test_outcome_tracking_001": "43/43 PASS",
+    "test_outcome_activation_001": "24/24 PASS",
+    "new_failures": 0,
+    "pre_existing_failures": 0,
+    "skipped": 0
+  },
+
+  "phase10_deployment": {
+    "files_deployed": [
+      "oios/engine/signal_outcome_tracker.py",
+      "orchestrator/master_orchestrator.py",
+      "test_outcome_tracking_001.py",
+      "test_outcome_activation_001.py"
+    ],
+    "md5_host_container_match": {
+      "signal_outcome_tracker.py": true,
+      "master_orchestrator.py": true
+    },
+    "ai_trading_brain_healthy": true,
+    "trading_dashboard_healthy": true,
+    "startup_orphan_audit": "0 orphaned positions",
+    "scheduler_armed": true
+  },
+
+  "phase11_live_observation": {
+    "status": "WAITING — resolver runs at 16:45 IST post-market slot",
+    "expected_log": "[OutcomeResolver] as_of=2026-08-14 eligible=N resolved=N pending=N no_data=N errors=0",
+    "note": "First genuine resolver execution will occur at next 16:45 IST cycle"
+  },
+
+  "trading_config_unchanged": {
+    "PAPER_TRADING": false,
+    "ACTIVE_BROKER": "dhan",
+    "TOTAL_CAPITAL": 10000.0
+  },
+
+  "q1_backfill_completed": true,
+  "q2_records_updated": 3253,
+  "q3_immutable_fields_unchanged": true,
+  "q4_counts_match_preview": true,
+  "q5_second_run_idempotent": true,
+  "q6_resolver_connected_to_eod": true,
+  "q7_resolver_restart_safe": true,
+  "q8_pending_handled_correctly": true,
+  "q9_no_data_handled_correctly": true,
+  "q10_resolver_has_trading_path": false,
+  "q11_broker_writes_made": false,
+  "q12_orders_placed": false,
+  "q13_all_tests_passing": true,
+  "q14_ready_for_future_outcomes": true
+}

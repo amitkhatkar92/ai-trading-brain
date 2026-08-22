@@ -1,0 +1,296 @@
+﻿
+-- T001-T025  kde_models --
+  PASS  T001 DiscoveryStatus has 6 values
+  PASS  T002 SDRecommendation has 5 values
+  PASS  T003 PotentialValue has 4 values
+  PASS  T004 RelationshipType has 5 values
+  PASS  T005 EvidenceType has 5 values
+  PASS  T006 DiscoveryScore.overall computed
+  PASS  T007 DiscoveryScore.overall matches weights
+  PASS  T008 DiscoveryScore.to_dict has overall
+  PASS  T009 from_components clamps to [0,1]
+  PASS  T010 DISCOVERY_WEIGHTS sum to 1.0
+  PASS  T011 DiscoveryEvidence.to_dict keys present
+  PASS  T012 DiscoveryCandidate.novelty_hint
+  PASS  T013 DiscoveryCandidate.impact_hint
+  PASS  T014 DiscoveryCandidate.feature_names default []
+  PASS  T015 DiscoveryCandidate.dna_ids default []
+  PASS  T016 Discovery.to_dict has discovery_id
+  PASS  T017 Discovery.to_dict has score as dict
+  PASS  T018 Discovery.to_dict has evidence list
+  PASS  T019 DiscoveryRelationship.to_dict has strength
+  PASS  T020 DiscoveryCluster.to_dict has discoveries
+  PASS  T021 DiscoveryStatistics.to_dict
+  PASS  T022 KDEStatus.to_dict has total_runs
+  PASS  T023 KDEError is Exception
+  PASS  T024 PotentialValue VERY_HIGH exists
+  PASS  T025 SDRecommendation PROMOTE exists
+
+-- T026-T040  KDEConfig --
+  PASS  T026 default enabled_schemes is 15
+  PASS  T027 all scheme IDs start with S
+  PASS  T028 default min_raw_score=0.40
+  PASS  T029 default min_overall_score=0.45
+  PASS  T030 default parallel_schemes=True
+  PASS  T031 default max_discoveries=1000
+  PASS  T032 all_scheme_ids has 15
+  PASS  T033 min_raw_score > 1 raises ValueError
+  PASS  T034 min_overall_score < 0 raises ValueError
+  PASS  T035 max_workers < 1 raises ValueError
+  PASS  T036 invalid scheme ID raises ValueError
+  PASS  T037 enable/disable scheme
+  PASS  T038 enable_scheme adds
+  PASS  T039 disable_scheme removes
+  PASS  T040 dry_run default False
+
+-- T041-T055  BaseDiscoveryScheme and DiscoveryContext --
+  PASS  T041 DiscoveryContext.years is sorted
+  PASS  T042 DiscoveryContext.n_years == 5
+  PASS  T043 DiscoveryContext.market_profiles has data
+  PASS  T044 DiscoveryContext.dna_snapshots has data
+  PASS  T045 DiscoveryContext.edge_snapshots has data
+  PASS  T046 DiscoveryContext.all_regimes is sorted list
+  PASS  T047 all_regimes not empty
+  PASS  T048 BaseDiscoveryScheme cannot be instantiated
+  PASS  T049 WinnerDNAScheme.SCHEME_ID = S001
+  PASS  T050 WinnerDNAScheme.SCHEME_NAME not empty
+  PASS  T051 WinnerDNAScheme.SCIENTIFIC_QUESTION not empty
+  PASS  T052 scheme.run() returns list
+  PASS  T053 all candidates have raw_score >= min
+  PASS  T054 empty context returns empty list
+  PASS  T055 _make_evidence builds DiscoveryEvidence
+
+-- T056-T100  Schemes S001-S005 --
+  PASS  T056 S001 returns candidates
+  PASS  T057 S001 candidates have years_observed
+  PASS  T058 S001 answers mention DNA id
+  PASS  T059 S001 feature_names not empty
+  PASS  T060 S001 raw_score in [0, 1]
+  PASS  T061 S001 candidates sorted by raw_score desc
+  PASS  T062 S001 dna_ids populated
+  PASS  T063 S001 suggested_followup not empty
+  PASS  T064 S002 returns candidates
+  PASS  T065 S002 answers mention loser DNA
+  PASS  T066 S002 scheme_id = S002
+  PASS  T067 S002 loser DNA in dna_ids
+  PASS  T068 S003 scheme_id = S003
+  PASS  T069 S003 handles ctx with few years gracefully
+  PASS  T070 S003 no interactions (sparse data) is valid
+  PASS  T071 S003 placeholder pass
+  PASS  T072 S003 single-year returns empty
+  PASS  T073 S004 scheme_id = S004
+  PASS  T074 S004 candidates are stable features
+  PASS  T075 S004 feature_names populated
+  PASS  T076 S004 single-year returns empty
+  PASS  T077 S004 raw_score >= 0.40
+  PASS  T078 S004 evidence has statistical_support
+  PASS  T079 S005 scheme_id = S005
+  PASS  T080 S005 returns candidates
+  PASS  T081 S005 mentions sector in answer
+  PASS  T082 S005 single-year returns empty
+  PASS  T083 S005 years_observed not empty
+  PASS  T084 S005 sector rotation pattern candidate
+  PASS  T085 S005 feature_names include sector features
+  PASS  T086 S005 raw_score >= 0.40
+  PASS  T087 S001 scheme_name = 'Winner DNA'
+  PASS  T088 S002 scheme_name = 'Loser DNA'
+  PASS  T089 S003 scheme_name has 'Interaction'
+  PASS  T090 S004 scheme_name has 'Stability'
+  PASS  T091 S005 scheme_name has 'Rotation'
+  PASS  T092 S001 single year still runs
+  PASS  T093 S002 single year returns list
+  PASS  T094 S004 min 2 years check
+  PASS  T095 S005 min 2 years check
+  PASS  T096 S001 no crash on no-winner DNA context
+  PASS  T097 S002 no crash on no-loser DNA context
+  PASS  T098 S003 no crash on no-winner DNA context
+  PASS  T099 S004 no crash on empty context
+  PASS  T100 S005 no crash on empty context
+
+-- T101-T145  Schemes S006-S010 --
+  PASS  T101 S006 scheme_id = S006
+  PASS  T102 S006 returns list
+  PASS  T103 S006 at least 2 years required
+  PASS  T104 S006 candidates mention regimes
+  PASS  T105 S006 statistical_support has diff
+  PASS  T106 S006 raw_score in [0, 1]
+  PASS  T107 S006 feature_names present
+  PASS  T108 S006 dna_ids present
+  PASS  T109 S006 no crash on empty
+  PASS  T110 S007 scheme_id = S007
+  PASS  T111 S007 returns list
+  PASS  T112 S007 no personality differences (uniform)
+  PASS  T113 S007 placeholder pass
+  PASS  T114 S007 no crash on 1 year
+  PASS  T115 S007 no crash on empty
+  PASS  T116 S008 scheme_id = S008
+  PASS  T117 S008 returns list
+  PASS  T118 S008 requires 4+ years ΓÇö 3yr returns empty
+  PASS  T119 S008 candidates have cohesion in evidence
+  PASS  T120 S008 cluster answer mentions cohesion
+  PASS  T121 S008 5yr gives N clusters <= 3
+  PASS  T122 S009 scheme_id = S009
+  PASS  T123 S009 returns candidates
+  PASS  T124 S009 candidates mention lifecycle labels
+  PASS  T125 S009 strengthening discovery present
+  PASS  T126 S009 no crash on empty dna_records
+  PASS  T127 S010 scheme_id = S010
+  PASS  T128 S010 returns candidates
+  PASS  T129 S010 candidates mention edge IDs
+  PASS  T130 S010 no crash on empty edge_records
+  PASS  T131 S010 rising edges discovery present
+  PASS  T132 S010 dna_ids present
+  PASS  T133 S010 raw_score in [0,1]
+  PASS  T134 S006 SCIENTIFIC_QUESTION not empty
+  PASS  T135 S007 SCIENTIFIC_QUESTION not empty
+  PASS  T136 S008 SCIENTIFIC_QUESTION not empty
+  PASS  T137 S009 SCIENTIFIC_QUESTION not empty
+  PASS  T138 S010 SCIENTIFIC_QUESTION not empty
+  PASS  T139 S006 empty context safe
+  PASS  T140 S007 empty context safe
+  PASS  T141 S008 empty context safe
+  PASS  T142 S009 empty context safe
+  PASS  T143 S010 empty context safe
+  PASS  T144 S008 n_clusters constant = 3
+  PASS  T145 S006 min_diff constant > 0
+
+-- T146-T190  Schemes S011-S015 --
+  PASS  T146 S011 scheme_id = S011
+  PASS  T147 S011 returns list
+  PASS  T148 S011 finds disappearing DNA
+  PASS  T149 S011 answer mentions disappearing pattern
+  PASS  T150 S011 evidence has years_present
+  PASS  T151 S011 feature_names present
+  PASS  T152 S011 raw_score from peak confidence
+  PASS  T153 S011 no crash on empty
+  PASS  T154 S011 suggested_followup not empty
+  PASS  T155 S012 scheme_id = S012
+  PASS  T156 S012 returns list
+  PASS  T157 S012 requires 3+ years
+  PASS  T158 S012 mentions Pearson correlation
+  PASS  T159 S012 feature_names include institutional_activity
+  PASS  T160 S012 no crash on empty
+  PASS  T161 S013 scheme_id = S013
+  PASS  T162 S013 returns candidates
+  PASS  T163 S013 mentions winner or loser
+  PASS  T164 S013 candidates sorted by raw_score desc
+  PASS  T165 S013 feature_names present
+  PASS  T166 S013 discriminative_score in evidence
+  PASS  T167 S013 no crash on empty
+  PASS  T168 _max_streak([2019,2020,2021]) = 3
+  PASS  T169 _max_streak([2019,2021,2022]) = 2
+  PASS  T170 _max_streak([]) = 0
+  PASS  T171 _max_streak([2020]) = 1
+  PASS  T172 S014 scheme_id = S014
+  PASS  T173 S014 returns candidates
+  PASS  T174 S014 mentions consecutive years
+  PASS  T175 S014 min_streak = 3
+  PASS  T176 S014 dna_ids present
+  PASS  T177 S014 no crash on empty
+  PASS  T178 S015 scheme_id = S015
+  PASS  T179 S015 returns list
+  PASS  T180 S015 requires 3+ years
+  PASS  T181 S015 no context-specific patterns (uniform context)
+  PASS  T182 S015 placeholder pass
+  PASS  T183 S015 no crash on empty
+  PASS  T184 S015 specificity_threshold = 0.70
+  PASS  T185 S011 SCIENTIFIC_QUESTION not empty
+  PASS  T186 S012 SCIENTIFIC_QUESTION not empty
+  PASS  T187 S013 SCIENTIFIC_QUESTION not empty
+  PASS  T188 S014 SCIENTIFIC_QUESTION not empty
+  PASS  T189 S015 SCIENTIFIC_QUESTION not empty
+  PASS  T190 all 15 schemes have SCHEME_ID
+
+-- T191-T210  DiscoveryScorer --
+  PASS  T191 scorer promotes qualifying candidate
+  PASS  T192 discovery has correct scheme_id
+  PASS  T193 discovery has non-empty discovery_id
+  PASS  T194 discovery_id contains scheme_id
+  PASS  T195 discovery score.overall > 0
+  PASS  T196 low raw_score not promoted
+  PASS  T197 more years = higher reproducibility
+  PASS  T198 more regimes = higher generality
+  PASS  T199 _potential_value >= 0.75 = VERY_HIGH
+  PASS  T200 _potential_value >= 0.60 = HIGH
+  PASS  T201 _potential_value >= 0.45 = MEDIUM
+  PASS  T202 _potential_value < 0.45 = LOW
+  PASS  T203 max_discoveries enforced
+  PASS  T204 placeholder pass
+  PASS  T205 discovery status = ACTIVE
+  PASS  T206 sd_recommendation = None initially
+  PASS  T207 discovery potential_value in PotentialValue
+  PASS  T208 all discovery IDs unique
+  PASS  T209 discovery.evidence list preserved
+  PASS  T210 discovery has generated_at
+
+-- T211-T230  RelationshipMiner --
+  PASS  T211 shared feature produces CORRELATED
+  PASS  T212 S001+S002 produces COMPLEMENTARY
+  PASS  T213 S015+S001 produces ENABLES
+  PASS  T214 S014 subsumes narrower discovery
+  PASS  T215 no self-relationships
+  PASS  T216 no duplicate pairs
+  PASS  T217 no relationship for non-overlapping features
+  PASS  T218 all relationship strengths in [0,1]
+  PASS  T219 relationship IDs start with KDE-REL
+  PASS  T220 empty list returns empty
+  PASS  T221 relationships have descriptions
+  PASS  T222 COMPLEMENTARY found regardless of order
+  PASS  T223 large input runs without crash
+  PASS  T224 partial feature overlap gives partial strength
+  PASS  T225 RelationshipType.CORRELATED = CORRELATED
+  PASS  T226 RelationshipType.COMPLEMENTARY exists
+  PASS  T227 miner produces DiscoveryRelationship objects
+  PASS  T228 relationship.to_dict has all keys
+  PASS  T229 ENABLES only between S015 and S001
+  PASS  T230 SUBSUMES requires broader year set
+
+-- T231-T245  ClusterBuilder --
+  PASS  T231 cluster_builder returns list
+  PASS  T232 at least 3 clusters for 6 different themes
+  PASS  T233 cluster IDs unique
+  PASS  T234 cluster IDs start with KDE-CL
+  PASS  T235 cohesion_score in [0,1]
+  PASS  T236 S001+S002 in same DNA cluster
+  PASS  T237 cluster descriptions not empty
+  PASS  T238 cluster themes not empty
+  PASS  T239 single discovery forms cluster
+  PASS  T240 single-item cluster cohesion = 1.0
+  PASS  T241 empty discoveries returns empty
+  PASS  T242 _SCHEME_THEME covers all 15 schemes
+  PASS  T243 _THEME_DESCRIPTIONS has entries
+  PASS  T244 clusters sorted by size desc
+  PASS  T245 shared feature increases cohesion
+
+-- T246-T255  KDEReportGenerator --
+  PASS  T246 5 reports generated
+  PASS  T247 DISCOVERY_SUMMARY.md exists
+  PASS  T248 TOP_DISCOVERIES.md exists
+  PASS  T249 FEATURE_RELATIONSHIPS.md exists
+  PASS  T250 CLUSTER_DISCOVERIES.md exists
+  PASS  T251 DISCOVERY_PIPELINE.md exists
+  PASS  T252 DISCOVERY_SUMMARY.md has header
+  PASS  T253 DISCOVERY_SUMMARY.md has Total discoveries
+  PASS  T254 dry_run returns 5 path entries
+  PASS  T255 dry_run writes no files
+
+-- T256-T270  KDEEngine --
+  PASS  T256 engine.run() returns KDERunResult
+  PASS  T257 run_id starts with KDE-
+  PASS  T258 discoveries not empty
+  PASS  T259 statistics.total_candidates > 0
+  PASS  T260 statistics.total_discoveries == len(discoveries)
+  PASS  T261 schemes_run has >= 1 scheme
+  PASS  T262 all schemes in ALL_SCHEMES registered
+  PASS  T263 status.total_runs = 1
+  PASS  T264 status.schemes_registered = 15
+  PASS  T265 status.total_discoveries = len(result.discoveries)
+  PASS  T266 custom scheme runs
+  PASS  T267 deregistered scheme no longer in registry
+  PASS  T268 history accumulates runs
+  PASS  T269 last_result returns most recent
+  PASS  T270 3 parallel engine runs complete without deadlock
+
+============================================================
+  270/270 tests passed  (0 failed)
+============================================================

@@ -1,0 +1,125 @@
+[
+  {
+    "action_id": "PGA-E375E156",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "DRREDDY",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for DRREDDY: moved +4.0% with zero DNA coverage",
+    "payload": {
+      "symbol": "DRREDDY",
+      "return_pct": 3.96,
+      "direction": "UP",
+      "volume": 3935937.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-5865EDED",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "DIVISLAB",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for DIVISLAB: moved +3.2% with zero DNA coverage",
+    "payload": {
+      "symbol": "DIVISLAB",
+      "return_pct": 3.17,
+      "direction": "UP",
+      "volume": 603654.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-ECE5528C",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "VEDL",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for VEDL: moved -3.5% with zero DNA coverage",
+    "payload": {
+      "symbol": "VEDL",
+      "return_pct": -3.47,
+      "direction": "DOWN",
+      "volume": 13466663.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-05B26BD3",
+    "category": "F",
+    "category_desc": "Historical gap \u2192 Schedule HKAP replay",
+    "symbol": "BHARATFORG",
+    "action_type": "schedule_hkap_replay",
+    "target_system": "HKAP",
+    "description": "Schedule HKAP replay for BHARATFORG: build historical knowledge about 3.0% move patterns",
+    "payload": {
+      "symbol": "BHARATFORG",
+      "move_pct": -3.02,
+      "direction": "DOWN",
+      "action": "schedule_hkap"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-0DE2E025",
+    "category": "F",
+    "category_desc": "Historical gap \u2192 Schedule HKAP replay",
+    "symbol": "MAXHEALTH",
+    "action_type": "schedule_hkap_replay",
+    "target_system": "HKAP",
+    "description": "Schedule HKAP replay for MAXHEALTH: build historical knowledge about 2.4% move patterns",
+    "payload": {
+      "symbol": "MAXHEALTH",
+      "move_pct": -2.38,
+      "direction": "DOWN",
+      "action": "schedule_hkap"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-94FA6EAA",
+    "category": "F",
+    "category_desc": "Historical gap \u2192 Schedule HKAP replay",
+    "symbol": "AMBUJACEM",
+    "action_type": "schedule_hkap_replay",
+    "target_system": "HKAP",
+    "description": "Schedule HKAP replay for AMBUJACEM: build historical knowledge about 2.3% move patterns",
+    "payload": {
+      "symbol": "AMBUJACEM",
+      "move_pct": -2.3,
+      "direction": "DOWN",
+      "action": "schedule_hkap"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  },
+  {
+    "action_id": "PGA-96C02809",
+    "category": "E",
+    "category_desc": "DNA gap \u2192 Create candidate DNA",
+    "symbol": "HINDZINC",
+    "action_type": "create_dna_candidate",
+    "target_system": "IDR",
+    "description": "Create candidate DNA for HINDZINC: moved -2.1% with zero DNA coverage",
+    "payload": {
+      "symbol": "HINDZINC",
+      "return_pct": -2.06,
+      "direction": "DOWN",
+      "volume": 5160211.0,
+      "action": "create_dna_candidate"
+    },
+    "scheduled": false,
+    "outcome": "LOGGED_FOR_REVIEW"
+  }
+]

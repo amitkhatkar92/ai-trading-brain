@@ -1,0 +1,57 @@
+metric,value,source,note
+audit_id,KNOWLEDGE_VS_STRATEGY_VALUE_AUDIT_001,audit,Read-only research 2026-08-14
+total_ct_decisions,1352,control_tower.db,All decisions ever recorded
+approved_signals_n,1185,control_tower.db,87.6% of evaluated signals
+rejected_signals_n,167,control_tower.db,12.4% of evaluated signals
+approved_avg_confidence,6.897,control_tower.db,Confidence of strategy+debate approved
+rejected_avg_confidence,6.217,control_tower.db,Confidence at rejection
+debate_confidence_gap,0.680,control_tower.db,Approved minus rejected — debate adds signal
+approved_avg_technical,8.144,control_tower.db,Technical score for approved
+approved_avg_macro,7.133,control_tower.db,Macro score for approved
+total_signal_births,3335,market_behavior.db,All OIOS-observed signals
+signal_births_traded,0,market_behavior.db,CRITICAL: trade_executed=0 for all rows
+signal_births_outcome_gap,ALL_UNKNOWN,market_behavior.db,actual_move_pct=0 for all 3335 — data infrastructure gap
+total_market_leaders_with_outcomes,1410,market_behavior.db,705 winners + 705 controls
+n_trading_dates,47,market_behavior.db,47 unique dates with leader data
+above_20dma_winner_mean,0.8312,market_behavior.db,Feature value for market leader winners
+above_20dma_control_mean,0.3957,market_behavior.db,Feature value for matched controls
+above_20dma_ci_overlap,false,market_behavior.db,Non-overlapping — strong discriminator
+volume_ratio_winner_mean,3.3939,market_behavior.db,Winner avg volume surge
+volume_ratio_control_mean,1.5104,market_behavior.db,Control avg volume (near normal)
+volume_ratio_ci_overlap,false,market_behavior.db,Non-overlapping — strong discriminator
+precision_at_6_model_A_volume,0.446,market_behavior.db,Best model — volume ranking
+precision_at_6_model_C_knowledge_sector,0.402,market_behavior.db,Knowledge + sector features
+precision_at_6_model_D_feature_combo,0.333,market_behavior.db,Feature combination
+precision_at_6_model_B_signal_births,0.000,market_behavior.db,Data gap — not a real model failure
+winner_return_1d_avg,0.355,market_behavior.db,Winner avg 1-day forward return
+control_return_1d_avg,0.053,market_behavior.db,Control avg 1-day forward return
+knowledge_edge_day1_pct,0.302,market_behavior.db,Winner minus control at 1d
+winner_return_5d_avg,1.023,market_behavior.db,Winner avg 5-day forward return
+control_return_5d_avg,1.183,market_behavior.db,Control avg 5-day (CONTROL WINS)
+knowledge_edge_day5_pct,-0.160,market_behavior.db,NEGATIVE — edge reverses at 5d
+winner_max_favorable_avg,8.188,market_behavior.db,Winner avg intraday high (%)
+control_max_favorable_avg,7.709,market_behavior.db,Control avg intraday high (%)
+strategy_count_tracked,6,learning_db.json,Strategies with outcome data
+strategies_above_50pct_wr,0,learning_db.json,ZERO strategies meet governance threshold
+Mean_Reversion_win_rate,0.1667,learning_db.json,36 trades 6 wins
+Mean_Reversion_expectancy,0.0025,learning_db.json,Barely positive — asymmetric payoff
+Mean_Reversion_total_pnl,0.0901,learning_db.json,Positive total P&L despite low WR
+Momentum_Retest_win_rate,0.0698,learning_db.json,43 trades 3 wins
+Momentum_Retest_expectancy,-0.0172,learning_db.json,Negative expectancy
+Momentum_Retest_total_pnl,-0.7382,learning_db.json,Loss-making strategy — correctly disabled
+ml_dataset_rows,21,ml_performance_dataset.json,Total ML training samples
+ml_dataset_unique_dates,1,ml_performance_dataset.json,All from 2026-05-13 — insufficient for analysis
+ml_dataset_all_losses,true,ml_performance_dataset.json,won=False for all 21 rows (single bad day)
+paper_trades_total,40,paper_trades.csv,Total paper trades recorded
+paper_trades_matched_to_ct,12,paper_trades.csv + ct_decisions,Matched by symbol+date
+today_blocked_signals,28,governance_audit,2026-08-14 blocked by strategy gate
+today_grade_A_useful,1,governance_audit,+3.66% APOLLOHOSP
+today_grade_B_useful,4,governance_audit,+0.5% to +1.9% range
+today_grade_C_noise,9,governance_audit,±0.5% — no signal
+today_grade_D_bad,14,governance_audit,Moved against signal direction
+today_useful_rate,0.1786,governance_audit,18% of blocked were genuinely useful
+today_bad_rate,0.5000,governance_audit,50% of blocked were bad (governance worked)
+score_discriminates_useful_vs_bad,false,governance_audit,Score 0.7733 useful vs 0.7613 bad — indistinguishable
+overall_verdict,STRATEGY_GATE_WORKING_KNOWLEDGE_UNDERUTILIZED,synthesis,Strategy correctly blocks failures; knowledge signals strong but intraday-only
+time_horizon_mismatch,true,synthesis,Signal decays by day 3-5; strategy targets 3-5 day holds
+sector_filter_at_layer3,false,synthesis,Sector check is only at Layer 5 — recommendation to move to Layer 3

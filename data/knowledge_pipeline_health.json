@@ -1,0 +1,56 @@
+{
+  "audit_timestamp": "2026-08-21T10:11:24.391524+00:00",
+  "shadow_source": "C:\\Users\\UCIC\\OneDrive\\Desktop\\ai_trading_brain\\data\\logs\\final_trading_architecture_shadow_001.jsonl",
+  "shadow_file_size_bytes": 976046,
+  "shadow_records_available": 861,
+  "shadow_bytes_consumed": 976046,
+  "evidence_records": 405,
+  "knowledge_events": 2355,
+  "research_questions": 49,
+  "new_evidence_this_run": 0,
+  "patterns_this_run": 4,
+  "new_questions_this_run": 0,
+  "proposals_this_run": 3,
+  "pipeline_last_run": "2026-08-21T10:11:24.391162+00:00",
+  "pipeline_age_hours": 0.0,
+  "stale": false,
+  "overall_status": "OK",
+  "klp_today_observations": 0,
+  "klp_today_annotations": 0,
+  "klp_today_selected": 0,
+  "klp_today_overrules": 0,
+  "klp_today_pending_outcomes": 0,
+  "klp_bridge_today_records": 0,
+  "klp_bridge_last_transfer": null,
+  "klp_stages": {
+    "live_observation": {
+      "status": "WAITING_FOR_DATA",
+      "count_today": 0
+    },
+    "strategy_annotation": {
+      "status": "WAITING_FOR_DATA",
+      "count_today": 0
+    },
+    "outcome_tracking": {
+      "status": "NO_DATA",
+      "pending_count": 0
+    },
+    "evidence_ingestion": {
+      "status": "WORKING",
+      "new_records": 0
+    },
+    "vps_local_bridge": {
+      "status": "NO_DATA",
+      "records_today": 0,
+      "last_transfer": null
+    },
+    "pattern_mining": {
+      "status": "WORKING",
+      "count": 4
+    },
+    "research_questions": {
+      "status": "WORKING",
+      "count": 49
+    }
+  }
+}

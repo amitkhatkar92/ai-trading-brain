@@ -1,41 +1,56 @@
-# ── Core ──────────────────────────────────────────────────────────────
-python-dotenv>=1.0.0       # Environment variable loading
+﻿# =============================================================================
+# IIOS — Production Dependencies
+# Install: pip install -r requirements.txt
+# For dev/test dependencies: pip install -r requirements-dev.txt
+# Foundation: IIOS-FCR-001 (CERTIFIED)
+# =============================================================================
 
-# ── Scheduling ────────────────────────────────────────────────────────
-schedule>=1.2.0             # Intraday task scheduler
+# ── Environment ───────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0          # .env file loading
 
-# ── Data / Analysis ───────────────────────────────────────────────────
+# ── Scheduling ────────────────────────────────────────────────────────────────
+schedule>=1.2.0               # Intraday task scheduler
+
+# ── Data / Analysis ───────────────────────────────────────────────────────────
 pandas>=2.1.0
 numpy>=1.26.0
 scipy>=1.11.0
 
-# ── Market Data Feeds ─────────────────────────────────────────────────
-yfinance>=0.2.40           # Yahoo Finance — global + NSE quotes (live)
-nsepython>=1.0             # NSE India scraper — options chain (if not IP-blocked)
-# nsepython>=2.0.0         # NSE live data (optional, uncomment if needed)
+# ── Market Data Feeds ─────────────────────────────────────────────────────────
+yfinance>=0.2.40              # Yahoo Finance fallback feed
+nsepython>=1.0                # NSE India scraper (options chain)
 
-# ── Machine Learning (Strategy Evolution) ─────────────────────────────
-scikit-learn>=1.3.0
+# ── Machine Learning ──────────────────────────────────────────────────────────
+scikit-learn>=1.3.0           # k-NN regime predictor (Layer 3 MetaLearning)
 
-# ── Broker SDKs (install the one you use) ─────────────────────────────
-# Zerodha KiteConnect
-kiteconnect>=4.2.0
+# ── Broker SDKs ───────────────────────────────────────────────────────────────
+dhanhq>=2.0.0                 # Dhan primary broker
+kiteconnect>=4.2.0            # Zerodha secondary broker
+smartapi-python>=1.3.7        # AngelOne broker
+pyotp>=2.9.0                  # TOTP for AngelOne 2FA
+logzero>=1.7.0                # Required by smartapi-python
 
-# Dhan HQ
-dhanhq>=2.0.0
-
-# AngelOne SmartAPI
-smartapi-python>=1.3.7
-pyotp>=2.9.0              # TOTP for AngelOne 2FA
-logzero>=1.7.0            # required by smartapi-python
-
-# ── HTTP / WebSocket ──────────────────────────────────────────────────
+# ── HTTP / WebSocket ──────────────────────────────────────────────────────────
 requests>=2.31.0
 websocket-client>=1.6.0
 
-# ── Control Tower Dashboard ──────────────────────────────────────────────
-streamlit>=1.32.0
+# ── Telegram Bot (13 operator commands) ───────────────────────────────────────
+python-telegram-bot>=20.7
 
-# ── Utilities ─────────────────────────────────────────────────────────
-loguru>=0.7.0              # Optional: richer logging
-tqdm>=4.66.0               # Progress bars for evolution / backtests
+# ── Dashboard (Layer 17 ControlTower) ─────────────────────────────────────────
+streamlit>=1.32.0
+plotly>=5.20.0                # Interactive charts for dashboard
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+loguru>=0.7.0
+
+# ── Technical Analysis ────────────────────────────────────────────────────────
+ta>=0.11.0                    # RSI, MACD, ATR, Bollinger Bands
+
+# ── Utilities ─────────────────────────────────────────────────────────────────
+tqdm>=4.66.0
+pytz>=2024.1
+python-dateutil>=2.9.0
+
+# ── Cryptography (INFRA-ENC-001 EncryptionService) ────────────────────────────
+cryptography>=42.0.0

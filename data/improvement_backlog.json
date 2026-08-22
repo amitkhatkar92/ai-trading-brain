@@ -1,0 +1,136 @@
+[
+  {
+    "id": 1,
+    "date_found": "2026-04-10",
+    "area": "Execution",
+    "description": "False 'Trade Opened' notification sent at LIMIT placement before fill",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "c0ebf14"
+  },
+  {
+    "id": 2,
+    "date_found": "2026-04-10",
+    "area": "Execution",
+    "description": "Duplicate 'Trade Opened' from orchestrator + order_manager on same fill",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "9cf8564"
+  },
+  {
+    "id": 3,
+    "date_found": "2026-04-10",
+    "area": "Execution",
+    "description": "Pending notification sent even when LTP already at or below buy limit (immediate fill case)",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "e240258"
+  },
+  {
+    "id": 4,
+    "date_found": "2026-04-10",
+    "area": "Latency",
+    "description": "OpportunityEngine blocking fetch caused 5-6s DEGRADED cycles (2/5 cycles affected)",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "4f76485"
+  },
+  {
+    "id": 5,
+    "date_found": "2026-04-10",
+    "area": "Execution",
+    "description": "CSV journal duplicate OPEN rows after restart — positions not restored",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "4f76485"
+  },
+  {
+    "id": 6,
+    "date_found": "2026-04-10",
+    "area": "Signal Funnel",
+    "description": "BacktestingAI recomputing same strategy score 22 times per cycle (Mean_Reversion flood)",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "0e5d59f"
+  },
+  {
+    "id": 7,
+    "date_found": "2026-04-10",
+    "area": "Execution",
+    "description": "Re-entry attempted at stale price 2.9% away from original signal entry (ICICIBANK 1281->1318)",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "0e5d59f"
+  },
+  {
+    "id": 8,
+    "date_found": "2026-04-10",
+    "area": "Signal Funnel",
+    "description": "MC stability threshold flat 0.40 — 3/7 signals rejected at 0.37-0.39 in range_market (regime-appropriate)",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "0e5d59f"
+  },
+  {
+    "id": 9,
+    "date_found": "2026-04-10",
+    "area": "Opportunity Density",
+    "description": "ODM stuck in EXPAND tier all day (density 2.8%) with no escalation or warning",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-10",
+    "fix_commit": "0e5d59f"
+  },
+  {
+    "id": 10,
+    "date_found": "2026-04-10",
+    "area": "Strategy Selection",
+    "description": "Single-symbol concentration — only ICICIBANK seen all day, universe too narrow for range_market",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-13",
+    "fix_commit": "local",
+    "fix_detail": "equity_scanner_ai.py: widened Setup4 RSI threshold 67→63, Setup5 RSI threshold 38→45. Expect 5-8 symbols per cycle instead of 1-2."
+  },
+  {
+    "id": 11,
+    "date_found": "2026-04-10",
+    "area": "Signal Funnel",
+    "description": "Signal approval rate ~3.3% (89 generated, 3 approved) — funnel may be too tight for profitability",
+    "impact": "high",
+    "status": "fixed",
+    "date_fixed": "2026-04-13",
+    "fix_commit": "local",
+    "fix_detail": "risk_manager_ai.py: OPTIONS/SPREAD signals now use min_rr=0.5 instead of 2.0 (premium-selling strategies are probability-driven, not R:R-driven). Eliminates spurious rejections of iron condors and straddles."
+  },
+  {
+    "id": 12,
+    "date_found": "2026-04-10",
+    "area": "Strategy Selection",
+    "description": "Mean_Reversion dominates all 22 signals — no strategy diversity observed across cycles",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-13",
+    "fix_commit": "local",
+    "fix_detail": "strategy_generator_ai.py: range_market equity now routes STRONG-vol BUY → Breakout_Volume, high-confidence MODERATE BUY → Momentum_Retest/Trend_Pullback, default → Mean_Reversion. Expect 3 strategy types per range cycle."
+  },
+  {
+    "id": 13,
+    "date_found": "2026-04-10",
+    "area": "Signal Funnel",
+    "description": "Monte Carlo borderline stability (0.37-0.39) — edge may be real but parameters need tuning",
+    "impact": "medium",
+    "status": "fixed",
+    "date_fixed": "2026-04-13",
+    "fix_commit": "local",
+    "fix_detail": "strategy_resilience_ai.py: stability threshold range_market 0.38→0.35, bear_market new=0.33, THRESHOLD_MC_PROFIT_PROB 0.42→0.39. Borderline-stable signals now pass in defensive regimes."
+  }
+]

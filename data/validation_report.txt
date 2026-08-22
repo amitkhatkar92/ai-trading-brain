@@ -1,0 +1,44 @@
+AI Trading Brain — System Validation Report
+Generated: 2026-03-12 16:11:01
+Duration:  1.0s
+=================================================================
+
+[PASS] Step 01  System Boot & Infrastructure  (264ms)
+         EventBus + logger + MasterOrchestrator class all importable
+
+[PASS] Step 02  Market Data Pipeline  (702ms)
+         DataFeedManager + MarketDataAI initialised
+
+[PASS] Step 03  Market Intelligence Layer  (0ms)
+         MarketRegimeAI classified → Regime=bull_trend  Volatility=medium  SectorAI + LiquidityAI importable
+
+[PASS] Step 04  Strategy Lab  (3ms)
+         StrategyGeneratorAI + MetaLearningEngine loaded  |  evolved_strategies: 0 entry/entries
+
+[PASS] Step 05  Opportunity Engine  (0ms)
+         EquityScannerAI initialised + OptionsOpportunityAI
+
+[PASS] Step 06  Risk Control  (1ms)
+         FailSafeRiskGuardian(cap=1M) + RiskManagerAI loaded  |  KillVIX=45.0  MaxDailyLoss=2.0%  |  trading_halted=False
+
+[PASS] Step 07  Decision Engine  (2ms)
+         DecisionEngine + MultiAgentDebate loaded  |  5-agent synthetic vote → approved=True  score=7.53  threshold=6.5
+
+[PASS] Step 08  Execution Engine  (1ms)
+         OrderManager loaded  |  LIMIT_EXPIRY=3c  AET_WAIT=2c  REENTRY=10c  ZONE_BASE=0.15%  |  AET mode logic: IMMEDIATE/PULLBACK/CONFIRMATION all correct
+
+[PASS] Step 09  Trade Monitoring  (0ms)
+         TradeMonitor + StrategyHealthMonitor initialised; register/update methods present
+
+[PASS] Step 10  Learning System  (0ms)
+         LearningEngine + StrategyPerformanceTracker + RegimeStrategyMap loaded  |  record method present: True
+
+[PASS] Step 11  Edge Diagnostics Suite  (6ms)
+         MCR + EHL + EDM modules callable with empty input  |  replay_summary.json: FOUND  |  age=0.4h  |  last_PF=0.000
+
+[PASS] Step 12  System Health & Safety  (6ms)
+         PAPER_TRADING=true  |  KillVIX=45.0  NiftyDrop=-5.0%  MaxDailyLoss=2.0%  MaxPortfolioRisk=5.0%  MaxOpenTrades=8  |  DBManager loaded
+
+=================================================================
+PASS=12  WARN=0  FAIL=0  SKIP=0
+VERDICT: GO  —  All critical steps passed.

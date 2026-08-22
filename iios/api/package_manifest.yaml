@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.api
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.api"
+version: "0.1.0"
+purpose: "External REST/WebSocket API -- institutional client access, trade data export, regulatory reporting (Wave 18+)"
+architecture_reference: "IIOS-IMP-001 Wave 18"
+layer: "API"
+owner: "Platform"
+wave: 18
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "rest_api"
+  - "websocket_api"
+  - "api_auth"
+  - "api_schemas"
+  - "api_handlers"
+  - "rate_limiter"
+dependencies:
+  - "iios.core"
+  - "iios.security"
+  - "iios.dashboard"
+  - "iios.infrastructure"

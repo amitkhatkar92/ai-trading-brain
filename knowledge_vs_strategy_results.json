@@ -1,0 +1,262 @@
+{
+  "audit_id": "KNOWLEDGE_VS_STRATEGY_VALUE_AUDIT_001",
+  "audit_date": "2026-08-14",
+  "methodology": "READ-ONLY empirical analysis. No production changes made.",
+  "data_sources": [
+    "control_tower.db (3119 cycles, 1352 decisions)",
+    "market_behavior.db (signal_births: 3335, market_leaders: 1410, features: 19200)",
+    "learning_db.json (strategy_stats)",
+    "ml_performance_dataset.json (21 rows)",
+    "paper_trades.csv (40 trades)"
+  ],
+
+  "section_1_pipeline_classification": {
+    "knowledge_layers": ["L2_phase_d_scanner", "L3_equity_scanner_ai", "L5_debate_agents", "L6_decision_engine"],
+    "strategy_layers": ["L4A_regime_matching", "L4B_quality_gate"],
+    "risk_layers": ["L7_capital_risk_engine", "L8_risk_guardian"],
+    "execution_layers": ["L9_order_manager"]
+  },
+
+  "section_2_signal_births_outcome_analysis": {
+    "DATA_GAP_CRITICAL": "ALL 3335 signal_births rows have actual_move_pct=0.0 and final_state=UNKNOWN",
+    "note": "OIOS outcome tracking columns are not populated from realized prices. This makes signal_births unsuitable for strategy-gated vs ungated outcome comparison.",
+    "model_a_strategy_gated": {
+      "label": "MODEL_A_STRATEGY_GATED (traded signals from signal_births)",
+      "n": 0,
+      "note": "trade_executed=0 for all 3335 rows — no traded signal outcomes available"
+    },
+    "model_b_knowledge_only": {
+      "label": "MODEL_B_KNOWLEDGE_ONLY (non-traded signals from signal_births)",
+      "n": 3335,
+      "avg_base_score": 5.9388,
+      "avg_actual_move_pct": 0.0,
+      "directional_accuracy": "Cannot evaluate — all actual_move_pct=0.0",
+      "avg_expected_move_pct": 8.0,
+      "final_state_distribution": {"UNKNOWN": 3335}
+    }
+  },
+
+  "section_3_knowledge_score_threshold_test": {
+    "note": "Score bands all show 0.0 actual_move due to data gap. Analysis not meaningful from signal_births.",
+    "low_score_0_5": {"n": 644, "avg_move": 0.0},
+    "medium_score_5_7": {"n": 2208, "avg_move": 0.0},
+    "high_score_7_9": {"n": 462, "avg_move": 0.0},
+    "very_high_score_9plus": {"n": 21, "avg_move": 0.0}
+  },
+
+  "section_4_market_leader_feature_analysis": {
+    "dataset": "market_leaders_daily + market_leader_features",
+    "n_winners": 705,
+    "n_controls": 705,
+    "n_trading_dates": 47,
+    "feature_discriminators": {
+      "above_20dma": {
+        "winner_mean": 0.8312,
+        "control_mean": 0.3957,
+        "winner_ci_95": [0.8014, 0.8596],
+        "control_ci_95": [0.3617, 0.4312],
+        "overlap": false,
+        "interpretation": "Winners are above 20 DMA 83% of the time vs 40% for controls. Non-overlapping CIs confirm this is a statistically significant discriminator."
+      },
+      "volume_ratio": {
+        "winner_mean": 3.3939,
+        "control_mean": 1.5104,
+        "winner_ci_95": [2.8085, 4.0569],
+        "control_ci_95": [1.3532, 1.6973],
+        "overlap": false,
+        "interpretation": "Winners show 3.4x average daily volume vs 1.5x for controls. Non-overlapping CIs. Volume surge is the strongest intraday momentum signal."
+      }
+    },
+    "finding": "STRONG_INTRADAY_DISCRIMINATORS — both features clearly separate winners from controls on detection day."
+  },
+
+  "section_5_strong_mover_selection_simulation": {
+    "task": "Simulate selection of 5-6 strong movers from 230 stocks over 46 trading days. Measure Precision@6.",
+    "n_days": 46,
+    "models": {
+      "model_A": {
+        "description": "Volume-based ranking (day_return_pct of market leader candidates)",
+        "avg_precision_at_6": 0.446,
+        "ci_95": [0.3949, 0.4964],
+        "interpretation": "Best performing model. Detects stocks already moving strongly. Precision reflects identification accuracy, not prediction."
+      },
+      "model_B": {
+        "description": "Knowledge score from signal_births.base_score matched to market_leaders",
+        "avg_precision_at_6": 0.0,
+        "ci_95": [0.0, 0.0],
+        "interpretation": "Zero precision due to data gap — signal_births symbols and market_leader symbols do not intersect in the same-day detection window. Not a valid model failure; data infrastructure gap."
+      },
+      "model_C": {
+        "description": "Knowledge + sector features combo (volume + above_20dma + sector_momentum)",
+        "avg_precision_at_6": 0.402,
+        "ci_95": [0.3551, 0.4493],
+        "interpretation": "Competitive but slightly below pure volume ranking. Feature combination adds marginal information beyond pure volume."
+      },
+      "model_D": {
+        "description": "Feature combo (volume_ratio + above_20dma + rs5d)",
+        "avg_precision_at_6": 0.333,
+        "ci_95": [0.279, 0.3913],
+        "interpretation": "Weakest feature-based model. Adding rs5d dilutes the signal vs pure volume ranking."
+      }
+    },
+    "key_finding": "Volume-based detection (Model A) outperforms feature combinations for same-day strong mover identification. But all models are identifying stocks ALREADY moving, not predicting which will move."
+  },
+
+  "section_6_market_leader_outcome_distributions": {
+    "dataset": "market_leader_outcomes joined to market_leaders_daily",
+    "n_winners": 690,
+    "n_controls": 690,
+    "outcomes": {
+      "return_1d": {"winner": 0.355, "control": 0.053, "diff": 0.302},
+      "return_3d": {"winner": 0.810, "control": 0.636, "diff": 0.174},
+      "return_5d": {"winner": 1.023, "control": 1.183, "diff": -0.160, "note": "CONTROL OUTPERFORMS AT 5D"},
+      "return_10d": {"winner": 1.445, "control": 1.344, "diff": 0.101},
+      "return_20d": {"winner": 2.163, "control": 2.046, "diff": 0.117},
+      "max_favorable": {"winner": 8.188, "control": 7.709, "diff": 0.479},
+      "max_adverse": {"winner": -4.932, "control": -4.877, "diff": -0.055}
+    },
+    "positive_rates": {
+      "return_1d": {"winner": 0.507, "control": 0.484},
+      "return_3d": {"winner": 0.539, "control": 0.530},
+      "return_5d": {"winner": 0.567, "control": 0.584},
+      "return_10d": {"winner": 0.568, "control": 0.532},
+      "return_20d": {"winner": 0.573, "control": 0.528}
+    },
+    "key_finding": "MOMENTUM_EDGE_IS_1DAY_ONLY — Knowledge features identify stocks with strong intraday momentum but this advantage does not persist beyond 1 day. By 5d, controls actually outperform winners marginally. This is a fundamental mismatch with the strategy hold period of 3-5 days."
+  },
+
+  "section_7_strategy_performance_from_learning_db": {
+    "source": "learning_db.json strategy_stats (as of 2026-08-14)",
+    "governance_threshold_wr": 0.50,
+    "governance_threshold_sharpe": 0.8,
+    "strategies": {
+      "Mean_Reversion": {
+        "total_trades": 36, "wins": 6, "win_rate": 0.1667,
+        "total_pnl": 0.0901, "expectancy": 0.0025,
+        "status": "DISABLED_WR_BELOW_50PCT",
+        "note": "Barely positive expectancy despite low WR — asymmetric payoff working but governance correctly suspended it"
+      },
+      "Momentum_Retest": {
+        "total_trades": 43, "wins": 3, "win_rate": 0.0698,
+        "total_pnl": -0.7382, "expectancy": -0.0172,
+        "status": "DISABLED_WR_BELOW_50PCT",
+        "note": "Negative expectancy AND negative total P&L. Correctly disabled."
+      },
+      "Trend_Pullback": {
+        "total_trades": 5, "wins": 0, "win_rate": 0.0,
+        "total_pnl": -0.2017, "expectancy": -0.0403,
+        "status": "DISABLED_WR_BELOW_50PCT"
+      },
+      "EDG_MOMENT_100_EE0005": {
+        "total_trades": 8, "wins": 0, "win_rate": 0.0,
+        "total_pnl": -0.2511, "expectancy": -0.0314,
+        "status": "DISABLED_WR_BELOW_50PCT"
+      },
+      "EDG_MOMENT_95_EE0000": {
+        "total_trades": 8, "wins": 1, "win_rate": 0.125,
+        "total_pnl": -0.1029, "expectancy": -0.0129,
+        "status": "DISABLED_WR_BELOW_50PCT"
+      },
+      "Bull_Call_Spread": {
+        "total_trades": 4, "wins": 0, "win_rate": 0.0,
+        "total_pnl": 0.0, "expectancy": 0.0,
+        "status": "DISABLED_WR_BELOW_50PCT"
+      }
+    },
+    "key_finding": "ALL_STRATEGIES_DISABLED — every strategy with ≥4 samples is below the 50% WR governance threshold. The system is in a governance-protected suspended state."
+  },
+
+  "section_8_ml_performance_dataset": {
+    "source": "ml_performance_dataset.json",
+    "n_rows": 21,
+    "unique_dates": 1,
+    "date": "2026-05-13",
+    "note": "All 21 rows are from a single trading date. Dataset is insufficient for regime-stratified analysis.",
+    "strategies": {
+      "Momentum_Retest": {
+        "n": 15, "wins": 0, "win_rate": 0.0,
+        "avg_return_pct": -8.75, "avg_r_multiple": -1.17
+      },
+      "Mean_Reversion": {
+        "n": 6, "wins": 0, "win_rate": 0.0,
+        "avg_return_pct": -3.60, "avg_r_multiple": -0.54
+      }
+    },
+    "observation": "sector_strength=0.5 (default) for all rows — sector alignment signal not varying in ML dataset. This is a data quality issue in the ml_performance_dataset generation."
+  },
+
+  "section_9_decision_quality_analysis": {
+    "source": "ct_decisions",
+    "approved": {
+      "n": 1185,
+      "avg_confidence": 6.897,
+      "avg_technical": 8.144,
+      "avg_risk": 6.697,
+      "avg_macro": 7.133,
+      "top_strategies": {
+        "Breakout_Volume": 383,
+        "Momentum_Retest": 227,
+        "Mean_Reversion": 140,
+        "Trend_Pullback": 131,
+        "EDG_MOMENT_86_EE0003": 126
+      }
+    },
+    "rejected": {
+      "n": 167,
+      "avg_confidence": 6.217,
+      "top_strategies": {
+        "Equity_Breakout": 132,
+        "Hedging_Model": 19,
+        "Iron_Condor_Range": 7
+      }
+    },
+    "confidence_gap": 0.680,
+    "key_finding": "DEBATE_LAYER_ADDS_SIGNAL — approved signals score 0.68 confidence points higher than rejected signals (6.897 vs 6.217). The debate layer is making meaningful discrimination for signals that reach it. Note: only 12 of 40 paper trades could be matched back to ct_decisions for P&L verification."
+  },
+
+  "section_10_todays_blocked_signals": {
+    "date": "2026-08-14",
+    "n_blocked": 28,
+    "grades": {
+      "A_strong_useful": 1,
+      "B_modest_useful": 4,
+      "C_noise": 9,
+      "D_clearly_bad": 14
+    },
+    "useful_rate": 0.1786,
+    "bad_rate": 0.5,
+    "avg_score_useful_AB": 0.7733,
+    "avg_score_bad_D": 0.7613,
+    "score_discriminates_useful_vs_bad": false,
+    "key_finding": "GOVERNANCE_PROTECTING_CORRECTLY — 50% of blocked signals moved against signal direction (grade D). Only 18% were useful signals (A+B). Governance correctly prevented 50% bad trades. The score does not discriminate between useful and bad signals reliably (scores nearly identical)."
+  },
+
+  "section_11_strategy_incremental_value": {
+    "finding": "CANNOT_MEASURE_DIRECTLY due to data gaps",
+    "reason": "signal_births has no outcome data. Cannot construct a clean strategy-gated vs knowledge-only cohort comparison on realized P&L.",
+    "available_evidence": {
+      "debate_layer_discrimination": "Approved signals score 0.68 higher than rejected — debate layer adds value",
+      "strategy_gate_protection": "Today: blocked 50% bad, 18% useful — net positive protection",
+      "strategy_historical_performance": "All strategies: WR 0-17%, all below 50% threshold — strategy definitions need improvement",
+      "market_leader_momentum_edge": "Knowledge features have 1-day edge (0.35% vs 0.05%) but edge vanishes by 5 days"
+    },
+    "conclusion": "Strategy layer (Layer 4) CORRECTLY protects against clearly failing strategies. But the protection is so broad that it is blocking ALL strategies, leaving the system relying only on evolved strategies (Breakout_Volume, EDG_MOMENT variants). The underlying knowledge signals are sound — the issue is that strategy definitions don't convert knowledge into profitable holding periods."
+  },
+
+  "overall_verdict": "STRATEGY_GATE_WORKING_KNOWLEDGE_UNDERUTILIZED",
+  "summary": {
+    "Q1_does_strategy_add_value_after_knowledge": "PARTIALLY — strategy gate correctly blocks failing approaches, debate layer adds 0.68 conf points, but ALL strategies are disabled so the contribution is protective (prevention) rather than additive (selection)",
+    "Q2_can_knowledge_predict_direction": "YES for intraday — above_20dma and volume_ratio strongly discriminate same-day winners (p@6=0.446). But edge vanishes by 5d.",
+    "Q3_can_knowledge_predict_magnitude": "WEAK — max_favorable winner (8.19%) vs control (7.71%) — modest edge only",
+    "Q4_strongest_knowledge_signals": ["above_20dma (83% vs 40%)", "volume_ratio (3.4x vs 1.5x)"],
+    "Q5_strategy_improves_entry_timing": "UNKNOWN — cannot evaluate (signal_births outcomes empty)",
+    "Q6_strategy_improves_SL_target": "No — SL/target are set by scanner (ATR-based), not changed by strategy layer",
+    "Q7_strategy_blocks_good_opportunities": "YES — today APOLLOHOSP +3.66% blocked. Historically: all enabled strategy signals were eventually disabled after poor performance.",
+    "Q8_knowledge_failure_modes": "Sector misalignment — stocks satisfying RSI/volume/DMA conditions but in headwind sector still generate signals. No sector direction gate in Layer 3.",
+    "Q9_best_information_combination": "above_20dma + volume_ratio + sector_strength — sector_strength is available in debate agents but not in Layer 3 pre-filter",
+    "Q10_regime_dependency": "Regime affects strategy selection (Layer 4A) but not knowledge signal quality. range_market produces signals for Mean_Reversion which has 17% WR — regime mapping does not guarantee profitability.",
+    "Q11_data_infrastructure_gaps": ["signal_births outcomes empty", "ml_performance_dataset single-date", "closed_orders store IDs not P&L"],
+    "Q12_improvement_levers": ["Add sector_strength as Layer 3 filter", "OIOS outcome tracking fix (connect to realized prices)", "Strategy definitions need regime-specific entry/exit calibration"],
+    "Q13_final_verdict": "STRATEGY_GATE_WORKING_KNOWLEDGE_UNDERUTILIZED — The governance framework is functioning correctly (blocking loss-making strategies). The knowledge layer has demonstrable signal strength (above_20dma, volume_ratio) but that signal is intraday-only. Strategy layer cannot convert intraday knowledge into multi-day edge because the hold period mismatches the signal decay time."
+  }
+}

@@ -1,0 +1,654 @@
+[
+  {
+    "run_id": "rc-20260805-873dd3c3",
+    "study_plan_id": "SP-389A73BB",
+    "study_type": "StudyType.HISTORICAL_REPLAY",
+    "date": "2026-08-05",
+    "stages": [
+      {
+        "name": "study_plan",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.255",
+        "end_time": "2026-08-05T17:10:03.255",
+        "duration_ms": 0.0,
+        "output_summary": "Plan validated. unresolved_deps=0 estimated_hours=6.00",
+        "error": null,
+        "meta": {
+          "plan_id": "SP-389A73BB",
+          "unresolved": [],
+          "estimated_hrs": 6.0
+        }
+      },
+      {
+        "name": "replay",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.255",
+        "end_time": "2026-08-05T17:10:03.256",
+        "duration_ms": 1.0,
+        "output_summary": "Replay context loaded. related_studies=0 replay_summary=yes ptue=none(NONE)",
+        "error": null,
+        "meta": {
+          "replay_summary_available": true,
+          "related_studies": 0,
+          "ptue_date": null,
+          "ptue_source": "NONE",
+          "ptue_count": 0,
+          "ptue_is_fallback": null
+        }
+      },
+      {
+        "name": "validation",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.256",
+        "end_time": "2026-08-05T17:10:03.315",
+        "duration_ms": 59.0,
+        "output_summary": "Validation outcome=PASSED_WITH_OBSERVATIONS",
+        "error": null,
+        "meta": {
+          "outcome": "PASSED_WITH_OBSERVATIONS",
+          "subject_id": "H2026-08-001",
+          "subject_type": "hypothesis"
+        }
+      },
+      {
+        "name": "evidence_integration",
+        "state": "FAILED",
+        "start_time": "2026-08-05T17:10:03.315",
+        "end_time": "2026-08-05T17:10:03.315",
+        "duration_ms": 0.0,
+        "output_summary": "",
+        "error": "type object 'EvidenceType' has no attribute 'STUDY_RESULT'",
+        "meta": {}
+      },
+      {
+        "name": "knowledge_integration",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.315",
+        "end_time": "2026-08-05T17:10:03.321",
+        "duration_ms": 6.0,
+        "output_summary": "Snapshot: findings=0 edges=0 strategies=0 certs=0 warnings=0",
+        "error": null,
+        "meta": {
+          "findings": 0,
+          "edges": 0,
+          "strategies": 0,
+          "certifications": 0,
+          "warnings": 0
+        }
+      },
+      {
+        "name": "cross_study_synthesis",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.321",
+        "end_time": "2026-08-05T17:10:03.321",
+        "duration_ms": 0.0,
+        "output_summary": "Synthesis: synthesized_findings=6 contradictions=390",
+        "error": null,
+        "meta": {
+          "synthesized_findings": 6,
+          "contradictions": 390
+        }
+      },
+      {
+        "name": "repository_update",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.321",
+        "end_time": "2026-08-05T17:10:03.325",
+        "duration_ms": 4.0,
+        "output_summary": "Repository audit: idr_active_dna=0 studies=5 edges=259",
+        "error": null,
+        "meta": {
+          "idr_active_dna": 0,
+          "total_studies": 5,
+          "total_edges": 259,
+          "dry_run": false
+        }
+      },
+      {
+        "name": "research_report",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:03.325",
+        "end_time": "2026-08-05T17:10:03.325",
+        "duration_ms": 0.0,
+        "output_summary": "plan=ok | replay=ok | ptue=none | val=PASSED_WITH_OBSERVATIONS | ev=skip | kp=ok | synth=ok | repo=ok",
+        "error": null,
+        "meta": {
+          "report_lines": [
+            "ResearchCoordinator report \u2014 plan=SP-389A73BB type=StudyType.HISTORICAL_REPLAY",
+            "  plan_validated:         True",
+            "  replay_ran:             True (0 studies)",
+            "  ptue_universe:          N/A date=N/A count=0 source=NONE fallback=N/A coverage=0.00",
+            "  validation_outcome:     PASSED_WITH_OBSERVATIONS",
+            "  evidence_integrated:    False",
+            "  knowledge_snapshot:     True (0 findings)",
+            "  synthesis_ran:          True (6 synth-findings)",
+            "  repository_updated:     True (idr_active=0)"
+          ]
+        }
+      }
+    ],
+    "telemetry": {
+      "run_id": "rc-20260805-873dd3c3",
+      "study_plan_id": "SP-389A73BB",
+      "study_type": "StudyType.HISTORICAL_REPLAY",
+      "trading_date": "2026-08-05",
+      "start_time": "2026-08-05T17:10:03.255",
+      "end_time": "2026-08-05T17:10:03.325",
+      "total_duration_ms": 69.87,
+      "stages_success": 7,
+      "stages_failed": 1,
+      "stages_skipped": 0,
+      "plan_validated": true,
+      "dependencies_unresolved": 0,
+      "estimated_hours": 6.0,
+      "replay_ran": true,
+      "replay_studies_found": 0,
+      "validation_ran": true,
+      "validation_outcome": "PASSED_WITH_OBSERVATIONS",
+      "evidence_integrated": false,
+      "hypothesis_id": "H2026-08-001",
+      "knowledge_snapshot_taken": true,
+      "findings_count": 0,
+      "edges_count": 0,
+      "strategies_count": 0,
+      "certifications_count": 0,
+      "synthesis_ran": true,
+      "synthesized_findings": 6,
+      "contradictions_detected": 390,
+      "repository_updated": true,
+      "idr_total_active_dna": 0,
+      "pipeline_healthy": false,
+      "health": "DEGRADED"
+    },
+    "health": "DEGRADED"
+  },
+  {
+    "run_id": "rc-20260805-cc8b59fc",
+    "study_plan_id": "SP-389A73BB",
+    "study_type": "StudyType.HISTORICAL_REPLAY",
+    "date": "2026-08-05",
+    "stages": [
+      {
+        "name": "study_plan",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:47.956",
+        "end_time": "2026-08-05T17:10:47.956",
+        "duration_ms": 0.0,
+        "output_summary": "Plan validated. unresolved_deps=0 estimated_hours=6.00",
+        "error": null,
+        "meta": {
+          "plan_id": "SP-389A73BB",
+          "unresolved": [],
+          "estimated_hrs": 6.0
+        }
+      },
+      {
+        "name": "replay",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:47.956",
+        "end_time": "2026-08-05T17:10:47.956",
+        "duration_ms": 0.0,
+        "output_summary": "Replay context loaded. related_studies=0 replay_summary=yes ptue=none(NONE)",
+        "error": null,
+        "meta": {
+          "replay_summary_available": true,
+          "related_studies": 0,
+          "ptue_date": null,
+          "ptue_source": "NONE",
+          "ptue_count": 0,
+          "ptue_is_fallback": null
+        }
+      },
+      {
+        "name": "validation",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:47.956",
+        "end_time": "2026-08-05T17:10:48.011",
+        "duration_ms": 55.0,
+        "output_summary": "Validation outcome=PASSED_WITH_OBSERVATIONS",
+        "error": null,
+        "meta": {
+          "outcome": "PASSED_WITH_OBSERVATIONS",
+          "subject_id": "H2026-08-001",
+          "subject_type": "hypothesis"
+        }
+      },
+      {
+        "name": "evidence_integration",
+        "state": "FAILED",
+        "start_time": "2026-08-05T17:10:48.011",
+        "end_time": "2026-08-05T17:10:48.011",
+        "duration_ms": 0.0,
+        "output_summary": "",
+        "error": "type object 'EvidenceType' has no attribute 'STUDY_RESULT'",
+        "meta": {}
+      },
+      {
+        "name": "knowledge_integration",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:48.011",
+        "end_time": "2026-08-05T17:10:48.014",
+        "duration_ms": 3.0,
+        "output_summary": "Snapshot: findings=0 edges=0 strategies=0 certs=0 warnings=0",
+        "error": null,
+        "meta": {
+          "findings": 0,
+          "edges": 0,
+          "strategies": 0,
+          "certifications": 0,
+          "warnings": 0
+        }
+      },
+      {
+        "name": "cross_study_synthesis",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:48.014",
+        "end_time": "2026-08-05T17:10:48.014",
+        "duration_ms": 0.0,
+        "output_summary": "Synthesis: synthesized_findings=6 contradictions=390",
+        "error": null,
+        "meta": {
+          "synthesized_findings": 6,
+          "contradictions": 390
+        }
+      },
+      {
+        "name": "repository_update",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:48.014",
+        "end_time": "2026-08-05T17:10:48.018",
+        "duration_ms": 4.0,
+        "output_summary": "Repository audit: idr_active_dna=0 studies=5 edges=259",
+        "error": null,
+        "meta": {
+          "idr_active_dna": 0,
+          "total_studies": 5,
+          "total_edges": 259,
+          "dry_run": false
+        }
+      },
+      {
+        "name": "research_report",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:48.018",
+        "end_time": "2026-08-05T17:10:48.018",
+        "duration_ms": 0.0,
+        "output_summary": "plan=ok | replay=ok | ptue=none | val=PASSED_WITH_OBSERVATIONS | ev=skip | kp=ok | synth=ok | repo=ok",
+        "error": null,
+        "meta": {
+          "report_lines": [
+            "ResearchCoordinator report \u2014 plan=SP-389A73BB type=StudyType.HISTORICAL_REPLAY",
+            "  plan_validated:         True",
+            "  replay_ran:             True (0 studies)",
+            "  ptue_universe:          N/A date=N/A count=0 source=NONE fallback=N/A coverage=0.00",
+            "  validation_outcome:     PASSED_WITH_OBSERVATIONS",
+            "  evidence_integrated:    False",
+            "  knowledge_snapshot:     True (0 findings)",
+            "  synthesis_ran:          True (6 synth-findings)",
+            "  repository_updated:     True (idr_active=0)"
+          ]
+        }
+      }
+    ],
+    "telemetry": {
+      "run_id": "rc-20260805-cc8b59fc",
+      "study_plan_id": "SP-389A73BB",
+      "study_type": "StudyType.HISTORICAL_REPLAY",
+      "trading_date": "2026-08-05",
+      "start_time": "2026-08-05T17:10:47.956",
+      "end_time": "2026-08-05T17:10:48.018",
+      "total_duration_ms": 62.12,
+      "stages_success": 7,
+      "stages_failed": 1,
+      "stages_skipped": 0,
+      "plan_validated": true,
+      "dependencies_unresolved": 0,
+      "estimated_hours": 6.0,
+      "replay_ran": true,
+      "replay_studies_found": 0,
+      "validation_ran": true,
+      "validation_outcome": "PASSED_WITH_OBSERVATIONS",
+      "evidence_integrated": false,
+      "hypothesis_id": "H2026-08-001",
+      "knowledge_snapshot_taken": true,
+      "findings_count": 0,
+      "edges_count": 0,
+      "strategies_count": 0,
+      "certifications_count": 0,
+      "synthesis_ran": true,
+      "synthesized_findings": 6,
+      "contradictions_detected": 390,
+      "repository_updated": true,
+      "idr_total_active_dna": 0,
+      "pipeline_healthy": false,
+      "health": "DEGRADED"
+    },
+    "health": "DEGRADED"
+  },
+  {
+    "run_id": "rc-20260805-16c48f43",
+    "study_plan_id": "SP-389A73BB",
+    "study_type": "StudyType.HISTORICAL_REPLAY",
+    "date": "2026-08-05",
+    "stages": [
+      {
+        "name": "study_plan",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.286",
+        "end_time": "2026-08-05T17:10:58.286",
+        "duration_ms": 0.0,
+        "output_summary": "Plan validated. unresolved_deps=0 estimated_hours=6.00",
+        "error": null,
+        "meta": {
+          "plan_id": "SP-389A73BB",
+          "unresolved": [],
+          "estimated_hrs": 6.0
+        }
+      },
+      {
+        "name": "replay",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.286",
+        "end_time": "2026-08-05T17:10:58.287",
+        "duration_ms": 1.0,
+        "output_summary": "Replay context loaded. related_studies=0 replay_summary=yes ptue=none(NONE)",
+        "error": null,
+        "meta": {
+          "replay_summary_available": true,
+          "related_studies": 0,
+          "ptue_date": null,
+          "ptue_source": "NONE",
+          "ptue_count": 0,
+          "ptue_is_fallback": null
+        }
+      },
+      {
+        "name": "validation",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.287",
+        "end_time": "2026-08-05T17:10:58.340",
+        "duration_ms": 53.0,
+        "output_summary": "Validation outcome=PASSED_WITH_OBSERVATIONS",
+        "error": null,
+        "meta": {
+          "outcome": "PASSED_WITH_OBSERVATIONS",
+          "subject_id": "H2026-08-001",
+          "subject_type": "hypothesis"
+        }
+      },
+      {
+        "name": "evidence_integration",
+        "state": "FAILED",
+        "start_time": "2026-08-05T17:10:58.340",
+        "end_time": "2026-08-05T17:10:58.340",
+        "duration_ms": 0.0,
+        "output_summary": "",
+        "error": "type object 'EvidenceType' has no attribute 'STUDY_RESULT'",
+        "meta": {}
+      },
+      {
+        "name": "knowledge_integration",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.340",
+        "end_time": "2026-08-05T17:10:58.344",
+        "duration_ms": 4.0,
+        "output_summary": "Snapshot: findings=0 edges=0 strategies=0 certs=0 warnings=0",
+        "error": null,
+        "meta": {
+          "findings": 0,
+          "edges": 0,
+          "strategies": 0,
+          "certifications": 0,
+          "warnings": 0
+        }
+      },
+      {
+        "name": "cross_study_synthesis",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.344",
+        "end_time": "2026-08-05T17:10:58.344",
+        "duration_ms": 0.0,
+        "output_summary": "Synthesis: synthesized_findings=6 contradictions=390",
+        "error": null,
+        "meta": {
+          "synthesized_findings": 6,
+          "contradictions": 390
+        }
+      },
+      {
+        "name": "repository_update",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.344",
+        "end_time": "2026-08-05T17:10:58.348",
+        "duration_ms": 4.0,
+        "output_summary": "Repository audit: idr_active_dna=0 studies=5 edges=259",
+        "error": null,
+        "meta": {
+          "idr_active_dna": 0,
+          "total_studies": 5,
+          "total_edges": 259,
+          "dry_run": false
+        }
+      },
+      {
+        "name": "research_report",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:10:58.348",
+        "end_time": "2026-08-05T17:10:58.348",
+        "duration_ms": 0.0,
+        "output_summary": "plan=ok | replay=ok | ptue=none | val=PASSED_WITH_OBSERVATIONS | ev=skip | kp=ok | synth=ok | repo=ok",
+        "error": null,
+        "meta": {
+          "report_lines": [
+            "ResearchCoordinator report \u2014 plan=SP-389A73BB type=StudyType.HISTORICAL_REPLAY",
+            "  plan_validated:         True",
+            "  replay_ran:             True (0 studies)",
+            "  ptue_universe:          N/A date=N/A count=0 source=NONE fallback=N/A coverage=0.00",
+            "  validation_outcome:     PASSED_WITH_OBSERVATIONS",
+            "  evidence_integrated:    False",
+            "  knowledge_snapshot:     True (0 findings)",
+            "  synthesis_ran:          True (6 synth-findings)",
+            "  repository_updated:     True (idr_active=0)"
+          ]
+        }
+      }
+    ],
+    "telemetry": {
+      "run_id": "rc-20260805-16c48f43",
+      "study_plan_id": "SP-389A73BB",
+      "study_type": "StudyType.HISTORICAL_REPLAY",
+      "trading_date": "2026-08-05",
+      "start_time": "2026-08-05T17:10:58.286",
+      "end_time": "2026-08-05T17:10:58.348",
+      "total_duration_ms": 61.95,
+      "stages_success": 7,
+      "stages_failed": 1,
+      "stages_skipped": 0,
+      "plan_validated": true,
+      "dependencies_unresolved": 0,
+      "estimated_hours": 6.0,
+      "replay_ran": true,
+      "replay_studies_found": 0,
+      "validation_ran": true,
+      "validation_outcome": "PASSED_WITH_OBSERVATIONS",
+      "evidence_integrated": false,
+      "hypothesis_id": "H2026-08-001",
+      "knowledge_snapshot_taken": true,
+      "findings_count": 0,
+      "edges_count": 0,
+      "strategies_count": 0,
+      "certifications_count": 0,
+      "synthesis_ran": true,
+      "synthesized_findings": 6,
+      "contradictions_detected": 390,
+      "repository_updated": true,
+      "idr_total_active_dna": 0,
+      "pipeline_healthy": false,
+      "health": "DEGRADED"
+    },
+    "health": "DEGRADED"
+  },
+  {
+    "run_id": "rc-20260805-25bb8cbe",
+    "study_plan_id": "SP-389A73BB",
+    "study_type": "StudyType.HISTORICAL_REPLAY",
+    "date": "2026-08-05",
+    "stages": [
+      {
+        "name": "study_plan",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.597",
+        "end_time": "2026-08-05T17:11:41.597",
+        "duration_ms": 0.0,
+        "output_summary": "Plan validated. unresolved_deps=0 estimated_hours=6.00",
+        "error": null,
+        "meta": {
+          "plan_id": "SP-389A73BB",
+          "unresolved": [],
+          "estimated_hrs": 6.0
+        }
+      },
+      {
+        "name": "replay",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.597",
+        "end_time": "2026-08-05T17:11:41.597",
+        "duration_ms": 0.0,
+        "output_summary": "Replay context loaded. related_studies=0 replay_summary=yes ptue=none(NONE)",
+        "error": null,
+        "meta": {
+          "replay_summary_available": true,
+          "related_studies": 0,
+          "ptue_date": null,
+          "ptue_source": "NONE",
+          "ptue_count": 0,
+          "ptue_is_fallback": null
+        }
+      },
+      {
+        "name": "validation",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.597",
+        "end_time": "2026-08-05T17:11:41.651",
+        "duration_ms": 54.0,
+        "output_summary": "Validation outcome=PASSED_WITH_OBSERVATIONS",
+        "error": null,
+        "meta": {
+          "outcome": "PASSED_WITH_OBSERVATIONS",
+          "subject_id": "H2026-08-001",
+          "subject_type": "hypothesis"
+        }
+      },
+      {
+        "name": "evidence_integration",
+        "state": "FAILED",
+        "start_time": "2026-08-05T17:11:41.651",
+        "end_time": "2026-08-05T17:11:41.651",
+        "duration_ms": 0.0,
+        "output_summary": "",
+        "error": "type object 'EvidenceType' has no attribute 'STUDY_RESULT'",
+        "meta": {}
+      },
+      {
+        "name": "knowledge_integration",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.651",
+        "end_time": "2026-08-05T17:11:41.654",
+        "duration_ms": 3.0,
+        "output_summary": "Snapshot: findings=0 edges=0 strategies=0 certs=0 warnings=0",
+        "error": null,
+        "meta": {
+          "findings": 0,
+          "edges": 0,
+          "strategies": 0,
+          "certifications": 0,
+          "warnings": 0
+        }
+      },
+      {
+        "name": "cross_study_synthesis",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.654",
+        "end_time": "2026-08-05T17:11:41.654",
+        "duration_ms": 0.0,
+        "output_summary": "Synthesis: synthesized_findings=6 contradictions=390",
+        "error": null,
+        "meta": {
+          "synthesized_findings": 6,
+          "contradictions": 390
+        }
+      },
+      {
+        "name": "repository_update",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.654",
+        "end_time": "2026-08-05T17:11:41.656",
+        "duration_ms": 2.0,
+        "output_summary": "Repository audit: idr_active_dna=0 studies=5 edges=259",
+        "error": null,
+        "meta": {
+          "idr_active_dna": 0,
+          "total_studies": 5,
+          "total_edges": 259,
+          "dry_run": false
+        }
+      },
+      {
+        "name": "research_report",
+        "state": "SUCCESS",
+        "start_time": "2026-08-05T17:11:41.656",
+        "end_time": "2026-08-05T17:11:41.657",
+        "duration_ms": 1.0,
+        "output_summary": "plan=ok | replay=ok | ptue=none | val=PASSED_WITH_OBSERVATIONS | ev=skip | kp=ok | synth=ok | repo=ok",
+        "error": null,
+        "meta": {
+          "report_lines": [
+            "ResearchCoordinator report \u2014 plan=SP-389A73BB type=StudyType.HISTORICAL_REPLAY",
+            "  plan_validated:         True",
+            "  replay_ran:             True (0 studies)",
+            "  ptue_universe:          N/A date=N/A count=0 source=NONE fallback=N/A coverage=0.00",
+            "  validation_outcome:     PASSED_WITH_OBSERVATIONS",
+            "  evidence_integrated:    False",
+            "  knowledge_snapshot:     True (0 findings)",
+            "  synthesis_ran:          True (6 synth-findings)",
+            "  repository_updated:     True (idr_active=0)"
+          ]
+        }
+      }
+    ],
+    "telemetry": {
+      "run_id": "rc-20260805-25bb8cbe",
+      "study_plan_id": "SP-389A73BB",
+      "study_type": "StudyType.HISTORICAL_REPLAY",
+      "trading_date": "2026-08-05",
+      "start_time": "2026-08-05T17:11:41.597",
+      "end_time": "2026-08-05T17:11:41.657",
+      "total_duration_ms": 59.64,
+      "stages_success": 7,
+      "stages_failed": 1,
+      "stages_skipped": 0,
+      "plan_validated": true,
+      "dependencies_unresolved": 0,
+      "estimated_hours": 6.0,
+      "replay_ran": true,
+      "replay_studies_found": 0,
+      "validation_ran": true,
+      "validation_outcome": "PASSED_WITH_OBSERVATIONS",
+      "evidence_integrated": false,
+      "hypothesis_id": "H2026-08-001",
+      "knowledge_snapshot_taken": true,
+      "findings_count": 0,
+      "edges_count": 0,
+      "strategies_count": 0,
+      "certifications_count": 0,
+      "synthesis_ran": true,
+      "synthesized_findings": 6,
+      "contradictions_detected": 390,
+      "repository_updated": true,
+      "idr_total_active_dna": 0,
+      "pipeline_healthy": false,
+      "health": "DEGRADED"
+    },
+    "health": "DEGRADED"
+  }
+]

@@ -1,0 +1,22 @@
+﻿# Package Manifest: iios.cache
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.cache"
+version: "0.1.0"
+purpose: "Cache service -- in-memory TTL/LRU cache, GlobalDataAI 5-min cache, quote cache 10s TTL"
+architecture_reference: "IIOS-CIS-001 INFRA-CAC-001"
+layer: "CACHE"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "cache_service"
+  - "ttl_cache"
+  - "lru_cache"
+  - "cache_manager"
+  - "cache_stats"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.communication"

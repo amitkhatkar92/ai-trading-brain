@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.market
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.market"
+version: "0.1.0"
+purpose: "Layer 2: MarketIntelligence -- NIFTY/BANKNIFTY regime, sector rotation, liquidity, event calendar, 30s market monitor"
+architecture_reference: "IIOS-ARC-001 Layer 2"
+layer: "LAYER-2"
+owner: "Platform"
+wave: 4
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "market_monitor"
+  - "regime_detector"
+  - "sector_analyzer"
+  - "liquidity_analyzer"
+  - "market_intelligence"
+  - "breadth_calculator"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.knowledge.observations"

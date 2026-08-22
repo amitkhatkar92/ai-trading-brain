@@ -1,0 +1,134 @@
+{
+  "suite_version": "PREPARED_UNIVERSE_V1",
+  "run_timestamp_utc": "2026-05-22T09:55:07.649132+00:00",
+  "duration_sec": 0.238,
+  "sections_run": 14,
+  "activation_blocked": false,
+  "deployment_snapshot": {
+    "suite_version": "PREPARED_UNIVERSE_V1",
+    "python_version": "3.14.3",
+    "timestamp_utc": "2026-05-22T09:55:07.411149+00:00",
+    "prepared": true,
+    "overlay": true,
+    "premarket": true,
+    "exploration": true,
+    "shadow": false,
+    "budget_pct": 3,
+    "threshold": 7.2,
+    "git_hash": "7f65e21"
+  },
+  "results": [
+    {
+      "section": "ValidationConfig",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "USE_PREPARED_UNIVERSE=True USE_OVERNIGHT_OVERLAY=True USE_PREMARKET_REFINEMENT=True USE_HYBRID_EXPLORATION=True SCANNER_SHADOW_MODE=False budget=3% threshold=7.2 score_floor=0.55",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.476081+00:00"
+    },
+    {
+      "section": "ValidationCandidateStore",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "\u2713 Corrupt JSON \u2192 read() returned None safely | \u2713 Checksum mismatch \u2192 read() returned None safely | INFO: daily_candidates.json not present \u2014 will be created at 16:45 post-market scan",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.531694+00:00"
+    },
+    {
+      "section": "ValidationSchemaContract",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "\u2713 _REQUIRED_FIELDS={'volume_ratio', 'rsi', 'symbol', 'support', 'resistance'} covers all pipeline-required fields",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.532590+00:00"
+    },
+    {
+      "section": "ValidationPreparedMerge",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "prepared=3 static_gap_fill=2 duplicates_removed=1 total=5 | \u2713 gap_fill=2 correct: RELIANCE deduped, TATASTEEL+ITC added | \u2713 merged total=5 correct (3 prepared + 2 gap-fill) | \u2713 RELIANCE sourced from prepared (priority correct) | \u2713 empty prepared \u2192 full static fallback correct",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.532814+00:00"
+    },
+    {
+      "section": "ValidationPreparedDeterminism",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "resistance/support/rsi/volume_ratio deterministic for prepared candidates | \u2713 _live_watchlist() still applies jitter to static candidates (correct) | \u2713 _prepared_watchlist() contains no jitter (deterministic)",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.535495+00:00"
+    },
+    {
+      "section": "ValidationTelemetry",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "missing_tags=0 all_tags_present=True",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.538298+00:00"
+    },
+    {
+      "section": "ValidationSafeMode",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "\u2713 safe mode=True \u2192 _prepared_watchlist() returns [] | \u2713 safe mode=False \u2192 _prepared_watchlist() returns list (0 rows) | \u2713 _check_safe_mode_triggers([]) completes without exception | \u2713 scan() references _SAFE_MODE_ACTIVE (exploration guarded) | \u2713 exploration explicitly gated on 'not _SAFE_MODE_ACTIVE'",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.542551+00:00"
+    },
+    {
+      "section": "ValidationOverlay",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "adaptive_adjustment \u2208 [-0.20, +0.20] verified",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.571357+00:00"
+    },
+    {
+      "section": "ValidationPremarket",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "conviction_decay present valid_until_utc map present",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.573858+00:00"
+    },
+    {
+      "section": "ValidationExploration",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "budget_pct=3 threshold=7.2",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.582633+00:00"
+    },
+    {
+      "section": "ValidationGovernance",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "Layer 5+ interfaces intact no bypasses detected",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.621315+00:00"
+    },
+    {
+      "section": "ValidationPerformance",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "scanner_max_runtime_min=20 premarket_max_runtime_min=25",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.622031+00:00"
+    },
+    {
+      "section": "ValidationResearchIntegrity",
+      "status": "PASS",
+      "severity": "INFO",
+      "details": "\u2713 ClosedTradeRecord.architecture_generation field present | \u2713 PREPARED_UNIVERSE_ACTIVATION_DATE=2026-05-22 | \u2713 MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT=25 | \u2713 research weights: legacy=0.25  prepared=1.0 | \u2713 strategy_performance_tracker._check_disable() has research integrity guard | \u2713 [ArchitectureGeneration] + [ResearchIntegrity] tags present in all required sources",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.639377+00:00"
+    },
+    {
+      "section": "ValidationResearchMaturity",
+      "status": "FAIL",
+      "severity": "FAIL",
+      "details": "\u2713 learning_system/research_integrity.py present | \u2713 dynamic decay: compute_legacy_weight present | \u2713 dynamic decay: math.exp( present | \u2713 dynamic decay: _LEGACY_W_FLOOR present | \u2713 dynamic decay: _LEGACY_DECAY_K present | \u2713 MIN_CLEAN_PREPARED_TRADES=100 | FAIL: strategy_performance_tracker.py missing freeze markers: ['adaptive_mutation_blocked'] | FAIL: [ResearchContamination] missing in eod_retrospective.py | \u2713 [TelemetryGeneration] present in eod_retrospective.py | \u2713 compute_legacy_weight imported in daily_self_evaluation.py | \u2713 emit_contamination_telemetry imported in daily_self_evaluation.py | \u2713 emit_clean_research_state imported in daily_self_evaluation.py | \u2713 dynamic decay: w(0)=0.25  w(100)=0.1  w(300)=0.1  floor=0.10 | \u2713 is_clean_research_ready() callable \u2192 ready=False  (mutation_frozen=True) | SKIP: functional smoke test: name 'log' is not defined",
+      "recommendation": null,
+      "timestamp_utc": "2026-05-22T09:55:07.645679+00:00"
+    }
+  ]
+}

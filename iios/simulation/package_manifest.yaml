@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.simulation
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.simulation"
+version: "0.1.0"
+purpose: "Layer 8: MarketSimulation -- Monte Carlo engine, 14 scenario types, stress testing"
+architecture_reference: "IIOS-ARC-001 Layer 8"
+layer: "LAYER-8"
+owner: "Platform"
+wave: 5
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "monte_carlo_engine"
+  - "scenario_generator"
+  - "market_simulator"
+  - "simulation_result"
+  - "scenario_library"
+dependencies:
+  - "iios.core"
+  - "iios.market"
+  - "iios.models"
+  - "iios.infrastructure"

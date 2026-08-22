@@ -1,0 +1,3 @@
+direction,strategy_status,total_candidates,correct_rejection,false_rejection,neutral_rejection,correct_pct,false_pct,avg_strong_missed
+UP,REJECT,140,52,53,35,0.3714,0.3786,4.2266
+DOWN,CONTRADICTED,65,30,15,20,0.4615,0.2308,3.0106

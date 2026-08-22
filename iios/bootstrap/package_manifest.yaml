@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.bootstrap
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.bootstrap"
+version: "0.1.0"
+purpose: "System bootstrap -- implements the complete 45-stage IIOS startup sequence from IIOS-BSS-001"
+architecture_reference: "IIOS-BSS-001"
+layer: "BOOTSTRAP"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "startup_manager"
+  - "shutdown_manager"
+  - "recovery_service"
+  - "bootstrap_validator"
+  - "startup_stages"
+  - "pre_market_init"
+dependencies:
+  - "iios.core"
+  - "iios.config"
+  - "iios.infrastructure"

@@ -1,0 +1,43 @@
+════════════════════════════════════════════════════
+  📊 DAILY RETROSPECTIVE — 11 Aug 2026
+════════════════════════════════════════════════════
+🧠 SECTION 1 — STRATEGY INTELLIGENCE
+  Closed trades : 0  |  Open: 0
+  Day P&L       : —  (W:0  L:0)
+  No closed trades recorded today.
+────────────────────────────────────────────────────
+🔬 SECTION 1b — RESEARCH INTEGRITY (Architecture Generation)
+  Activation date : 2026-05-22  (PREPARED_UNIVERSE_V1 epoch start)
+  LEGACY_STATIC   : 0 trades today  ✅ epoch boundary crossed
+  PREPARED_V1     : 0 trades yet — accumulating clean sample
+  Dynamic legacy weight : 0.1676  (decays 0.25→0.10 as prepared_trades grow)
+  Architecture telemetry :
+    LEGACY_STATIC      : trades=0  weighted=0.00
+    PREPARED_UNIVERSE_V1: trades=40  weighted=40.00
+  Research contamination : legacy_weighted_pct=0.0%  prepared_weighted_pct=100.0%
+  Clean research gate   : prepared=40  required=100  ready=⏳ NO  adaptive_mutation_blocked=YES — FROZEN
+  Primary generation    : PREPARED_UNIVERSE_V1
+🔄 SECTION 2 — OPERATIONAL RELIABILITY
+  Cycles     : 10  ✅ 7  ⚠️ 3
+  Latency    : fastest 1391ms  |  slowest 13762ms
+  Slow layers: GlobalIntelligence×3
+  Signals    : 151 generated  →  0 BT-rejected  →  0 MC-rejected
+  Debate     : ✅ 0 approved  ❌ 0 rejected
+  ODM tier   : SECONDARY  density 0.0%
+  ⚡ 3 DEGRADED — slowest: GlobalIntelligence
+────────────────────────────────────────────────────
+⚖️  SECTION 3 — GOVERNANCE VIOLATIONS
+  ✅ All entries within approved window (09:45–14:30).
+────────────────────────────────────────────────────
+🔎 SECTION 4 — CONCENTRATION RISK
+  No symbols traded today.
+────────────────────────────────────────────────────
+🌐 SECTION 5 — MARKET REGIME CONTEXT
+  Regime : range_market  |  VIX: 15.5
+
+  🔭 Tomorrow Watch
+    • Market in range_market (VIX 15.5) — expect similar density; mean-reversion setups most likely
+    • Multiple DEGRADED cycles today — monitor latency at open
+════════════════════════════════════════════════════
+  Ask Copilot: 'what did we learn today?' for analysis
+════════════════════════════════════════════════════

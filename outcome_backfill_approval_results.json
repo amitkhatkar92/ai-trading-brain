@@ -1,0 +1,220 @@
+{
+  "audit_id": "OUTCOME_TRACKING_BACKFILL_APPROVAL_AUDIT_001",
+  "date": "2026-08-14",
+  "as_of_date": "2026-08-13",
+  "environment": "VPS (docker, market_behavior.db)",
+  "test_suite_result": "43/43 PASS — 0 FAIL — 0 SKIP",
+
+  "section1_pending_audit": {
+    "total_pending": 1005,
+    "by_reason": {
+      "WITHIN_TTL_BY_CALENDAR": 986,
+      "WITHIN_TTL_BY_ASOF": 19
+    },
+    "by_ttl": {"10": 366, "18": 639},
+    "most_recent_detected": ["2026-08-12", "2026-08-11", "2026-08-10"],
+    "oldest_detected": ["2026-07-27", "2026-07-28", "2026-07-29"],
+    "within_ttl_at_asof_but_expired_by_today": 19,
+    "assessment": "ALL 1,005 PENDING signals are legitimately PENDING. 986 are strictly within TTL as of today. 19 expired by today (2026-08-14) but not at as_of_date (2026-08-13) — 1-day data lag. None are false PENDING.",
+    "recommendation": "Do not convert PENDING to WIN/LOSS. Allow natural resolution as as_of_date advances with daily OHLCV refresh."
+  },
+
+  "section2_no_data_audit": {
+    "total_no_data": 82,
+    "by_category": {
+      "A_MISSING_OHLC_IN_WINDOW": 0,
+      "B_SYMBOL_NOT_IN_OHLCV": 0,
+      "C_INVALID_TIMESTAMP": 0,
+      "D_OUTSIDE_AVAILABLE_HISTORY": 82,
+      "E_CORRUPTED_RECORD": 0,
+      "F_OTHER": 0
+    },
+    "assessment": "All 82 NO_DATA signals are Category D: detected on 2026-08-13 (= ohlcv_max_date). The observation window requires data AFTER detected_at, but ohlcv_daily has no data for 2026-08-14 yet. This is correct behaviour — these are brand-new signals awaiting the next price bar.",
+    "example_signal": {
+      "symbol": "SBIN.NS",
+      "detected_at": "2026-08-13",
+      "ohlcv_max_date": "2026-08-13",
+      "window_start_exclusive": "2026-08-13",
+      "next_available_bar": "2026-08-14 (not yet available)",
+      "verdict": "NO_DATA is correct — resolves automatically tomorrow"
+    },
+    "recommendation": "NO_DATA remains NO_DATA. No source data fix required. These 82 signals will resolve on the next OHLCV refresh day."
+  },
+
+  "section3_win_loss_validation": {
+    "sample_sizes": {"WIN": 20, "LOSS": 20, "EXPIRED": 10},
+    "total_validated": 50,
+    "discrepancies": 0,
+    "methodology": "Independent recomputation from raw ohlcv_daily. Direction-aware formulas applied identically. RNG seed=42 for reproducibility.",
+    "checks_performed": [
+      "signal_direction matches expected_move_direction",
+      "entry == birth_price",
+      "observation_window = (detected_at, min(detected_at+ttl, as_of)]",
+      "actual_return recomputed from last close in window",
+      "MFE recomputed from daily high/low over window",
+      "MAE recomputed from daily high/low over window",
+      "final_state recomputed from taxonomy rules"
+    ],
+    "result": "PASS — 0 discrepancies in 50 samples. All actual_move_pct, MFE, MAE, final_state values match independent recomputation to within 0.01 percentage points."
+  },
+
+  "section4_mutation_safety": {
+    "write_columns": [
+      "actual_move_pct", "peak_move_pct", "max_adverse_pct",
+      "days_to_peak", "final_state", "final_age_trading_days", "last_updated_at"
+    ],
+    "immutable_columns": [
+      "signal_id", "symbol", "archetype_id", "archetype_version",
+      "signal_type", "detected_at", "birth_price", "base_score",
+      "regime_at_birth", "expected_ttl_days", "expected_move_direction",
+      "expected_move_pct", "expected_move_pct_source",
+      "current_state", "age_trading_days", "edge_consumed_pct", "trade_executed"
+    ],
+    "overlap_with_immutable": [],
+    "mutation_safe": true,
+    "update_guard": "WHERE signal_id = ? AND final_state IS NULL",
+    "columns_not_modified": [
+      "original signal timestamp (detected_at)",
+      "symbol",
+      "direction (expected_move_direction)",
+      "entry (birth_price)",
+      "strategy (archetype_id, archetype_version)",
+      "scanner score (base_score)",
+      "knowledge score (consensus_score_at_birth)",
+      "re_score",
+      "confidence",
+      "risk decision (current_state)",
+      "position sizing (edge_consumed_pct)",
+      "execution state (trade_executed)",
+      "order IDs"
+    ],
+    "assessment": "CONFIRMED SAFE. Zero overlap between write set and immutable set. The UPDATE statement is guarded by `AND final_state IS NULL` preventing double-writes."
+  },
+
+  "section5_immutability": {
+    "signals_hashed": 3335,
+    "hash_method": "SHA-256 over concatenated immutable column values",
+    "changes_after_dryrun": 0,
+    "immutability_confirmed": true,
+    "assessment": "All 3,335 signal rows hashed before and after dry-run. Zero hash changes. Original signal information is provably unchanged."
+  },
+
+  "section6_feedback_loop": {
+    "fields_investigated": ["actual_move_pct", "peak_move_pct", "max_adverse_pct", "final_state"],
+    "consumers_found": [
+      {
+        "module": "oios/engine/shadow_scorer.py",
+        "type": "ANALYTICS — Shadow Mode",
+        "reads": ["signal_births.final_state", "signal_births.peak_move_pct", "signal_births.days_to_peak"],
+        "writes_to": "shadow_cause_outcomes (NOT opportunities, NOT trading decisions)",
+        "contract": "Shadow mode: NEVER writes to opportunities.conviction_score, NEVER passed to state machine, NEVER visible to execution engine",
+        "called_from": "phase_e_audit.py (audit/research only, not orchestrator)",
+        "trading_impact": "NONE"
+      },
+      {
+        "module": "oios/engine/adaptive_intelligence.py",
+        "type": "ANALYTICS — Shadow Mode, Phase D",
+        "reads": ["signal_births.final_state IS NOT NULL", "signal_births.peak_move_pct"],
+        "writes_to": "pending_adjustments (status=PENDING, requires human /approve or /reject)",
+        "contract": "ALL output to pending_adjustments only. No runtime parameter touched.",
+        "called_from": "phase_d_audit.py (audit/research only, not orchestrator)",
+        "trading_impact": "NONE — requires explicit human approval to apply"
+      },
+      {
+        "module": "oios/engine/outcome_distributor.py",
+        "type": "ANALYTICS — Statistical distribution",
+        "reads": ["signal_births.final_state", "signal_births.peak_move_pct", "signal_births.actual_move_pct"],
+        "writes_to": "analytics outputs only",
+        "called_from": "phase_d_audit.py, reporting modules (not orchestrator)",
+        "trading_impact": "NONE"
+      },
+      {
+        "module": "oios/engine/counterfactual_engine.py",
+        "type": "ANALYTICS — Counterfactual analysis",
+        "reads": ["signal_births.final_state", "signal_births.peak_move_pct"],
+        "writes_to": "analysis results only",
+        "called_from": "phase_d_audit.py, adaptive_intelligence.py (not orchestrator)",
+        "trading_impact": "NONE"
+      },
+      {
+        "module": "oios/reporting/* (weekly_report.py, phase_e_shadow.py)",
+        "type": "REPORTING ONLY",
+        "reads": ["signal_births.final_state (expecting TTL_EXHAUSTED/INVALID — ELE taxonomy)"],
+        "writes_to": "report strings only",
+        "trading_impact": "NONE"
+      }
+    ],
+    "orchestrator_calls_any_consumer": false,
+    "trading_decision_path_affected": false,
+    "assessment": "CONFIRMED ISOLATED. No consumer of actual_move_pct / peak_move_pct / max_adverse_pct / final_state is in the trading decision path. master_orchestrator.py contains zero references to shadow_scorer, outcome_distributor, adaptive_intelligence, or e_readiness."
+  },
+
+  "section6_taxonomy_mismatch": {
+    "new_tracker_values": ["WIN", "LOSS", "EXPIRED", "PENDING", "NO_DATA"],
+    "ele_expected_values": ["TTL_EXHAUSTED", "INVALID", "ZOMBIE_CAP"],
+    "consumers_expecting_ele_taxonomy": [
+      "oios/reporting/weekly_report.py (lines 124-125)",
+      "oios/reporting/phase_e_shadow.py (lines 167-168)",
+      "oios/engine/e_readiness.py (lines 76-77, 131)"
+    ],
+    "impact_before_backfill": "Reporters return 0 (all final_state IS NULL)",
+    "impact_after_backfill": "Reporters still return 0 (final_state = WIN/LOSS/etc., not TTL_EXHAUSTED/INVALID)",
+    "net_change_to_reports": "NONE — reports show 0 before and after",
+    "severity": "LOW — pre-existing design gap in reporting layer, not introduced by backfill",
+    "trading_impact": "NONE — these reporters are not in the trading decision path"
+  },
+
+  "section7_t3_test": {
+    "root_cause": "OUTCOME_TRACKING_BACKFILL_PREVIEW_001.json was generated to /tmp/ on VPS and not copied to the working directory /root/ai-trading-brain/",
+    "fix_applied": "cp /tmp/OUTCOME_TRACKING_BACKFILL_PREVIEW_001.json /root/ai-trading-brain/OUTCOME_TRACKING_BACKFILL_PREVIEW_001.json",
+    "test_weakened": false,
+    "result_before": "1 SKIP",
+    "result_after": "0 SKIP — PASS",
+    "final_suite_result": "43/43 PASS — 0 FAIL — 0 SKIP"
+  },
+
+  "section8_idempotency": {
+    "working_copy": "tmpfile (deleted after test)",
+    "run1_total": 3319,
+    "run1_resolved": 3253,
+    "run1_no_data": 66,
+    "run2_total": 66,
+    "run2_resolved": 0,
+    "run3_total": 66,
+    "run3_resolved": 0,
+    "idempotent": true,
+    "note_on_total_discrepancy": "3319 in idempotency copy vs 3335 in current production DB: explained by 16 new signals created by the live scanner during the audit run. The copy was made before those 16 signals arrived. All 3335 currently have final_state IS NULL — confirmed clean baseline.",
+    "note_on_no_data_remaining": "66 NO_DATA signals remain final_state IS NULL by design. The resolver does not write to NO_DATA signals (there is no outcome to record). They will resolve when as_of_date advances past their detection date.",
+    "assessment": "IDEMPOTENCY CONFIRMED: run2.resolved == 0 and run3.resolved == 0. Repeated execution produces zero additional changes."
+  },
+
+  "section9_daily_readiness": {
+    "function": "run_daily_outcome_resolution(conn, as_of_date=None)",
+    "auto_asof_detection": "CONFIRMED — reads MAX(trade_date) FROM ohlcv_daily correctly",
+    "observation_window": "(detected_at, min(detected_at+ttl_days, as_of_date)] — exclusive start, future-safe",
+    "idempotency_guard": "WHERE signal_id = ? AND final_state IS NULL",
+    "restart_safety": "CONFIRMED — test I passes: second run after restart = 0 additional writes",
+    "missing_data_handling": "Returns NO_DATA, does not write, does not crash (test F passes)",
+    "pending_handling": "Writes PENDING for within-TTL signals, guarded by idempotency (test G passes)",
+    "no_data_handling": "Skips write entirely, leaves final_state IS NULL (test F passes)",
+    "exception_handling": "try/except per signal — single signal failure does not abort batch",
+    "trading_decision_impact": "NONE — measurement columns not read by re_calculator, DecisionEngine, CRE, OrderManager",
+    "not_yet_wired": true,
+    "assessment": "READY for orchestrator integration when approved. No issues found."
+  },
+
+  "production_db_baseline_confirmed": {
+    "total_signals": 3335,
+    "final_state_null": 3335,
+    "final_state_set": 0,
+    "clean_baseline": true
+  },
+
+  "verdict": "BACKFILL_APPROVED_WITH_LIMITATIONS",
+  "limitations": [
+    "L1: TAXONOMY MISMATCH — New tracker writes WIN/LOSS/EXPIRED/PENDING/NO_DATA. Existing reporting modules (weekly_report.py, phase_e_shadow.py) expect TTL_EXHAUSTED/INVALID (ELE taxonomy). After backfill, these reports will continue to show 0 closed signals — same as today. Net effect: none. No trading impact.",
+    "L2: NO_DATA SIGNALS STAY NULL — 82 signals detected on 2026-08-13 (as_of_date) cannot be resolved until next OHLCV refresh. They will remain final_state IS NULL. This is correct behaviour but means the post-backfill state is 3,253 resolved + 82 NO_DATA-NULL + 0 unprocessed (not a clean 100%).",
+    "L3: PENDING SIGNALS WRITE PENDING — 1,005 PENDING signals will have final_state='PENDING' after backfill. These are correct and will advance to WIN/LOSS/EXPIRED as as_of_date advances. The idempotency guard prevents them from being re-evaluated once resolved."
+  ],
+  "blockers": []
+}

@@ -1,0 +1,67 @@
+﻿Learning registry type: list
+Total entries: 65
+Today entries: 19
+{
+  "learning_id": "PGA-F46369F6",
+  "created_date": "2026-08-11",
+  "action_type": "create_dna_candidate",
+  "category": "E",
+  "symbol": "DRREDDY",
+  "description": "Create candidate DNA for DRREDDY: moved +4.0% with zero DNA coverage",
+  "target_system": "IDR",
+  "expected_benefit": "Improve dna_count for DRREDDY via IDR",
+  "prediction_metric": "dna_count",
+  "measurement_windows": [
+    30,
+ 
+{
+  "learning_id": "PGA-F56D15BD",
+  "created_date": "2026-08-11",
+  "action_type": "create_dna_candidate",
+  "category": "E",
+  "symbol": "DIVISLAB",
+  "description": "Create candidate DNA for DIVISLAB: moved +3.2% with zero DNA coverage",
+  "target_system": "IDR",
+  "expected_benefit": "Improve dna_count for DIVISLAB via IDR",
+  "prediction_metric": "dna_count",
+  "measurement_windows": [
+    30
+{
+  "learning_id": "PGA-80F9FCDF",
+  "created_date": "2026-08-11",
+  "action_type": "create_dna_candidate",
+  "category": "E",
+  "symbol": "CANBK",
+  "description": "Create candidate DNA for CANBK: moved +1.0% with zero DNA coverage",
+  "target_system": "IDR",
+  "expected_benefit": "Improve dna_count for CANBK via IDR",
+  "prediction_metric": "dna_count",
+  "measurement_windows": [
+    30,
+    60,
+{
+  "learning_id": "PGA-B891CE79",
+  "created_date": "2026-08-11",
+  "action_type": "create_dna_candidate",
+  "category": "E",
+  "symbol": "VEDL",
+  "description": "Create candidate DNA for VEDL: moved -3.5% with zero DNA coverage",
+  "target_system": "IDR",
+  "expected_benefit": "Improve dna_count for VEDL via IDR",
+  "prediction_metric": "dna_count",
+  "measurement_windows": [
+    30,
+    60,
+  
+{
+  "learning_id": "PGA-5B59D84B",
+  "created_date": "2026-08-11",
+  "action_type": "create_dna_candidate",
+  "category": "E",
+  "symbol": "GODREJPROP",
+  "description": "Create candidate DNA for GODREJPROP: moved -3.3% with zero DNA coverage",
+  "target_system": "IDR",
+  "expected_benefit": "Improve dna_count for GODREJPROP via IDR",
+  "prediction_metric": "dna_count",
+  "measurement_windows": [
+

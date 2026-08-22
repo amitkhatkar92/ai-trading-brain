@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.integrations
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.integrations"
+version: "0.1.0"
+purpose: "External integrations -- Dhan broker (data API + orders, 451 fallback), Yahoo Finance fallback, GLOBAL_SYMBOL_MAP"
+architecture_reference: "IIOS-ARC-001 Layer 11, IIOS-RCS-001"
+layer: "INTEGRATIONS"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "dhan_feed"
+  - "dhan_broker"
+  - "yahoo_feed"
+  - "base_broker"
+  - "feed_manager"
+  - "global_symbol_map"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.communication"
+  - "iios.security"
+  - "iios.config"

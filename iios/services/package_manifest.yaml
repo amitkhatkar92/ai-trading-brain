@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.services
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.services"
+version: "0.1.0"
+purpose: "Background services -- Scheduler, 30s MarketMonitor, EOD workflow, pre-market initialization, continuous monitoring"
+architecture_reference: "IIOS-ARC-001, IIOS-BSS-001"
+layer: "SERVICES"
+owner: "Platform"
+wave: 3
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "scheduler_service"
+  - "market_monitor_service"
+  - "eod_service"
+  - "pre_market_service"
+  - "background_runner"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure.platform"
+  - "iios.market"
+  - "iios.infrastructure"

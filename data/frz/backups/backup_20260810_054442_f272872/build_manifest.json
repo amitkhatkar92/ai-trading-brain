@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "commit": "unknown",
+  "commit_full": "unknown",
+  "branch": "unknown",
+  "commit_message": "unknown",
+  "build_timestamp": "2026-06-09T17:14:24.593223+05:30",
+  "python_version": "3.14.5",
+  "platform": "Linux",
+  "file_hashes": {
+    "main.py": "ebd94fabf26bdcd8d903937e67285196ebaadb61e5264c9aac3bcee27bb799f2",
+    "config.py": "b8e9c3ca8b28dbf83e04676db5bdf7c8be786bc5287829d5eb23d490eb4d5387",
+    "orchestrator/master_orchestrator.py": "9f7efb2ffc8929259ffdfc3e3ccc72aad34b30de3a81f8f3e128c1a63221a161",
+    "execution_engine/order_manager.py": "8a2694f79bcc2505ee1409439ec83e6152bce2a5b22384982eb36f111268b1ca",
+    "risk_guardian/risk_guardian.py": "e39bfdba54e6caf5f718f8498aa3339bbcd189adeab9ec06a43fce9d87b985de",
+    "learning_system/strategy_performance_tracker.py": "aadef1bdf4438494a51a136ed4f63e8c3da7d25bc258205df566a9eac0a8f30e",
+    "notifications/telegram_bot.py": "90218c3a6dd917a5903479c9d59f85ce86ad5a277ec88d8b5573bda2f465a82c",
+    "notifications/notifier_manager.py": "384d9627faca2e92887bd03ef3a94f06191ddcc2889aede765e30d955e9727d7",
+    "data_feeds/data_feed_manager.py": "1425afd98914eedd52a090e55a1b57e66dd69e8afea7beab46d3e53a9258152c",
+    "data_feeds/dhan_feed.py": "4fb1d24984bf7cba1a6893f574e9e10b78bb562f4ef5aa533a8c56d9d4ebf189",
+    "data_feeds/yahoo_feed.py": "f9f939281df6d446348ff2161aee7f6d8bde6fb92f9a9cd5e0ece68c52478cb3",
+    "global_intelligence/global_data_ai.py": "43dbbf9fd8c4dba9c7b7034609fbba80bb7c83953258a0f77a04a99e9a4b9718",
+    "trade_monitoring/trade_monitor.py": "4b20eb443ae4ace1f5bf59bf2a1e7aaa126c89d935ccacc0f3055255f004a1ac",
+    "deployment/runtime_verifier.py": "41de7cc9fbd902fd3f7dcd7a92a61fd1221e476d772b7902c85da224a09e3b2c"
+  },
+  "tracked_files": [
+    "main.py",
+    "config.py",
+    "orchestrator/master_orchestrator.py",
+    "execution_engine/order_manager.py",
+    "risk_guardian/risk_guardian.py",
+    "learning_system/strategy_performance_tracker.py",
+    "notifications/telegram_bot.py",
+    "notifications/notifier_manager.py",
+    "data_feeds/data_feed_manager.py",
+    "data_feeds/dhan_feed.py",
+    "data_feeds/yahoo_feed.py",
+    "global_intelligence/global_data_ai.py",
+    "trade_monitoring/trade_monitor.py",
+    "deployment/runtime_verifier.py"
+  ],
+  "missing_files": []
+}

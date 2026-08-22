@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.storage
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.storage"
+version: "0.1.0"
+purpose: "Storage service -- SQLite adapter, WAL mode, transaction management, data retention, backup"
+architecture_reference: "IIOS-CIS-001 INFRA-STG-001"
+layer: "STORAGE"
+owner: "Platform"
+wave: 2
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "storage_service"
+  - "sqlite_storage"
+  - "storage_schema"
+  - "data_retention"
+  - "backup_service"
+dependencies:
+  - "iios.core"
+  - "iios.database"
+  - "iios.infrastructure"

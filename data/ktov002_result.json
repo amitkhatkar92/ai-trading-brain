@@ -1,0 +1,257 @@
+{
+  "meta": {
+    "run_date": "2026-08-13T13:59:11.825827",
+    "study": "KNOWLEDGE_TO_OPPORTUNITY_VALIDATION_002",
+    "period": "2021-06-01 to 2025-12-30",
+    "mover_threshold_pct": 2.0,
+    "forward_window_days": 5,
+    "total_universe_events": 197702
+  },
+  "opportunity_metrics": {
+    "baseline": {
+      "label": "Baseline_RSI67+Range+Volatile",
+      "n_signals": 8886,
+      "coverage_pct": 4.495,
+      "n_became_loser": 4670,
+      "n_became_gainer": 5099,
+      "n_neither": 824,
+      "precision_loser": 0.5255,
+      "precision_pct": 52.6,
+      "false_positive_rate": 0.4745,
+      "fpr_pct": 47.4,
+      "avg_max_loss_pct": 2.848,
+      "avg_max_gain_pct": 3.353,
+      "avg_final_return_pct": 0.325,
+      "avg_max_loss_losers": 4.539,
+      "signal_reduction_vs_baseline": null
+    },
+    "dna": {
+      "label": "DNA_RSI70+Range+VolSpike",
+      "n_signals": 1423,
+      "coverage_pct": 0.72,
+      "n_became_loser": 805,
+      "n_became_gainer": 917,
+      "n_neither": 69,
+      "precision_loser": 0.5657,
+      "precision_pct": 56.6,
+      "false_positive_rate": 0.4343,
+      "fpr_pct": 43.4,
+      "avg_max_loss_pct": 3.198,
+      "avg_max_gain_pct": 4.062,
+      "avg_final_return_pct": 0.594,
+      "avg_max_loss_losers": 4.896,
+      "signal_reduction_vs_baseline": 84.0
+    },
+    "rsi70_no_dna": {
+      "label": "RSI70+Range_NoDNA",
+      "n_signals": 6476,
+      "coverage_pct": 3.276,
+      "n_became_loser": 3417,
+      "n_became_gainer": 3726,
+      "n_neither": 617,
+      "precision_loser": 0.5276,
+      "precision_pct": 52.8,
+      "false_positive_rate": 0.4724,
+      "fpr_pct": 47.2,
+      "avg_max_loss_pct": 2.867,
+      "avg_max_gain_pct": 3.4,
+      "avg_final_return_pct": 0.379,
+      "avg_max_loss_losers": 4.562,
+      "signal_reduction_vs_baseline": null
+    }
+  },
+  "recall_analysis": {
+    "total_loser_events_universe": 112411,
+    "total_gainer_events_universe": 123923,
+    "baseline_loser_recall": 0.0415,
+    "dna_loser_recall": 0.0072,
+    "dna_signals_that_became_losers": 805,
+    "dna_signals_that_became_gainers": 917,
+    "dna_coverage_of_losers_pct": 0.72,
+    "baseline_coverage_of_losers_pct": 4.15
+  },
+  "lead_time_analysis": {
+    "avg_lead_days": 2.12,
+    "median_lead_days": 2.0,
+    "min_lead_days": 1,
+    "max_lead_days": 5,
+    "n_measured": 805
+  },
+  "temporal_breakdown_baseline": {
+    "2021H2": {
+      "n": 618,
+      "losers": 322,
+      "precision_pct": 52.1
+    },
+    "2022H1": {
+      "n": 423,
+      "losers": 287,
+      "precision_pct": 67.8
+    },
+    "2022H2": {
+      "n": 1259,
+      "losers": 691,
+      "precision_pct": 54.9
+    },
+    "2023H1": {
+      "n": 1324,
+      "losers": 574,
+      "precision_pct": 43.4
+    },
+    "2023H2": {
+      "n": 1615,
+      "losers": 806,
+      "precision_pct": 49.9
+    },
+    "2024H1": {
+      "n": 941,
+      "losers": 548,
+      "precision_pct": 58.2
+    },
+    "2024H2": {
+      "n": 953,
+      "losers": 524,
+      "precision_pct": 55.0
+    },
+    "2025H1": {
+      "n": 780,
+      "losers": 471,
+      "precision_pct": 60.4
+    },
+    "2025H2": {
+      "n": 973,
+      "losers": 447,
+      "precision_pct": 45.9
+    }
+  },
+  "temporal_breakdown_dna": {
+    "2021H2": {
+      "n": 116,
+      "losers": 65,
+      "precision_pct": 56.0
+    },
+    "2022H1": {
+      "n": 67,
+      "losers": 47,
+      "precision_pct": 70.1
+    },
+    "2022H2": {
+      "n": 174,
+      "losers": 107,
+      "precision_pct": 61.5
+    },
+    "2023H1": {
+      "n": 183,
+      "losers": 101,
+      "precision_pct": 55.2
+    },
+    "2023H2": {
+      "n": 342,
+      "losers": 175,
+      "precision_pct": 51.2
+    },
+    "2024H1": {
+      "n": 153,
+      "losers": 95,
+      "precision_pct": 62.1
+    },
+    "2024H2": {
+      "n": 149,
+      "losers": 90,
+      "precision_pct": 60.4
+    },
+    "2025H1": {
+      "n": 78,
+      "losers": 47,
+      "precision_pct": 60.3
+    },
+    "2025H2": {
+      "n": 161,
+      "losers": 78,
+      "precision_pct": 48.4
+    }
+  },
+  "bml_validation": {
+    "2026-08-11": {
+      "n_top20_losers": 16,
+      "n_significant_losers": 6,
+      "significant_losers": [
+        "AMBUJACEM",
+        "BHARATFORG",
+        "GODREJPROP",
+        "HINDZINC",
+        "MAXHEALTH",
+        "VEDL"
+      ],
+      "dna_candidates_on_day": [],
+      "base_candidates_on_day": [],
+      "dna_caught_significant": [],
+      "base_caught_significant": [],
+      "dna_precision": 0.0,
+      "base_precision": 0.0,
+      "dna_recall_of_sig_losers": 0.0,
+      "base_recall_of_sig_losers": 0.0
+    },
+    "2026-08-13": {
+      "n_top20_losers": 20,
+      "n_significant_losers": 5,
+      "significant_losers": [
+        "DIVISLAB",
+        "EASEMYTRIP",
+        "HINDALCO",
+        "PAGEIND",
+        "ZYDUSLIFE"
+      ],
+      "dna_candidates_on_day": [],
+      "base_candidates_on_day": [],
+      "dna_caught_significant": [],
+      "base_caught_significant": [],
+      "dna_precision": 0.0,
+      "base_precision": 0.0,
+      "dna_recall_of_sig_losers": 0.0,
+      "base_recall_of_sig_losers": 0.0
+    },
+    "aug11_lead_to_aug13": {
+      "overbought_candidates_aug11": [
+        "BOSCHLTD",
+        "DEEPAKNTR",
+        "INDIANB",
+        "MAZDOCK",
+        "NAUKRI",
+        "NESTLEIND",
+        "PNBHOUSING"
+      ],
+      "dna_filtered_aug11": [],
+      "aug13_significant_losers": [
+        "DIVISLAB",
+        "EASEMYTRIP",
+        "HINDALCO",
+        "PAGEIND",
+        "ZYDUSLIFE"
+      ],
+      "overbought_aug11_became_loser_aug13": [],
+      "dna_filtered_aug11_became_loser_aug13": [],
+      "note": "vol_ratio from Aug-11 snapshot; DNA filter (vol_ratio>=1.5x) applied as of Aug-11 close"
+    }
+  },
+  "phase4_directional": {
+    "dna_loser_pct": 56.6,
+    "dna_gainer_pct": 64.4,
+    "base_loser_pct": 52.6,
+    "base_gainer_pct": 57.4,
+    "loser_lift_dna_vs_base": 1.076
+  },
+  "phase7_iios_philosophy": {
+    "baseline_precision": 52.6,
+    "rsi70_precision": 52.8,
+    "dna_precision": 56.6,
+    "dna_delta_vs_baseline": 4.0,
+    "dna_delta_vs_rsi70": 3.8
+  },
+  "data_leakage": "NONE_FOUND",
+  "verdicts": {
+    "opportunity_verdict": "DNA_ADDS_VALUE_FOR_OPPORTUNITY",
+    "trading_verdict": "FAIL_confirmed_by_VALIDATION_001",
+    "dna_adds_incremental_value": false
+  }
+}

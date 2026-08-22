@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.reasoning
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.reasoning"
+version: "0.1.0"
+purpose: "Layers 1-3: GlobalIntelligence (17ms SLA), MarketIntelligence, MetaLearning k-NN regime predictor"
+architecture_reference: "IIOS-ARC-001 Layers 1-3, IIOS-RZN-001"
+layer: "LAYERS-1-3"
+owner: "Platform"
+wave: 4
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "global_data_ai"
+  - "global_snapshot"
+  - "regime_classifier"
+  - "meta_learning"
+  - "regime_strategy_map"
+  - "pattern_matcher"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.knowledge"
+  - "iios.market"

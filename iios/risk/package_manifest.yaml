@@ -1,0 +1,28 @@
+﻿# Package Manifest: iios.risk
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.risk"
+version: "0.1.0"
+purpose: "Layers 6-9: CapitalRiskEngine, RiskControl (PortfolioAllocation, StressTest), MarketSimulation, RiskGuardian (kill switch VIX=45, loss=2%)"
+architecture_reference: "IIOS-ARC-001 Layers 6-9"
+layer: "LAYERS-6-9"
+owner: "Platform"
+wave: 5
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "capital_risk_engine"
+  - "position_sizer"
+  - "risk_manager_ai"
+  - "portfolio_allocation"
+  - "stress_tester"
+  - "risk_guardian"
+  - "kill_switch"
+  - "vix_monitor"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.market"
+  - "iios.models"
+  - "iios.portfolio"

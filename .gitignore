@@ -76,6 +76,7 @@ data/backups/
 data/*.bak
 data/.bootstrap_probe
 data/.hc_probe
+data/replay.db
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/

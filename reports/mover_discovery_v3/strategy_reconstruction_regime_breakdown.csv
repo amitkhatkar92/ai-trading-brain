@@ -1,0 +1,5 @@
+regime,days,total_raw,actual_strat,survival_rate,pred_pass,exact_match_days,day_accuracy,max_gap
+bull_trend,20,186,56,0.3010752688172043,66,13,0.65,2
+range_market,4,50,26,0.52,26,4,1.0,0
+bear_market,4,24,0,0.0,0,4,1.0,0
+volatile,2,26,0,0.0,0,2,1.0,0

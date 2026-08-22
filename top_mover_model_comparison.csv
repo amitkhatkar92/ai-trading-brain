@@ -1,0 +1,4 @@
+model,n_dates,pool_up_count_avg,sel_up_count_avg,up_direction_accuracy,down_direction_accuracy,smcr_up_1pct_pool,smcr_up_1pct_sel,smcr_up_2pct_pool,smcr_up_2pct_sel,smcr_up_3pct_pool,smcr_up_3pct_sel,smcr_down_2pct_sel,top1_up_capture_rate,top3_up_capture_avg,top5_up_capture_avg,pool_precision_up,sel_precision_up,sel_lift_up,avg_sel_ret_1d,avg_sel_ret_3d,avg_sel_ret_5d,avg_mfe_long,avg_mae_long
+MODEL_A,1204,17.7284,5.8837,0.5126,,0.0931,0.0311,0.0982,0.0337,0.1004,0.0353,0.0,0.0897,0.2234,0.3214,0.3316,0.3356,1.1783,0.1859,0.39,0.6192,5.3782,-4.0305
+MODEL_B,1204,20.0,6.0,0.5037,0.4857,0.1002,0.031,0.1042,0.0326,0.1069,0.0337,0.0404,0.0706,0.1628,0.2409,0.3147,0.3241,1.1258,0.2153,0.2976,0.4171,4.8476,-3.7292
+MODEL_C,1204,20.0,6.0,0.5096,0.49,0.1022,0.0317,0.1062,0.0348,0.1087,0.0372,0.0431,0.0847,0.2068,0.3123,0.323,0.3414,1.2023,0.2237,0.3715,0.5869,5.3174,-3.9651

@@ -1,0 +1,11 @@
+split,regime,direction,n,n_days,n_reject,a_dir_acc,b1_dir_acc,delta_dir_acc,a_ge2,b1_ge2,delta_ge2,false_rej_rate,low_sample
+OOS,BULL,UP,20,1,0,0.2,0.2,0.0,0.0,0.0,0.0,,LOW_SAMPLE
+OOS,RANGE,UP,1040,52,0,1.0,1.0,0.0,1.0,1.0,0.0,,OK
+OOS,BULL,DOWN,20,1,0,1.0,,,1.0,,,,LOW_SAMPLE
+OOS,RANGE,DOWN,1040,52,0,1.0,,,1.0,,,,OK
+FULL,BEAR,UP,380,19,380,1.0,,,1.0,,,0.2079,OK
+FULL,BULL,UP,259,13,0,0.8,0.8,0.0,0.4,0.4,0.0,,OK
+FULL,RANGE,UP,3617,181,0,1.0,1.0,0.0,1.0,1.0,0.0,,OK
+FULL,BEAR,DOWN,380,19,0,1.0,1.0,0.0,1.0,1.0,0.0,,OK
+FULL,BULL,DOWN,258,13,0,0.8,,,0.6,,,,OK
+FULL,RANGE,DOWN,3620,181,0,1.0,,,1.0,,,,OK

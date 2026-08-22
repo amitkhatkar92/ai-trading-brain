@@ -1,0 +1,104 @@
+{
+  "report_id": "outcome_tracking_results",
+  "task_id": "OUTCOME_TRACKING_REPAIR_001",
+  "generated_at": "2026-08-14",
+  "as_of_date": "2026-08-13",
+  "environment": "VPS (docker, market_behavior.db)",
+
+  "database_state_pre_repair": {
+    "signal_births_total": 3335,
+    "final_state_null": 3335,
+    "final_state_set": 0,
+    "actual_move_pct_nonzero": 0,
+    "current_state_active": 3335,
+    "trading_calendar_rows": 0,
+    "ohlcv_daily_rows": 20604,
+    "ohlcv_symbols": 209,
+    "ohlcv_coverage_pct": 100.0,
+    "date_range": "2026-06-22 to 2026-08-14"
+  },
+
+  "backfill_dry_run_summary": {
+    "total_processed": 3335,
+    "resolved": 3253,
+    "wins": 1046,
+    "losses": 934,
+    "expired": 268,
+    "pending": 1005,
+    "no_data": 82,
+    "errors": 0,
+    "win_rate_closed_signals": 0.4653
+  },
+
+  "signal_breakdown": {
+    "past_ttl_no_outcome": 2267,
+    "within_ttl_pending": 1068,
+    "no_ohlcv_available": 82,
+    "fully_resolvable": 3253
+  },
+
+  "final_state_distribution_after_backfill": {
+    "WIN":     {"count": 1046, "pct": 31.4},
+    "LOSS":    {"count": 934,  "pct": 28.0},
+    "EXPIRED": {"count": 268,  "pct": 8.0},
+    "PENDING": {"count": 1005, "pct": 30.1},
+    "NO_DATA": {"count": 82,   "pct": 2.5}
+  },
+
+  "top_archetypes_in_preview": [
+    {"archetype_id": "DNA_1B_SECTOR_PRE_BKT", "count_in_births": 1405},
+    {"archetype_id": "DNA_1A_MOMENTUM_CONT",  "count_in_births": 688},
+    {"archetype_id": "DNA_1A_SECTOR_BKT",     "count_in_births": 507}
+  ],
+
+  "root_causes_confirmed": [
+    "run_ele_daily() never called from orchestrator — zero grep matches in master_orchestrator.py",
+    "No UPDATE signal_births SET actual_move_pct path in any production code",
+    "trading_calendar has 0 rows — signals appear 0 days old; TTL expiry never triggers",
+    "final_state stays NULL — ELE writes to opportunities, not to signal_births"
+  ],
+
+  "repair_module": "oios/engine/signal_outcome_tracker.py",
+  "repair_module_functions": [
+    "ensure_schema(conn) — adds max_adverse_pct column idempotently",
+    "compute_signal_outcome(...) — direction-aware metrics for one signal",
+    "resolve_signal_outcomes(conn, as_of_date, dry_run, signal_ids) — batch resolver",
+    "_write_outcome(conn, outcome) — writes WHERE final_state IS NULL (idempotent)",
+    "run_daily_outcome_resolution(conn, as_of_date) — orchestrator entry point"
+  ],
+
+  "isolation_contract": {
+    "reads":  ["signal_births (measurement cols only)", "ohlcv_daily"],
+    "writes": ["signal_births: actual_move_pct, peak_move_pct, max_adverse_pct, days_to_peak, final_state, final_age_trading_days, last_updated_at"],
+    "never_reads_or_writes": ["opportunities", "decision_log", "ct_decisions", "ct_cycles", "learning_db.json", "StrategyHealthMonitor", "MetaStrategyController", "CapitalRiskEngine", "OrderManager", "Dhan API"]
+  },
+
+  "test_results": {
+    "suite": "test_outcome_tracking_001.py",
+    "tests_defined": 43,
+    "passed": 42,
+    "failed": 0,
+    "skipped": 1,
+    "skip_reason": "T3: preview JSON not present on VPS (local file only)",
+    "all_isolation_tests": "PASS (N1, O1, P1, Q1, R1)",
+    "all_formula_tests": "PASS (B1-B3, C1-C3, D1-D2, E1)",
+    "all_idempotency_tests": "PASS (G1-G3, H1-H2, I1-I3)",
+    "future_leakage_test": "PASS (J1-J2)"
+  },
+
+  "questions_answered": {
+    "Q1_why_actual_move_zero": "No UPDATE signal_births SET actual_move_pct path exists in production code. ELE computes actual_move but stores in opportunities.edge_consumed_pct.",
+    "Q2_why_final_state_null": "ELE never called (zero grep hits in orchestrator). ELE writes final_state to opportunities object only, not to signal_births.",
+    "Q3_historical_reconstruction": "YES. 100% OHLCV coverage for all 209 signal symbols. 3,253 of 3,335 signals resolvable. 82 NO_DATA (< 2.5%).",
+    "Q4_future_recording": "YES. run_daily_outcome_resolution() can be called from orchestrator after each OHLCV refresh.",
+    "Q5_directional_correctness": "YES. LONG: (close-birth)/birth; SHORT: (birth-close)/birth. Verified by tests B+C.",
+    "Q6_mfe_mae_measurement": "YES. MFE from daily high/low column. MAE from inverse. Verified tests D+E.",
+    "Q7_idempotency": "YES. WHERE final_state IS NULL guard on all writes. Tested G, H, I.",
+    "Q8_future_data_leakage": "NO leakage. Window is (detected_at, min(detected_at+ttl, as_of_date]]. Tested J.",
+    "Q9_trading_decision_impact": "NONE. Measurement cols not read by re_calculator, DecisionEngine, strategy_lab, CRE, or OrderManager. Tested N-R.",
+    "Q10_kvs_comparison_enabled": "YES. After backfill, signal_births.final_state can be joined to archetype/knowledge metadata for WIN-rate comparison by knowledge combination."
+  },
+
+  "verdict": "OUTCOME_TRACKING_REPAIRED_BACKFILL_PENDING",
+  "verdict_explanation": "Repair module is complete and validated (42/43 tests pass). Historical backfill can reconstruct 3,253 outcomes from existing ohlcv_daily data. Actual backfill write requires explicit approval before execution. Future daily resolution can be activated by adding one call to run_daily_outcome_resolution() in the orchestrator."
+}

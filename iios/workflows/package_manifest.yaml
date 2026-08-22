@@ -1,0 +1,25 @@
+﻿# Package Manifest: iios.workflows
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.workflows"
+version: "0.1.0"
+purpose: "Trading workflows -- full 17-layer cycle orchestration, pre-market, market-hours, EOD, weekly workflows"
+architecture_reference: "IIOS-ARC-001 MasterOrchestrator"
+layer: "WORKFLOWS"
+owner: "Platform"
+wave: 4
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "full_cycle_workflow"
+  - "pre_market_workflow"
+  - "market_hours_workflow"
+  - "eod_workflow"
+  - "master_orchestrator"
+dependencies:
+  - "iios.core"
+  - "iios.services"
+  - "iios.execution"
+  - "iios.learning"
+  - "iios.infrastructure"

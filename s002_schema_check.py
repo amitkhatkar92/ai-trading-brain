@@ -1,0 +1,10 @@
+import sqlite3
+conn = sqlite3.connect('data/study002_replay.db')
+print("ohlcv_daily cols:", [r[1] for r in conn.execute('PRAGMA table_info(ohlcv_daily)').fetchall()])
+r = conn.execute("SELECT COUNT(1) FROM ohlcv_daily WHERE symbol='^NSEI'").fetchone()
+print("NIFTY rows:", r[0])
+print("universe_stocks cols:", [r[1] for r in conn.execute('PRAGMA table_info(universe_stocks)').fetchall()])
+print("stock_sector_map cols:", [r[1] for r in conn.execute('PRAGMA table_info(stock_sector_map)').fetchall()])
+tc = conn.execute("SELECT COUNT(1) FROM trading_calendar WHERE is_trading_day=1").fetchone()
+print("Trading days:", tc[0])
+conn.close()

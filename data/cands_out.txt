@@ -1,0 +1,84 @@
+﻿Scanner stats: {
+  "symbols_attempted": 230,
+  "symbols_successful": 166,
+  "symbols_failed": 64,
+  "coverage_pct": 72.2,
+  "scan_duration_min": 1.12,
+  "candidates_before_sector_cap": 166,
+  "candidates_after_sector_cap": 57
+}
+
+Context: {
+  "regime": "RANGE_MARKET",
+  "vix": null,
+  "scanner_feed_state": "YAHOO_FALLBACK",
+  "regime_confidence": null
+}
+
+Candidates: 57
+
+Buckets: {'trend_pullback': 28, 'breakout': 24, 'volume_expansion': 11, 'relative_strength': 10, 'overbought_short_watch': 7, 'mean_reversion': 6, 'squeeze': 3, 'neutral': 2}
+Strategies: {'rsi_neutral': 21, 'mean_reversion_bounce': 21, 'high_atr': 9, 'breakout_vol_low': 3, 'pending_scan': 1, 'breakout': 1, 'momentum_retest': 1}
+Sectors: {'AUTO': 5, 'PHARMA': 5, 'POWER': 4, 'CONSUMER': 4, 'FINANCIAL': 4, 'FMCG': 4, 'IT': 3, 'REALESTATE': 3, 'ENERGY': 3, 'METALS': 3, 'INFRA': 3, 'DEFENCE': 3, 'BANKING': 2, 'RETAIL': 2, 'CHEMICALS': 2, 'TEXTILES': 1, 'FINTECH': 1, 'TELECOM': 1, 'HEALTHCARE': 1, 'CONGLOMERATE': 1, 'AVIATION': 1, 'CEMENT': 1}
+Lifecycle: {'ACTIVE': 29, 'EXPIRED': 28}
+
+All candidate symbols:
+  INDIANB         score=0.911 strat=rsi_neutral          sector=BANKING state=ACTIVE buckets=['breakout', 'relative_strength', 'overbought_short_watch']
+  INOXWIND        score=0.907 strat=mean_reversion_bounce sector=POWER state=EXPIRED buckets=['trend_pullback', 'mean_reversion', 'volume_expansion']
+  BOSCHLTD        score=0.902 strat=breakout_vol_low     sector=AUTO state=ACTIVE buckets=['breakout', 'relative_strength', 'overbought_short_watch']
+  NAUKRI          score=0.895 strat=pending_scan         sector=IT state=EXPIRED buckets=['breakout', 'relative_strength', 'overbought_short_watch']
+  PAGEIND         score=0.880 strat=mean_reversion_bounce sector=TEXTILES state=EXPIRED buckets=['trend_pullback', 'mean_reversion']
+  DMART           score=0.860 strat=rsi_neutral          sector=RETAIL state=ACTIVE buckets=['breakout']
+  DEEPAKNTR       score=0.846 strat=rsi_neutral          sector=CHEMICALS state=ACTIVE buckets=['breakout', 'volume_expansion', 'relative_strength', 'overbought_short_watch']
+  CROMPTON        score=0.823 strat=mean_reversion_bounce sector=CONSUMER state=EXPIRED buckets=['trend_pullback', 'mean_reversion', 'volume_expansion']
+  PNBHOUSING      score=0.820 strat=high_atr             sector=FINANCIAL state=ACTIVE buckets=['breakout', 'relative_strength', 'overbought_short_watch']
+  OBEROIRLTY      score=0.810 strat=mean_reversion_bounce sector=REALESTATE state=EXPIRED buckets=['trend_pullback']
+  LTTS            score=0.787 strat=breakout_vol_low     sector=IT state=ACTIVE buckets=['breakout', 'relative_strength']
+  MARUTI          score=0.778 strat=breakout_vol_low     sector=AUTO state=ACTIVE buckets=['breakout']
+  POLICYBZR       score=0.768 strat=breakout             sector=FINTECH state=ACTIVE buckets=['breakout']
+  NYKAA           score=0.764 strat=rsi_neutral          sector=CONSUMER state=EXPIRED buckets=['trend_pullback']
+  NESTLEIND       score=0.762 strat=rsi_neutral          sector=FMCG state=ACTIVE buckets=['breakout', 'relative_strength', 'overbought_short_watch']
+  ONGC            score=0.760 strat=mean_reversion_bounce sector=ENERGY state=EXPIRED buckets=['trend_pullback']
+  NTPC            score=0.756 strat=mean_reversion_bounce sector=POWER state=EXPIRED buckets=['trend_pullback', 'squeeze']
+  ICICIPRULI      score=0.741 strat=mean_reversion_bounce sector=FINANCIAL state=EXPIRED buckets=['trend_pullback']
+  MPHASIS         score=0.740 strat=high_atr             sector=IT state=ACTIVE buckets=['breakout', 'relative_strength']
+  MUTHOOTFIN      score=0.736 strat=mean_reversion_bounce sector=FINANCIAL state=EXPIRED buckets=['trend_pullback']
+  VOLTAS          score=0.736 strat=mean_reversion_bounce sector=CONSUMER state=EXPIRED buckets=['trend_pullback']
+  TATAPOWER       score=0.722 strat=rsi_neutral          sector=POWER state=ACTIVE buckets=['breakout', 'trend_pullback', 'squeeze']
+  AUROPHARMA      score=0.719 strat=momentum_retest      sector=PHARMA state=ACTIVE buckets=['breakout', 'relative_strength']
+  RELIANCE        score=0.709 strat=rsi_neutral          sector=ENERGY state=ACTIVE buckets=['breakout']
+  HDFCLIFE        score=0.709 strat=mean_reversion_bounce sector=FINANCIAL state=EXPIRED buckets=['trend_pullback', 'mean_reversion']
+  NMDC            score=0.703 strat=rsi_neutral          sector=METALS state=ACTIVE buckets=['breakout', 'trend_pullback']
+  TATACOMM        score=0.703 strat=mean_reversion_bounce sector=TELECOM state=EXPIRED buckets=['trend_pullback', 'mean_reversion']
+  SUPREMEIND      score=0.701 strat=rsi_neutral          sector=INFRA state=ACTIVE buckets=['breakout']
+  MRF             score=0.699 strat=rsi_neutral          sector=AUTO state=ACTIVE buckets=['breakout', 'trend_pullback', 'squeeze']
+  COLPAL          score=0.685 strat=rsi_neutral          sector=FMCG state=EXPIRED buckets=['trend_pullback']
+  CIPLA           score=0.677 strat=rsi_neutral          sector=PHARMA state=ACTIVE buckets=['breakout']
+  BHARATFORG      score=0.675 strat=mean_reversion_bounce sector=AUTO state=EXPIRED buckets=['trend_pullback', 'volume_expansion']
+  NHPC            score=0.673 strat=mean_reversion_bounce sector=POWER state=EXPIRED buckets=['trend_pullback']
+  ALKEM           score=0.656 strat=rsi_neutral          sector=PHARMA state=EXPIRED buckets=['trend_pullback']
+  BHEL            score=0.646 strat=mean_reversion_bounce sector=INFRA state=EXPIRED buckets=['trend_pullback']
+  SOLARINDS       score=0.642 strat=rsi_neutral          sector=DEFENCE state=ACTIVE buckets=['breakout']
+  SAIL            score=0.639 strat=rsi_neutral          sector=METALS state=EXPIRED buckets=['neutral']
+  TATASTEEL       score=0.635 strat=rsi_neutral          sector=METALS state=ACTIVE buckets=['breakout']
+  MAXHEALTH       score=0.633 strat=mean_reversion_bounce sector=HEALTHCARE state=EXPIRED buckets=['trend_pullback']
+  DABUR           score=0.613 strat=mean_reversion_bounce sector=FMCG state=EXPIRED buckets=['trend_pullback']
+  DLF             score=0.605 strat=rsi_neutral          sector=REALESTATE state=ACTIVE buckets=['breakout']
+  FORCEMOT        score=0.599 strat=rsi_neutral          sector=AUTO state=EXPIRED buckets=['neutral']
+  KOTAKBANK       score=0.593 strat=rsi_neutral          sector=BANKING state=ACTIVE buckets=['breakout']
+  VGUARD          score=0.593 strat=high_atr             sector=CONSUMER state=ACTIVE buckets=['breakout', 'relative_strength']
+  ADANIENT        score=0.587 strat=mean_reversion_bounce sector=CONGLOMERATE state=EXPIRED buckets=['trend_pullback']
+  PRESTIGE        score=0.585 strat=mean_reversion_bounce sector=REALESTATE state=EXPIRED buckets=['trend_pullback']
+  SUNPHARMA       score=0.584 strat=rsi_neutral          sector=PHARMA state=EXPIRED buckets=['trend_pullback']
+  INDIGO          score=0.577 strat=rsi_neutral          sector=AVIATION state=ACTIVE buckets=['breakout']
+  CUMMINSIND      score=0.575 strat=mean_reversion_bounce sector=INFRA state=EXPIRED buckets=['trend_pullback', 'volume_expansion']
+  NAVINFLUOR      score=0.570 strat=high_atr             sector=CHEMICALS state=ACTIVE buckets=['volume_expansion']
+  COALINDIA       score=0.566 strat=mean_reversion_bounce sector=ENERGY state=EXPIRED buckets=['trend_pullback', 'mean_reversion']
+  TRENT           score=0.565 strat=high_atr             sector=RETAIL state=ACTIVE buckets=['volume_expansion']
+  GODREJCP        score=0.565 strat=high_atr             sector=FMCG state=ACTIVE buckets=['volume_expansion']
+  MAZDOCK         score=0.564 strat=high_atr             sector=DEFENCE state=ACTIVE buckets=['volume_expansion', 'overbought_short_watch']
+  AMBUJACEM       score=0.560 strat=mean_reversion_bounce sector=CEMENT state=EXPIRED buckets=['trend_pullback']
+  COCHINSHIP      score=0.555 strat=high_atr             sector=DEFENCE state=ACTIVE buckets=['volume_expansion']
+  LUPIN           score=0.550 strat=high_atr             sector=PHARMA state=ACTIVE buckets=['volume_expansion']
+
+Nifty500 universe size: 230

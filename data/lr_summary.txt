@@ -1,0 +1,11 @@
+﻿.venv\Scripts\python.exe :   File "<string>", line 10
+At line:1 char:78
++ ... _brain" ; $env:PYTHONUTF8="1" ; .venv\Scripts\python.exe -X utf8 -c "
++                                     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (  File "<string>", line 10:String 
+   ) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    print(f'  [{e[" learning_id\]}]
+                  ^
+SyntaxError: unterminated string literal (detected at line 10)

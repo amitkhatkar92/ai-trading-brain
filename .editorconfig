@@ -1,0 +1,83 @@
+root = true
+
+# =============================================================================
+# IIOS — .editorconfig
+# All editors that support EditorConfig will use these settings.
+# =============================================================================
+
+[*]
+charset                  = utf-8
+end_of_line              = lf
+indent_style             = space
+indent_size              = 4
+trim_trailing_whitespace = true
+insert_final_newline     = true
+max_line_length          = 100
+
+# Python
+[*.py]
+indent_style    = space
+indent_size     = 4
+max_line_length = 100
+
+# Python stubs
+[*.pyi]
+indent_style    = space
+indent_size     = 4
+
+# TOML (pyproject.toml, etc.)
+[*.toml]
+indent_style = space
+indent_size  = 4
+
+# YAML (config files, GitHub Actions, pre-commit)
+[*.{yml,yaml}]
+indent_style = space
+indent_size  = 2
+
+# JSON
+[*.json]
+indent_style = space
+indent_size  = 2
+
+# Markdown
+[*.md]
+trim_trailing_whitespace = false
+max_line_length          = off
+
+# Shell scripts
+[*.{sh,bash}]
+indent_style = space
+indent_size  = 2
+end_of_line  = lf
+
+# PowerShell
+[*.{ps1,psm1,psd1}]
+indent_style    = space
+indent_size     = 4
+end_of_line     = crlf
+
+# Dockerfile
+[Dockerfile*]
+indent_style = space
+indent_size  = 4
+
+# SQL
+[*.sql]
+indent_style = space
+indent_size  = 2
+
+# .env files — no trailing whitespace, LF
+[.env*]
+trim_trailing_whitespace = true
+end_of_line              = lf
+
+# Makefile — tabs required
+[Makefile]
+indent_style = tab
+indent_size  = 4
+
+# CSV data files — preserve as-is
+[data/*.csv]
+trim_trailing_whitespace = false
+insert_final_newline     = false

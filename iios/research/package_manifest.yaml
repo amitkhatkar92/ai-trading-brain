@@ -1,0 +1,24 @@
+﻿# Package Manifest: iios.research
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.research"
+version: "0.1.0"
+purpose: "Layer 15: ResearchLab -- strategy research, promotion pipeline (WinRate>=50%, Sharpe>0.8, MaxDD<15%)"
+architecture_reference: "IIOS-ARC-001 Layer 15"
+layer: "LAYER-15"
+owner: "Platform"
+wave: 9
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "research_lab"
+  - "promotion_pipeline"
+  - "strategy_evaluator"
+  - "promotion_gates"
+  - "research_results"
+dependencies:
+  - "iios.core"
+  - "iios.models"
+  - "iios.learning"
+  - "iios.infrastructure"

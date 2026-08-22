@@ -1,0 +1,460 @@
+{
+  "test_suite": "test_knowledge_vs_strategy_001",
+  "audit_id": "KNOWLEDGE_VS_STRATEGY_VALUE_AUDIT_001",
+  "total": 75,
+  "passed": 35,
+  "failed": 0,
+  "skipped": 40,
+  "tests": [
+    {
+      "id": "T001",
+      "name": "Results JSON is valid JSON and is a dict",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T002",
+      "name": "audit_id is correct",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T003",
+      "name": "overall_verdict is non-empty string",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T004",
+      "name": "section_4 above_20dma winner_mean > control_mean",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T005",
+      "name": "section_4 volume_ratio winner_mean > control_mean",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T006",
+      "name": "section_5 model_A precision > model_D precision",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T007",
+      "name": "section_6 knowledge edge reverses at day 5",
+      "status": "PASS",
+      "detail": "Edge should be negative at day 5 (control outperforms)"
+    },
+    {
+      "id": "T008",
+      "name": "section_7 all strategies have WR < 0.50",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T009",
+      "name": "section_9 approved confidence > rejected confidence",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T010",
+      "name": "section_10 bad_rate = 0.5 (50% blocked signals are grade D)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T011",
+      "name": "Combination JSON is valid dict",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T012",
+      "name": "feature_combination_analysis section exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T013",
+      "name": "signal_decay_analysis section exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T014",
+      "name": "day_1 edge is positive",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T015",
+      "name": "day_5 edge is negative (momentum reverses)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T016",
+      "name": "Model A precision > Model C precision",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T017",
+      "name": "Model B precision = 0 (data gap documented)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T018",
+      "name": "time_horizon_mismatch_analysis section exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T019",
+      "name": "sector_alignment_gap section exists",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T020",
+      "name": "sector filter at Layer 3 is false (gap identified)",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T021",
+      "name": "CSV has audit_id row",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T022",
+      "name": "approved_signals_n is 1185",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T023",
+      "name": "rejected_signals_n is 167",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T024",
+      "name": "debate_confidence_gap is 0.680",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T025",
+      "name": "signal_births_outcome_gap is ALL_UNKNOWN",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T026",
+      "name": "strategies_above_50pct_wr is 0",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T027",
+      "name": "knowledge_edge_day5_pct is negative",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T028",
+      "name": "today_bad_rate is 0.5",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T029",
+      "name": "score_discriminates_useful_vs_bad is false",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T030",
+      "name": "time_horizon_mismatch is true",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T031",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T032",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T033",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T034",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T035",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T036",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T037",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T038",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T039",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T040",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T041",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T042",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T043",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T044",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T045",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T046",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T047",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T048",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T049",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T050",
+      "name": "VPS database test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T051",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T052",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T053",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T054",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T055",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T056",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T057",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T058",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T059",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T060",
+      "name": "Strategy performance test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T061",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T062",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T063",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T064",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T065",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T066",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T067",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T068",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T069",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T070",
+      "name": "Architecture constraint test",
+      "status": "SKIP",
+      "detail": "Not running on VPS"
+    },
+    {
+      "id": "T071",
+      "name": "Verdict is STRATEGY_GATE_WORKING variant",
+      "status": "PASS",
+      "detail": "verdict=STRATEGY_GATE_WORKING_KNOWLEDGE_UNDERUTILIZED"
+    },
+    {
+      "id": "T072",
+      "name": "Sector filter gap identified in knowledge failure modes",
+      "status": "PASS",
+      "detail": ""
+    },
+    {
+      "id": "T073",
+      "name": "OIOS outcome fix identified as improvement lever",
+      "status": "PASS",
+      "detail": "Q12=['Add sector_strength as Layer 3 filter', 'OIOS outcome tracking fix (connect to realized prices)', 'Strategy definitions need regime-specific entry/exit calibration']"
+    },
+    {
+      "id": "T074",
+      "name": "Time horizon mismatch identified in final verdict",
+      "status": "PASS",
+      "detail": "Q13=STRATEGY_GATE_WORKING_KNOWLEDGE_UNDERUTILIZED \u00e2\u20ac\u201d The governance framework is functioning correctly (blocking loss-making strategies). The knowledge layer has demonstrable signal strength (above_20dma, volume_ratio) but that signal is intraday-only. Strategy layer cannot convert intraday knowledge into multi-day edge because the hold period mismatches the signal decay time."
+    },
+    {
+      "id": "T075",
+      "name": "signal_births data gap documented",
+      "status": "PASS",
+      "detail": "Q11=['signal_births outcomes empty', 'ml_performance_dataset single-date', 'closed_orders store IDs not P&L']"
+    }
+  ]
+}

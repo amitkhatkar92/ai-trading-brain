@@ -1,0 +1,80 @@
+{
+  "snapshot_time": "2026-08-14T07:28:45.628794",
+  "git_head_vps": "8ac54e7b6b9b99b1be4c473f4dd59a57c2e36bd9",
+  "container_image": "ai-trading-brain-ai-trading-brain",
+  "db_path": "/root/ai-trading-brain/data/market_behavior.db",
+  "backup_path": "/root/ai-trading-brain/data/market_behavior_pre_backfill_2026-08-14.db",
+  "pre_backfill": {
+    "total_signals": 3335,
+    "final_state_null": 82,
+    "final_state_set": 3253,
+    "actual_move_pct_populated": 3251,
+    "db_size_bytes": 23543808,
+    "db_md5": "f412ee044acecae2281ea9ca1d79932a",
+    "hashes_computed": 3335
+  },
+  "backfill_result": {
+    "as_of_date": "2026-08-13",
+    "dry_run": false,
+    "total": 82,
+    "resolved": 0,
+    "wins": 0,
+    "losses": 0,
+    "expired": 0,
+    "pending": 0,
+    "no_data": 82,
+    "errors": 0,
+    "win_rate": null
+  },
+  "post_backfill": {
+    "total_signals": 3335,
+    "final_state_null": 82,
+    "final_state_set": 3253,
+    "counts": {
+      "WIN": 1046,
+      "LOSS": 934,
+      "EXPIRED": 268,
+      "PENDING": 1005,
+      "NO_DATA": 0
+    },
+    "actual_move_pct_populated": 3251,
+    "immutable_hash_changes": 0
+  },
+  "idempotency": {
+    "run2_resolved": 0,
+    "run2_no_data": 82,
+    "confirmed": true
+  },
+  "phase8_tests": {
+    "A_normal_run": {
+      "resolved": 3253,
+      "errors": 0
+    },
+    "B_double_run": {
+      "resolved": 0,
+      "pass": true
+    },
+    "C_interrupted": {
+      "safe": true
+    },
+    "D_restart": {
+      "resolved_after_restart": 0,
+      "pass": true
+    },
+    "E_missing_ohlcv": {
+      "errors": 0,
+      "pass": true
+    },
+    "F_malformed": {
+      "errors": 1,
+      "pass": true
+    },
+    "G_duplicate": "PASS (same as B)"
+  },
+  "phase7_broker_calls": {
+    "violations": [],
+    "dhan_write_calls": 0,
+    "orders_placed": 0,
+    "pass": true
+  }
+}

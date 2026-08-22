@@ -1,0 +1,251 @@
+{
+  "audit_id": "MOVER_DISCOVERY_V3_SHADOW_AUDIT_001",
+  "audit_date": "2026-08-17",
+  "audit_window": {"start": "2026-08-14", "end": "2026-08-17"},
+  "mode": "READ_ONLY_OBSERVATION",
+  "no_production_changes": true,
+
+  "pipeline_health": {
+    "shadow_file_present": true,
+    "shadow_file_path": "data/logs/mover_discovery_v3_shadow.jsonl",
+    "shadow_file_lines": 82,
+    "shadow_file_size_bytes": 45976,
+    "total_runs": 2,
+    "successful_runs": 2,
+    "failed_runs": 0,
+    "candidatestore_write_calls": 0,
+    "decisionengine_calls": 0,
+    "riskcontrol_calls": 0,
+    "executionengine_calls": 0,
+    "ordermanager_calls": 0,
+    "orders_placed": 0,
+    "positions_created": 0,
+    "leakage_violations": 0,
+    "no_trades_generated_all_records": true,
+    "forbidden_imports_clean": true
+  },
+
+  "runs": [
+    {
+      "run_id": "RUN_001",
+      "timestamp_utc": "2026-08-14T11:18:59.989427+00:00",
+      "timestamp_ist": "2026-08-14T16:48:59+05:30",
+      "trigger": "SCHEDULED_PHASE_D_16:45_IST",
+      "trading_date": "2026-08-13",
+      "universe_size": 200,
+      "v3_up_count": 20,
+      "v3_down_count": 20,
+      "existing_scanner_count": 52,
+      "up_overlap_count": 0,
+      "down_overlap_count": 0,
+      "total_overlap": 0,
+      "v3_only_candidates": 40,
+      "existing_only_candidates": 52,
+      "overlap_pct": 0.0,
+      "v3_shadow_duration_ms": 789.2,
+      "success": true,
+      "up_pool_valid": true,
+      "down_pool_valid": true,
+      "up_pool_complete": true,
+      "down_pool_complete": true,
+      "data_freshness": "CORRECT_1DAY_LAG",
+      "v3_up_symbols": ["GALAXYSURF.NS","HFCL.NS","SOLARINDS.NS","CLEAN.NS","IDEA.NS","SAPPHIRE.NS","BOSCHLTD.NS","BEML.NS","POLICYBZR.NS","VGUARD.NS","JINDALPOLY.NS","BDL.NS","FINEORG.NS","KALYANKJIL.NS","NAUKRI.NS","AJANTPHARM.NS","TEJASNET.NS","BSE.NS","SUNDRMFAST.NS","NATCOPHARM.NS"],
+      "v3_down_symbols": ["GODREJCP.NS","NAVINFLUOR.NS","IDEAFORGE.NS","BAJFINANCE.NS","DEEPAKFERT.NS","SUDARSCHEM.NS","SAIL.NS","WHIRLPOOL.NS","HINDZINC.NS","CRAFTSMAN.NS","RATEGAIN.NS","BAJAJFINSV.NS","DEEPAKNTR.NS","CROMPTON.NS","ASHOKLEY.NS","CHOLAFIN.NS","CERA.NS","BHARATFORG.NS","PAGEIND.NS","JYOTHYLAB.NS"]
+    },
+    {
+      "run_id": "RUN_002",
+      "timestamp_utc": "2026-08-17T02:34:24.674867+00:00",
+      "timestamp_ist": "2026-08-17T08:04:24+05:30",
+      "trigger": "STARTUP_STALE_CANDIDATES_SCAN",
+      "trading_date": "2026-08-14",
+      "universe_size": 199,
+      "v3_up_count": 20,
+      "v3_down_count": 20,
+      "existing_scanner_count": 53,
+      "up_overlap_count": 0,
+      "down_overlap_count": 0,
+      "total_overlap": 0,
+      "v3_only_candidates": 40,
+      "existing_only_candidates": 53,
+      "overlap_pct": 0.0,
+      "v3_shadow_duration_ms": 268.3,
+      "success": true,
+      "up_pool_valid": true,
+      "down_pool_valid": true,
+      "up_pool_complete": true,
+      "down_pool_complete": true,
+      "data_freshness": "CORRECT_3DAY_LAG_HOLIDAY_WEEKEND",
+      "v3_up_symbols": ["GALAXYSURF.NS","PARAS.NS","IDEA.NS","SOLARINDS.NS","BATAINDIA.NS","BDL.NS","GODREJAGRO.NS","JINDALPOLY.NS","RATNAMANI.NS","HFCL.NS","GLAXO.NS","POLICYBZR.NS","VOLTAS.NS","TEJASNET.NS","GNFC.NS","BOSCHLTD.NS","NAUKRI.NS","PERSISTENT.NS","AJANTPHARM.NS","OIL.NS"],
+      "v3_down_symbols": ["MIDHANI.NS","IDEAFORGE.NS","GODREJCP.NS","HINDZINC.NS","DEEPAKNTR.NS","TCS.NS","SAIL.NS","ASHOKLEY.NS","CENTUM.NS","SUDARSCHEM.NS","BHARATFORG.NS","CRAFTSMAN.NS","HINDALCO.NS","EXIDEIND.NS","OLECTRA.NS","NATIONALUM.NS","PAGEIND.NS","IRCTC.NS","JYOTHYLAB.NS","M&MFIN.NS"]
+    }
+  ],
+
+  "coverage_analysis": {
+    "total_candidate_records": 80,
+    "total_summary_records": 2,
+    "unique_symbols_across_runs": 58,
+    "duplicate_candidate_records": 0,
+    "up_duplicates_within_run": 0,
+    "down_duplicates_within_run": 0,
+    "up_down_crossover_within_run": 0,
+    "scores_descending_all_runs": true,
+    "ranks_unique_all_runs": true,
+    "nan_scores": 0
+  },
+
+  "schedule_analysis": {
+    "2026-08-14": {"expected": true, "trigger": "PHASE_D_16:45", "found": true, "status": "PASS"},
+    "2026-08-15": {"expected": false, "reason": "NSE_HOLIDAY_INDEPENDENCE_DAY", "phase_d_skipped": true, "status": "CORRECTLY_SKIPPED"},
+    "2026-08-15_weekend_research": {"note": "WeekendResearch called run_scan() directly at 08:00, bypassing V3 shadow hook — KNOWN_GAP", "status": "SHADOW_GAP_NOT_A_FAILURE"},
+    "2026-08-16": {"expected": false, "reason": "SATURDAY_WEEKEND", "status": "CORRECTLY_SKIPPED"},
+    "2026-08-17": {"expected": true, "trigger": "STARTUP_STALE_CANDIDATES", "found": true, "status": "PASS"}
+  },
+
+  "data_freshness_audit": {
+    "run1_trading_date": "2026-08-13",
+    "run1_run_date": "2026-08-14",
+    "run1_lag_days": 1,
+    "run1_verdict": "CORRECT",
+    "run2_trading_date": "2026-08-14",
+    "run2_run_date": "2026-08-17",
+    "run2_lag_calendar_days": 3,
+    "run2_lag_trading_days": 1,
+    "run2_verdict": "CORRECT_HOLIDAY_AND_WEEKEND_ACCOUNT",
+    "aug15_ohlcv_rows": 0,
+    "aug15_holiday_confirmed": true,
+    "future_data_detected": false
+  },
+
+  "outcome_analysis": {
+    "run1_t1": {
+      "base_date": "2026-08-13",
+      "t1_date": "2026-08-14",
+      "symbols_resolved": 40,
+      "symbols_attempted": 40,
+      "up_candidates": {
+        "n": 20,
+        "avg_return_pct": 0.381,
+        "pos_count": 6,
+        "pos_rate": 0.30,
+        "ge1pct_count": 4,
+        "ge1pct_rate": 0.20,
+        "ge2pct_count": 2,
+        "ge2pct_rate": 0.10,
+        "top_performer": {"symbol": "GALAXYSURF.NS", "ret_1d": 20.0, "v3_rank": 1},
+        "worst_performer": {"symbol": "NATCOPHARM.NS", "ret_1d": -5.1, "v3_rank": 20}
+      },
+      "down_candidates": {
+        "n": 20,
+        "avg_actual_return_pct": 0.461,
+        "avg_favorable_return_pct": -0.461,
+        "neg_count": 12,
+        "neg_rate": 0.60,
+        "le_neg1pct_count": 5,
+        "le_neg1pct_rate": 0.25,
+        "le_neg2pct_count": 2,
+        "le_neg2pct_rate": 0.10,
+        "notable_misclassifications": [
+          {"symbol": "RATEGAIN.NS", "v3_rank": 11, "actual_ret_1d": 6.5, "direction": "DOWN"},
+          {"symbol": "SUDARSCHEM.NS", "v3_rank": 6, "actual_ret_1d": 6.2, "direction": "DOWN"},
+          {"symbol": "IDEAFORGE.NS", "v3_rank": 3, "actual_ret_1d": 4.99, "direction": "DOWN"}
+        ]
+      }
+    },
+    "run2_t1": {"status": "NOT_AVAILABLE", "reason": "T+1_date=2026-08-18_not_yet_reached"},
+    "run1_t3": {"status": "NOT_AVAILABLE", "reason": "T+3_date=2026-08-19_not_yet_reached"},
+    "run1_t5": {"status": "NOT_AVAILABLE", "reason": "T+5_date=2026-08-21_not_yet_reached"}
+  },
+
+  "strong_mover_capture": {
+    "run1_t1": {
+      "universe_total": 209,
+      "strong_up_ge2pct": 19,
+      "strong_dn_le_neg2pct": 21,
+      "v3_up_captured_strong_up": 2,
+      "v3_up_strong_capture_rate": 0.105,
+      "v3_up_random_expected": 1.82,
+      "v3_dn_captured_strong_dn": 2,
+      "v3_dn_strong_capture_rate": 0.095,
+      "v3_dn_random_expected": 2.01,
+      "top5_up_actual": ["GALAXYSURF.NS","RATEGAIN.NS","SUDARSCHEM.NS","IDEAFORGE.NS","IDEA.NS"],
+      "v3_up_top5_capture": 2,
+      "v3_up_top5_symbols_captured": ["GALAXYSURF.NS","IDEA.NS"],
+      "top5_dn_actual": ["CENTUM.NS","MIDHANI.NS","NATIONALUM.NS","OLECTRA.NS","NATCOPHARM.NS"],
+      "v3_dn_top5_capture": 0,
+      "v3_dn_top5_symbols_captured": []
+    }
+  },
+
+  "v1_v3_comparison": {
+    "run1": {
+      "old_scanner_candidates": 52,
+      "v3_candidates": 40,
+      "overlap": 0,
+      "overlap_pct": 0.0,
+      "v3_only": 40,
+      "old_only": 52,
+      "note": "OLD SCANNER SYMBOL LIST NOT RETAINED — old-scanner T+1 outcomes cannot be computed"
+    },
+    "run2": {
+      "old_scanner_candidates": 53,
+      "v3_candidates": 40,
+      "overlap": 0,
+      "overlap_pct": 0.0,
+      "v3_only": 40,
+      "old_only": 53
+    }
+  },
+
+  "sample_size_assessment": {
+    "shadow_days": 2,
+    "up_outcome_datapoints": 20,
+    "down_outcome_datapoints": 20,
+    "total_outcome_datapoints": 40,
+    "resolved_outcomes": 40,
+    "ge2pct_events_up": 2,
+    "ge2pct_events_down": 2,
+    "verdict": "INSUFFICIENT_SAMPLE_FOR_PERFORMANCE_VERDICT",
+    "minimum_days_recommended": 20,
+    "days_remaining": 18
+  },
+
+  "performance_timing": {
+    "run1_duration_ms": 789.2,
+    "run2_duration_ms": 268.3,
+    "min_ms": 268.3,
+    "max_ms": 789.2,
+    "median_ms": 528.75,
+    "crashes": 0,
+    "empty_pools": 0,
+    "identical_pools": false,
+    "runtime_spikes": false
+  },
+
+  "known_gaps": [
+    {
+      "gap_id": "GAP_001",
+      "description": "WeekendResearch/Saturday intelligence cycle calls run_scan() directly, bypassing _run_post_market_scan() and therefore bypassing V3 shadow hook",
+      "first_observed": "2026-08-15T08:00:08",
+      "impact": "V3 shadow does not record Saturday research scans",
+      "severity": "LOW",
+      "action": "OBSERVE_ONLY — do not modify WeekendResearch in this audit"
+    },
+    {
+      "gap_id": "GAP_002",
+      "description": "Old scanner symbol list not persisted — cannot compute old-scanner T+1 outcomes for direct V1 vs V3 comparison",
+      "impact": "Section 17 (old scanner vs V3) cannot be quantified yet",
+      "severity": "LOW",
+      "action": "Future audit should archive old scanner candidates"
+    }
+  ],
+
+  "primary_verdict": "E_INSUFFICIENT_SAMPLE_CONTINUE",
+  "secondary_findings": [
+    "TECHNICAL_PIPELINE_HEALTHY_AND_CORRECTLY_ISOLATED",
+    "V3_CONSISTENTLY_ZERO_OVERLAP_WITH_PRODUCTION_SCANNER",
+    "GALAXYSURF_UP_RANK1_MATCHED_ACTUAL_TOP_MOVER_DAY1",
+    "DOWN_POOL_DAY1_CONTAINED_3_OF_TOP5_ACTUAL_UP_MOVERS_NEEDS_MONITORING"
+  ],
+  "continue_shadow_observation": true,
+  "production_change_justified": false
+}

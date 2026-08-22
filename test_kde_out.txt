@@ -1,0 +1,103 @@
+﻿.venv\Scripts\python.exe : Traceback (most recent call last):
+At line:1 char:32
++ ... IOENCODING="utf-8"; .venv\Scripts\python.exe test_kde.py 2>&1 | Out-F ...
++                         ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Traceback (most recent call last) 
+   ::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_kde.py", line 
+1101, in <module>
+    test_schemes_s001_s005()
+    ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_kde.py", line 
+403, in test_schemes_s001_s005
+    isinstance(_make_ctx([2020]).pipe_s003 if False else 
+s003.run(_make_ctx([2020])), list))
+                                                                  
+~~~~~~~~~^^^^^^^^
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_kde.py", line 
+168, in _make_ctx
+    dna, edges = _make_cross_year(list(pkgs.keys()))
+                 ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\test_kde.py", line 
+158, in _make_cross_year
+    peak_confidence_year=years[2], peak_confidence=0.65, trend="STABLE",
+                         ~~~~~^^^
+IndexError: list index out of range
+
+-- T001-T025  kde_models --
+  PASS  T001 DiscoveryStatus has 6 values
+  PASS  T002 SDRecommendation has 5 values
+  PASS  T003 PotentialValue has 4 values
+  PASS  T004 RelationshipType has 5 values
+  PASS  T005 EvidenceType has 5 values
+  PASS  T006 DiscoveryScore.overall computed
+  PASS  T007 DiscoveryScore.overall matches weights
+  PASS  T008 DiscoveryScore.to_dict has overall
+  PASS  T009 from_components clamps to [0,1]
+  PASS  T010 DISCOVERY_WEIGHTS sum to 1.0
+  PASS  T011 DiscoveryEvidence.to_dict keys present
+  PASS  T012 DiscoveryCandidate.novelty_hint
+  PASS  T013 DiscoveryCandidate.impact_hint
+  PASS  T014 DiscoveryCandidate.feature_names default []
+  PASS  T015 DiscoveryCandidate.dna_ids default []
+  PASS  T016 Discovery.to_dict has discovery_id
+  PASS  T017 Discovery.to_dict has score as dict
+  PASS  T018 Discovery.to_dict has evidence list
+  PASS  T019 DiscoveryRelationship.to_dict has strength
+  PASS  T020 DiscoveryCluster.to_dict has discoveries
+  PASS  T021 DiscoveryStatistics.to_dict
+  PASS  T022 KDEStatus.to_dict has total_runs
+  PASS  T023 KDEError is Exception
+  PASS  T024 PotentialValue VERY_HIGH exists
+  PASS  T025 SDRecommendation PROMOTE exists
+
+-- T026-T040  KDEConfig --
+  PASS  T026 default enabled_schemes is 15
+  PASS  T027 all scheme IDs start with S
+  PASS  T028 default min_raw_score=0.40
+  PASS  T029 default min_overall_score=0.45
+  PASS  T030 default parallel_schemes=True
+  PASS  T031 default max_discoveries=1000
+  PASS  T032 all_scheme_ids has 15
+  PASS  T033 min_raw_score > 1 raises ValueError
+  PASS  T034 min_overall_score < 0 raises ValueError
+  PASS  T035 max_workers < 1 raises ValueError
+  PASS  T036 invalid scheme ID raises ValueError
+  PASS  T037 enable/disable scheme
+  PASS  T038 enable_scheme adds
+  PASS  T039 disable_scheme removes
+  PASS  T040 dry_run default False
+
+-- T041-T055  BaseDiscoveryScheme and DiscoveryContext --
+  PASS  T041 DiscoveryContext.years is sorted
+  PASS  T042 DiscoveryContext.n_years == 5
+  PASS  T043 DiscoveryContext.market_profiles has data
+  PASS  T044 DiscoveryContext.dna_snapshots has data
+  PASS  T045 DiscoveryContext.edge_snapshots has data
+  PASS  T046 DiscoveryContext.all_regimes is sorted list
+  PASS  T047 all_regimes not empty
+  PASS  T048 BaseDiscoveryScheme cannot be instantiated
+  PASS  T049 WinnerDNAScheme.SCHEME_ID = S001
+  PASS  T050 WinnerDNAScheme.SCHEME_NAME not empty
+  PASS  T051 WinnerDNAScheme.SCIENTIFIC_QUESTION not empty
+  PASS  T052 scheme.run() returns list
+  PASS  T053 all candidates have raw_score >= min
+  PASS  T054 empty context returns empty list
+  PASS  T055 _make_evidence builds DiscoveryEvidence
+
+-- T056-T100  Schemes S001-S005 --
+  PASS  T056 S001 returns candidates
+  PASS  T057 S001 candidates have years_observed
+  PASS  T058 S001 answers mention DNA id
+  PASS  T059 S001 feature_names not empty
+  PASS  T060 S001 raw_score in [0, 1]
+  PASS  T061 S001 candidates sorted by raw_score desc
+  PASS  T062 S001 dna_ids populated
+  PASS  T063 S001 suggested_followup not empty
+  PASS  T064 S002 returns candidates
+  PASS  T065 S002 answers mention loser DNA
+  PASS  T066 S002 scheme_id = S002
+  PASS  T067 S002 loser DNA in dna_ids
+  PASS  T068 S003 scheme_id = S003

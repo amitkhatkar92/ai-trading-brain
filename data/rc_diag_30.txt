@@ -1,0 +1,67 @@
+EXIT: 0
+REPLAY COMPLETE
+Win rate: 33.3%
+PnL     : ₹6,538
+Errors  : 0
+FRAG    : PF@0%=1.81  PF@1%=1.27  decay=0.536/%%  [FRAGILE]
+LIMIT   : fill=100%  PF_filled=1.81  PF@1%_limit=1.27  [MARGINAL]
+Raw signals           :    290
+After Strategy Lab    :     51  (17.6% pass)
+After Risk Control    :     13  (4.5% pass)
+After Simulation      :      4  (1.4% pass)
+After Risk Guardian   :      4  (1.4% pass)
+Debate Approved       :      3  (1.0% pass)
+Executed (trades)     :      3  (1.0% pass)
+▶ Bottleneck: OpEngine → StrategyLab
+HTTP Error 404: {"quoteSummary":{"result":null,"error":{"code":"Not Found","description":"Quote not found for symbol: TATAMOTORS.NS"}}}
+2026-03-13 11:30:01 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:02 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+['DX-Y.NYB']: KeyError('chart')
+2026-03-13 11:30:03 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:04 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:04 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:05 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:06 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:06 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:07 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:07 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:08 | INFO     | execution_engine.order_manager      | [OrderManager] ➡  Executing LIMIT BUY BRITANNIA qty=20  signal=6019.00  zone=6029.58  SL=5886.70  TGT=6349.75
+2026-03-13 11:30:08 | INFO     | execution_engine.order_manager      | [OrderManager] [SIM-LIMIT] BUY BRITANNIA qty=20 @ 6029.58
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+2026-03-13 11:30:08 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:09 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:09 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:10 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:11 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:11 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:12 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=2
+2026-03-13 11:30:12 | INFO     | execution_engine.order_manager      | [OrderManager] ➡  Executing LIMIT SHORT TITAN qty=29  signal=4236.40  zone=4220.27  SL=4438.06  TGT=3732.25
+2026-03-13 11:30:12 | INFO     | execution_engine.order_manager      | [OrderManager] [SIM-LIMIT] SELL TITAN qty=29 @ 4220.27
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+2026-03-13 11:30:12 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:13 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:13 | INFO     | execution_engine.order_manager      | [OrderManager] ➡  Executing LIMIT SHORT BRITANNIA qty=20  signal=6162.50  zone=6140.76  SL=6434.30  TGT=5483.00
+2026-03-13 11:30:13 | INFO     | execution_engine.order_manager      | [OrderManager] [SIM-LIMIT] SELL BRITANNIA qty=20 @ 6140.76
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+Traceback (most recent call last):
+ValueError: unsupported format character ',' (0x2c) at index 44
+2026-03-13 11:30:14 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:14 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:15 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:16 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=2
+2026-03-13 11:30:16 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=3
+2026-03-13 11:30:17 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:17 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:18 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=2
+2026-03-13 11:30:19 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:19 | INFO     | data_integrity                      | [DataIntegrityEngine] FAIL | Errors=0 | Warnings=0 | Anomalies=1
+2026-03-13 11:30:20 | INFO     | data_integrity                      | [DataIntegrityEngine] PASS | Errors=0 | Warnings=0 | Anomalies=0
+2026-03-13 11:30:20 | INFO     | __main__                            | [FRAG]  Baseline PF 1.81  |  PF@1% noise 1.27  |  verdict: FRAGILE
+2026-03-13 11:30:20 | INFO     | __main__                            | [LIMIT]  Fill rate 100.0%  |  filled PF=1.81  |  limit PF@1%=1.27  |  verdict: MARGINAL

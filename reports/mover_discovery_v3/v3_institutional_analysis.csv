@@ -1,0 +1,2 @@
+track,status,reason
+B1,DATA_UNAVAILABLE,bulk_block_deals: 0 rows; bhav_daily: 0 rows; no FII/DII data in study002_replay.db

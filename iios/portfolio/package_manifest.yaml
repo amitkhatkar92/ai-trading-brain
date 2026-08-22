@@ -1,0 +1,23 @@
+﻿# Package Manifest: iios.portfolio
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "iios.portfolio"
+version: "0.1.0"
+purpose: "Portfolio management -- position tracking, allocation across strategies, portfolio-level risk metrics"
+architecture_reference: "IIOS-ARC-001"
+layer: "PORTFOLIO"
+owner: "Platform"
+wave: 6
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "portfolio_allocator"
+  - "position_tracker"
+  - "portfolio_risk"
+  - "allocation_engine"
+  - "portfolio_snapshot"
+dependencies:
+  - "iios.core"
+  - "iios.infrastructure"
+  - "iios.execution"
