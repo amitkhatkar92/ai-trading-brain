@@ -286,16 +286,18 @@ class TestDecisionTypes:
         rec = KDA.evaluate(_obs(), behaviour=None)
         assert rec.decision == KDADecision.KNOWLEDGE_WAIT
 
-    def test_t022_wait_when_developing(self):
-        """T022: DEVELOPING evidence → KNOWLEDGE_WAIT."""
+    def test_t022_buy_when_developing(self):
+        """T022 (ARCH-005): DEVELOPING evidence + no conflict → KNOWLEDGE_BUY (KDA expresses view)."""
         rec = KDA.evaluate(_obs(), behaviour=_bm(ess=5.0))
-        assert rec.decision == KDADecision.KNOWLEDGE_WAIT
+        assert rec.decision == KDADecision.KNOWLEDGE_BUY
+        assert rec.evidence_state == EvidenceState.DEVELOPING
 
-    def test_t023_hold_when_useful_but_not_eligible(self):
-        """T023: USEFUL evidence but not DECISION_ELIGIBLE → KNOWLEDGE_HOLD."""
+    def test_t023_buy_when_useful_not_eligible(self):
+        """T023 (ARCH-005): USEFUL evidence + no conflict → KNOWLEDGE_BUY (KDA expresses view)."""
         bm = _bm(ess=15.0, target_prob=0.6, stop_prob=0.3)
         rec = KDA.evaluate(_obs(), behaviour=bm)
-        assert rec.decision in (KDADecision.KNOWLEDGE_HOLD, KDADecision.KNOWLEDGE_WAIT)
+        assert rec.decision == KDADecision.KNOWLEDGE_BUY
+        assert rec.evidence_state == EvidenceState.USEFUL
 
     def test_t024_buy_when_decision_eligible_buy_direction(self):
         """T024: DECISION_ELIGIBLE + BUY direction → KNOWLEDGE_BUY."""
@@ -309,24 +311,26 @@ class TestDecisionTypes:
         rec = KDA.evaluate(_obs(direction="SELL", scanner_confidence=8.5), behaviour=bm)
         assert rec.decision == KDADecision.KNOWLEDGE_SELL
 
-    def test_t026_wait_when_too_many_contradictions(self):
-        """T026: Many contradicting angles → KNOWLEDGE_WAIT regardless of ESS."""
+    def test_t026_hold_when_too_many_contradictions(self):
+        """T026 (ARCH-005): Material conflict (3+ contradictions > support) → KNOWLEDGE_HOLD."""
         bm = _bm(ess=150.0)
-        av = _make_av({
-            "STOCK":    _angle_result("STOCK",    0.20, 30),
-            "SECTOR":   _angle_result("SECTOR",   0.18, 20),
-            "DIRECTION":_angle_result("DIRECTION",0.15, 50),
+        # Use minimal angle view: only contradicting angles so n_contradict > n_support
+        av = _make_angle_view({
+            "STOCK":    _angle_result("STOCK",    0.15, 30),   # conf < 0.20, n >= 10 → CONTRADICT
+            "SECTOR":   _angle_result("SECTOR",   0.18, 20),   # conf < 0.20, n >= 10 → CONTRADICT
+            "DIRECTION":_angle_result("DIRECTION",0.15, 50),   # conf < 0.20, n >= 10 → CONTRADICT
         })
         rec = KDA.evaluate(_obs(scanner_confidence=8.5), behaviour=bm, angle_view=av)
-        assert rec.decision == KDADecision.KNOWLEDGE_WAIT
+        # n_contradict=3 > n_support=0, n_contradict >= 3 → material conflict → KNOWLEDGE_HOLD
+        assert rec.decision == KDADecision.KNOWLEDGE_HOLD
 
     def test_t027_decision_is_kda_decision_enum(self):
         """T027: decision field is a KDADecision enum instance."""
         rec = KDA.evaluate(_obs())
         assert isinstance(rec.decision, KDADecision)
 
-    def test_t028_no_force_trade_on_conflict(self):
-        """T028: Material conflict (more CONTRADICT than SUPPORT) → WAIT not BUY."""
+    def test_t028_hold_on_material_conflict(self):
+        """T028 (ARCH-005): Material conflict (more CONTRADICT than SUPPORT, 4 major) → KNOWLEDGE_HOLD."""
         bm = _bm(ess=150.0, target_prob=0.45, stop_prob=0.45)
         # 4 contradicting low-confidence angles with major=1
         av = _make_av({
@@ -341,7 +345,7 @@ class TestDecisionTypes:
             "SOURCE_QUALITY":_angle_result("SOURCE_QUALITY", 0.45, 20),
         })
         rec = KDA.evaluate(_obs(scanner_confidence=8.5), behaviour=bm, angle_view=av)
-        assert rec.decision == KDADecision.KNOWLEDGE_WAIT
+        assert rec.decision == KDADecision.KNOWLEDGE_HOLD
 
     def test_t029_short_direction_recognised(self):
         """T029: direction='SHORT' is treated as SELL."""
@@ -349,11 +353,12 @@ class TestDecisionTypes:
         rec = KDA.evaluate(_obs(direction="SHORT", scanner_confidence=8.5), behaviour=bm)
         assert rec.decision == KDADecision.KNOWLEDGE_SELL
 
-    def test_t030_hold_not_buy_when_validated_low_authority(self):
-        """T030: VALIDATED but low scanner_confidence → HOLD, not BUY."""
+    def test_t030_buy_when_validated_any_confidence(self):
+        """T030 (ARCH-005): VALIDATED state + no material conflict → KNOWLEDGE_BUY.
+        Authority is KDA architecture decision, not scanner_confidence gate."""
         bm = _bm(ess=50.0, target_prob=0.55, stop_prob=0.35)
         rec = KDA.evaluate(_obs(scanner_confidence=3.0), behaviour=bm)
-        assert rec.decision in (KDADecision.KNOWLEDGE_HOLD, KDADecision.KNOWLEDGE_WAIT)
+        assert rec.decision == KDADecision.KNOWLEDGE_BUY
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -425,11 +430,16 @@ class TestAuthorityScore:
         rec = KDA.evaluate(_obs(scanner_confidence=7.5))
         assert rec.knowledge_score == pytest.approx(7.5)
 
-    def test_t039_authority_role_knowledge_only_when_eligible(self):
-        """T039: authority=KNOWLEDGE only when DECISION_ELIGIBLE + high authority."""
-        bm_weak = _bm(ess=5.0)
+    def test_t039_authority_role_knowledge_for_all_non_insufficient(self):
+        """T039 (ARCH-005): authority=KNOWLEDGE for any non-insufficient state.
+        KDA is the intelligence authority by architecture decision, not by ESS threshold."""
+        bm_weak = _bm(ess=5.0)  # DEVELOPING evidence
         r_weak = KDA.evaluate(_obs(), behaviour=bm_weak)
-        assert r_weak.authority != DecisionAuthority.KNOWLEDGE
+        assert r_weak.authority == DecisionAuthority.KNOWLEDGE
+
+        bm_useful = _bm(ess=15.0)  # USEFUL evidence
+        r_useful = KDA.evaluate(_obs(), behaviour=bm_useful)
+        assert r_useful.authority == DecisionAuthority.KNOWLEDGE
 
     def test_t040_authority_role_none_when_insufficient(self):
         """T040: authority=NONE when no evidence."""

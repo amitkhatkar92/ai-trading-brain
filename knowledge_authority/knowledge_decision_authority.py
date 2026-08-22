@@ -313,7 +313,7 @@ class KnowledgeDecisionAuthority:
         if is_insufficient:
             verdict = AngleVerdict.INSUFFICIENT
         else:
-            verdict = self._classify_angle_verdict(name, conf, metrics)
+            verdict = self._classify_angle_verdict(name, conf, metrics, n)
 
         return AngleAnalysis(
             angle_name=name,
@@ -325,7 +325,7 @@ class KnowledgeDecisionAuthority:
         )
 
     def _classify_angle_verdict(
-        self, name: str, conf: float, metrics: Dict[str, Any]
+        self, name: str, conf: float, metrics: Dict[str, Any], n: int = 0
     ) -> AngleVerdict:
         """Map angle name + confidence + metrics to SUPPORT/NEUTRAL/CONTRADICT."""
         # Explicit major contradiction in metrics always → CONTRADICT regardless of confidence
@@ -541,11 +541,11 @@ class KnowledgeDecisionAuthority:
         evidence_state: EvidenceState,
         components:     KnowledgeAuthorityComponents,
     ) -> DecisionAuthority:
-        auth = components.composite_authority
-        if evidence_state == EvidenceState.DECISION_ELIGIBLE and auth >= _AUTHORITY_KNOWLEDGE_MIN:
+        # ARCH-005: KDA is the intelligence authority for all non-insufficient states.
+        # Authority ROLE = KNOWLEDGE (architecture decision, not a data threshold).
+        # composite_authority score captures evidence quality separately.
+        if evidence_state != EvidenceState.INSUFFICIENT:
             return DecisionAuthority.KNOWLEDGE
-        if evidence_state in (EvidenceState.VALIDATED, EvidenceState.USEFUL) and auth >= _AUTHORITY_STRATEGY_MIN:
-            return DecisionAuthority.STRATEGY_CONTEXT
         return DecisionAuthority.NONE
 
     def _determine_decision(
@@ -556,30 +556,28 @@ class KnowledgeDecisionAuthority:
         contradicting:  List[str],
         supporting:     List[str],
     ) -> KDADecision:
+        # ARCH-005: KNOWLEDGE_WAIT only for truly insufficient evidence (no basis for decision).
         if evidence_state == EvidenceState.INSUFFICIENT:
             return KDADecision.KNOWLEDGE_WAIT
 
-        auth = components.composite_authority
         n_contradict = len(contradicting)
         n_support    = len(supporting)
 
-        # Material conflict: more contradictions than support → WAIT
+        # Material conflict: evidence reviewed but actively contradicted → HOLD.
+        # StrategyLab cannot override a KDA HOLD (spec: KDA rejects = StrategyLab blocked).
         if n_contradict > n_support and n_contradict >= 3:
-            return KDADecision.KNOWLEDGE_WAIT
+            return KDADecision.KNOWLEDGE_HOLD
 
-        # DECISION_ELIGIBLE + no material conflict → directional decision
-        # (authority score determines the ROLE, not whether to express a view)
-        if evidence_state == EvidenceState.DECISION_ELIGIBLE:
-            if direction.upper() in ("BUY", "LONG"):
-                return KDADecision.KNOWLEDGE_BUY
-            if direction.upper() in ("SELL", "SHORT"):
-                return KDADecision.KNOWLEDGE_SELL
+        # For ALL non-insufficient states with no material conflict, KDA expresses a
+        # directional view. evidence_state remains visible on the record to show quality.
+        # DEVELOPING: ATR fallback target/stop.  USEFUL+: mixed empirical/ATR.
+        # DECISION_ELIGIBLE: empirical when available.
+        if direction.upper() in ("BUY", "LONG"):
+            return KDADecision.KNOWLEDGE_BUY
+        if direction.upper() in ("SELL", "SHORT"):
+            return KDADecision.KNOWLEDGE_SELL
 
-        if evidence_state == EvidenceState.DEVELOPING:
-            return KDADecision.KNOWLEDGE_WAIT
-
-        # USEFUL / VALIDATED but not DECISION_ELIGIBLE → HOLD (observe, don't force)
-        return KDADecision.KNOWLEDGE_HOLD
+        return KDADecision.KNOWLEDGE_HOLD  # unknown direction fallback
 
     # ── Target / stop derivation ───────────────────────────────────────────────
 

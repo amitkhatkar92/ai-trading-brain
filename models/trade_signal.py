@@ -71,6 +71,7 @@ class TradeSignal:
     kda_horizon_p50:      Optional[int]  = None  # expected holding horizon (days, p50)
     target_source:        Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
     stop_source:          Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
+    horizon_source:       Optional[str]  = None  # "HBE_EMPIRICAL" | "ATR_FALLBACK" | "NONE"
 
     @property
     def risk_reward_ratio(self) -> float:

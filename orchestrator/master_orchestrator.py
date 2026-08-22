@@ -1057,22 +1057,36 @@ class MasterOrchestrator:
                         _kda_authorized.add(_kda_sig.symbol)
 
                 # ── Build merged signal list (KDA union StrategyLab) ─────────
-                # Phase 1: annotate and keep StrategyLab-approved signals
+                # Phase 1: annotate and keep StrategyLab-approved signals.
+                # ARCH-005: KNOWLEDGE_HOLD = KDA found material conflict → StrategyLab cannot override.
+                _kda_hold_blocked = 0
                 _merged: list = []
                 _seen: set = set()
                 for _sig in enriched_signals:
                     _r2 = _kda_results.get(_sig.symbol, {})
+                    _kda_dec2 = _r2.get("kda_decision")
+                    # KDA HOLD = evidence reviewed + material conflict. StrategyLab approval overridden.
+                    if _kda_dec2 == "KNOWLEDGE_HOLD":
+                        log.info(
+                            "[KDA-AUTHORITY] %s: StrategyLab PASS blocked by KDA HOLD "
+                            "(material conflict, evidence_state=%s).",
+                            _sig.symbol, _r2.get("evidence_state"),
+                        )
+                        _kda_hold_blocked += 1
+                        continue
                     _sig.authorization_source = (
                         "BOTH" if _sig.symbol in _kda_authorized else "STRATEGY_LAB"
                     )
-                    _sig.kda_decision       = _r2.get("kda_decision")
+                    _sig.kda_decision       = _kda_dec2
                     _sig.kda_evidence_state = _r2.get("evidence_state")
                     _kda_tgt = _r2.get("knowledge_target")
                     _kda_stp = _r2.get("knowledge_stop")
                     _kda_hor = _r2.get("expected_days_p50")
+                    _kda_hor_src = _r2.get("horizon_source", "NONE")
                     _sig.kda_target      = float(_kda_tgt) if _kda_tgt else None
                     _sig.kda_stop        = float(_kda_stp) if _kda_stp else None
                     _sig.kda_horizon_p50 = int(_kda_hor)  if _kda_hor else None
+                    _sig.horizon_source  = _kda_hor_src
                     # KDA empirical target/stop when VALIDATED or DECISION_ELIGIBLE
                     if (
                         _sig.symbol in _kda_authorized
@@ -1096,6 +1110,7 @@ class MasterOrchestrator:
                     if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
                         continue
                     _r3 = _kda_results[_orig_sig.symbol]
+                    _kda_hor_src3 = _r3.get("horizon_source", "NONE")
                     _orig_sig.authorization_source = "KDA"
                     _orig_sig.kda_decision       = _r3.get("kda_decision")
                     _orig_sig.kda_evidence_state = _r3.get("evidence_state")
@@ -1105,6 +1120,7 @@ class MasterOrchestrator:
                     _orig_sig.kda_target      = float(_kda_tgt3) if _kda_tgt3 else None
                     _orig_sig.kda_stop        = float(_kda_stp3) if _kda_stp3 else None
                     _orig_sig.kda_horizon_p50 = int(_kda_hor3)   if _kda_hor3 else None
+                    _orig_sig.horizon_source  = _kda_hor_src3
                     if _kda_tgt3 and _kda_stp3 and not _r3.get("fallback_used"):
                         _orig_sig.target_price  = float(_kda_tgt3)
                         _orig_sig.stop_loss     = float(_kda_stp3)
@@ -1155,6 +1171,8 @@ class MasterOrchestrator:
                                 "kda_fallback_used": _cr.get("fallback_used"),
                                 "target_source": getattr(_kda_strat_map.get(_cmp_sig.symbol, _cmp_sig), "target_source", None),
                                 "stop_source": getattr(_kda_strat_map.get(_cmp_sig.symbol, _cmp_sig), "stop_source", None),
+                                "horizon_source": _cr.get("horizon_source"),
+                                "kda_hold_blocked": _kda_dec2 == "KNOWLEDGE_HOLD" if (_kda_dec2 := _cr.get("kda_decision")) else False,
                             }
                             _kda_cmp_fh.write(_kda_json.dumps(_cmp_fh_row) + "\n")
                 except Exception:
@@ -1163,9 +1181,10 @@ class MasterOrchestrator:
                 _last_r = next(iter(_kda_results.values()), {}) if _kda_results else {}
                 log.info(
                     "[KDA] Authority decisions: %d/%d signals processed. "
-                    "kda_authorized=%d kda_only_added=%d hbe_ess=%s kfe_pool=%s",
+                    "kda_authorized=%d kda_only_added=%d kda_hold_blocked=%d "
+                    "hbe_ess=%s kfe_pool=%s",
                     len(_kda_results), len(signals),
-                    len(_kda_authorized), _kda_only_added,
+                    len(_kda_authorized), _kda_only_added, _kda_hold_blocked,
                     _last_r.get("hbe_ess") or "?",
                     _last_r.get("kfe_pool_size") or "?",
                 )
