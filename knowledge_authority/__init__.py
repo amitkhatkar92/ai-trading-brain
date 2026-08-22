@@ -1,4 +1,4 @@
-"""knowledge_authority — KDA-001 Knowledge Decision Authority package."""
+"""knowledge_authority — KDA-001 / KDA-002 Knowledge Decision Authority package."""
 from .kda_models import (
     AngleAnalysis,
     AngleVerdict,
@@ -18,7 +18,32 @@ from .kda_models import (
 )
 from .knowledge_decision_authority import KnowledgeDecisionAuthority
 
+# KDA-002 — outcome models
+from .kda_outcome_models import (
+    AuthorityBucketResult,
+    AuthorityStatus,
+    AuthorityValidationReport,
+    ComparisonType,
+    EvidenceTierResult,
+    KDAComparisonRecord,
+    KDAOutcomeRecord,
+    MoveSpeed,
+    OHLCVBar,
+    OutcomeClass,
+    OutcomeStatus,
+    OverruleResult,
+    SourcePerformanceRecord,
+    TargetComparison,
+)
+
+# KDA-002 — engines
+from .kda_ledger          import KDALedger
+from .kda_outcome_engine  import KDAOutcomeEngine
+from .kda_comparative     import KDAComparativeAnalyzer
+from .kda_authority_report import KDAAuthorityReporter
+
 __all__ = [
+    # KDA-001 models
     "KnowledgeDecisionAuthority",
     "KDADecisionRecord", "KDAOutcomeFeedback",
     "KDADecision", "DecisionAuthority", "EvidenceState",
@@ -26,4 +51,12 @@ __all__ = [
     "ExitState", "DecisionOutcome",
     "AngleAnalysis", "InformationContribution", "CounterfactualResult",
     "StrategyContext", "KnowledgeAuthorityComponents",
+    # KDA-002 models
+    "OutcomeStatus", "OutcomeClass", "ComparisonType", "OverruleResult",
+    "AuthorityStatus", "TargetComparison", "MoveSpeed",
+    "OHLCVBar", "KDAOutcomeRecord", "KDAComparisonRecord",
+    "SourcePerformanceRecord", "AuthorityBucketResult",
+    "EvidenceTierResult", "AuthorityValidationReport",
+    # KDA-002 engines
+    "KDALedger", "KDAOutcomeEngine", "KDAComparativeAnalyzer", "KDAAuthorityReporter",
 ]

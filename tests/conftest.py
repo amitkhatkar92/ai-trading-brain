@@ -2,6 +2,15 @@
 # Fixtures available to all test suites.
 # Foundation: IIOS-FCR-001 (CERTIFIED)
 
+# Force numpy to initialise fully before any test runs.
+# This prevents a circular-import AttributeError in pytest.approx()
+# triggered by certain test-file orderings on Python 3.14 + numpy 2.x.
+try:
+    import numpy as _np  # noqa: F401
+    _ = _np.isscalar  # exercise the attribute that triggers the bug
+except Exception:
+    pass
+
 import pytest
 
 # --- Shared fixtures (implement in Wave 1) ---
