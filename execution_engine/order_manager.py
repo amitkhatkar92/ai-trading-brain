@@ -1098,10 +1098,12 @@ class OrderManager:
         self._restore_stats.update(kwargs)
 
     def reconcile_partial_fills(self) -> List[str]:
-        """ARCH-004 LIVE-008: check open live orders for partial fills.
+        """ARCH-004 LIVE-008 / ARCH-006: check open live orders for partial fills.
         In paper mode: no-op (all simulated fills are full).
         In live mode: queries broker for each open LIMIT order and adjusts
         quantity if the broker reports a partial fill.
+        Also cancels the original SL (placed for requested qty) and resubmits
+        it for the actual filled qty to prevent quantity mismatch on exchange.
         Returns list of order_ids that were updated.
         Safe to call every monitoring cycle.
         """
@@ -1122,9 +1124,37 @@ class OrderManager:
                 rec.quantity = filled
                 log.warning(
                     "[PartialFill] %s %s order=%s filled=%d/%d — "
-                    "adjusting record quantity to filled qty.",
+                    "adjusting record quantity and resubmitting SL.",
                     rec.symbol, rec.direction, oid, filled, old_qty,
                 )
+                # Cancel stale SL (placed for old_qty) and resubmit for filled qty.
+                if rec.sl_order_id and hasattr(self._broker, "cancel_order"):
+                    try:
+                        self._broker.cancel_order(rec.sl_order_id)
+                        log.info(
+                            "[PartialFill] Cancelled stale SL %s (was qty=%d).",
+                            rec.sl_order_id, old_qty,
+                        )
+                    except Exception as _cancel_exc:
+                        log.warning(
+                            "[PartialFill] SL cancel failed for %s: %s",
+                            rec.sl_order_id, _cancel_exc,
+                        )
+                if hasattr(self._broker, "place_sl_order") and rec.stop_loss > 0:
+                    close_dir = "SELL" if rec.direction == "BUY" else "BUY"
+                    new_sl_id = self._broker.place_sl_order(
+                        symbol           = rec.symbol,
+                        exchange         = "NSE",
+                        transaction_type = close_dir,
+                        quantity         = filled,
+                        trigger_price    = rec.stop_loss,
+                        price            = round(rec.stop_loss * 0.995, 2),
+                    )
+                    rec.sl_order_id = new_sl_id or ""
+                    log.info(
+                        "[PartialFill] New SL %s placed for %s qty=%d trigger=%.2f.",
+                        new_sl_id, rec.symbol, filled, rec.stop_loss,
+                    )
                 updated.append(oid)
             except Exception as exc:
                 log.debug("[PartialFill] status check failed %s: %s", oid, exc)

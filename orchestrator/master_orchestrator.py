@@ -3633,6 +3633,17 @@ class MasterOrchestrator:
         self._last_monitor_ts = _now_ts
         self._persist_monitor_ts(_now_ts)  # P0: persist to survive restart
 
+        # ── ARCH-006: partial-fill reconciliation (live mode only, no-op in paper) ──
+        try:
+            _pf_updated = self.order_manager.reconcile_partial_fills()
+            if _pf_updated:
+                log.warning(
+                    "[Monitor] PartialFill reconciled %d order(s): %s",
+                    len(_pf_updated), _pf_updated,
+                )
+        except Exception as _pf_exc:
+            log.debug("[Monitor] reconcile_partial_fills skipped: %s", _pf_exc)
+
     def _persist_monitor_ts(self, ts: datetime) -> None:
         """Atomically write _last_monitor_ts to data/monitor_state.json.
 

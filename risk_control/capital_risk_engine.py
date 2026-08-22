@@ -154,8 +154,12 @@ def _load_evolved_base_map() -> None:
     finally:
         _EVOLVED_BASE_MAP_LOADED = True
 
-# ── Maximum number of simultaneous positions (correlation control) ─────────
-_MAX_POSITIONS = 8
+# ── Maximum number of simultaneous positions (capital-tier scaled) ─────────
+# Imported from config so the pilot ₹10k limit (3) is enforced automatically.
+try:
+    from config import MAX_POSITIONS as _MAX_POSITIONS
+except Exception:
+    _MAX_POSITIONS = 8  # fallback if config import fails
 
 
 class CapitalRiskEngine:

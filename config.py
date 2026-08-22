@@ -38,6 +38,23 @@ MAX_PORTFOLIO_RISK_PCT   = 0.08      # 8% total portfolio risk (INCREASED 5→8 
 MAX_DRAWDOWN_PCT         = 0.10      # 10% drawdown → halt trading
 MIN_CONFIDENCE_SCORE     = 6.8       # Minimum Decision AI score to execute (INCREASED 6.2→6.8 to filter weak trades)
 
+# ── Pilot / capital-tier position limit ───────────────────────────────────────
+# Scales max simultaneous positions with capital size. Overridable via env var.
+# ₹10k pilot → 3 positions   ₹50k → 5   ₹1Cr (default) → 8
+# Prevents a small live-money account from running 8 open positions designed for ₹1Cr.
+def _compute_max_positions() -> int:
+    _cap = TOTAL_CAPITAL
+    _env = os.getenv("MAX_POSITIONS")
+    if _env:
+        return max(1, int(_env))
+    if _cap <= 25_000:
+        return 3
+    if _cap <= 100_000:
+        return 5
+    return 8
+
+MAX_POSITIONS            = _compute_max_positions()
+
 # ─────────────────────────────────────────────
 # ATR-BASED EXECUTION  (replaces all hardcoded % stops)
 # ─────────────────────────────────────────────
