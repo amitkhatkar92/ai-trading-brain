@@ -157,10 +157,11 @@ class DhanBroker:
         try:
             resp = self._dhan.get_order_by_id(order_id=order_id)
             data = resp.get("data", {}) if isinstance(resp, dict) else {}
+            # V2 Order Book uses filledQty / averageTradedPrice (not tradedQty / tradedPrice)
             return {
                 "status":          data.get("orderStatus", "UNKNOWN"),
-                "filled_qty":      int(data.get("tradedQty", 0) or 0),
-                "avg_fill_price":  float(data.get("tradedPrice", 0.0) or 0.0),
+                "filled_qty":      int(data.get("filledQty", data.get("tradedQty", 0)) or 0),
+                "avg_fill_price":  float(data.get("averageTradedPrice", data.get("tradedPrice", 0.0)) or 0.0),
                 "remaining_qty":   int(data.get("remainingQuantity", 0) or 0),
                 "order_id":        order_id,
             }
