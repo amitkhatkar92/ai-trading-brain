@@ -1008,6 +1008,8 @@ class MasterOrchestrator:
         _kda_authorized: set = set()    # symbols where KDA says KNOWLEDGE_BUY/SELL
         if self.knowledge_pipeline is not None and signals:
             try:
+                # ARCH-003 GAP-A: enriched market context — was only 5 fields
+                _dist_info = getattr(self.global_intelligence, "last_distortion", None)
                 _kda_mc = {
                     "regime":  str(getattr(snapshot, "regime", {}) and
                                    getattr(snapshot.regime, "value", str(getattr(snapshot, "regime", "")))
@@ -1016,6 +1018,19 @@ class MasterOrchestrator:
                     "pcr":     float(getattr(snapshot, "pcr",     0.0) or 0.0),
                     "breadth": float(getattr(snapshot, "breadth", 0.0) or 0.0),
                     "global_bias": str(getattr(premarket_bias, "bias", "") if premarket_bias else ""),
+                    # Additional context: global sentiment, distortion, sector
+                    "global_sentiment_score": float(
+                        getattr(premarket_bias, "sentiment_score", 0.0) or 0.0
+                        if premarket_bias else 0.0),
+                    "stress_score": int(
+                        getattr(_dist_info, "stress_score", 0) or 0
+                        if _dist_info else 0),
+                    "distortion_risk_level": str(
+                        getattr(_dist_info, "risk_level", "NORMAL") or "NORMAL"
+                        if _dist_info else "NORMAL"),
+                    "sector_flows": dict(getattr(snapshot, "sector_flows", {}) or {}),
+                    "advance_decline": float(
+                        getattr(snapshot, "advance_decline_ratio", 0.0) or 0.0),
                 }
                 _kda_approved_syms = {s.symbol for s in enriched_signals}
                 _kda_strat_map     = {s.symbol: s for s in enriched_signals}

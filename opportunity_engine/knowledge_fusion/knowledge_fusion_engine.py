@@ -299,8 +299,8 @@ def build_source_inventory(
             record_count=shadow_n,
             update_frequency="DAILY",
             is_outcome_linked=True,
-            currently_used_in_decisions=False,
-            usage_status=OBSERVED_ONLY,
+            currently_used_in_decisions=True,
+            usage_status=USED_IN_DECISION,
         ),
         SourceInventoryItem(
             source="KNOWLEDGE_EVIDENCE_LEDGER",
@@ -310,8 +310,8 @@ def build_source_inventory(
             record_count=ke_n,
             update_frequency="DAILY",
             is_outcome_linked=True,
-            currently_used_in_decisions=False,
-            usage_status=OBSERVED_ONLY,
+            currently_used_in_decisions=True,
+            usage_status=USED_IN_DECISION,
         ),
         SourceInventoryItem(
             source="PAPER_TRADES_CSV",
@@ -427,6 +427,104 @@ def _load_ct_decisions(db_path: Path) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
     except Exception:
         return []
+
+
+def _load_shadow_evidence_ledger(path: Path) -> List[Dict[str, Any]]:
+    """Load shadow_evidence_ledger.jsonl — historical C2 research outcomes."""
+    if not path.exists():
+        return []
+    records: List[Dict[str, Any]] = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                records.append(json.loads(line))
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return records
+
+
+def _load_knowledge_evidence_ledger(path: Path) -> List[Dict[str, Any]]:
+    """Load knowledge_evidence_ledger.jsonl — KSL-001 pattern evidence."""
+    if not path.exists():
+        return []
+    records: List[Dict[str, Any]] = []
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            try:
+                r = json.loads(line)
+                if r.get("event_type") == "EVIDENCE":
+                    records.append(r)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return records
+
+
+def _normalise_shadow_evidence(row: Dict[str, Any]) -> KnowledgeFusionRecord:
+    """Normalise shadow_evidence_ledger row to KnowledgeFusionRecord."""
+    raw_sym  = (row.get("symbol") or "").upper().strip()
+    sym      = raw_sym.replace(".NS", "").replace(".BO", "")
+    raw_dir  = (row.get("direction") or "UP").upper()
+    dirn     = "BUY" if raw_dir in ("UP", "BUY", "LONG", "BULL") else "SELL"
+    date_str = str(row.get("trade_date") or "")[:10]
+    t1       = _flt(row.get("t1_ret_pct"))
+    ge2      = row.get("ge2")
+    target_hit = ge2 if isinstance(ge2, bool) else None
+    # directional_move: positive if direction==BUY and t1>0, or direction==SELL and t1<0
+    move = t1 if dirn == "BUY" else (-t1 if t1 is not None else None)
+    outcome_avail = t1 is not None
+
+    return KnowledgeFusionRecord(
+        fusion_id=f"SEL_{sym}_{date_str}_{dirn}_{uuid.uuid4().hex[:6]}",
+        trading_date=date_str,
+        symbol=sym,
+        direction=dirn,
+        sector=_sector(sym),
+        regime=str(row.get("regime") or "").upper() or None,
+        knowledge_score=_flt(row.get("v3_score")),
+        candidate_score=_flt(row.get("c2_score")),
+        outcome_available=outcome_avail,
+        move_1d_pct=t1,
+        target_hit=target_hit,
+        missing_fields=[] if t1 is not None else ["move_1d_pct"],
+        source_ids=["SHADOW_EVIDENCE_LEDGER"],
+        no_lookahead=True,
+    )
+
+
+def _normalise_knowledge_evidence(row: Dict[str, Any]) -> KnowledgeFusionRecord:
+    """Normalise knowledge_evidence_ledger row to KnowledgeFusionRecord."""
+    raw_sym  = (row.get("symbol") or "").upper().strip()
+    sym      = raw_sym.replace(".NS", "").replace(".BO", "")
+    raw_dir  = (row.get("direction") or "UP").upper()
+    dirn     = "BUY" if raw_dir in ("UP", "BUY", "LONG", "BULL") else "SELL"
+    date_str = str(row.get("trade_date") or "")[:10]
+    t1       = _flt(row.get("t1_ret_pct"))
+    ge2      = row.get("ge2")
+    target_hit = ge2 if isinstance(ge2, bool) else None
+    outcome_avail = t1 is not None
+
+    return KnowledgeFusionRecord(
+        fusion_id=f"KEL_{sym}_{date_str}_{dirn}_{uuid.uuid4().hex[:6]}",
+        trading_date=date_str,
+        symbol=sym,
+        direction=dirn,
+        sector=_sector(sym),
+        knowledge_score=_flt(row.get("v3_score")),
+        outcome_available=outcome_avail,
+        move_1d_pct=t1,
+        target_hit=target_hit,
+        missing_fields=[] if t1 is not None else ["move_1d_pct"],
+        source_ids=["KNOWLEDGE_EVIDENCE_LEDGER"],
+        no_lookahead=True,
+    )
 
 
 def _load_klp_observations(klp_dir: Path) -> List[Dict[str, Any]]:
@@ -1458,6 +1556,8 @@ class KnowledgeFusionEngine:
     def load_fusion_records(self) -> List[KnowledgeFusionRecord]:
         """
         Load and normalise all available sources into KnowledgeFusionRecord list.
+        Sources: rejection_audit.db, ct_decisions, KLP JSONL,
+                 shadow_evidence_ledger.jsonl, knowledge_evidence_ledger.jsonl
         """
         records: List[KnowledgeFusionRecord] = []
 
@@ -1472,6 +1572,16 @@ class KnowledgeFusionEngine:
         klp = _load_klp_observations(self._data_dir / "klp")
         for row in klp:
             records.append(_normalise_klp(row))
+
+        # ARCH-003 GAP-B: shadow_evidence_ledger — 405 outcome-linked C2 records
+        sel = _load_shadow_evidence_ledger(self._data_dir / "shadow_evidence_ledger.jsonl")
+        for row in sel:
+            records.append(_normalise_shadow_evidence(row))
+
+        # ARCH-003 GAP-C: knowledge_evidence_ledger — KSL-001 pattern evidence
+        kel = _load_knowledge_evidence_ledger(self._data_dir / "knowledge_evidence_ledger.jsonl")
+        for row in kel:
+            records.append(_normalise_knowledge_evidence(row))
 
         return records
 
