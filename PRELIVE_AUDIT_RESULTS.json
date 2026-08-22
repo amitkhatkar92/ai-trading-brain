@@ -1,0 +1,555 @@
+[
+  {
+    "part": "A",
+    "severity": "INFO",
+    "title": "Call graph intact",
+    "detail": "scheduler\u2192_guarded_cycle\u2192run_full_cycle\u2192LayerN\u2192OrderManager.execute confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "A",
+    "severity": "P1",
+    "title": "RiskGuardian not guaranteed before OrderManager",
+    "detail": "rg_pos=75283 om_pos=3020",
+    "status": "FINDING"
+  },
+  {
+    "part": "B",
+    "severity": "INFO",
+    "title": "Quantity = signal.quantity \u00d7 position_size_modifier",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "B",
+    "severity": "INFO",
+    "title": "_place_stop_loss called after entry",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "C",
+    "severity": "INFO",
+    "title": "KDA decision used in orchestrator",
+    "detail": "kda_dec/KNOWLEDGE_BUY found",
+    "status": "PASS"
+  },
+  {
+    "part": "C",
+    "severity": "INFO",
+    "title": "KNOWLEDGE_HOLD drops signal before StrategyLab",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "D",
+    "severity": "INFO",
+    "title": "kda_stop assigned to signal.stop_loss",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "D",
+    "severity": "INFO",
+    "title": "kda_target assigned to signal.target_price",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "D",
+    "severity": "INFO",
+    "title": "ATR_FALLBACK present for DEVELOPING evidence",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "D",
+    "severity": "INFO",
+    "title": "Stop distance validated before sizing",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "TOTAL_CAPITAL",
+    "detail": "\u20b910,000",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "MAX_RISK_PER_TRADE_PCT",
+    "detail": "0.250% = \u20b925.00 per trade",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "Sizing IDEA/PENNYSTK \u20b915 ATR\u20b90.5",
+    "detail": "qty=11 notional=\u20b9165 (1.7% of capital)",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "Sizing SUZLON \u20b975 ATR\u20b91",
+    "detail": "qty=5 notional=\u20b9375 (3.8% of capital)",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "Sizing TATASTEEL \u20b9160 ATR\u20b93",
+    "detail": "qty=1 notional=\u20b9160 (1.6% of capital)",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "P2",
+    "title": "Sizing SBIN \u20b9850 ATR\u20b98",
+    "detail": "qty=0 notional=\u20b90 (0.0% of capital)",
+    "status": "INFO"
+  },
+  {
+    "part": "E",
+    "severity": "P2",
+    "title": "Sizing RELIANCE \u20b92820 ATR\u20b928",
+    "detail": "qty=0 notional=\u20b90 (0.0% of capital)",
+    "status": "INFO"
+  },
+  {
+    "part": "E",
+    "severity": "P2",
+    "title": "Sizing HDFCBANK \u20b91900 ATR\u20b919",
+    "detail": "qty=0 notional=\u20b90 (0.0% of capital)",
+    "status": "INFO"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "MAX_CAPITAL_PER_TRADE_PCT=15.0%",
+    "detail": "Max per trade = \u20b91500",
+    "status": "PASS"
+  },
+  {
+    "part": "E",
+    "severity": "INFO",
+    "title": "MAX_TOTAL_OPEN_EXPOSURE_PCT=85.0%",
+    "detail": "Max total exposure = \u20b98500",
+    "status": "PASS"
+  },
+  {
+    "part": "F",
+    "severity": "INFO",
+    "title": "DHAN_SECURITY_MAP entries",
+    "detail": "~149 symbols",
+    "status": "PASS"
+  },
+  {
+    "part": "F",
+    "severity": "INFO",
+    "title": "Missing map guard in _broker_place",
+    "detail": "Returns None on missing mapping",
+    "status": "PASS"
+  },
+  {
+    "part": "F",
+    "severity": "P2",
+    "title": "DHAN_SECURITY_MAP completeness unknown",
+    "detail": "Scanner may find symbols not in map \u2192 orders silently blocked (DATA-DEPENDENT)",
+    "status": "INFO"
+  },
+  {
+    "part": "G",
+    "severity": "INFO",
+    "title": "Dhan API payload has all required fields",
+    "detail": "security_id,exchange_segment,transaction_type,quantity,price,order_type",
+    "status": "PASS"
+  },
+  {
+    "part": "G",
+    "severity": "INFO",
+    "title": "SIM mode returns SIM_ prefixed IDs",
+    "detail": "Never confused with real orders",
+    "status": "PASS"
+  },
+  {
+    "part": "H",
+    "severity": "INFO",
+    "title": "Symbol open-position check in execute()",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "H",
+    "severity": "INFO",
+    "title": "Zone-based reentry guard (2%)",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "H",
+    "severity": "INFO",
+    "title": "Crash recovery: restore_state/_restore_from_journal exists",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "H",
+    "severity": "INFO",
+    "title": "CSV journal for persistence",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "I",
+    "severity": "INFO",
+    "title": "Restore loads stop_loss and target_price",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "I",
+    "severity": "INFO",
+    "title": "LTP pre-fetch after restore (prevents false drawdown)",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "J",
+    "severity": "INFO",
+    "title": "Token check in dhan_feed",
+    "detail": "access_token verified",
+    "status": "PASS"
+  },
+  {
+    "part": "J",
+    "severity": "INFO",
+    "title": "yfinance/yahoo fallback in data feed",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "J",
+    "severity": "INFO",
+    "title": "Broker falls back to SIM when not connected",
+    "detail": "Token failure \u2192 SIM mode (no real orders)",
+    "status": "PASS"
+  },
+  {
+    "part": "K",
+    "severity": "INFO",
+    "title": "_guarded_cycle wraps run_full_cycle with exception handling",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "K",
+    "severity": "INFO",
+    "title": "EOD learning separate from scan cycle",
+    "detail": "_do_eod_learning",
+    "status": "PASS"
+  },
+  {
+    "part": "L",
+    "severity": "INFO",
+    "title": "Pre-order price integrity guard",
+    "detail": "Validates price band before execution",
+    "status": "PASS"
+  },
+  {
+    "part": "L",
+    "severity": "INFO",
+    "title": "entry_price > 0 validated",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "L",
+    "severity": "INFO",
+    "title": "Stop distance sanity check in CRE",
+    "detail": "< 0.001 \u2192 qty=0",
+    "status": "PASS"
+  },
+  {
+    "part": "M",
+    "severity": "INFO",
+    "title": "Orchestrator handles empty signal lists",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "M",
+    "severity": "INFO",
+    "title": "VIX kill-switch in RiskGuardian",
+    "detail": "VIX>45 \u2192 BLOCK",
+    "status": "PASS"
+  },
+  {
+    "part": "M",
+    "severity": "INFO",
+    "title": "Drawdown kill-switch in RiskGuardian",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "N",
+    "severity": "P1",
+    "title": "KFE has no timestamp",
+    "detail": "Records may be undated \u2192 lookahead possible",
+    "status": "FINDING"
+  },
+  {
+    "part": "N",
+    "severity": "INFO",
+    "title": "No obvious lookahead patterns in KFE",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "O",
+    "severity": "INFO",
+    "title": "Execution window guard (09:45 earliest)",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "O",
+    "severity": "INFO",
+    "title": "Market hours gate in orchestrator",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "O",
+    "severity": "INFO",
+    "title": "Signal freshness gate present",
+    "detail": "Stale signals rejected",
+    "status": "PASS"
+  },
+  {
+    "part": "P",
+    "severity": "INFO",
+    "title": "PILOT_MAX_TRADES=3",
+    "detail": "Max trades per session",
+    "status": "PASS"
+  },
+  {
+    "part": "P",
+    "severity": "P2",
+    "title": "PILOT_MODE not explicitly set",
+    "detail": "PILOT_MAX_TRADES may not be enforced unless checked",
+    "status": "FINDING"
+  },
+  {
+    "part": "P",
+    "severity": "INFO",
+    "title": "PILOT_MAX_TRADES enforced in orchestrator",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "Q",
+    "severity": "INFO",
+    "title": "MAX_DRAWDOWN_PCT=10% = \u20b91000 halt threshold",
+    "detail": "Halt triggered after this loss",
+    "status": "PASS"
+  },
+  {
+    "part": "Q",
+    "severity": "INFO",
+    "title": "Drawdown halt in RiskGuardian",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "Q",
+    "severity": "INFO",
+    "title": "RiskGuardian.evaluate() returns BLOCK",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "R",
+    "severity": "INFO",
+    "title": "_place_stop_loss defined",
+    "detail": "calls_broker=False paper_aware=False",
+    "status": "PASS"
+  },
+  {
+    "part": "R",
+    "severity": "P2",
+    "title": "SL order type unclear in Dhan broker",
+    "detail": "Stop orders may be placed as LIMIT instead of SL-M",
+    "status": "FINDING"
+  },
+  {
+    "part": "S",
+    "severity": "INFO",
+    "title": "EOD close logic in OrderManager",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "S",
+    "severity": "INFO",
+    "title": "Target and stop monitoring in OrderManager",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "S",
+    "severity": "INFO",
+    "title": "_do_monitor closes positions on target/stop hit",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "T",
+    "severity": "INFO",
+    "title": "ESS_DEVELOPING=3.0 (signals express BUY/SELL)",
+    "detail": "KDA correctly skips thin evidence \u2192 KNOWLEDGE_WAIT",
+    "status": "PASS"
+  },
+  {
+    "part": "T",
+    "severity": "INFO",
+    "title": "KNOWLEDGE_WAIT for ESS<3 evidence",
+    "detail": "New symbol enters KNOWLEDGE_WAIT \u2192 does not block execution",
+    "status": "PASS"
+  },
+  {
+    "part": "T",
+    "severity": "INFO",
+    "title": "KNOWLEDGE_HOLD blocks, KNOWLEDGE_WAIT does NOT block",
+    "detail": "Correct: only material conflict halts signal",
+    "status": "PASS"
+  },
+  {
+    "part": "U",
+    "severity": "INFO",
+    "title": "Decision threshold 6.5 confirmed",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "U",
+    "severity": "INFO",
+    "title": "Debate agents called before execution",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "U",
+    "severity": "INFO",
+    "title": "Debate called AFTER KDA (correct order)",
+    "detail": "confirmed",
+    "status": "PASS"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "config.PAPER_TRADING=False",
+    "detail": "Local dev config",
+    "status": "PASS"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "LIVE_TRADING_AUTHORIZED=ABSENT",
+    "detail": "Must be 'true' for live orders",
+    "status": "PASS"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "Defense-in-depth gate: BOTH PAPER_TRADING=false AND LIVE_TRADING_AUTHORIZED=true required",
+    "detail": "confirmed \u2014 any single override insufficient",
+    "status": "PASS"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "DhanBroker._connected check in place_order",
+    "detail": "Not connected \u2192 SIM mode (safe)",
+    "status": "PASS"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "VPS safety (manual verify required)",
+    "detail": "VPS docker-compose.yml must have PAPER_TRADING=true until authorized",
+    "status": "INFO"
+  },
+  {
+    "part": "V",
+    "severity": "INFO",
+    "title": "_broker_place called 5 times in OrderManager",
+    "detail": "lines=[942, 1215, 1512, 1925, 1944]",
+    "status": "PASS"
+  },
+  {
+    "part": "W",
+    "severity": "P1",
+    "title": "_guarded_cycle may not catch all exceptions",
+    "detail": "_guarded_cycle and calls\n                # run_full_cycle directly via the task queue.  Guard here\n ",
+    "status": "FINDING"
+  },
+  {
+    "part": "W",
+    "severity": "INFO",
+    "title": "SIGTERM handler in main.py",
+    "detail": "Clean shutdown",
+    "status": "PASS"
+  },
+  {
+    "part": "X",
+    "severity": "INFO",
+    "title": "Test files: 3897, test functions: 109871",
+    "detail": "files=['test_amls.py', 'test_banknifty.py', 'test_batch_query.py', 'test_cap_inv.py', 'test_ca_pmci_engine.py']",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "PAPER_TRADING=False",
+    "detail": "VPS must be true until authorized",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "TOTAL_CAPITAL=10000.0",
+    "detail": "\u20b910,000 for live experiment",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "LIVE_TRADING_AUTHORIZED=ABSENT",
+    "detail": "Must be absent/false until go-live",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "DHAN_ACCESS_TOKEN=SET",
+    "detail": "Required for live data/orders",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "DHAN_CLIENT_ID=SET",
+    "detail": "Required for live data/orders",
+    "status": "PASS"
+  },
+  {
+    "part": "Y",
+    "severity": "INFO",
+    "title": "docker-compose PAPER_TRADING",
+    "detail": "values=['is']",
+    "status": "PASS"
+  }
+]

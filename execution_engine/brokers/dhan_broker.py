@@ -80,6 +80,53 @@ class DhanBroker:
             log.error("[DhanBroker] Order failed %s: %s", security_id, exc)
             return None
 
+    def place_sl_order(self, symbol: str, exchange: str, transaction_type: str,
+                       quantity: int, trigger_price: float, price: float) -> Optional[str]:
+        """
+        Place a stop-loss order for an open position.
+
+        symbol:           bare NSE symbol (e.g. "TATASTEEL") — resolved via DHAN_SECURITY_MAP
+        exchange:         "NSE" (resolved to NSE_EQ / segment internally)
+        transaction_type: "BUY" | "SELL"
+        trigger_price:    stop trigger level (exchange activates order at this price)
+        price:            limit price (slightly worse than trigger — ensures fill)
+
+        SIM-safe: returns SIM_SL_* string when not connected.
+        Returns None if symbol not in DHAN_SECURITY_MAP (safe — software SL still active).
+        """
+        if not self._connected or self._dhan is None:
+            log.info("[DhanBroker] [SIM] SL_ORDER %s %s qty=%d trigger=%.2f",
+                     transaction_type, symbol, quantity, trigger_price)
+            return f"SIM_SL_{symbol}_{transaction_type}"
+        from data_feeds.dhan_feed import DHAN_SECURITY_MAP as _DSM
+        _sym = str(symbol).upper().replace(".NS", "").replace(".BO", "")
+        _meta = _DSM.get(_sym)
+        if not _meta:
+            log.error(
+                "[DhanBroker] [MISSING_DHAN_MAPPING] SL order for %s blocked — "
+                "not in DHAN_SECURITY_MAP. Software SL still active via monitor.",
+                symbol,
+            )
+            return None
+        try:
+            response = self._dhan.place_order(
+                security_id      = _meta["security_id"],
+                exchange_segment = _meta["segment"],
+                transaction_type = transaction_type,
+                quantity         = quantity,
+                order_type       = "STOP_LOSS",
+                product_type     = "INTRADAY",
+                price            = price,
+                trigger_price    = trigger_price,
+            )
+            order_id = response.get("data", {}).get("orderId")
+            log.info("[DhanBroker] SL order placed: %s  symbol=%s trigger=%.2f",
+                     order_id, symbol, trigger_price)
+            return str(order_id) if order_id else None
+        except Exception as exc:
+            log.error("[DhanBroker] SL order failed for %s: %s", symbol, exc)
+            return None
+
     def cancel_order(self, order_id: str) -> bool:
         if not self._connected or self._dhan is None:
             log.info("[DhanBroker] [SIM] CANCEL %s", order_id)
