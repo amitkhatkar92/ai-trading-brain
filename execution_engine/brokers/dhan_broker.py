@@ -100,3 +100,23 @@ class DhanBroker:
         if not self._connected or self._dhan is None:
             return {}
         return self._dhan.get_holdings()
+
+    def get_order_status(self, order_id: str) -> Dict[str, Any]:
+        """Return fill status for order_id (ARCH-004 LIVE-003/004: fill reconciliation).
+        Returns dict with status, filled_qty, avg_fill_price, remaining_qty.
+        Safe to call in paper mode — returns SIM sentinel."""
+        if not self._connected or self._dhan is None:
+            return {"status": "SIM", "filled_qty": 0, "avg_fill_price": 0.0, "remaining_qty": 0}
+        try:
+            resp = self._dhan.get_order_by_id(order_id=order_id)
+            data = resp.get("data", {}) if isinstance(resp, dict) else {}
+            return {
+                "status":          data.get("orderStatus", "UNKNOWN"),
+                "filled_qty":      int(data.get("tradedQty", 0) or 0),
+                "avg_fill_price":  float(data.get("tradedPrice", 0.0) or 0.0),
+                "remaining_qty":   int(data.get("remainingQuantity", 0) or 0),
+                "order_id":        order_id,
+            }
+        except Exception as exc:
+            log.warning("[DhanBroker] get_order_status failed %s: %s", order_id, exc)
+            return {}

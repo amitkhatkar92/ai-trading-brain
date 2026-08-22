@@ -1509,6 +1509,33 @@ def _oos_validation_angle(
 # Output writers (append-only)
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _annotate_oos_holdout(records: List[KnowledgeFusionRecord]) -> None:
+    """ARCH-004: mark last 25% of outcome-linked rejection records as OOS holdout.
+    Sets oos_status=OOS_PASSED/OOS_FAILED/OOS_TESTED on qualifying records.
+    Uses 1% threshold: move > +1% in signal direction = OOS_PASSED.
+    No lookahead: move_1d_pct must already be present (historical outcomes only).
+    """
+    outcome_recs = [
+        r for r in records
+        if r.outcome_available and r.move_1d_pct is not None and r.trading_date
+    ]
+    if not outcome_recs:
+        return
+    sorted_recs = sorted(outcome_recs, key=lambda r: r.trading_date)
+    oos_start   = max(1, int(len(sorted_recs) * 0.75))
+    oos_ids     = {id(r) for r in sorted_recs[oos_start:]}
+    for r in records:
+        if id(r) not in oos_ids:
+            continue
+        m      = r.move_1d_pct  # confirmed not None above
+        is_buy = r.direction.upper() in ("BUY", "LONG")
+        if   (is_buy     and m >  1.0):  setattr(r, "oos_status", OOS_PASSED)
+        elif (is_buy     and m < -1.0):  setattr(r, "oos_status", OOS_FAILED)
+        elif (not is_buy and m < -1.0):  setattr(r, "oos_status", OOS_PASSED)
+        elif (not is_buy and m >  1.0):  setattr(r, "oos_status", OOS_FAILED)
+        else:                             setattr(r, "oos_status", OOS_TESTED)
+
+
 def _append_jsonl(path: Path, records: List[Any]) -> None:
     if not records:
         return
@@ -1561,9 +1588,11 @@ class KnowledgeFusionEngine:
         """
         records: List[KnowledgeFusionRecord] = []
 
+        # ARCH-004 GAP-1: collect rejection records separately for OOS annotation
         rej = _load_rejection_records(self._data_dir / "rejection_audit.db")
-        for row in rej:
-            records.append(_normalise_rejection(row))
+        rej_fusion: List[KnowledgeFusionRecord] = [_normalise_rejection(row) for row in rej]
+        _annotate_oos_holdout(rej_fusion)  # ARCH-004: mark last 25% as OOS holdout
+        records.extend(rej_fusion)
 
         ct  = _load_ct_decisions(self._data_dir / "control_tower.db")
         for row in ct:

@@ -1097,6 +1097,39 @@ class OrderManager:
         """Allow orchestrator to populate post-restore governance fields."""
         self._restore_stats.update(kwargs)
 
+    def reconcile_partial_fills(self) -> List[str]:
+        """ARCH-004 LIVE-008: check open live orders for partial fills.
+        In paper mode: no-op (all simulated fills are full).
+        In live mode: queries broker for each open LIMIT order and adjusts
+        quantity if the broker reports a partial fill.
+        Returns list of order_ids that were updated.
+        Safe to call every monitoring cycle.
+        """
+        if self._paper_mode or not self._broker:
+            return []
+        if not hasattr(self._broker, "get_order_status"):
+            return []
+        updated: List[str] = []
+        for oid, rec in list(self._orders.items()):
+            if rec.status != "open" or rec.order_type != "LIMIT":
+                continue
+            try:
+                status = self._broker.get_order_status(oid)
+                filled = int(status.get("filled_qty", 0) or 0)
+                if filled <= 0 or filled >= rec.quantity:
+                    continue
+                old_qty = rec.quantity
+                rec.quantity = filled
+                log.warning(
+                    "[PartialFill] %s %s order=%s filled=%d/%d — "
+                    "adjusting record quantity to filled qty.",
+                    rec.symbol, rec.direction, oid, filled, old_qty,
+                )
+                updated.append(oid)
+            except Exception as exc:
+                log.debug("[PartialFill] status check failed %s: %s", oid, exc)
+        return updated
+
     def attempt_aet_confirmations(
         self,
         current_vix:       float = 0.0,
