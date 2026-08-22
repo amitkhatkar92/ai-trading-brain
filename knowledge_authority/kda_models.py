@@ -298,6 +298,92 @@ class KDADecisionRecord:
         d["evidence_level"] = self.evidence_level.value
         return d
 
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "KDADecisionRecord":
+        """
+        Reconstruct a KDADecisionRecord from a stored ledger dict.
+        Missing or unknown enum values fall back to safe defaults.
+        Additive method — does not change the existing interface.
+        """
+        def _ev(enum_cls, v, default):
+            try:
+                return enum_cls(v)
+            except (ValueError, KeyError):
+                return default
+
+        authority      = _ev(DecisionAuthority,       d.get("authority", "NONE"),          DecisionAuthority.NONE)
+        decision       = _ev(KDADecision,             d.get("decision",  "KNOWLEDGE_WAIT"), KDADecision.KNOWLEDGE_WAIT)
+        evidence_state = _ev(EvidenceState,           d.get("evidence_state", "INSUFFICIENT"), EvidenceState.INSUFFICIENT)
+        evidence_level = _ev(EvidenceHierarchyLevel,  d.get("evidence_level", "ATR_FALLBACK"), EvidenceHierarchyLevel.ATR_FALLBACK)
+
+        # Reconstruct nested objects as simple proxies (dataclasses are frozen)
+        auth_comp_d = d.get("authority_components") or {}
+        auth_comp = KnowledgeAuthorityComponents(
+            evidence_strength=float(auth_comp_d.get("evidence_strength", 0.0)),
+            relevance=float(auth_comp_d.get("relevance", 0.0)),
+            stability=float(auth_comp_d.get("stability", 0.0)),
+            oos_quality=float(auth_comp_d.get("oos_quality", 0.0)),
+            source_independence=float(auth_comp_d.get("source_independence", 0.0)),
+            contradiction_factor=float(auth_comp_d.get("contradiction_factor", 0.0)),
+            composite_authority=float(auth_comp_d.get("composite_authority", 0.0)),
+        )
+
+        strat_ctx_d = d.get("strategy_context")
+        strat_ctx = None
+        if strat_ctx_d and isinstance(strat_ctx_d, dict):
+            strat_ctx = StrategyContext(
+                status=str(strat_ctx_d.get("status", "UNKNOWN")),
+                strategy_name=strat_ctx_d.get("strategy_name"),
+                disagreement=strat_ctx_d.get("disagreement"),
+                informational_only=bool(strat_ctx_d.get("informational_only", True)),
+            )
+
+        return cls(
+            decision_id=str(d.get("decision_id", str(uuid.uuid4()))),
+            timestamp=str(d.get("timestamp", "")),
+            symbol=str(d.get("symbol", "UNKNOWN")),
+            direction=str(d.get("direction", "BUY")),
+            authority=authority,
+            decision=decision,
+            knowledge_score=float(d.get("knowledge_score", 0.0) or 0.0),
+            knowledge_authority=float(d.get("knowledge_authority", 0.0) or 0.0),
+            evidence_state=evidence_state,
+            evidence_level=evidence_level,
+            evidence_count=int(d.get("evidence_count", 0) or 0),
+            effective_sample_size=float(d.get("effective_sample_size", 0.0) or 0.0),
+            evidence_confidence=float(d.get("evidence_confidence", 0.0) or 0.0),
+            expected_move_p25=d.get("expected_move_p25"),
+            expected_move_p50=d.get("expected_move_p50"),
+            expected_move_p75=d.get("expected_move_p75"),
+            target=d.get("target"),
+            stop_loss=d.get("stop_loss"),
+            expected_days_p25=d.get("expected_days_p25"),
+            expected_days_p50=d.get("expected_days_p50"),
+            expected_days_p75=d.get("expected_days_p75"),
+            target_source=str(d.get("target_source", "ATR_FALLBACK")),
+            stop_source=str(d.get("stop_source", "ATR_FALLBACK")),
+            horizon_source=str(d.get("horizon_source", "UNKNOWN")),
+            supporting_angles=list(d.get("supporting_angles") or []),
+            contradicting_angles=list(d.get("contradicting_angles") or []),
+            source_count=int(d.get("source_count", 0) or 0),
+            source_agreement=float(d.get("source_agreement", 0.0) or 0.0),
+            contradiction_status=str(d.get("contradiction_status", "NONE")),
+            oos_status=str(d.get("oos_status", "NOT_TESTED")),
+            strategy_context=strat_ctx,
+            kda_strategy_relationship=str(d.get("kda_strategy_relationship", "KNOWLEDGE_INSUFFICIENT")),
+            risk_constraints=dict(d.get("risk_constraints") or {}),
+            fallback_used=bool(d.get("fallback_used", True)),
+            authority_components=auth_comp,
+            angle_analyses={},    # not needed for outcome evaluation
+            information_contributions=[],
+            counterfactual_results=[],
+            exit_conditions=list(d.get("exit_conditions") or []),
+            mode=str(d.get("mode", "SHADOW_DECISION")),
+            no_lookahead=True,
+            broker_calls=0,
+            orders=0,
+        )
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Outcome feedback record (for learning loop)

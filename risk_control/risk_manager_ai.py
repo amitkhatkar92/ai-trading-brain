@@ -62,6 +62,23 @@ class RiskManagerAI:
                 seen_symbols.add(sig.symbol)
             else:
                 log.info("[RiskManagerAI] ❌ REJECTED %s — %s", sig.symbol, reason)
+                # ── KDA-003: rejection tracking (non-critical) ─────────────
+                try:
+                    from analysis.rejection_tracker import get_rejection_tracker as _get_rt_f
+                    _get_rt_f().ingest_rejection(
+                        symbol=sig.symbol,
+                        strategy=str(getattr(sig, "strategy_name", "") or "UNKNOWN"),
+                        trade_date=_dt.now().strftime("%Y-%m-%d"),
+                        decision_score=float(sig.confidence or 0.0),
+                        quality_score=float(getattr(sig, "candidate_score", 0.0) or 0.0),
+                        quality_tier="RISK_REJECTION",
+                        rejected_reason=reason[:200],
+                        price_at_rejection=float(getattr(sig, "entry_price", 0.0) or 0.0),
+                        direction=str(sig.direction.value if hasattr(sig.direction, "value") else sig.direction),
+                        market_regime=str(getattr(sig, "scanner_regime_label", "") or "UNKNOWN"),
+                    )
+                except Exception:
+                    pass
 
         log.info("[RiskManagerAI] %d/%d signals approved.", len(approved), len(signals))
 
@@ -179,6 +196,24 @@ class RiskManagerAI:
                         "would_pass_simulation": sig.confidence >= 6.0 and sig.risk_reward_ratio >= 1.5,
                         "would_pass_debate":     sig.confidence >= 6.5,
                     })
+                # ── KDA-003: rejection tracking (non-critical) ────────
+                try:
+                    from analysis.rejection_tracker import get_rejection_tracker as _get_rt
+                    _get_rt().ingest_rejection(
+                        symbol=sig.symbol,
+                        strategy=str(getattr(sig, "strategy_name", "") or "UNKNOWN"),
+                        trade_date=_dt.now().strftime("%Y-%m-%d"),
+                        decision_score=float(sig.confidence or 0.0),
+                        quality_score=float(getattr(sig, "candidate_score", 0.0) or 0.0),
+                        quality_tier="RISK_REJECTION",
+                        rejected_reason=reason[:200],
+                        price_at_rejection=float(getattr(sig, "entry_price", 0.0) or 0.0),
+                        direction=str(sig.direction.value if hasattr(sig.direction, "value") else sig.direction),
+                        market_regime=str(getattr(sig, "scanner_regime_label", "") or "UNKNOWN"),
+                        vix=float(getattr(sig, "_vix", 0.0) or 0.0),
+                    )
+                except Exception:
+                    pass
 
         # Liquidity guard runs on the approved set
         approved = self.liquidity_guard.filter(approved)

@@ -284,6 +284,14 @@ class MasterOrchestrator:
         self.perf_tracker        = StrategyPerformanceTracker()
         # ── Q3: Regime → Strategy best-fit map (meta-learning mechanism 2)
         self.regime_strategy_map = RegimeStrategyMap()
+        # ── KDA-003: Shadow Knowledge Intelligence Pipeline ─────────────────
+        try:
+            from knowledge_authority.knowledge_decision_pipeline import get_knowledge_pipeline as _get_kdp
+            self.knowledge_pipeline = _get_kdp()
+            log.info("[Orchestrator] KnowledgeDecisionPipeline initialised (shadow mode).")
+        except Exception as _kdp_init_exc:
+            log.warning("[Orchestrator] KnowledgeDecisionPipeline not loaded: %s", _kdp_init_exc)
+            self.knowledge_pipeline = None
         # ── R-001 Phase 2: Platform Intelligence Gateway adapter ──────────────
         try:
             from market_learning.pig_integration import PIGTradingAdapter, PIGInfluencePolicy
@@ -987,6 +995,55 @@ class MasterOrchestrator:
         _sl_reasons = getattr(self, '_last_sl_reject_summary', {})
         _sl_top = max(_sl_reasons, key=_sl_reasons.get, default="UNKNOWN") if _sl_reasons else "OK"
         _diag.record_stage("StrategyLab", len(signals), len(enriched_signals), _sl_top)
+
+        # ── KDA-003: Shadow Knowledge Intelligence Pipeline ───────────────────
+        # Runs for ALL original scanner signals (before and after StrategyLab filter).
+        # SHADOW_ONLY — produces no orders, no execution, no changes to production path.
+        # StrategyLab remains the current authority. KDA is informational only here.
+        # Failure: any exception → production cycle continues unchanged.
+        if self.knowledge_pipeline is not None and signals:
+            try:
+                _kda_mc = {
+                    "regime":  str(getattr(snapshot, "regime", {}) and
+                                   getattr(snapshot.regime, "value", str(getattr(snapshot, "regime", "")))
+                                   or ""),
+                    "vix":     float(getattr(snapshot, "vix",     0.0) or 0.0),
+                    "pcr":     float(getattr(snapshot, "pcr",     0.0) or 0.0),
+                    "breadth": float(getattr(snapshot, "breadth", 0.0) or 0.0),
+                    "global_bias": str(getattr(premarket_bias, "bias", "") if premarket_bias else ""),
+                }
+                _kda_approved_syms = {s.symbol for s in enriched_signals}
+                _kda_strat_map     = {s.symbol: s for s in enriched_signals}
+                _kda_shadow_count  = 0
+                for _kda_sig in signals:
+                    _is_approved   = _kda_sig.symbol in _kda_approved_syms
+                    _enr_sig       = _kda_strat_map.get(_kda_sig.symbol, _kda_sig)
+                    _kda_strat_ctx = {
+                        "status": "PASS" if _is_approved else "REJECT",
+                        "strategy_pass": _is_approved,
+                        "strategy_name": str(getattr(_enr_sig, "strategy_name", "") or "UNKNOWN"),
+                        "strategy_score": float(getattr(_enr_sig, "confidence", 0.0) or 0.0),
+                        "strategy_rejection_reason": (
+                            None if _is_approved else
+                            str(_sl_reasons.get(_kda_sig.symbol, "STRATEGY_REJECTED"))
+                        ),
+                    }
+                    _kda_result = self.knowledge_pipeline.run_knowledge_shadow(
+                        signal=_kda_sig,
+                        market_context=_kda_mc,
+                        strategy_info=_kda_strat_ctx,
+                    )
+                    if _kda_result.get("status") == "OK":
+                        _kda_shadow_count += 1
+                log.info(
+                    "[KDA-003] Shadow decisions: %d/%d signals processed. "
+                    "hbe_outcomes=%s kfe_pool=%s",
+                    _kda_shadow_count, len(signals),
+                    _kda_result.get("hbe_ess") or "?",
+                    _kda_result.get("kfe_pool_size") or "?",
+                )
+            except Exception as _kda_intraday_exc:
+                log.debug("[KDA-003] Shadow pipeline error: %s", _kda_intraday_exc)
 
         # ── STEP 3.5: Capital Risk Engine ────────────────────────────
         with self.system_monitor.time_layer("CapitalRiskEngine"):
@@ -5558,6 +5615,27 @@ class MasterOrchestrator:
                 )
         except Exception as _klpe_exc:
             log.debug("[KLP-002] Outcome engine skipped: %s", _klpe_exc)
+
+        # ── KDA-003: EOD knowledge update — outcomes, comparisons, authority ──
+        # Processes today's KDA shadow decisions: evaluates outcomes from OHLCV bars,
+        # compares KDA decisions vs strategy outcomes, and updates authority report.
+        # SHADOW_ONLY — no broker calls, no orders, no execution authority changes.
+        # Failure here is non-critical: logged as debug and cycle continues.
+        if self.knowledge_pipeline is not None:
+            try:
+                _kda_eod = self.knowledge_pipeline.run_eod_knowledge_update()
+                if _kda_eod.get("decisions_found", 0) or _kda_eod.get("status") == "OK":
+                    log.info(
+                        "[KDA-003] EOD update: status=%s decisions=%d "
+                        "outcomes=%d comparisons=%d authority_gate=%s",
+                        _kda_eod.get("status", "?"),
+                        _kda_eod.get("decisions_found", 0),
+                        _kda_eod.get("outcomes_evaluated", 0),
+                        _kda_eod.get("comparisons_done", 0),
+                        _kda_eod.get("authority_gate", "?"),
+                    )
+            except Exception as _kda_eod_exc:
+                log.debug("[KDA-003] EOD update error (non-critical): %s", _kda_eod_exc)
 
         # ── KLP→KSL: Knowledge evidence bridge (VPS-safe; no shadow JSONL needed) ──
         # Runs OUTSIDE the local shadow-file guard so completed KLP observations

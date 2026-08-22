@@ -1,4 +1,4 @@
-"""knowledge_authority — KDA-001 / KDA-002 Knowledge Decision Authority package."""
+"""knowledge_authority — KDA-001 / KDA-002 / KDA-003 Knowledge Decision Authority package."""
 from .kda_models import (
     AngleAnalysis,
     AngleVerdict,
@@ -37,10 +37,16 @@ from .kda_outcome_models import (
 )
 
 # KDA-002 — engines
-from .kda_ledger          import KDALedger
-from .kda_outcome_engine  import KDAOutcomeEngine
-from .kda_comparative     import KDAComparativeAnalyzer
+from .kda_ledger           import KDALedger
+from .kda_outcome_engine   import KDAOutcomeEngine
+from .kda_comparative      import KDAComparativeAnalyzer
 from .kda_authority_report import KDAAuthorityReporter
+
+# KDA-003 — shadow pipeline orchestration boundary
+from .knowledge_decision_pipeline import (
+    KnowledgeDecisionPipeline,
+    get_knowledge_pipeline,
+)
 
 __all__ = [
     # KDA-001 models
