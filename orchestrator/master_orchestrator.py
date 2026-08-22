@@ -996,11 +996,16 @@ class MasterOrchestrator:
         _sl_top = max(_sl_reasons, key=_sl_reasons.get, default="UNKNOWN") if _sl_reasons else "OK"
         _diag.record_stage("StrategyLab", len(signals), len(enriched_signals), _sl_top)
 
-        # ── KDA-003: Shadow Knowledge Intelligence Pipeline ───────────────────
-        # Runs for ALL original scanner signals (before and after StrategyLab filter).
-        # SHADOW_ONLY — produces no orders, no execution, no changes to production path.
-        # StrategyLab remains the current authority. KDA is informational only here.
-        # Failure: any exception → production cycle continues unchanged.
+        # ── KDA: Knowledge Intelligence Authority + signal merge ─────────────
+        # KDA is the intelligence authority. It runs on ALL original scanner signals.
+        # Signals authorized by KDA (KNOWLEDGE_BUY/SELL) enter the production path
+        # even if StrategyLab rejected them. StrategyLab is demoted to SHADOW/CONTEXT.
+        # Risk layers (CapitalRisk, RiskControl, RiskGuardian) remain independent veto.
+        # PAPER_TRADING=true is enforced downstream in OrderManager — unchanged.
+        # Failure: any exception → enriched_signals unchanged (StrategyLab output used).
+        _sl_signal_map = {s.symbol: s for s in enriched_signals}  # StrategyLab-approved
+        _kda_results: dict = {}          # symbol → KDA result dict
+        _kda_authorized: set = set()    # symbols where KDA says KNOWLEDGE_BUY/SELL
         if self.knowledge_pipeline is not None and signals:
             try:
                 _kda_mc = {
@@ -1014,7 +1019,6 @@ class MasterOrchestrator:
                 }
                 _kda_approved_syms = {s.symbol for s in enriched_signals}
                 _kda_strat_map     = {s.symbol: s for s in enriched_signals}
-                _kda_shadow_count  = 0
                 for _kda_sig in signals:
                     _is_approved   = _kda_sig.symbol in _kda_approved_syms
                     _enr_sig       = _kda_strat_map.get(_kda_sig.symbol, _kda_sig)
@@ -1028,22 +1032,130 @@ class MasterOrchestrator:
                             str(_sl_reasons.get(_kda_sig.symbol, "STRATEGY_REJECTED"))
                         ),
                     }
-                    _kda_result = self.knowledge_pipeline.run_knowledge_shadow(
+                    _r = self.knowledge_pipeline.run_knowledge_shadow(
                         signal=_kda_sig,
                         market_context=_kda_mc,
                         strategy_info=_kda_strat_ctx,
                     )
-                    if _kda_result.get("status") == "OK":
-                        _kda_shadow_count += 1
+                    _kda_results[_kda_sig.symbol] = _r
+                    if _r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL"):
+                        _kda_authorized.add(_kda_sig.symbol)
+
+                # ── Build merged signal list (KDA union StrategyLab) ─────────
+                # Phase 1: annotate and keep StrategyLab-approved signals
+                _merged: list = []
+                _seen: set = set()
+                for _sig in enriched_signals:
+                    _r2 = _kda_results.get(_sig.symbol, {})
+                    _sig.authorization_source = (
+                        "BOTH" if _sig.symbol in _kda_authorized else "STRATEGY_LAB"
+                    )
+                    _sig.kda_decision       = _r2.get("kda_decision")
+                    _sig.kda_evidence_state = _r2.get("evidence_state")
+                    _kda_tgt = _r2.get("knowledge_target")
+                    _kda_stp = _r2.get("knowledge_stop")
+                    _kda_hor = _r2.get("expected_days_p50")
+                    _sig.kda_target      = float(_kda_tgt) if _kda_tgt else None
+                    _sig.kda_stop        = float(_kda_stp) if _kda_stp else None
+                    _sig.kda_horizon_p50 = int(_kda_hor)  if _kda_hor else None
+                    # KDA empirical target/stop when VALIDATED or DECISION_ELIGIBLE
+                    if (
+                        _sig.symbol in _kda_authorized
+                        and _kda_tgt and _kda_stp
+                        and not _r2.get("fallback_used")
+                        and _r2.get("evidence_state") in ("VALIDATED", "DECISION_ELIGIBLE")
+                    ):
+                        _sig.target_price  = float(_kda_tgt)
+                        _sig.stop_loss     = float(_kda_stp)
+                        _sig.target_source = "KDA_EMPIRICAL"
+                        _sig.stop_source   = "KDA_EMPIRICAL"
+                    else:
+                        _sig.target_source = "ATR_FALLBACK"
+                        _sig.stop_source   = "ATR_FALLBACK"
+                    _merged.append(_sig)
+                    _seen.add(_sig.symbol)
+
+                # Phase 2: add KDA-only authorized signals (StrategyLab rejected)
+                _kda_only_added = 0
+                for _orig_sig in signals:
+                    if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
+                        continue
+                    _r3 = _kda_results[_orig_sig.symbol]
+                    _orig_sig.authorization_source = "KDA"
+                    _orig_sig.kda_decision       = _r3.get("kda_decision")
+                    _orig_sig.kda_evidence_state = _r3.get("evidence_state")
+                    _kda_tgt3 = _r3.get("knowledge_target")
+                    _kda_stp3 = _r3.get("knowledge_stop")
+                    _kda_hor3 = _r3.get("expected_days_p50")
+                    _orig_sig.kda_target      = float(_kda_tgt3) if _kda_tgt3 else None
+                    _orig_sig.kda_stop        = float(_kda_stp3) if _kda_stp3 else None
+                    _orig_sig.kda_horizon_p50 = int(_kda_hor3)   if _kda_hor3 else None
+                    if _kda_tgt3 and _kda_stp3 and not _r3.get("fallback_used"):
+                        _orig_sig.target_price  = float(_kda_tgt3)
+                        _orig_sig.stop_loss     = float(_kda_stp3)
+                        _orig_sig.target_source = "KDA_EMPIRICAL"
+                        _orig_sig.stop_source   = "KDA_EMPIRICAL"
+                    else:
+                        _orig_sig.target_source = "ATR_FALLBACK"
+                        _orig_sig.stop_source   = "ATR_FALLBACK"
+                    _merged.append(_orig_sig)
+                    _seen.add(_orig_sig.symbol)
+                    _kda_only_added += 1
+
+                enriched_signals = _merged
+
+                # ── Persist KDA vs StrategyLab comparison ────────────────────
+                try:
+                    import json as _kda_json
+                    from pathlib import Path as _KP
+                    _kda_cmp_dir = _KP("data/klp/kda")
+                    _kda_cmp_dir.mkdir(parents=True, exist_ok=True)
+                    _kda_cmp_path = _kda_cmp_dir / f"kda_vs_stratlab_{_dt.now().strftime('%Y-%m-%d')}.jsonl"
+                    _kda_cmp_ts   = _dt.now().isoformat()
+                    with open(_kda_cmp_path, "a", encoding="utf-8") as _kda_cmp_fh:
+                        for _cmp_sig in signals:
+                            _cr = _kda_results.get(_cmp_sig.symbol, {})
+                            _cmp_fh_row = {
+                                "ts": _kda_cmp_ts,
+                                "symbol": _cmp_sig.symbol,
+                                "scanner_direction": str(getattr(_cmp_sig.direction, "value", _cmp_sig.direction)),
+                                "scanner_confidence": float(getattr(_cmp_sig, "confidence", 0.0) or 0.0),
+                                "scanner_target": float(getattr(_cmp_sig, "target_price", 0.0) or 0.0),
+                                "scanner_stop": float(getattr(_cmp_sig, "stop_loss", 0.0) or 0.0),
+                                "strategylab_approved": _cmp_sig.symbol in _kda_approved_syms,
+                                "strategylab_strategy": str(getattr(_kda_strat_map.get(_cmp_sig.symbol, _cmp_sig), "strategy_name", "N/A")),
+                                "kda_decision": _cr.get("kda_decision"),
+                                "kda_evidence_state": _cr.get("evidence_state"),
+                                "kda_authority": _cr.get("kda_authority"),
+                                "kda_target": _cr.get("knowledge_target"),
+                                "kda_stop": _cr.get("knowledge_stop"),
+                                "kda_horizon_p50": _cr.get("expected_days_p50"),
+                                "kda_authorized": _cmp_sig.symbol in _kda_authorized,
+                                "authorization_source": (
+                                    "BOTH" if _cmp_sig.symbol in _kda_approved_syms and _cmp_sig.symbol in _kda_authorized
+                                    else "STRATEGY_LAB" if _cmp_sig.symbol in _kda_approved_syms
+                                    else "KDA" if _cmp_sig.symbol in _kda_authorized
+                                    else "NONE"
+                                ),
+                                "kda_fallback_used": _cr.get("fallback_used"),
+                                "target_source": getattr(_kda_strat_map.get(_cmp_sig.symbol, _cmp_sig), "target_source", None),
+                                "stop_source": getattr(_kda_strat_map.get(_cmp_sig.symbol, _cmp_sig), "stop_source", None),
+                            }
+                            _kda_cmp_fh.write(_kda_json.dumps(_cmp_fh_row) + "\n")
+                except Exception:
+                    pass
+
+                _last_r = next(iter(_kda_results.values()), {}) if _kda_results else {}
                 log.info(
-                    "[KDA-003] Shadow decisions: %d/%d signals processed. "
-                    "hbe_outcomes=%s kfe_pool=%s",
-                    _kda_shadow_count, len(signals),
-                    _kda_result.get("hbe_ess") or "?",
-                    _kda_result.get("kfe_pool_size") or "?",
+                    "[KDA] Authority decisions: %d/%d signals processed. "
+                    "kda_authorized=%d kda_only_added=%d hbe_ess=%s kfe_pool=%s",
+                    len(_kda_results), len(signals),
+                    len(_kda_authorized), _kda_only_added,
+                    _last_r.get("hbe_ess") or "?",
+                    _last_r.get("kfe_pool_size") or "?",
                 )
             except Exception as _kda_intraday_exc:
-                log.debug("[KDA-003] Shadow pipeline error: %s", _kda_intraday_exc)
+                log.debug("[KDA] Authority pipeline error: %s", _kda_intraday_exc)
 
         # ── STEP 3.5: Capital Risk Engine ────────────────────────────
         with self.system_monitor.time_layer("CapitalRiskEngine"):

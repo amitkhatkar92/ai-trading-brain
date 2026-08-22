@@ -62,6 +62,16 @@ class TradeSignal:
     _obs_candidate_score: Optional[float] = None  # scanner score at signal time
     _obs_regime:          Optional[str]   = None  # regime label at signal time
 
+    # ── KDA authority fields — set by orchestrator after KDA runs ──
+    authorization_source: Optional[str]  = None  # "KDA" | "STRATEGY_LAB" | "BOTH"
+    kda_decision:         Optional[str]  = None  # e.g. "KNOWLEDGE_BUY"
+    kda_evidence_state:   Optional[str]  = None  # e.g. "DECISION_ELIGIBLE"
+    kda_target:           Optional[float] = None  # KDA empirical target (may differ from target_price)
+    kda_stop:             Optional[float] = None  # KDA empirical stop   (may differ from stop_loss)
+    kda_horizon_p50:      Optional[int]  = None  # expected holding horizon (days, p50)
+    target_source:        Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
+    stop_source:          Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
+
     @property
     def risk_reward_ratio(self) -> float:
         if self.stop_loss == 0 or self.entry_price == 0:

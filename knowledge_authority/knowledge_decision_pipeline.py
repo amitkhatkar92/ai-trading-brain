@@ -1,9 +1,9 @@
 """
 knowledge_authority/knowledge_decision_pipeline.py
 ====================================================
-KDA-003 — Knowledge Decision Pipeline
+KDA — Knowledge Decision Authority Pipeline
 
-SINGLE ORCHESTRATION BOUNDARY for the complete shadow Knowledge Intelligence loop.
+SINGLE ORCHESTRATION BOUNDARY for the complete Knowledge Intelligence loop.
 
 Architecture:
   SCANNER SIGNAL
@@ -14,19 +14,24 @@ Architecture:
       ↓
   KFE MULTI-ANGLE FUSION  (lazy-loaded pool, once per day)
       ↓
-  KDA KNOWLEDGE DECISION  (shadow mode — no execution authority)
+  KDA KNOWLEDGE DECISION  (INTELLIGENCE AUTHORITY)
       ↓
   KDA LEDGER              (append-only, thread-safe)
       ↓
   [EOD] KDA OUTCOME ENGINE + COMPARATIVE + AUTHORITY REPORT
 
+AUTHORITY CONTRACT:
+  KDA is the intelligence authority for signal direction.
+  When KDA returns KNOWLEDGE_BUY/SELL, the signal enters the production path
+  regardless of StrategyLab's decision (StrategyLab is SHADOW/CONTEXT).
+  Risk layers (CapitalRisk, RiskGuardian) remain independent safety veto.
+
 SAFETY CONTRACT (never violated):
   broker_calls == 0
   orders == 0
   modifications == 0
-  execution_authority == False
-  SHADOW_ONLY == True on every output
-  Production decision path unchanged
+  execution_authority == False  ← paper/live execution is controlled by OrderManager
+  PAPER_TRADING state never read or set here
 
 FAILURE ISOLATION:
   Any exception in the Knowledge pipeline returns KNOWLEDGE_PIPELINE_ERROR.
@@ -34,7 +39,7 @@ FAILURE ISOLATION:
 
 INTRADAY SCHEDULE:
   run_knowledge_shadow(signal, market_context, strategy_info)
-  → called once per eligible scanner signal, AFTER KLP-001 and StrategyLab annotation
+  → called once per scanner signal; orchestrator uses kda_decision for routing
 
 EOD SCHEDULE:
   run_eod_knowledge_update(trading_date)

@@ -405,7 +405,7 @@ class TestT6PaperTradingSafety:
         """KnowledgeDecisionPipeline must NOT import OrderManager."""
         import ast
         import knowledge_authority.knowledge_decision_pipeline as kdp_mod
-        src = Path(kdp_mod.__file__).read_text()
+        src = Path(kdp_mod.__file__).read_text(encoding="utf-8", errors="replace")
         # Parse the AST to find actual import statements (not comments/docstrings)
         tree = ast.parse(src)
         for node in ast.walk(tree):
