@@ -344,6 +344,7 @@ class TelegramCommandBot:
             "/edges":          self._cmd_edges,
             "/perf":           self._cmd_perf,
             "/learn":          self._cmd_learn,
+            "/kda":            self._cmd_kda,
             "/token":          self._cmd_token,
             "/token_status":   self._cmd_token_status,
             "/trading_status": self._cmd_trading_status,
@@ -402,6 +403,7 @@ class TelegramCommandBot:
             "/snapshot     — Live indices + NIFTY options now\n"
             "/perf         — Strategy leaderboard (win%, expectancy)\n"
             "/learn        — Learning stage + regime map\n"
+            "/kda          — Knowledge Decision Authority shadow status\n"
             "/positions    — Open positions (feed source + governance)\n"
             "/pnl          — Today's P&amp;L (realized + unrealized + carry)\n"
             "/edges        — Active trading edges\n"
@@ -1212,6 +1214,50 @@ class TelegramCommandBot:
         log.warning("[TelegramBot] Signal generation PAUSED by Telegram command.")
         return "⏸ <b>Signal generation paused.</b>\nSend /resume to re-enable."
 
+    # ── /kda ───────────────────────────────────────────────────────────────
+
+    def _cmd_kda(self, msg: dict) -> str:  # noqa: ARG002
+        """Show KDA shadow authority status and today's decision summary."""
+        import json
+        from pathlib import Path
+        lines = ["🧠 <b>KDA Shadow Status</b>", "━━━━━━━━━━━━━━━━━━━━━"]
+        try:
+            auth_path = Path("data/klp/kda/kda_authority_validation.json")
+            if auth_path.exists():
+                auth = json.loads(auth_path.read_text())
+                lines.append(f"Authority: <b>{auth.get('authority_status', 'NOT_VALIDATED')}</b>")
+                lines.append(f"Total decisions: {auth.get('total_decisions', 0)}")
+                lines.append(f"Direction accuracy: {auth.get('direction_accuracy') and f\"{auth.get('direction_accuracy'):.1%}\" or 'N/A'}")
+                lines.append(f"Target hit rate: {auth.get('target_hit_rate') and f\"{auth.get('target_hit_rate'):.1%}\" or 'N/A'}")
+                lines.append(f"Next gate: {auth.get('next_gate_label', '?')}")
+                lines.append("")
+            else:
+                lines.append("No authority report yet — needs EOD runs.")
+                lines.append("")
+        except Exception as e:
+            lines.append(f"Authority report error: {_esc(str(e))}")
+        try:
+            from datetime import date
+            from pathlib import Path as _P
+            today = date.today().isoformat()
+            ledger_path = _P(f"data/klp/kda/kda_decisions_{today}.jsonl")
+            if ledger_path.exists():
+                recs = [json.loads(l) for l in ledger_path.read_text().splitlines() if l.strip()]
+                buys  = sum(1 for r in recs if "BUY"  in r.get("decision", ""))
+                sells = sum(1 for r in recs if "SELL" in r.get("decision", ""))
+                waits = sum(1 for r in recs if "WAIT" in r.get("decision", ""))
+                lines.append(f"Today ({today}): {len(recs)} decisions")
+                lines.append(f"  BUY={buys}  SELL={sells}  WAIT={waits}")
+                if recs:
+                    top = sorted(recs, key=lambda r: float(r.get("knowledge_authority", 0)), reverse=True)[:3]
+                    lines.append("Top by authority:")
+                    for r in top:
+                        lines.append(f"  {r.get('symbol')} {r.get('decision')} ka={r.get('knowledge_authority', 0):.2f}")
+            else:
+                lines.append(f"No KDA decisions today ({today}) yet.")
+        except Exception as e:
+            lines.append(f"Ledger error: {_esc(str(e))}")
+        return "\n".join(lines)
     def _cmd_resume(self, msg: dict) -> str:
         self._paused = False
         log.info("[TelegramBot] Signal generation RESUMED by Telegram command.")

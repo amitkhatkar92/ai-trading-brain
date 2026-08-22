@@ -1845,6 +1845,26 @@ class MasterOrchestrator:
             _reject_by_reason[_rej_reason]    = _reject_by_reason.get(_rej_reason, 0) + 1
             _reject_by_strategy[_strat]       = _reject_by_strategy.get(_strat, 0) + 1
             _sl_attrition_recs.append((_s, _rej_reason, _bt_score))
+            # GAP-009: feed StrategyLab rejections to rejection_audit.db so KFE
+            # can distinguish strategy-rejected signals from risk-rejected ones.
+            try:
+                from analysis.rejection_tracker import get_rejection_tracker as _get_rt_sl
+                _get_rt_sl().ingest_rejection(
+                    symbol=_s.symbol,
+                    strategy=str(_strat or "UNKNOWN"),
+                    trade_date=_dt.now().strftime("%Y-%m-%d"),
+                    decision_score=float(getattr(_s, "confidence", 0.0) or 0.0),
+                    quality_score=float(_bt_score or 0.0),
+                    quality_tier="STRATEGY_REJECTION",
+                    rejected_reason=_rej_reason[:200],
+                    price_at_rejection=float(getattr(_s, "entry_price", 0.0) or 0.0),
+                    direction=str(getattr(_s, "direction", {}) and
+                                  getattr(_s.direction, "value", str(getattr(_s, "direction", "BUY")))
+                                  or "BUY"),
+                    market_regime=_regime_match,
+                )
+            except Exception:
+                pass
         _strategy_reject_count = len(signals) - len(tested)
         if _strategy_reject_count:
             log.info(
@@ -5634,6 +5654,19 @@ class MasterOrchestrator:
                         _kda_eod.get("comparisons_done", 0),
                         _kda_eod.get("authority_gate", "?"),
                     )
+                    # GAP-008: notify operator when authority gate advances
+                    _kda_auth_report = (_kda_eod.get("authority_report") or {})
+                    _kda_gate = str(_kda_auth_report.get("authority_status", "") or "")
+                    if _kda_gate and _kda_gate not in ("NOT_VALIDATED", "") and self.notifier:
+                        _total = _kda_auth_report.get("total_decisions", 0)
+                        _acc   = _kda_auth_report.get("direction_accuracy")
+                        _acc_s = f"{_acc:.1%}" if _acc is not None else "N/A"
+                        self.notifier.market_alert(
+                            "🧠 KDA Authority Update",
+                            f"KDA shadow authority: <b>{_kda_gate}</b>\n"
+                            f"Decisions: {_total} | Direction accuracy: {_acc_s}\n"
+                            f"Use /kda for full details.",
+                        )
             except Exception as _kda_eod_exc:
                 log.debug("[KDA-003] EOD update error (non-critical): %s", _kda_eod_exc)
 
