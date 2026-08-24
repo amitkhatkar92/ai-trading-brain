@@ -2162,6 +2162,32 @@ class MasterOrchestrator:
                     "[OptionsFastPath] ❌ [LayerC] Risk engine rejected %s %s.",
                     signal.symbol, signal.strategy_name,
                 )
+                try:
+                    from execution_engine.options_observation_journal import (
+                        get_options_observation_journal,
+                        OptionsOpportunityObservation,
+                    )
+                    _j = get_options_observation_journal()
+                    _j.record(OptionsOpportunityObservation(
+                        obs_id        = _j.make_obs_id(signal.symbol, signal.strategy_name or ""),
+                        symbol        = signal.symbol,
+                        strategy_name = signal.strategy_name or "",
+                        observed_at   = datetime.now().isoformat(),
+                        state         = "BLOCKED",
+                        confidence    = signal.confidence,
+                        direction     = str(
+                            signal.direction.value
+                            if hasattr(signal.direction, "value")
+                            else signal.direction
+                        ),
+                        regime        = _sig_ctx.get("regime", ""),
+                        vix           = _sig_ctx.get("vix", 0.0),
+                        quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
+                        risk_approved         = False,
+                        risk_rejection_reason = "options_risk_engine_rejected",
+                    ))
+                except Exception:
+                    pass
                 continue
 
             # Layer D: OptionsOrderManager
@@ -2181,6 +2207,34 @@ class MasterOrchestrator:
                     order.max_loss_rs, order.dte_at_entry,
                     signal._meta_quality if hasattr(signal, "_meta_quality") else 1.0,
                 )
+
+                # Record EXECUTED observation (knowledge loop — Phase 3)
+                try:
+                    from execution_engine.options_observation_journal import (
+                        get_options_observation_journal,
+                        OptionsOpportunityObservation,
+                    )
+                    _j = get_options_observation_journal()
+                    _j.record(OptionsOpportunityObservation(
+                        obs_id        = _j.make_obs_id(signal.symbol, signal.strategy_name or ""),
+                        symbol        = signal.symbol,
+                        strategy_name = signal.strategy_name or "",
+                        observed_at   = datetime.now().isoformat(),
+                        state         = "EXECUTED",
+                        confidence    = signal.confidence,
+                        direction     = str(
+                            signal.direction.value
+                            if hasattr(signal.direction, "value")
+                            else signal.direction
+                        ),
+                        regime        = _sig_ctx.get("regime", ""),
+                        vix           = _sig_ctx.get("vix", 0.0),
+                        quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
+                        risk_approved = True,
+                        order_id      = order.order_id,
+                    ))
+                except Exception:
+                    pass
 
                 # ── Correlation visibility check ───────────────────────
                 # Index options (NIFTY / BANKNIFTY) share directional exposure
@@ -2218,6 +2272,34 @@ class MasterOrchestrator:
                         "dte":         order.dte_at_entry,
                     },
                 ))
+            else:
+                # Layer D blocked — record BLOCKED observation (knowledge loop — Phase 3)
+                try:
+                    from execution_engine.options_observation_journal import (
+                        get_options_observation_journal,
+                        OptionsOpportunityObservation,
+                    )
+                    _j = get_options_observation_journal()
+                    _j.record(OptionsOpportunityObservation(
+                        obs_id        = _j.make_obs_id(signal.symbol, signal.strategy_name or ""),
+                        symbol        = signal.symbol,
+                        strategy_name = signal.strategy_name or "",
+                        observed_at   = datetime.now().isoformat(),
+                        state         = "BLOCKED",
+                        confidence    = signal.confidence,
+                        direction     = str(
+                            signal.direction.value
+                            if hasattr(signal.direction, "value")
+                            else signal.direction
+                        ),
+                        regime        = _sig_ctx.get("regime", ""),
+                        vix           = _sig_ctx.get("vix", 0.0),
+                        quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
+                        risk_approved         = True,
+                        risk_rejection_reason = "execution_engine_rejected_layer_d",
+                    ))
+                except Exception:
+                    pass
 
         # Run exit checks each cycle to close positions that hit SL/TP/DTE
         self.options_order_manager.check_exits()
@@ -2250,6 +2332,56 @@ class MasterOrchestrator:
         """
         import json as _json
         passed: List[TradeSignal] = []
+
+        # ── Observation helper (knowledge loop — Phase 3) ──────────────────
+        def _record_qg_obs(sig, state, check=None, reason=None, checks_passed=None):
+            """Record one quality gate observation. Never raises."""
+            try:
+                from execution_engine.options_observation_journal import (
+                    get_options_observation_journal,
+                    OptionsOpportunityObservation,
+                )
+                from knowledge_system.options_knowledge_observer import (
+                    get_options_knowledge_observer,
+                )
+                _j  = get_options_observation_journal()
+                _ko = get_options_knowledge_observer()
+                _obs_meta: dict = {}
+                try:
+                    _obs_meta = _json.loads(sig.notes or "{}")
+                except Exception:
+                    pass
+                _ks, _score = _ko.observe_opportunity(sig.symbol, sig.strategy_name or "")
+                _obs = OptionsOpportunityObservation(
+                    obs_id        = _j.make_obs_id(sig.symbol, sig.strategy_name or ""),
+                    symbol        = sig.symbol,
+                    strategy_name = sig.strategy_name or "",
+                    observed_at   = datetime.now().isoformat(),
+                    state         = state,
+                    confidence    = sig.confidence,
+                    direction     = str(
+                        sig.direction.value
+                        if hasattr(sig.direction, "value")
+                        else sig.direction
+                    ),
+                    dte           = int(_obs_meta.get("dte", 0)),
+                    iv_rank       = float(_obs_meta.get("iv_rank", 0.0)),
+                    chain_quality = float(_obs_meta.get("chain_quality", 0.0)),
+                    regime        = str(
+                        snapshot.regime.value
+                        if hasattr(snapshot.regime, "value")
+                        else snapshot.regime
+                    ),
+                    vix               = snapshot.vix,
+                    quality_checks_passed = checks_passed or [],
+                    rejection_check       = check,
+                    rejection_reason      = reason,
+                    knowledge_state       = _ks,
+                    knowledge_score       = _score,
+                )
+                _j.record(_obs)
+            except Exception:
+                pass
 
         # ── Compute VIX-adaptive DTE bounds for this cycle ─────────────
         vix = snapshot.vix
@@ -2352,6 +2484,10 @@ class MasterOrchestrator:
                     "[OptionsQuality] ❌ [C1] %s %s — synthetic data, not permitted.",
                     sym, strat,
                 )
+                _record_qg_obs(
+                    sig, "REJECTED", "C1",
+                    "notes_json_corrupted" if not _notes_parse_ok else "is_live_false_in_notes",
+                )
                 continue
 
             # Check 2: Confidence threshold
@@ -2359,6 +2495,10 @@ class MasterOrchestrator:
                 log.info(
                     "[OptionsQuality] ❌ [C2] %s %s — confidence %.1f < %.1f.",
                     sym, strat, sig.confidence, self._OPTIONS_MIN_CONFIDENCE,
+                )
+                _record_qg_obs(
+                    sig, "REJECTED", "C2",
+                    f"confidence_{sig.confidence:.1f}_lt_{self._OPTIONS_MIN_CONFIDENCE:.1f}",
                 )
                 continue
 
@@ -2370,6 +2510,10 @@ class MasterOrchestrator:
                     sym, strat, chain_qual, self._CHAIN_QUALITY_MIN,
                     "; ".join(chain_issues) if chain_issues else "unknown",
                 )
+                _record_qg_obs(
+                    sig, "REJECTED", "C3",
+                    f"chain_quality_{chain_qual:.2f}_lt_{self._CHAIN_QUALITY_MIN:.2f}",
+                )
                 continue
 
             # Check 4: VIX-adaptive DTE window
@@ -2378,12 +2522,14 @@ class MasterOrchestrator:
                     "[OptionsQuality] ❌ [C4] %s %s — DTE=%d < %d %s.",
                     sym, strat, dte, dte_min, _dte_note,
                 )
+                _record_qg_obs(sig, "REJECTED", "C4", f"dte_{dte}_lt_min_{dte_min}")
                 continue
             if dte > dte_max:
                 log.info(
                     "[OptionsQuality] ❌ [C4] %s %s — DTE=%d > %d %s.",
                     sym, strat, dte, dte_max, _dte_note,
                 )
+                _record_qg_obs(sig, "REJECTED", "C4", f"dte_{dte}_gt_max_{dte_max}")
                 continue
 
             # Check 5: IVR–strategy alignment
@@ -2397,6 +2543,10 @@ class MasterOrchestrator:
                     "insufficient premium to sell.",
                     sym, strat, iv_rank, self._IVR_SELL_MIN,
                 )
+                _record_qg_obs(
+                    sig, "REJECTED", "C5",
+                    f"ivr_{iv_rank:.0f}_lt_sell_min_{self._IVR_SELL_MIN:.0f}",
+                )
                 continue
 
             if is_buy_vol_strat and iv_rank > self._IVR_BUY_MAX:
@@ -2405,10 +2555,18 @@ class MasterOrchestrator:
                     "vol too expensive to buy.",
                     sym, strat, iv_rank, self._IVR_BUY_MAX,
                 )
+                _record_qg_obs(
+                    sig, "REJECTED", "C5",
+                    f"ivr_{iv_rank:.0f}_gt_buy_max_{self._IVR_BUY_MAX:.0f}",
+                )
                 continue
 
             sig._meta_quality = chain_qual  # attach for logging in fast-path
             passed.append(sig)
+            _record_qg_obs(
+                sig, "SHORTLISTED",
+                checks_passed=["C1", "C2", "C3", "C4", "C5"],
+            )
             log.info(
                 "[OptionsQuality] ✅ %s %s passed C1–C5  "
                 "confidence=%.1f  DTE=%d  IVR=%.0f  chain_quality=%.2f",
@@ -2443,6 +2601,12 @@ class MasterOrchestrator:
                 "(confidence=%.1f); dropping same-direction duplicate(s): %s",
                 best.symbol, best.strategy_name, best.confidence, dropped,
             )
+            for _d in group:
+                if _d is not best:
+                    _record_qg_obs(
+                        _d, "REJECTED", "C6", "correlation_dedup_lower_confidence",
+                        checks_passed=["C1", "C2", "C3", "C4", "C5"],
+                    )
             return [best]
 
         passed = _deduplicate(buys) + _deduplicate(sells) + neutral

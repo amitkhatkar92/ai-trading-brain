@@ -1292,7 +1292,18 @@ class OptionsOrderManager:
                     rec.status        = "EXIT_SUBMITTED"
                     rec.broker_status = _BRKST_EXIT_SUBMITTED
 
-            exit_order_ids = self._place_live_exit_legs(rec)
+            # ── BLOCKER #2 FIX (Phase 3 — Part B) ────────────────────────────
+            # If EXIT_SUBMITTED with existing exit orders, reconcile those orders
+            # instead of placing new ones — prevents duplicate exits on repeated calls.
+            if rec.exit_broker_order_ids:
+                log.info(
+                    "[OptionsOrderManager] [ExitReconcile] %s already has exit orders "
+                    "%s — reconciling existing fills, not placing new exits.",
+                    order_id, rec.exit_broker_order_ids,
+                )
+                exit_order_ids = rec.exit_broker_order_ids
+            else:
+                exit_order_ids = self._place_live_exit_legs(rec)
 
             if exit_order_ids is None:
                 with self._lock:
@@ -1397,6 +1408,15 @@ class OptionsOrderManager:
             get_options_performance_tracker().record_closed_trade(rec)
         except Exception as exc:
             log.debug("[OptionsOrderManager] Learning tracker notify failed: %s", exc)
+
+        # Notify outcome observer (knowledge loop — Phase 3)
+        try:
+            from learning_system.options_outcome_observer import (
+                get_options_outcome_observer,
+            )
+            get_options_outcome_observer().record_outcome(rec)
+        except Exception as exc:
+            log.debug("[OptionsOrderManager] Outcome observer notify failed: %s", exc)
 
     # ── Journal I/O ────────────────────────────────────────────────────
 
@@ -1599,13 +1619,6 @@ class OptionsOrderManager:
                     _bids = []
 
                 # v3: restore broker_status / reconciliation_status / fill fields
-                _saved_status = row.get("status", "open")
-                if _saved_status == "EXIT_SUBMITTED":
-                    log.critical(
-                        "[OptionsOrderManager] CRITICAL — restoring %s from journal "
-                        "with status=EXIT_SUBMITTED. Exit may not have completed. "
-                        "MANUAL RECONCILIATION REQUIRED.", oid,
-                    )
 
                 def _safe_json(raw: str) -> object:
                     try:
@@ -1624,6 +1637,101 @@ class OptionsOrderManager:
                 _exit_fills  = _safe_json(row.get("exit_leg_fills", "")) or []
                 _kp          = _safe_json(row.get("knowledge_provenance", "")) or {}
                 _leg_out     = _safe_json(row.get("leg_outcomes", "")) or []
+
+                # ── EXIT_SUBMITTED startup reconciliation (Phase 3 — Part A) ───
+                # Determine the restore status by polling the broker for exit
+                # order results before deciding how to restore this position.
+                # This prevents the double-exit bug where check_exits() would
+                # find a position restored as "open" and re-submit exits.
+                _saved_status  = row.get("status", "open")
+                _restore_status = "open"   # default for normal rows
+                _close_at_restore = False   # set True when exits confirmed filled
+
+                if _saved_status == "EXIT_SUBMITTED":
+                    if not _exit_bids:
+                        # No exit orders were submitted — safe to restore as open.
+                        log.info(
+                            "[OptionsOrderManager] Restoring %s as 'open': "
+                            "EXIT_SUBMITTED in journal but no submitted exit orders found.",
+                            oid,
+                        )
+                        _restore_status = "open"
+                    elif self._broker is None:
+                        # Paper mode or broker unavailable — cannot verify fills.
+                        # Conservative: keep as EXIT_SUBMITTED so it stays visible.
+                        log.critical(
+                            "[OptionsOrderManager] CRITICAL — restoring %s as "
+                            "EXIT_SUBMITTED: broker unavailable (paper mode), "
+                            "cannot verify exit fills for exit orders %s. "
+                            "MANUAL RECONCILIATION REQUIRED.", oid, _exit_bids,
+                        )
+                        _restore_status = "EXIT_SUBMITTED"
+                    else:
+                        # Poll each exit order to determine its state.
+                        _poll_statuses: list = []
+                        _poll_fills:    list = []
+                        for _bid in _exit_bids:
+                            try:
+                                _st     = self._broker.get_order_status(_bid)
+                                _st_str = str(_st.get("status", "UNKNOWN")).upper()
+                                _poll_statuses.append(_st_str)
+                                _poll_fills.append({
+                                    "order_id":   _bid,
+                                    "status":     _st_str,
+                                    "qty_filled": int(_st.get("filled_qty", 0) or 0),
+                                    "avg_price":  float(_st.get("avg_fill_price", 0.0) or 0.0),
+                                })
+                            except Exception as _pe:
+                                log.critical(
+                                    "[OptionsOrderManager] CRITICAL — restoring %s: "
+                                    "poll error for exit order %s: %s.",
+                                    oid, _bid, _pe,
+                                )
+                                _poll_statuses.append("POLL_ERROR")
+                                _poll_fills.append({
+                                    "order_id":   _bid,
+                                    "status":     "POLL_ERROR",
+                                    "qty_filled": 0,
+                                    "avg_price":  0.0,
+                                    "error":      str(_pe),
+                                })
+
+                        _FILLED_ST   = {"TRADED", "FILLED", "PARTIALLY_TRADED"}
+                        _TERMINAL_ST = {"CANCELLED", "REJECTED"}
+
+                        if any(s == "POLL_ERROR" for s in _poll_statuses):
+                            log.critical(
+                                "[OptionsOrderManager] CRITICAL — restoring %s as "
+                                "EXIT_SUBMITTED: poll error for exit orders %s. "
+                                "MANUAL RECONCILIATION REQUIRED.", oid, _exit_bids,
+                            )
+                            _restore_status = "EXIT_SUBMITTED"
+                            _exit_fills = _poll_fills
+                        elif all(s in _FILLED_ST for s in _poll_statuses):
+                            log.info(
+                                "[OptionsOrderManager] Startup reconciliation: %s "
+                                "— all exit fills confirmed. Will mark closed.", oid,
+                            )
+                            _restore_status  = "closed"
+                            _close_at_restore = True
+                            _exit_fills      = _poll_fills
+                        elif all(s in _TERMINAL_ST for s in _poll_statuses):
+                            log.critical(
+                                "[OptionsOrderManager] CRITICAL — restoring %s as "
+                                "'open': all exit orders rejected/cancelled (%s). "
+                                "Live exposure NOT closed — MANUAL REVIEW REQUIRED.",
+                                oid, _poll_statuses,
+                            )
+                            _restore_status = "open"
+                            _exit_fills     = _poll_fills
+                        else:
+                            # Mixed / pending — preserve EXIT_SUBMITTED
+                            log.info(
+                                "[OptionsOrderManager] Restoring %s as EXIT_SUBMITTED: "
+                                "exit orders still pending (%s).", oid, _poll_statuses,
+                            )
+                            _restore_status = "EXIT_SUBMITTED"
+                            _exit_fills     = _poll_fills
 
                 rec = OptionsOrderRecord(
                     order_id          = oid,
@@ -1645,7 +1753,7 @@ class OptionsOrderManager:
                     regime_at_entry   = row.get("regime_at_entry", ""),
                     placed_at         = datetime.strptime(row["placed_at"], "%Y-%m-%d %H:%M:%S"),
                     legs              = _legs,
-                    status            = "open",   # EXIT_SUBMITTED restores as open for re-checking
+                    status            = _restore_status,
                     broker_order_ids  = _bids,
                     # v3 fields
                     broker_status           = row.get("broker_status", _BRKST_SUBMITTED),
@@ -1664,6 +1772,47 @@ class OptionsOrderManager:
                     leg_outcomes            = _leg_out,
                     outcome_correctness     = row.get("outcome_correctness") or None,
                 )
+
+                # ── Confirmed-closed at startup reconciliation ────────────────
+                # If all exit orders were polled and confirmed filled, compute
+                # P&L, write a CLOSE journal row, and do NOT add to _orders.
+                if _close_at_restore:
+                    _actual_exit = self._compute_net_fill_price(_exit_fills)
+                    if _actual_exit is not None:
+                        rec.actual_exit_fill_price = _actual_exit
+                        _exit_with_slip = _actual_exit
+                    else:
+                        # Cannot compute net price — use entry as fallback (P&L = 0)
+                        _exit_with_slip = rec.entry_premium
+                        log.warning(
+                            "[OptionsOrderManager] Cannot compute exit fill price for "
+                            "%s at startup reconciliation — P&L set to zero.", oid,
+                        )
+                    _lot_rs = rec.lots * rec.lot_size
+                    if rec.is_credit:
+                        _pnl = round((rec.entry_premium - _exit_with_slip) * _lot_rs, 2)
+                    else:
+                        _pnl = round((_exit_with_slip - rec.entry_premium) * _lot_rs, 2)
+                    rec.exit_premium          = _exit_with_slip
+                    rec.pnl_rs                = _pnl
+                    rec.realized_pnl          = _pnl
+                    rec.exit_reason           = "STARTUP_RECONCILED"
+                    rec.closed_at             = datetime.now()
+                    rec.broker_status         = _BRKST_CLOSED
+                    rec.reconciliation_status = _RCON_EXIT
+                    try:
+                        self._journal_write_close(rec)
+                    except Exception as _jw_exc:
+                        log.warning(
+                            "[OptionsOrderManager] Journal close write failed for "
+                            "%s at startup reconciliation: %s", oid, _jw_exc,
+                        )
+                    log.info(
+                        "[OptionsOrderManager] Startup reconciliation: %s closed "
+                        "(P&L=₹%.0f). Not added to active positions.", oid, _pnl,
+                    )
+                    continue   # skip self._orders[oid] = rec
+
                 self._orders[oid] = rec
                 restored += 1
             except Exception as exc:
