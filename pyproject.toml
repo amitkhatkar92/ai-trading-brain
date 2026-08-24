@@ -65,7 +65,7 @@ dependencies = [
     "ta>=0.11.0",
 
     # --- Broker SDKs ---------------------------------------------------------
-    "dhanhq>=2.0.0",
+    "dhanhq==2.2.0",
     "kiteconnect>=4.2.0",
     "smartapi-python>=1.3.7",
     "pyotp>=2.9.0",

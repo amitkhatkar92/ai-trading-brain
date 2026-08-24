@@ -24,7 +24,7 @@ nsepython>=1.0                # NSE India scraper (options chain)
 scikit-learn>=1.3.0           # k-NN regime predictor (Layer 3 MetaLearning)
 
 # ── Broker SDKs ───────────────────────────────────────────────────────────────
-dhanhq>=2.0.0                 # Dhan primary broker
+dhanhq==2.2.0                 # Dhan primary broker
 kiteconnect>=4.2.0            # Zerodha secondary broker
 smartapi-python>=1.3.7        # AngelOne broker
 pyotp>=2.9.0                  # TOTP for AngelOne 2FA
