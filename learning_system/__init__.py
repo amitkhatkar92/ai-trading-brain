@@ -1,4 +1,24 @@
 """Learning System — Layer 10."""
 from .learning_engine               import LearningEngine
 from .strategy_performance_tracker  import StrategyPerformanceTracker, get_performance_tracker
-__all__ = ["LearningEngine", "StrategyPerformanceTracker", "get_performance_tracker"]
+from .learning_observation_ledger   import (
+    LearningObservationLedger, get_lol,
+    OBSERVED, DECISION_RECORDED, EXECUTED, REJECTED, BLOCKED,
+    OUTCOME_PENDING, OUTCOME_OBSERVED, LEARNING_PROCESSED,
+    EXECUTED_WIN, EXECUTED_LOSS, EXECUTED_FLAT, EARLY_EXIT, STOP_EXIT,
+    TARGET_EXIT, REJECTED_CORRECT, REJECTED_INCORRECT, BLOCKED_CORRECT,
+    BLOCKED_INCORRECT, SHORTLISTED_NOT_EXECUTED, MISSED_OPPORTUNITY,
+    KDA_FALSE_POSITIVE, KDA_FALSE_NEGATIVE, KNOWLEDGE_AGREEMENT,
+    KNOWLEDGE_DISAGREEMENT,
+)
+__all__ = [
+    "LearningEngine", "StrategyPerformanceTracker", "get_performance_tracker",
+    "LearningObservationLedger", "get_lol",
+    "OBSERVED", "DECISION_RECORDED", "EXECUTED", "REJECTED", "BLOCKED",
+    "OUTCOME_PENDING", "OUTCOME_OBSERVED", "LEARNING_PROCESSED",
+    "EXECUTED_WIN", "EXECUTED_LOSS", "EXECUTED_FLAT", "EARLY_EXIT", "STOP_EXIT",
+    "TARGET_EXIT", "REJECTED_CORRECT", "REJECTED_INCORRECT", "BLOCKED_CORRECT",
+    "BLOCKED_INCORRECT", "SHORTLISTED_NOT_EXECUTED", "MISSED_OPPORTUNITY",
+    "KDA_FALSE_POSITIVE", "KDA_FALSE_NEGATIVE", "KNOWLEDGE_AGREEMENT",
+    "KNOWLEDGE_DISAGREEMENT",
+]

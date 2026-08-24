@@ -968,6 +968,12 @@ class MasterOrchestrator:
         # Scores and ranks all signals using KNOWLEDGE_RESEARCH_SCORE_v1,
         # selects a knowledge top-5, and writes KNOWLEDGE_OBSERVATION records.
         # Runs BEFORE StrategyLab to ensure independence.  Never raises.
+        _lol_trading_date = getattr(snapshot, "date", None) or _dt.now().strftime("%Y-%m-%d")
+        try:
+            from learning_system.learning_observation_ledger import get_lol as _get_lol
+            _get_lol().record_observations(signals, _lol_trading_date)
+        except Exception as _lol_obs_exc:
+            log.debug("[LOL] Observation recording skipped: %s", _lol_obs_exc)
         try:
             from opportunity_engine.klp_evaluator import get_klp_evaluator as _get_klp
             _klp_obs = _get_klp().evaluate_and_record(signals, snapshot)
@@ -1200,6 +1206,20 @@ class MasterOrchestrator:
                 )
             except Exception as _kda_intraday_exc:
                 log.debug("[KDA] Authority pipeline error: %s", _kda_intraday_exc)
+
+        # ── LOL: Record lifecycle decision state for all signals ──────────────
+        # Called after KDA merge so we know the authorization_source for each signal.
+        # Non-blocking: wrapped in try/except; never affects the production path.
+        try:
+            from learning_system.learning_observation_ledger import get_lol as _get_lol2
+            _get_lol2().update_decisions(
+                original_signals=signals,
+                enriched_signals=enriched_signals,
+                kda_results=_kda_results if 'kda_results' in dir() else {},
+                trading_date=_lol_trading_date,
+            )
+        except Exception as _lol_dec_exc:
+            log.debug("[LOL] Decision update skipped: %s", _lol_dec_exc)
 
         # ── STEP 3.5: Capital Risk Engine ────────────────────────────
         with self.system_monitor.time_layer("CapitalRiskEngine"):
@@ -6096,6 +6116,22 @@ class MasterOrchestrator:
                 log.debug("[KSL-001] Shadow source not found — KSL loop skipped (VPS mode).")
         except Exception as _ksl_exc:
             log.warning("[KSL-001] Feedback loop failed (non-critical): %s", _ksl_exc)
+
+        # ── LOL: EOD outcome fill — fills pending learning observations ─────────
+        # Fills counterfactual outcomes for all pending signals (T+1..T+5 price data).
+        # Non-blocking; never modifies executed orders or risk controls.
+        try:
+            from learning_system.learning_observation_ledger import get_lol as _get_lol_eod
+            _lol_eod_result = _get_lol_eod().fill_pending_outcomes()
+            if _lol_eod_result.get("processed", 0):
+                log.info(
+                    "[LOL-EOD] Outcome fill: processed=%d skipped_pending=%d no_data=%d",
+                    _lol_eod_result.get("processed", 0),
+                    _lol_eod_result.get("skipped_pending", 0),
+                    _lol_eod_result.get("skipped_no_data", 0),
+                )
+        except Exception as _lol_eod_exc:
+            log.debug("[LOL-EOD] Outcome fill skipped: %s", _lol_eod_exc)
 
         # ── KLP-002: Outcome engine — fill pending KLP observations ───────────
         # Runs every EOD; processes yesterday's and earlier pending observations.
