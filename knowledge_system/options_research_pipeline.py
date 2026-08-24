@@ -155,7 +155,11 @@ class OptionsResearchPipeline:
             # Step 9: Update shadow scorer outcomes
             self._step_shadow_outcomes(new_outcome_pairs)
 
-            # Step 10: Daily summary
+            # Step 10+11: Response analysis + multi-contract quality
+            self._step_response_analysis(new_outcome_pairs)
+            self._step_multi_contract_summary()
+
+            # Step 12: Daily summary
             self._step_daily_summary(summary)
 
         except Exception as exc:
@@ -334,6 +338,40 @@ class OptionsResearchPipeline:
         for _, pnl, opportunity_id, _ in outcome_pairs:
             if opportunity_id:
                 scorer.record_outcome(opportunity_id, pnl)
+
+    def _step_response_analysis(self, outcome_pairs: List) -> int:
+        """Run underlying→option response analysis (spec §4, §23, §24)."""
+        try:
+            from knowledge_system.options_underlying_response_tracker import (
+                get_options_underlying_response_tracker,
+            )
+            tracker = get_options_underlying_response_tracker()
+            high_leverage = tracker.get_best_leverage_contexts(min_ratio=2.0)
+            if high_leverage:
+                log.debug(
+                    "[ResearchPipeline] High-leverage contexts found: %d (ratio≥2×)",
+                    len(high_leverage),
+                )
+            return len(high_leverage)
+        except Exception:
+            return 0
+
+    def _step_multi_contract_summary(self) -> None:
+        """Summarize multi-contract selection quality (spec §5, §6)."""
+        try:
+            from knowledge_system.options_multi_contract_shadow import (
+                get_options_multi_contract_shadow,
+            )
+            quality = get_options_multi_contract_shadow().get_selection_quality_summary()
+            if quality["total"] > 0:
+                log.debug(
+                    "[ResearchPipeline] Contract selection: correct=%.0f%% failure=%.0f%% (n=%d)",
+                    quality["correct_rate"] * 100,
+                    quality["failure_rate"] * 100,
+                    quality["total"],
+                )
+        except Exception:
+            pass
 
     def _step_daily_summary(self, summary: Dict) -> None:
         """Write a daily research summary to the research log."""

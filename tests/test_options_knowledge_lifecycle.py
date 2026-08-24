@@ -1,19 +1,22 @@
 """
 Test Suite — Options Knowledge Lifecycle
 ==========================================
-DTA-001 Phase 4: Architecture Completion
+DTA-001 Phase 4+5: Architecture Completion
 
-Tests T001–T080 covering:
-  T001–T012  Opportunity Registry (lifecycle identity)
-  T013–T025  Observation Journal (extended schema)
-  T026–T040  Feature Extraction (bucketing + combination keys)
-  T041–T055  Knowledge Store (state machine, persistence)
-  T056–T062  Pattern Engine (discovery, temporal safety)
+Tests T001–T090 (Phase 4) + T091–T120 (Phase 5 new components):
+  T001–T012  Opportunity Registry
+  T013–T025  Observation Journal
+  T026–T040  Feature Extraction
+  T041–T055  Knowledge Store
+  T056–T062  Pattern Engine
   T063–T068  Hypothesis Engine
-  T069–T073  Validator (OOS + WFO)
+  T069–T073  Validator
   T074–T078  Counterfactual Engine
   T079–T083  Shadow Scorer
-  T084–T090  Research Pipeline (integration)
+  T084–T090  Research Pipeline
+  T091–T100  Underlying Response Tracker
+  T101–T110  Multi-Contract Shadow Tracker
+  T111–T120  Failure Classifier
 """
 
 from __future__ import annotations
@@ -1150,6 +1153,404 @@ class TestResearchPipeline:
 
         p2 = OptionsResearchPipeline()
         assert p2._cursor == cursor1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# T091–T100  Underlying Response Tracker
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestUnderlyingResponseTracker:
+
+    def test_T091_record_response_stores_observation(self):
+        """T091: record_response() stores an observation with computed ratios."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            opportunity_id="OPT-T091", symbol="NIFTY", strategy_name="BULL_CALL_SPREAD",
+            direction="BULLISH", underlying_entry=22500, underlying_exit=22700,
+            option_entry_premium=100.0, option_exit_premium=220.0, pnl_rs=12000.0,
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+        )
+        assert obs.underlying_pct_move > 0
+        assert obs.option_pct_move > 0
+        assert obs.option_underlying_ratio is not None
+        assert obs.was_winner
+
+    def test_T092_underlying_pct_correct(self):
+        """T092: underlying_pct_move = (exit-entry)/entry*100."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            "OPT-T092", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22220,
+            option_entry_premium=100.0, option_exit_premium=200.0,
+            pnl_rs=10000.0,
+        )
+        assert abs(obs.underlying_pct_move - 1.0) < 0.01  # +1% move
+
+    def test_T093_option_pct_correct(self):
+        """T093: option_pct_move = (exit-entry)/entry*100."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            "OPT-T093", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22220,
+            option_entry_premium=100.0, option_exit_premium=300.0,
+            pnl_rs=10000.0,
+        )
+        assert abs(obs.option_pct_move - 200.0) < 0.01  # +200%
+
+    def test_T094_ratio_computed_correctly(self):
+        """T094: option_underlying_ratio = option_pct / underlying_pct."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            "OPT-T094", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22220,  # 1%
+            option_entry_premium=100.0, option_exit_premium=300.0,  # 200%
+            pnl_rs=10000.0,
+        )
+        # ratio = 200 / 1 = 200
+        assert obs.option_underlying_ratio is not None
+        assert abs(obs.option_underlying_ratio - 200.0) < 1.0
+
+    def test_T095_ratio_none_when_underlying_flat(self):
+        """T095: ratio is None when underlying move is near-zero."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            "OPT-T095", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22000,  # zero move
+            option_entry_premium=100.0, option_exit_premium=150.0,
+            pnl_rs=5000.0,
+        )
+        assert obs.option_underlying_ratio is None
+
+    def test_T096_distribution_computed_at_min_obs(self):
+        """T096: Distribution is computed once MIN_OBS_FOR_DISTRIBUTION observations exist."""
+        from knowledge_system.options_underlying_response_tracker import (
+            OptionsUnderlyingResponseTracker, MIN_OBS_FOR_DISTRIBUTION
+        )
+        t = OptionsUnderlyingResponseTracker()
+        for i in range(MIN_OBS_FOR_DISTRIBUTION):
+            t.record_response(
+                f"OPT-T096-{i}", "NIFTY", "BULL_CALL_SPREAD", "BULLISH",
+                underlying_entry=22000, underlying_exit=22200,
+                option_entry_premium=100.0, option_exit_premium=200.0,
+                pnl_rs=10000.0, regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            )
+        dist = t.get_distribution("BULL_CALL_SPREAD", "BULL", "IVR_NORMAL", "DTE_WEEKLY")
+        assert dist is not None
+        assert dist.n == MIN_OBS_FOR_DISTRIBUTION
+
+    def test_T097_zero_entry_premium_handled(self):
+        """T097: Zero entry premium does not cause ZeroDivisionError."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        obs = t.record_response(
+            "OPT-T097", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22200,
+            option_entry_premium=0.0, option_exit_premium=10.0,
+            pnl_rs=1000.0,
+        )
+        assert obs.option_pct_move == 0.0
+
+    def test_T098_persistence_round_trip(self):
+        """T098: Observations persist and reload correctly."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t1 = OptionsUnderlyingResponseTracker()
+        t1.record_response(
+            "OPT-T098", "NIFTY", "test", "BULLISH",
+            underlying_entry=22000, underlying_exit=22200,
+            option_entry_premium=100.0, option_exit_premium=200.0, pnl_rs=10000.0,
+        )
+        assert os.path.exists("data/options_underlying_response.json")
+        t2 = OptionsUnderlyingResponseTracker()
+        assert len(t2.get_all_observations()) >= 1
+
+    def test_T099_winner_flag_correct(self):
+        """T099: was_winner=True iff pnl_rs > 0."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        win = t.record_response("W", "NIFTY", "test", "BULLISH",
+            22000, 22200, 100.0, 200.0, pnl_rs=1000.0)
+        loss = t.record_response("L", "NIFTY", "test", "BULLISH",
+            22000, 22200, 100.0, 50.0, pnl_rs=-500.0)
+        assert win.was_winner
+        assert not loss.was_winner
+
+    def test_T100_summary_correct(self):
+        """T100: get_summary() returns correct totals."""
+        from knowledge_system.options_underlying_response_tracker import OptionsUnderlyingResponseTracker
+        t = OptionsUnderlyingResponseTracker()
+        for i in range(3):
+            t.record_response(f"W{i}", "NIFTY", "test", "BULLISH",
+                22000, 22200, 100.0, 200.0, pnl_rs=1000.0)
+        t.record_response("L1", "NIFTY", "test", "BULLISH",
+            22000, 22200, 100.0, 50.0, pnl_rs=-500.0)
+        s = t.get_summary()
+        assert s["total_observations"] == 4
+        assert s["winner_count"] == 3
+        assert abs(s["win_rate"] - 0.75) < 0.01
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# T101–T110  Multi-Contract Shadow Tracker
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestMultiContractShadow:
+
+    def test_T101_register_creates_pending(self):
+        """T101: register_opportunity() creates pending records."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m = OptionsMultiContractShadow()
+        m.register_opportunity(
+            opportunity_id="OPT-T101",
+            executed_strike=22500, executed_type="CE",
+            executed_premium=100.0, executed_delta=0.52,
+            candidates=[
+                {"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18},
+                {"strike": 22400, "type": "CE", "premium": 150.0, "delta": 0.62, "iv": 0.17},
+            ],
+        )
+        assert "OPT-T101" in m._pending
+        assert len(m._pending["OPT-T101"]) == 3  # 1 executed + 2 shadow
+
+    def test_T102_executed_flagged_correctly(self):
+        """T102: The executed contract has is_executed=True."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T102", 22500, "CE", 100.0, 0.52, [])
+        executed = [r for r in m._pending["OPT-T102"] if r.is_executed]
+        assert len(executed) == 1
+
+    def test_T103_record_exit_computes_outcome(self):
+        """T103: record_exit() computes MultiContractOutcome."""
+        from knowledge_system.options_multi_contract_shadow import (
+            OptionsMultiContractShadow, SEL_CORRECT, SEL_FAILURE
+        )
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T103", 22500, "CE", 100.0, 0.52,
+            candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+        # Executed: 100→220 (+120), Shadow: 60→180 (+120)
+        result = m.record_exit(
+            "OPT-T103",
+            exit_premiums={"CE|22500": 220.0, "CE|22600": 180.0},
+            symbol="NIFTY", strategy_name="Bull_Call_Spread", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0,
+        )
+        assert result is not None
+        assert result.executed_pnl == 120.0
+
+    def test_T104_correct_selection_when_executed_best(self):
+        """T104: SEL_CORRECT when executed contract outperforms."""
+        from knowledge_system.options_multi_contract_shadow import (
+            OptionsMultiContractShadow, SEL_CORRECT
+        )
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T104", 22500, "CE", 100.0, 0.52,
+            candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+        # Executed: 100→300 (+200), Shadow: 60→100 (+40)
+        result = m.record_exit(
+            "OPT-T104",
+            exit_premiums={"CE|22500": 300.0, "CE|22600": 100.0},
+            symbol="NIFTY", strategy_name="test", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0,
+        )
+        assert result.selection_outcome == SEL_CORRECT
+
+    def test_T105_failure_when_better_contract_available(self):
+        """T105: SEL_FAILURE when shadow significantly outperforms executed."""
+        from knowledge_system.options_multi_contract_shadow import (
+            OptionsMultiContractShadow, SEL_FAILURE
+        )
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T105", 22500, "CE", 100.0, 0.52,
+            candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+        # Executed: 100→110 (+10), Shadow: 60→200 (+140)
+        result = m.record_exit(
+            "OPT-T105",
+            exit_premiums={"CE|22500": 110.0, "CE|22600": 200.0},
+            symbol="NIFTY", strategy_name="test", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0,
+        )
+        assert result.selection_outcome == SEL_FAILURE
+        assert result.improvement_possible > 0
+
+    def test_T106_missing_exit_price_handled(self):
+        """T106: Missing exit premiums for shadow contracts are silently handled."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T106", 22500, "CE", 100.0, 0.52,
+            candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+        # Only provide executed exit price
+        result = m.record_exit(
+            "OPT-T106",
+            exit_premiums={"CE|22500": 200.0},  # no shadow exit
+            symbol="NIFTY", strategy_name="test", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0,
+        )
+        # Should still return an outcome (executed-only)
+        assert result is not None
+
+    def test_T107_unknown_opportunity_returns_none(self):
+        """T107: record_exit() for unknown opportunity_id returns None."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m = OptionsMultiContractShadow()
+        result = m.record_exit(
+            "OPT-UNKNOWN",
+            exit_premiums={"CE|22500": 200.0},
+            symbol="NIFTY", strategy_name="test", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0,
+        )
+        assert result is None
+
+    def test_T108_persistence(self):
+        """T108: Pending records persist to disk."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m = OptionsMultiContractShadow()
+        m.register_opportunity("OPT-T108", 22500, "CE", 100.0, 0.52, [])
+        assert os.path.exists("data/options_multi_contract_shadow.json")
+
+    def test_T109_selection_quality_summary(self):
+        """T109: get_selection_quality_summary() returns correct stats."""
+        from knowledge_system.options_multi_contract_shadow import (
+            OptionsMultiContractShadow, SEL_CORRECT, SEL_FAILURE
+        )
+        m = OptionsMultiContractShadow()
+        # Two CORRECT, one FAILURE
+        for i in range(2):
+            oid = f"OPT-COR-{i}"
+            m.register_opportunity(oid, 22500, "CE", 100.0, 0.52,
+                candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+            m.record_exit(oid, exit_premiums={"CE|22500": 300.0, "CE|22600": 100.0},
+                symbol="NIFTY", strategy_name="test", direction="BULLISH",
+                regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+                underlying_pct_move=1.0)
+        oid_fail = "OPT-FAIL-0"
+        m.register_opportunity(oid_fail, 22500, "CE", 100.0, 0.52,
+            candidates=[{"strike": 22600, "type": "CE", "premium": 60.0, "delta": 0.38, "iv": 0.18}])
+        m.record_exit(oid_fail, exit_premiums={"CE|22500": 110.0, "CE|22600": 200.0},
+            symbol="NIFTY", strategy_name="test", direction="BULLISH",
+            regime="BULL", ivr_band="IVR_NORMAL", dte_band="DTE_WEEKLY",
+            underlying_pct_move=1.0)
+        q = m.get_selection_quality_summary()
+        assert q["total"] == 3
+        assert abs(q["correct_rate"] - 2/3) < 0.01
+
+    def test_T110_reload_persistence(self):
+        """T110: Multi-contract shadow reloads outcomes from disk."""
+        from knowledge_system.options_multi_contract_shadow import OptionsMultiContractShadow
+        m1 = OptionsMultiContractShadow()
+        m1.register_opportunity("OPT-T110", 22500, "CE", 100.0, 0.52, [])
+        m1.record_exit("OPT-T110", {"CE|22500": 200.0},
+            "NIFTY", "test", "BULLISH", "BULL", "IVR_NORMAL", "DTE_WEEKLY", 1.0)
+        m2 = OptionsMultiContractShadow()
+        assert len(m2.get_outcomes()) >= 1
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# T111–T120  Failure Classifier
+# ═══════════════════════════════════════════════════════════════════════════
+
+class TestFailureClassifier:
+
+    def test_T111_classify_loss_returns_record(self):
+        """T111: classify() on a loss returns a FailureRecord."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T111", "NIFTY", "test",
+            evidence="exit_reason=stop_loss", pnl_rs=-500.0, expected_pnl=800.0)
+        assert rec is not None
+        assert rec.pnl_rs == -500.0
+
+    def test_T112_no_failure_on_profit(self):
+        """T112: Profitable trades with no explicit failure_type return None."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T112", "NIFTY", "test",
+            evidence="", pnl_rs=500.0, expected_pnl=800.0)
+        assert rec is None
+
+    def test_T113_auto_classify_data_failure(self):
+        """T113: Evidence containing 'iv_source=MODEL_ESTIMATE' → DATA_FAILURE."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier, FAIL_DATA
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T113", "NIFTY", "test",
+            evidence="iv_source=MODEL_ESTIMATE", pnl_rs=-300.0, expected_pnl=500.0)
+        assert rec.failure_type == FAIL_DATA
+
+    def test_T114_auto_classify_option_selection(self):
+        """T114: 'wrong_contract' evidence → OPTION_SELECTION_FAILURE."""
+        from knowledge_system.options_failure_classifier import (
+            OptionsFailureClassifier, FAIL_OPTION_SELECT
+        )
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T114", "NIFTY", "test",
+            evidence="wrong_contract selected vs better OTM", pnl_rs=-200.0, expected_pnl=500.0)
+        assert rec.failure_type == FAIL_OPTION_SELECT
+
+    def test_T115_manual_failure_type_used(self):
+        """T115: Explicitly provided failure_type overrides auto-classification."""
+        from knowledge_system.options_failure_classifier import (
+            OptionsFailureClassifier, FAIL_TIMING
+        )
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T115", "NIFTY", "test",
+            evidence="entry too late", pnl_rs=-150.0, expected_pnl=500.0,
+            failure_type=FAIL_TIMING)
+        assert rec.failure_type == FAIL_TIMING
+
+    def test_T116_severity_critical_for_extreme_loss(self):
+        """T116: Loss > 2× expected → CRITICAL severity."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier
+        fc = OptionsFailureClassifier()
+        rec = fc.classify("OPT-T116", "NIFTY", "test",
+            evidence="stop missed", pnl_rs=-2000.0, expected_pnl=500.0)
+        assert rec.severity == "CRITICAL"
+
+    def test_T117_get_failure_distribution(self):
+        """T117: get_failure_distribution() counts by type."""
+        from knowledge_system.options_failure_classifier import (
+            OptionsFailureClassifier, FAIL_DATA, FAIL_TIMING
+        )
+        fc = OptionsFailureClassifier()
+        fc.classify("A", "NIFTY", "test", "iv_source=MODEL_ESTIMATE", -100.0, 500.0)
+        fc.classify("B", "NIFTY", "test", "entry too late", -100.0, 500.0, failure_type=FAIL_TIMING)
+        dist = fc.get_failure_distribution()
+        assert dist[FAIL_DATA] >= 1
+        assert dist[FAIL_TIMING] >= 1
+
+    def test_T118_persistence(self):
+        """T118: Failures persist to disk."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier
+        fc = OptionsFailureClassifier()
+        fc.classify("OPT-T118", "NIFTY", "test", "some_reason", -100.0, 500.0)
+        assert os.path.exists("data/options_failures.json")
+
+    def test_T119_reload_from_disk(self):
+        """T119: Failure records reload correctly after restart."""
+        from knowledge_system.options_failure_classifier import OptionsFailureClassifier
+        fc1 = OptionsFailureClassifier()
+        fc1.classify("OPT-T119", "NIFTY", "test", "evidence", -100.0, 500.0)
+        fc2 = OptionsFailureClassifier()
+        assert len(fc2.get_recent_failures()) >= 1
+
+    def test_T120_improvement_hint_populated(self):
+        """T120: improvement_hint is non-empty for all failure types."""
+        from knowledge_system.options_failure_classifier import (
+            OptionsFailureClassifier, FAIL_DATA, FAIL_OPTION_SELECT, FAIL_EXECUTION
+        )
+        fc = OptionsFailureClassifier()
+        for ftype in [FAIL_DATA, FAIL_OPTION_SELECT, FAIL_EXECUTION]:
+            rec = fc.classify(f"OPT-T120-{ftype}", "NIFTY", "test", "",
+                pnl_rs=-100.0, expected_pnl=500.0, failure_type=ftype)
+            assert rec.improvement_hint != ""
 
 
 if __name__ == "__main__":

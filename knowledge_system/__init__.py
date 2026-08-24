@@ -43,3 +43,23 @@ from knowledge_system.options_research_pipeline import (
     get_options_research_pipeline,
     OptionsResearchPipeline,
 )
+from knowledge_system.options_underlying_response_tracker import (
+    get_options_underlying_response_tracker,
+    OptionsUnderlyingResponseTracker,
+    ResponseObservation,
+    ResponseDistribution,
+)
+from knowledge_system.options_multi_contract_shadow import (
+    get_options_multi_contract_shadow,
+    OptionsMultiContractShadow,
+    MultiContractOutcome,
+    SEL_CORRECT, SEL_FAILURE, SEL_NEUTRAL,
+)
+from knowledge_system.options_failure_classifier import (
+    get_options_failure_classifier,
+    OptionsFailureClassifier,
+    FailureRecord,
+    FAIL_DATA, FAIL_DISCOVERY, FAIL_KNOWLEDGE, FAIL_SELECTION,
+    FAIL_TIMING, FAIL_STRUCTURE, FAIL_OPTION_SELECT, FAIL_RISK,
+    FAIL_EXECUTION, FAIL_EXIT, FAIL_REGIME,
+)

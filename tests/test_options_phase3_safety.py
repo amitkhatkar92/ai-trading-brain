@@ -712,6 +712,13 @@ class TestOutcomeObserver(unittest.TestCase):
         import knowledge_system.options_knowledge_observer as _ko_mod
         _ooo._OO_INSTANCE = None
         _ko_mod._KO_INSTANCE = None
+        # Remove persistent state so the observer starts clean
+        import knowledge_system.options_knowledge_observer as _ko_mod2
+        _persist_path = getattr(_ko_mod2, "_KO_PERSIST_PATH", "data/options_ko_state.json")
+        try:
+            os.unlink(_persist_path)
+        except Exception:
+            pass
 
         tmp = self._obs_journal_tmp()
         try:

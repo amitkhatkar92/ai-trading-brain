@@ -2300,9 +2300,36 @@ class MasterOrchestrator:
                 except Exception:
                     pass
 
-                # ── Correlation visibility check ───────────────────────
-                # Index options (NIFTY / BANKNIFTY) share directional exposure
-                # with any open equity position.  This is a WARNING only —
+                # Register multi-contract shadow tracking (spec §5, §6)
+                try:
+                    from knowledge_system.options_multi_contract_shadow import (
+                        get_options_multi_contract_shadow,
+                    )
+                    _legs = []
+                    try:
+                        _legs_raw = __import__("json").loads(signal.notes or "{}").get("legs", [])
+                        for _leg in _legs_raw:
+                            _legs.append({
+                                "strike":  _leg.get("strike", 0),
+                                "type":    _leg.get("option_type", "CE"),
+                                "premium": _leg.get("premium", 0.0),
+                                "delta":   _leg.get("delta", 0.5),
+                                "iv":      _leg.get("iv", 0.0),
+                            })
+                    except Exception:
+                        pass
+                    if _legs and _sig_opp_id:
+                        _first = _legs[0]
+                        get_options_multi_contract_shadow().register_opportunity(
+                            opportunity_id=_sig_opp_id,
+                            executed_strike=_first.get("strike", 0),
+                            executed_type=_first.get("type", "CE"),
+                            executed_premium=_first.get("premium", 0.0),
+                            executed_delta=_first.get("delta", 0.5),
+                            candidates=_legs[1:],
+                        )
+                except Exception:
+                    pass
                 # the trade has already been placed.  Visibility so the user
                 # can make informed decisions about total index exposure.
                 _INDEX_SYMBOLS = {"NIFTY", "BANKNIFTY"}

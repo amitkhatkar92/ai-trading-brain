@@ -176,6 +176,61 @@ class OptionsOutcomeObserver:
         except Exception:
             pass
 
+        # Record underlying → option response (spec §4, §23, §24)
+        try:
+            from knowledge_system.options_underlying_response_tracker import (
+                get_options_underlying_response_tracker,
+            )
+            kprov = getattr(rec, "knowledge_provenance", None) or {}
+            underlying_entry = kprov.get("underlying_price_at_entry") or getattr(rec, "underlying_price_at_entry", 0.0)
+            underlying_exit  = kprov.get("underlying_price_at_exit")  or getattr(rec, "underlying_price_at_exit",  0.0)
+            entry_prem = getattr(rec, "actual_entry_fill_price", 0.0) or getattr(rec, "expected_entry_price", 0.0)
+            exit_prem  = getattr(rec, "actual_exit_fill_price", 0.0)
+            if underlying_entry and underlying_exit and entry_prem and exit_prem:
+                from knowledge_system.options_feature_extractor import _ivr_band, _dte_band
+                get_options_underlying_response_tracker().record_response(
+                    opportunity_id=opportunity_id or "",
+                    symbol=getattr(rec, "symbol", ""),
+                    strategy_name=getattr(rec, "strategy", ""),
+                    direction=getattr(rec, "direction", ""),
+                    underlying_entry=float(underlying_entry),
+                    underlying_exit=float(underlying_exit),
+                    option_entry_premium=float(entry_prem),
+                    option_exit_premium=float(exit_prem),
+                    pnl_rs=float(actual_pnl) if actual_pnl is not None else 0.0,
+                    regime=getattr(rec, "regime_at_entry", ""),
+                    ivr_band=_ivr_band(getattr(rec, "iv_rank_at_entry", 0.0)),
+                    dte_band=_dte_band(getattr(rec, "dte_at_entry", 0)),
+                    delta_at_entry=kprov.get("delta_at_entry", 0.5),
+                    iv_at_entry=kprov.get("iv_at_entry", 0.0),
+                    option_type=kprov.get("option_type", "CE"),
+                    observed_at=datetime.now().isoformat(),
+                )
+        except Exception:
+            pass
+
+        # Failure classification for losses (spec §27)
+        try:
+            from knowledge_system.options_failure_classifier import get_options_failure_classifier
+            if actual_pnl is not None and float(actual_pnl) < 0:
+                evidence = (
+                    f"strategy={getattr(rec, 'strategy', '')} "
+                    f"exit_reason={getattr(rec, 'exit_reason', '')} "
+                    f"regime={getattr(rec, 'regime_at_entry', '')} "
+                    f"iv_source={getattr(rec, 'iv_source_at_entry', '')}"
+                )
+                get_options_failure_classifier().classify(
+                    opportunity_id=opportunity_id or getattr(rec, "order_id", ""),
+                    symbol=getattr(rec, "symbol", ""),
+                    strategy_name=getattr(rec, "strategy", ""),
+                    evidence=evidence,
+                    pnl_rs=float(actual_pnl),
+                    expected_pnl=float(expected_pnl) if expected_pnl else 0.0,
+                    regime=getattr(rec, "regime_at_entry", ""),
+                )
+        except Exception:
+            pass
+
         log.info(
             "[OptionsOutcomeObserver] Outcome recorded: %s  P&L=₹%.0f  "
             "hold_days=%s  knowledge_state=%s  opportunity_id=%s",
