@@ -110,6 +110,7 @@ def _make_mgr_live(broker=None):
     mgr._lock            = threading.Lock()
     mgr._feed            = MagicMock()
     mgr._feed.get_spot   = MagicMock(return_value=24450.0)
+    mgr._unresolved      = {}
     return mgr
 
 
@@ -528,9 +529,11 @@ class TestMultiLeg(unittest.TestCase):
         mock_broker.cancel_order.assert_called_once_with("LIVE_PLACED_1")
 
     def test_f04_rollback_reverses_filled_leg(self):
-        """If a MARKET order has filled, rollback sends opposing MARKET order."""
+        """If a MARKET order has filled, rollback sends opposing MARKET order.
+        Verifies: correct transaction_type, actual filled_qty used, _unresolved empty."""
         mock_broker = MagicMock()
-        mock_broker.place_order.side_effect = ["LIVE_FILLED_1", None]
+        # Leg 1 BUY succeeds; Leg 2 SELL fails; Rollback reversal SELL succeeds
+        mock_broker.place_order.side_effect = ["LIVE_FILLED_1", None, "REV_001"]
         mock_broker.get_order_status.return_value = {
             "status": "TRADED", "filled_qty": 75, "avg_fill_price": 155.0,
         }
@@ -541,15 +544,18 @@ class TestMultiLeg(unittest.TestCase):
 
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_open"), \
              patch("execution_engine.options_order_manager.OptionsOrderManager._ensure_journal"), \
+             patch("execution_engine.options_order_manager.OptionsOrderManager._record_rollback_failure"), \
              patch("data_feeds.dhan_fno_security_map.get_fno_security_map", return_value=fno_map):
             mgr.execute(_make_signal(), _make_decision())
 
-        # Rollback call should have been a SELL (reverse of BUY) placed via place_order
+        # Third place_order call must be the reversal SELL with actual qty=75
         calls = mock_broker.place_order.call_args_list
-        # calls[0] = first leg BUY, calls[1] = second leg (returned None, no call),
-        # calls[2] = rollback SELL
         rollback_calls = [c for c in calls if c.kwargs.get("transaction_type") == "SELL"]
         self.assertGreater(len(rollback_calls), 0, "Rollback SELL order expected")
+        reversal_call = [c for c in rollback_calls if c.kwargs.get("quantity") == 75]
+        self.assertGreater(len(reversal_call), 0, "Reversal must use actual filled_qty=75")
+        # Successful reversal → no unresolved exposure
+        self.assertEqual(len(mgr._unresolved), 0)
 
     def test_f05_missing_legs_in_meta_blocks_live_placement(self):
         """If meta has no 'legs' key, live placement returns None safely."""

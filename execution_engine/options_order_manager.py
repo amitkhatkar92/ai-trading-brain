@@ -56,6 +56,21 @@ JOURNAL_PATH           = "data/options_trades.csv"
 # Slippage assumption: 0.5 % of premium (mid-to-fill gap)
 SLIPPAGE_PCT           = 0.005
 
+# Persistent record for rollback failures / unresolved live exposures
+ROLLBACK_FAILURES_PATH   = "data/options_rollback_failures.csv"
+ROLLBACK_FAILURE_COLUMNS = [
+    "recorded_at", "exposure_id", "trade_id", "original_order_id",
+    "security_id", "underlying", "expiry_date", "strike", "option_type_leg",
+    "original_tx", "intended_qty", "filled_qty_raw",
+    "reversal_tx", "reversal_order_id", "status", "reason",
+]
+
+# Rollback failure status values
+_RBST_FAILED         = "ROLLBACK_FAILED"
+_RBST_UNRESOLVED_QTY = "UNRESOLVED_QUANTITY"
+_RBST_UNRESOLVED     = "UNRESOLVED_LIVE_EXPOSURE"
+_RBST_RESOLVED       = "RESOLVED"
+
 # Journal CSV columns
 # v2: added legs_json (for live exit after restart) and broker_order_ids
 JOURNAL_COLUMNS = [
@@ -146,7 +161,10 @@ class OptionsOrderManager:
         self._orders:    Dict[str, OptionsOrderRecord] = {}
         self._lock       = threading.Lock()
         self._feed       = get_options_feed()
+        self._unresolved: Dict[str, dict] = {}   # exposure_id → rollback failure record
+        self._ensure_rollback_journal()
         self._ensure_journal()
+        self._restore_unresolved()
         self._restore_from_journal()
         log.info(
             "[OptionsOrderManager] Initialised.  mode=%s  broker=%s  open_positions=%d",
@@ -374,7 +392,7 @@ class OptionsOrderManager:
         # BUY legs first: ensures we hold protection before writing short positions
         sorted_legs = sorted(legs, key=lambda l: (0 if l.get("direction") == "BUY" else 1))
 
-        placed: List[tuple] = []   # [(order_id, security_id, transaction_type)]
+        placed: List[tuple] = []   # [(order_id, security_id, transaction_type, leg)]
 
         for leg in sorted_legs:
             security_id = fno_map.lookup(
@@ -391,7 +409,7 @@ class OptionsOrderManager:
                     rec.symbol, leg.get("strike"), leg.get("type"),
                     rec.expiry_date.isoformat(), len(placed),
                 )
-                self._rollback_legs(placed)
+                self._rollback_legs(placed, rec)
                 return None
 
             tx = str(leg.get("direction", "BUY")).upper()
@@ -411,7 +429,7 @@ class OptionsOrderManager:
                     "broker returned None; rolling back %d placed leg(s).",
                     rec.symbol, leg.get("strike"), leg.get("type"), len(placed),
                 )
-                self._rollback_legs(placed)
+                self._rollback_legs(placed, rec)
                 return None
 
             # SIM order ID means broker is disconnected; reject to prevent phantom live records
@@ -422,10 +440,10 @@ class OptionsOrderManager:
                     "Check DhanBroker connection.",
                     order_id, len(placed),
                 )
-                self._rollback_legs(placed)
+                self._rollback_legs(placed, rec)
                 return None
 
-            placed.append((order_id, security_id, tx))
+            placed.append((order_id, security_id, tx, leg))
             log.info(
                 "[OptionsLeg] ✅ Placed  %s  %s%s  premium≈%.2f  "
                 "qty=%d  security_id=%s  order_id=%s",
@@ -435,24 +453,106 @@ class OptionsOrderManager:
 
         return [p[0] for p in placed]
 
-    def _rollback_legs(self, placed: List[tuple]) -> None:
+    def _rollback_legs(
+        self,
+        placed: List[tuple],
+        rec: "OptionsOrderRecord",
+    ) -> None:
         """
         Attempt to cancel or reverse already-placed legs after a later leg failed.
         Called in reverse order (last placed first).
-        Logs CRITICAL if a rollback itself fails — manual intervention required.
+
+        Every failure path writes a persistent ROLLBACK_FAILURES_PATH record and
+        registers the exposure in self._unresolved so get_total_options_exposure_rs()
+        cannot return 0 for an untracked broker position.  CRITICAL is logged for
+        every unresolved outcome — WARNING is never used as a substitute.
         """
         if not placed:
             return
-        for order_id, security_id, original_tx in reversed(placed):
+
+        n_legs = max(len(rec.legs), 1) if rec.legs else 1
+        per_leg_max_loss = rec.max_loss_rs / n_legs
+
+        for order_id, security_id, original_tx, leg in reversed(placed):
             try:
                 status = self._broker.get_order_status(order_id)
-                traded = str(status.get("status", "")).upper() in (
-                    "TRADED", "PARTIALLY_TRADED", "FILLED",
+            except Exception as exc:
+                log.critical(
+                    "[OptionsRollback] CRITICAL — get_order_status raised for "
+                    "order_id=%s: %s. UNRESOLVED LIVE EXPOSURE. "
+                    "MANUAL INTERVENTION REQUIRED.",
+                    order_id, exc,
                 )
-                if traded:
-                    # Market order already filled — must reverse with opposing order
-                    reverse_tx  = "SELL" if original_tx == "BUY" else "BUY"
-                    filled_qty  = int(status.get("filled_qty", 0)) or 1
+                self._record_rollback_failure(
+                    original_order_id = order_id,
+                    security_id       = security_id,
+                    leg               = leg,
+                    rec               = rec,
+                    original_tx       = original_tx,
+                    filled_qty_raw    = None,
+                    reversal_tx       = None,
+                    reversal_order_id = None,
+                    status            = _RBST_UNRESOLVED,
+                    reason            = f"get_order_status exception: {exc}",
+                    per_leg_max_loss  = per_leg_max_loss,
+                )
+                continue
+
+            if not status:
+                # Empty dict — broker response is ambiguous; reconcile before giving up
+                self._reconcile_and_record(
+                    order_id         = order_id,
+                    security_id      = security_id,
+                    leg              = leg,
+                    rec              = rec,
+                    original_tx      = original_tx,
+                    per_leg_max_loss = per_leg_max_loss,
+                    context          = "get_order_status returned empty dict",
+                )
+                continue
+
+            broker_status = str(status.get("status", "")).upper()
+            traded = broker_status in ("TRADED", "PARTIALLY_TRADED", "FILLED")
+
+            if broker_status in ("CANCELLED", "REJECTED"):
+                log.info(
+                    "[OptionsRollback] Leg order_id=%s already %s — no action needed.",
+                    order_id, broker_status,
+                )
+                continue
+
+            if traded:
+                raw_qty = status.get("filled_qty", None)
+                try:
+                    filled_qty = int(raw_qty) if raw_qty is not None else None
+                except (TypeError, ValueError):
+                    filled_qty = None
+
+                if filled_qty is None or filled_qty == 0:
+                    log.critical(
+                        "[OptionsRollback] CRITICAL — order_id=%s TRADED but "
+                        "filled_qty=%r — reversal quantity unknown. "
+                        "UNRESOLVED LIVE EXPOSURE. MANUAL INTERVENTION REQUIRED.",
+                        order_id, raw_qty,
+                    )
+                    self._record_rollback_failure(
+                        original_order_id = order_id,
+                        security_id       = security_id,
+                        leg               = leg,
+                        rec               = rec,
+                        original_tx       = original_tx,
+                        filled_qty_raw    = raw_qty,
+                        reversal_tx       = None,
+                        reversal_order_id = None,
+                        status            = _RBST_UNRESOLVED_QTY,
+                        reason            = f"TRADED but filled_qty={raw_qty!r}",
+                        per_leg_max_loss  = per_leg_max_loss,
+                    )
+                    continue
+
+                # Single reversal attempt — not a loop
+                reverse_tx = "SELL" if original_tx == "BUY" else "BUY"
+                try:
                     rev_id = self._broker.place_order(
                         security_id      = security_id,
                         exchange_segment = "NSE_FNO",
@@ -462,22 +562,274 @@ class OptionsOrderManager:
                         order_type       = "MARKET",
                         product_type     = "NRML",
                     )
-                    log.warning(
-                        "[OptionsRollback] Reversed filled leg order_id=%s via %s → rev_id=%s",
-                        order_id, reverse_tx, rev_id,
+                except Exception as rev_exc:
+                    log.critical(
+                        "[OptionsRollback] CRITICAL — reversal place_order raised for "
+                        "order_id=%s: %s. UNRESOLVED LIVE EXPOSURE "
+                        "(filled=%d %s %s). MANUAL INTERVENTION REQUIRED.",
+                        order_id, rev_exc, filled_qty, original_tx, security_id,
                     )
-                else:
-                    ok = self._broker.cancel_order(order_id)
-                    log.warning(
-                        "[OptionsRollback] Cancelled pending leg order_id=%s  result=%s",
-                        order_id, ok,
+                    self._record_rollback_failure(
+                        original_order_id = order_id,
+                        security_id       = security_id,
+                        leg               = leg,
+                        rec               = rec,
+                        original_tx       = original_tx,
+                        filled_qty_raw    = filled_qty,
+                        reversal_tx       = reverse_tx,
+                        reversal_order_id = None,
+                        status            = _RBST_UNRESOLVED,
+                        reason            = f"reversal place_order exception: {rev_exc}",
+                        per_leg_max_loss  = per_leg_max_loss,
                     )
-            except Exception as exc:
-                log.critical(
-                    "[OptionsRollback] FAILED to rollback leg order_id=%s: %s — "
-                    "MANUAL INTERVENTION REQUIRED.",
-                    order_id, exc,
+                    continue
+
+                if rev_id is None or str(rev_id).startswith("SIM_"):
+                    log.critical(
+                        "[OptionsRollback] CRITICAL — reversal for order_id=%s "
+                        "returned %r. UNRESOLVED LIVE EXPOSURE "
+                        "(filled=%d %s %s). MANUAL INTERVENTION REQUIRED.",
+                        order_id, rev_id, filled_qty, original_tx, security_id,
+                    )
+                    self._record_rollback_failure(
+                        original_order_id = order_id,
+                        security_id       = security_id,
+                        leg               = leg,
+                        rec               = rec,
+                        original_tx       = original_tx,
+                        filled_qty_raw    = filled_qty,
+                        reversal_tx       = reverse_tx,
+                        reversal_order_id = rev_id,
+                        status            = _RBST_UNRESOLVED,
+                        reason            = f"reversal returned {rev_id!r}",
+                        per_leg_max_loss  = per_leg_max_loss,
+                    )
+                    continue
+
+                log.info(
+                    "[OptionsRollback] Reversed filled leg order_id=%s  "
+                    "qty=%d %s → rev_id=%s",
+                    order_id, filled_qty, reverse_tx, rev_id,
                 )
+                continue
+
+            # Pending/open order — attempt cancel
+            try:
+                ok = self._broker.cancel_order(order_id)
+            except Exception as cancel_exc:
+                log.critical(
+                    "[OptionsRollback] CRITICAL — cancel_order raised for "
+                    "order_id=%s: %s. Status ambiguous. "
+                    "MANUAL INTERVENTION REQUIRED.",
+                    order_id, cancel_exc,
+                )
+                self._record_rollback_failure(
+                    original_order_id = order_id,
+                    security_id       = security_id,
+                    leg               = leg,
+                    rec               = rec,
+                    original_tx       = original_tx,
+                    filled_qty_raw    = 0,
+                    reversal_tx       = None,
+                    reversal_order_id = None,
+                    status            = _RBST_UNRESOLVED,
+                    reason            = f"cancel_order exception: {cancel_exc}",
+                    per_leg_max_loss  = per_leg_max_loss,
+                )
+                continue
+
+            if ok:
+                log.info(
+                    "[OptionsRollback] Cancelled pending leg order_id=%s", order_id,
+                )
+            else:
+                # Cancel returned False — may have filled during the cancel window
+                self._reconcile_and_record(
+                    order_id         = order_id,
+                    security_id      = security_id,
+                    leg              = leg,
+                    rec              = rec,
+                    original_tx      = original_tx,
+                    per_leg_max_loss = per_leg_max_loss,
+                    context          = "cancel_order returned False",
+                )
+
+    def _reconcile_and_record(
+        self,
+        *,
+        order_id: str,
+        security_id: str,
+        leg: dict,
+        rec: "OptionsOrderRecord",
+        original_tx: str,
+        per_leg_max_loss: float,
+        context: str,
+    ) -> None:
+        """
+        Single bounded reconciliation attempt after an ambiguous broker response.
+        Writes UNRESOLVED_LIVE_EXPOSURE if position is confirmed open; logs
+        resolution if confirmed closed.  Never retries automatically.
+        """
+        try:
+            status2 = self._broker.get_order_status(order_id)
+        except Exception as exc:
+            log.critical(
+                "[OptionsRollback] CRITICAL — reconciliation get_order_status "
+                "raised for order_id=%s: %s. Context: %s. "
+                "MANUAL INTERVENTION REQUIRED.",
+                order_id, exc, context,
+            )
+            self._record_rollback_failure(
+                original_order_id = order_id,
+                security_id       = security_id,
+                leg               = leg,
+                rec               = rec,
+                original_tx       = original_tx,
+                filled_qty_raw    = None,
+                reversal_tx       = None,
+                reversal_order_id = None,
+                status            = _RBST_UNRESOLVED,
+                reason            = f"reconcile exception: {exc}; context: {context}",
+                per_leg_max_loss  = per_leg_max_loss,
+            )
+            return
+
+        broker_status2 = str(status2.get("status", "")).upper()
+        traded2 = broker_status2 in ("TRADED", "PARTIALLY_TRADED", "FILLED")
+
+        if not traded2:
+            log.info(
+                "[OptionsRollback] Reconciliation confirms order_id=%s "
+                "status=%r — exposure resolved (context: %s).",
+                order_id, broker_status2, context,
+            )
+            return
+
+        raw_qty2 = status2.get("filled_qty", None)
+        log.critical(
+            "[OptionsRollback] CRITICAL — reconciliation confirms order_id=%s "
+            "TRADED filled_qty=%r. UNRESOLVED LIVE EXPOSURE. "
+            "Context: %s. MANUAL INTERVENTION REQUIRED.",
+            order_id, raw_qty2, context,
+        )
+        self._record_rollback_failure(
+            original_order_id = order_id,
+            security_id       = security_id,
+            leg               = leg,
+            rec               = rec,
+            original_tx       = original_tx,
+            filled_qty_raw    = raw_qty2,
+            reversal_tx       = None,
+            reversal_order_id = None,
+            status            = _RBST_UNRESOLVED,
+            reason            = f"reconciliation confirmed filled; context: {context}",
+            per_leg_max_loss  = per_leg_max_loss,
+        )
+
+    def _record_rollback_failure(
+        self,
+        *,
+        original_order_id: str,
+        security_id: str,
+        leg: dict,
+        rec: "OptionsOrderRecord",
+        original_tx: str,
+        filled_qty_raw: Any,
+        reversal_tx: Optional[str],
+        reversal_order_id: Optional[str],
+        status: str,
+        reason: str,
+        per_leg_max_loss: float,
+    ) -> None:
+        """Persist a rollback failure record and register the unresolved exposure."""
+        exposure_id = (
+            f"RBF_{rec.order_id}_{security_id}_{int(time.time_ns() // 1_000_000)}"
+        )
+        row: Dict[str, Any] = {
+            "recorded_at":       datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "exposure_id":       exposure_id,
+            "trade_id":          rec.order_id,
+            "original_order_id": original_order_id,
+            "security_id":       security_id,
+            "underlying":        rec.symbol,
+            "expiry_date":       rec.expiry_date.isoformat(),
+            "strike":            str(leg.get("strike", "")),
+            "option_type_leg":   str(leg.get("type", "")),
+            "original_tx":       original_tx,
+            "intended_qty":      str(rec.lots * rec.lot_size),
+            "filled_qty_raw":    str(filled_qty_raw) if filled_qty_raw is not None else "UNKNOWN",
+            "reversal_tx":       reversal_tx or "",
+            "reversal_order_id": reversal_order_id or "",
+            "status":            status,
+            "reason":            reason,
+        }
+        try:
+            with open(ROLLBACK_FAILURES_PATH, "a", newline="", encoding="utf-8") as fh:
+                csv.DictWriter(fh, fieldnames=ROLLBACK_FAILURE_COLUMNS).writerow(row)
+        except Exception as exc:
+            log.critical(
+                "[OptionsRollback] CRITICAL — failed to write rollback failure "
+                "record to disk: %s. Exposure %s may be LOST FROM PERSISTENT STORE.",
+                exc, exposure_id,
+            )
+
+        with self._lock:
+            self._unresolved[exposure_id] = {
+                "exposure_id":          exposure_id,
+                "trade_id":             rec.order_id,
+                "order_id":             original_order_id,
+                "security_id":          security_id,
+                "status":               status,
+                "max_loss_rs_estimate": per_leg_max_loss,
+            }
+
+        log.critical(
+            "[OptionsRollback] UNRESOLVED EXPOSURE registered: "
+            "exposure_id=%s  underlying=%s  security_id=%s  "
+            "status=%s  max_loss_estimate=\u20b9%.0f  reason=%s",
+            exposure_id, rec.symbol, security_id,
+            status, per_leg_max_loss, reason,
+        )
+
+    def _ensure_rollback_journal(self) -> None:
+        """Create the rollback failures journal CSV if it does not exist."""
+        os.makedirs(os.path.dirname(ROLLBACK_FAILURES_PATH), exist_ok=True)
+        if not os.path.exists(ROLLBACK_FAILURES_PATH):
+            with open(
+                ROLLBACK_FAILURES_PATH, "w", newline="", encoding="utf-8"
+            ) as fh:
+                csv.DictWriter(fh, fieldnames=ROLLBACK_FAILURE_COLUMNS).writeheader()
+
+    def _restore_unresolved(self) -> None:
+        """Load non-resolved rollback failures from the persistent journal on startup."""
+        if not os.path.exists(ROLLBACK_FAILURES_PATH):
+            return
+        try:
+            with open(ROLLBACK_FAILURES_PATH, newline="", encoding="utf-8") as fh:
+                for row in csv.DictReader(fh):
+                    if row.get("status") == _RBST_RESOLVED:
+                        continue
+                    eid = row.get("exposure_id", "")
+                    if not eid:
+                        continue
+                    self._unresolved[eid] = {
+                        "exposure_id":          eid,
+                        "trade_id":             row.get("trade_id", ""),
+                        "order_id":             row.get("original_order_id", ""),
+                        "security_id":          row.get("security_id", ""),
+                        "status":               row.get("status", ""),
+                        "max_loss_rs_estimate": 0.0,
+                    }
+        except Exception as exc:
+            log.warning(
+                "[OptionsOrderManager] Failed to restore unresolved exposures: %s", exc,
+            )
+        if self._unresolved:
+            log.critical(
+                "[OptionsOrderManager] CRITICAL — %d UNRESOLVED LIVE EXPOSURE(S) "
+                "from previous sessions. MANUAL REVIEW REQUIRED. IDs: %s",
+                len(self._unresolved), list(self._unresolved.keys()),
+            )
 
     def _place_live_exit_legs(
         self,
@@ -591,11 +943,20 @@ class OptionsOrderManager:
             return list(self._orders.values())
 
     def get_total_options_exposure_rs(self) -> float:
-        """Sum of max_loss_rs for all open positions (worst-case exposure)."""
+        """Sum of max_loss_rs for open positions plus unresolved rollback exposures."""
         with self._lock:
-            return sum(
+            active = sum(
                 o.max_loss_rs for o in self._orders.values() if o.status == "open"
             )
+            unresolved = sum(
+                r.get("max_loss_rs_estimate", 0.0) for r in self._unresolved.values()
+            )
+        return active + unresolved
+
+    def get_unresolved_exposures(self) -> List[dict]:
+        """Return all unresolved rollback failure records for external monitoring."""
+        with self._lock:
+            return list(self._unresolved.values())
 
     # ── Internal helpers ───────────────────────────────────────────────
 
