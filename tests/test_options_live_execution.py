@@ -614,9 +614,13 @@ class TestExitPath(unittest.TestCase):
         )
 
     def test_g01_live_exit_calls_reverse_broker_orders(self):
-        """Live close_position sends opposing orders for each leg."""
+        """Live close_position sends opposing orders for each leg and confirms fills."""
         mock_broker = MagicMock()
         mock_broker.place_order.side_effect = ["EXIT_001", "EXIT_002"]
+        # Phase 3: fill polling must confirm fills for position to be marked closed
+        mock_broker.get_order_status.return_value = {
+            "status": "TRADED", "filled_qty": 75, "avg_fill_price": 90.0
+        }
         mgr = _make_mgr_live(mock_broker)
 
         rec = self._make_open_rec()
@@ -637,9 +641,18 @@ class TestExitPath(unittest.TestCase):
         # BUY leg → SELL close; SELL leg → BUY close
         self.assertIn("SELL", txns)
         self.assertIn("BUY", txns)
+        # Phase 3: fill polling called for each exit leg
+        self.assertEqual(mock_broker.get_order_status.call_count, 2)
+        # Position confirmed closed
+        self.assertEqual(mgr._orders[rec.order_id].status, "closed")
 
-    def test_g02_live_exit_no_legs_falls_back_to_paper(self):
-        """If rec.legs is empty (restored without legs_json), live exit falls back gracefully."""
+    def test_g02_live_exit_no_legs_stays_exit_submitted(self):
+        """If rec.legs is empty (restored without legs_json), live exit fails safely.
+        
+        Phase 3 hardening: position must stay EXIT_SUBMITTED (not marked closed).
+        The old 'fall back to paper' behavior was UNSAFE — it silently discarded
+        unconfirmed broker exits. CRITICAL log + manual intervention is required.
+        """
         mock_broker = MagicMock()
         mgr = _make_mgr_live(mock_broker)
 
@@ -651,10 +664,12 @@ class TestExitPath(unittest.TestCase):
             pt.return_value.record_closed_trade = MagicMock()
             mgr._close_position(rec.order_id, 90.0, "DTE_EXIT (dte_remaining=4)")
 
-        # No broker close orders placed (legs empty → CRITICAL log + fallback)
+        # No broker close orders placed (legs empty → _place_live_exit_legs returns None)
         mock_broker.place_order.assert_not_called()
-        # But position IS marked closed in memory
-        self.assertEqual(mgr._orders[rec.order_id].status, "closed")
+        # Position must remain EXIT_SUBMITTED — NOT closed
+        self.assertEqual(mgr._orders[rec.order_id].status, "EXIT_SUBMITTED")
+        # Learning tracker must NOT be called (position not confirmed closed)
+        pt.return_value.record_closed_trade.assert_not_called()
 
     def test_g03_paper_exit_never_calls_broker(self):
         """Paper mode exit never touches broker."""
@@ -735,6 +750,10 @@ class TestLearningCapture(unittest.TestCase):
         """After live close, the closed record has broker_order_ids for reconciliation."""
         mock_broker = MagicMock()
         mock_broker.place_order.side_effect = ["EXIT_LIVE_001", "EXIT_LIVE_002"]
+        # Phase 3: fill polling must confirm fills
+        mock_broker.get_order_status.return_value = {
+            "status": "TRADED", "filled_qty": 75, "avg_fill_price": 90.0
+        }
         mgr = _make_mgr_live(mock_broker)
 
         from execution_engine.options_order_manager import OptionsOrderRecord

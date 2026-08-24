@@ -63,6 +63,7 @@ ROLLBACK_FAILURE_COLUMNS = [
     "security_id", "underlying", "expiry_date", "strike", "option_type_leg",
     "original_tx", "intended_qty", "filled_qty_raw",
     "reversal_tx", "reversal_order_id", "status", "reason",
+    "max_loss_rs_estimate",  # persisted so restart recovers RiskGuardian exposure estimate
 ]
 
 # Rollback failure status values
@@ -71,8 +72,25 @@ _RBST_UNRESOLVED_QTY = "UNRESOLVED_QUANTITY"
 _RBST_UNRESOLVED     = "UNRESOLVED_LIVE_EXPOSURE"
 _RBST_RESOLVED       = "RESOLVED"
 
+# Broker execution state constants (Phase 7)
+_BRKST_SUBMITTED      = "SUBMITTED"
+_BRKST_FILLED         = "FILLED"
+_BRKST_PARTIAL        = "PARTIALLY_FILLED"
+_BRKST_CANCELLED      = "CANCELLED"
+_BRKST_REJECTED       = "REJECTED"
+_BRKST_EXIT_SUBMITTED = "EXIT_SUBMITTED"
+_BRKST_CLOSED         = "CLOSED"
+_BRKST_UNRESOLVED     = "UNRESOLVED_LIVE_EXPOSURE"
+_BRKST_UNRECONCILED   = "UNRECONCILED"
+
+# Reconciliation status constants
+_RCON_UNRECONCILED = "UNRECONCILED"
+_RCON_ENTRY        = "ENTRY_RECONCILED"
+_RCON_EXIT         = "EXIT_RECONCILED"
+_RCON_FULL         = "FULLY_RECONCILED"
+
 # Journal CSV columns
-# v2: added legs_json (for live exit after restart) and broker_order_ids
+# v3: broker_status, fill capture, actual P&L, knowledge provenance, learning fields
 JOURNAL_COLUMNS = [
     "order_id", "symbol", "strategy", "option_type", "direction",
     "lots", "lot_size", "entry_premium", "stop_premium", "target_premium",
@@ -83,6 +101,21 @@ JOURNAL_COLUMNS = [
     "exit_premium", "pnl_rs", "exit_reason", "closed_at",
     # Live execution (v2):
     "legs_json", "broker_order_ids",
+    # Broker execution state + reconciliation (v3):
+    "broker_status", "reconciliation_status",
+    "entry_leg_fills",       # JSON: [{order_id, direction, status, qty_filled, avg_price, ts}]
+    "exit_broker_order_ids", # JSON: [order_id, ...]
+    "exit_leg_fills",        # JSON: [{order_id, direction, status, qty_filled, avg_price, ts}]
+    "actual_entry_fill_price",
+    "actual_exit_fill_price",
+    "expected_pnl",
+    "realized_pnl",
+    # Knowledge provenance (v3):
+    "kda_decision", "authorization_source", "klp_score",
+    "knowledge_provenance",  # JSON blob: full decision context
+    # Learning fields (v3):
+    "leg_outcomes",          # JSON blob: per-leg realized outcomes
+    "outcome_correctness",
 ]
 
 
@@ -112,13 +145,36 @@ class OptionsOrderRecord:
     legs:            List[Dict]   # raw leg definitions from signal
 
     # Mutable fields
-    status:           str       = "open"    # open | closed
+    status:           str       = "open"    # open | EXIT_SUBMITTED | closed
     exit_premium:     float     = 0.0
     pnl_rs:           float     = 0.0
     exit_reason:      str       = ""
     closed_at:        Optional[datetime] = None
     # Live execution (v2) — empty for paper positions
     broker_order_ids: List[str] = field(default_factory=list)
+    # v3: broker execution state (separate from logical status)
+    broker_status:             str             = "SUBMITTED"
+    reconciliation_status:     str             = "UNRECONCILED"
+    # v3: entry fill capture — one dict per leg, BUY-first placement order
+    entry_leg_fills:           List[dict]      = field(default_factory=list)
+    # v3: exit fill capture
+    exit_broker_order_ids:     List[str]       = field(default_factory=list)
+    exit_leg_fills:            List[dict]      = field(default_factory=list)
+    # v3: actual vs expected P&L (expected = B-S model; realized = from actual fills)
+    expected_entry_price:      float           = 0.0
+    actual_entry_fill_price:   Optional[float] = None
+    expected_exit_price:       float           = 0.0
+    actual_exit_fill_price:    Optional[float] = None
+    expected_pnl:              float           = 0.0
+    realized_pnl:              Optional[float] = None
+    # v3: knowledge authority provenance
+    kda_decision:              Optional[str]   = None
+    authorization_source:      Optional[str]   = None
+    klp_score:                 Optional[float] = None
+    knowledge_provenance:      dict            = field(default_factory=dict)
+    # v3: learning outcome fields
+    leg_outcomes:              List[dict]      = field(default_factory=list)
+    outcome_correctness:       Optional[str]   = None
 
     @property
     def quantity(self) -> int:
@@ -302,6 +358,23 @@ class OptionsOrderManager:
             legs             = meta.get("legs", []),
         )
 
+        # ── Knowledge provenance from signal_context and decision (Phase 5) ──
+        _sc = signal_context or {}
+        rec.expected_entry_price = float(signal.entry_price)
+        rec.kda_decision         = _sc.get("kda_decision") or getattr(decision, "kda_decision", None)
+        rec.authorization_source = _sc.get("authorization_source") or getattr(decision, "authorization_source", None)
+        _klp_raw                 = _sc.get("klp_score") or getattr(decision, "klp_score", None)
+        rec.klp_score            = float(_klp_raw) if _klp_raw is not None else None
+        rec.knowledge_provenance = {
+            "kda_evidence_state": _sc.get("kda_evidence_state"),
+            "strategylab_result": _sc.get("strategylab_result"),
+            "final_decision":     _sc.get("final_decision") or getattr(decision, "final_decision", None),
+            "iv_rank":            float(meta.get("iv_rank", 50.0)),
+            "dte":                dte_at_entry,
+            "regime":             regime,
+            "option_structure":   stype,
+        }
+
         # ── Live execution: place broker legs before committing to journal ──
         if not self._paper_mode and self._broker is not None:
             with self._lock:
@@ -319,6 +392,13 @@ class OptionsOrderManager:
                 )
                 return None
             rec.broker_order_ids = broker_ids
+            # Phase 2: poll entry fills — capture actual broker execution
+            rec.entry_leg_fills = self._poll_entry_fills(rec, broker_ids)
+            _net = self._compute_net_fill_price(rec.entry_leg_fills)
+            if _net is not None:
+                rec.actual_entry_fill_price = _net
+                rec.reconciliation_status   = _RCON_ENTRY
+                rec.broker_status           = _BRKST_FILLED
         else:
             with self._lock:
                 self._orders[oid] = rec
@@ -762,6 +842,7 @@ class OptionsOrderManager:
             "reversal_order_id": reversal_order_id or "",
             "status":            status,
             "reason":            reason,
+            "max_loss_rs_estimate": str(round(per_leg_max_loss, 4)),
         }
         try:
             with open(ROLLBACK_FAILURES_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -792,13 +873,39 @@ class OptionsOrderManager:
         )
 
     def _ensure_rollback_journal(self) -> None:
-        """Create the rollback failures journal CSV if it does not exist."""
+        """Create (or migrate) the rollback failures journal CSV."""
         os.makedirs(os.path.dirname(ROLLBACK_FAILURES_PATH), exist_ok=True)
         if not os.path.exists(ROLLBACK_FAILURES_PATH):
             with open(
                 ROLLBACK_FAILURES_PATH, "w", newline="", encoding="utf-8"
             ) as fh:
                 csv.DictWriter(fh, fieldnames=ROLLBACK_FAILURE_COLUMNS).writeheader()
+            return
+        # Migration: add max_loss_rs_estimate column if missing from older file
+        try:
+            with open(ROLLBACK_FAILURES_PATH, "r", encoding="utf-8") as fh:
+                existing_header = next(csv.reader(fh), [])
+        except Exception:
+            existing_header = []
+        missing = [c for c in ROLLBACK_FAILURE_COLUMNS if c not in existing_header]
+        if missing:
+            try:
+                with open(ROLLBACK_FAILURES_PATH, newline="", encoding="utf-8") as fh:
+                    existing_rows = list(csv.DictReader(fh))
+            except Exception:
+                existing_rows = []
+            import shutil
+            shutil.copy(ROLLBACK_FAILURES_PATH, ROLLBACK_FAILURES_PATH.replace(".csv", "_legacy.csv"))
+            with open(ROLLBACK_FAILURES_PATH, "w", newline="", encoding="utf-8") as fh:
+                writer = csv.DictWriter(fh, fieldnames=ROLLBACK_FAILURE_COLUMNS)
+                writer.writeheader()
+                for row in existing_rows:
+                    for col in missing:
+                        row.setdefault(col, "")
+                    writer.writerow({k: row.get(k, "") for k in ROLLBACK_FAILURE_COLUMNS})
+            log.info(
+                "[OptionsOrderManager] Migrated rollback journal (added %s).", missing
+            )
 
     def _restore_unresolved(self) -> None:
         """Load non-resolved rollback failures from the persistent journal on startup."""
@@ -812,13 +919,26 @@ class OptionsOrderManager:
                     eid = row.get("exposure_id", "")
                     if not eid:
                         continue
+                    raw_est = row.get("max_loss_rs_estimate", "")
+                    try:
+                        estimate = float(raw_est) if raw_est else None
+                    except (TypeError, ValueError):
+                        estimate = None
+                    if estimate is None:
+                        log.critical(
+                            "[OptionsOrderManager] CRITICAL — unresolved exposure %s "
+                            "has no max_loss_rs_estimate in journal. "
+                            "RiskGuardian exposure underestimated. "
+                            "MANUAL RECONCILIATION REQUIRED.",
+                            eid,
+                        )
                     self._unresolved[eid] = {
                         "exposure_id":          eid,
                         "trade_id":             row.get("trade_id", ""),
                         "order_id":             row.get("original_order_id", ""),
                         "security_id":          row.get("security_id", ""),
                         "status":               row.get("status", ""),
-                        "max_loss_rs_estimate": 0.0,
+                        "max_loss_rs_estimate": estimate if estimate is not None else 0.0,
                     }
         except Exception as exc:
             log.warning(
@@ -900,6 +1020,122 @@ class OptionsOrderManager:
 
         return exit_ids
 
+    # ── Fill polling helpers (Phase 2 / Phase 3) ───────────────────────────
+
+    def _poll_entry_fills(
+        self,
+        rec: "OptionsOrderRecord",
+        broker_ids: List[str],
+    ) -> List[dict]:
+        """
+        Poll broker for fill status of each entry leg (best-effort).
+        Correlates broker_ids with sorted legs (BUY-first, matching _place_live_legs).
+        Non-blocking: poll errors produce a POLL_ERROR entry, not an exception.
+        """
+        sorted_legs = sorted(rec.legs, key=lambda l: (0 if l.get("direction") == "BUY" else 1))
+        fills: List[dict] = []
+        for i, oid in enumerate(broker_ids):
+            leg = sorted_legs[i] if i < len(sorted_legs) else {}
+            try:
+                st = self._broker.get_order_status(oid)
+                fills.append({
+                    "order_id":   oid,
+                    "direction":  leg.get("direction", ""),
+                    "strike":     leg.get("strike", ""),
+                    "opt_type":   leg.get("type", ""),
+                    "status":     st.get("status", "UNKNOWN"),
+                    "qty_filled": int(st.get("filled_qty", 0) or 0),
+                    "avg_price":  float(st.get("avg_fill_price", 0.0) or 0.0),
+                    "ts":         datetime.now().isoformat(),
+                })
+            except Exception as exc:
+                fills.append({
+                    "order_id":   oid,
+                    "direction":  leg.get("direction", ""),
+                    "strike":     leg.get("strike", ""),
+                    "opt_type":   leg.get("type", ""),
+                    "status":     "POLL_ERROR",
+                    "qty_filled": 0,
+                    "avg_price":  0.0,
+                    "error":      str(exc),
+                    "ts":         datetime.now().isoformat(),
+                })
+        return fills
+
+    def _poll_exit_fills(
+        self,
+        rec: "OptionsOrderRecord",
+        exit_order_ids: List[str],
+    ) -> List[dict]:
+        """
+        Poll broker for fill status of each exit leg.
+        Correlates exit_order_ids with rec.legs (same iteration order as _place_live_exit_legs).
+        """
+        fills: List[dict] = []
+        for i, oid in enumerate(exit_order_ids):
+            leg = rec.legs[i] if i < len(rec.legs) else {}
+            orig_dir  = str(leg.get("direction", "BUY")).upper()
+            close_dir = "SELL" if orig_dir == "BUY" else "BUY"
+            try:
+                st = self._broker.get_order_status(oid)
+                fills.append({
+                    "order_id":   oid,
+                    "direction":  close_dir,
+                    "strike":     leg.get("strike", ""),
+                    "opt_type":   leg.get("type", ""),
+                    "status":     st.get("status", "UNKNOWN"),
+                    "qty_filled": int(st.get("filled_qty", 0) or 0),
+                    "avg_price":  float(st.get("avg_fill_price", 0.0) or 0.0),
+                    "ts":         datetime.now().isoformat(),
+                })
+            except Exception as exc:
+                fills.append({
+                    "order_id":   oid,
+                    "direction":  close_dir,
+                    "strike":     leg.get("strike", ""),
+                    "opt_type":   leg.get("type", ""),
+                    "status":     "POLL_ERROR",
+                    "qty_filled": 0,
+                    "avg_price":  0.0,
+                    "error":      str(exc),
+                    "ts":         datetime.now().isoformat(),
+                })
+        return fills
+
+    def _compute_net_fill_price(self, fills: List[dict]) -> Optional[float]:
+        """
+        Compute net premium from leg fills.
+        BUY legs contribute +price (debit), SELL legs contribute -price (credit).
+        Returns abs(net) = net debit or net credit received per unit.
+        Returns None if any leg has zero qty or zero price (incomplete fills).
+        """
+        if not fills:
+            return None
+        net = 0.0
+        for fill in fills:
+            qty   = fill.get("qty_filled", 0)
+            price = fill.get("avg_price", 0.0)
+            if qty <= 0 or price <= 0:
+                return None   # incomplete fill — cannot produce a reliable net
+            direction = str(fill.get("direction", "BUY")).upper()
+            sign = 1.0 if direction == "BUY" else -1.0
+            net += sign * price
+        return round(abs(net), 4)
+
+    def _compute_realized_pnl(self, rec: "OptionsOrderRecord") -> Optional[float]:
+        """
+        Compute realized P&L using actual entry and exit fill prices.
+        Returns None if either actual price is unavailable.
+        """
+        entry = rec.actual_entry_fill_price
+        exit_ = rec.actual_exit_fill_price
+        if entry is None or exit_ is None:
+            return None
+        lot_rs = rec.lots * rec.lot_size
+        if rec.is_credit:
+            return round((entry - exit_) * lot_rs, 2)
+        return round((exit_ - entry) * lot_rs, 2)
+
     # ── Exit monitoring ────────────────────────────────────────────────
 
     def check_exits(self, current_prices: Optional[Dict[str, float]] = None) -> int:
@@ -911,7 +1147,6 @@ class OptionsOrderManager:
         closed = 0
         with self._lock:
             open_orders = [o for o in self._orders.values() if o.status == "open"]
-
         for rec in open_orders:
             reason = self._evaluate_exit(rec, current_prices)
             if reason:
@@ -924,12 +1159,12 @@ class OptionsOrderManager:
     def close_position(
         self, order_id: str, exit_premium: float, reason: str = "MANUAL"
     ) -> bool:
-        """Force-close a position by order_id."""
+        """Force-close a position by order_id (also allows EXIT_SUBMITTED)."""
         with self._lock:
             if order_id not in self._orders:
                 return False
             rec = self._orders[order_id]
-            if rec.status != "open":
+            if rec.status not in ("open", "EXIT_SUBMITTED"):
                 return False
         self._close_position(order_id, exit_premium, reason)
         return True
@@ -943,10 +1178,11 @@ class OptionsOrderManager:
             return list(self._orders.values())
 
     def get_total_options_exposure_rs(self) -> float:
-        """Sum of max_loss_rs for open positions plus unresolved rollback exposures."""
+        """Sum of max_loss_rs for open/exit-submitted positions plus unresolved rollback exposures."""
         with self._lock:
             active = sum(
-                o.max_loss_rs for o in self._orders.values() if o.status == "open"
+                o.max_loss_rs for o in self._orders.values()
+                if o.status in ("open", "EXIT_SUBMITTED")
             )
             unresolved = sum(
                 r.get("max_loss_rs_estimate", 0.0) for r in self._unresolved.values()
@@ -1042,66 +1278,115 @@ class OptionsOrderManager:
     ) -> None:
         with self._lock:
             rec = self._orders.get(order_id)
-            if rec is None or rec.status != "open":
+            if rec is None or rec.status not in ("open", "EXIT_SUBMITTED"):
                 return
 
-        # ── Live exit: attempt to close broker positions ───────────────
+        # ── Live exit path ─────────────────────────────────────────────────
         if not self._paper_mode and self._broker is not None:
+            # Set EXIT_SUBMITTED before placing — prevents duplicate exit on next cycle
+            with self._lock:
+                rec = self._orders.get(order_id)
+                if rec is None or rec.status not in ("open", "EXIT_SUBMITTED"):
+                    return
+                if rec.status == "open":
+                    rec.status        = "EXIT_SUBMITTED"
+                    rec.broker_status = _BRKST_EXIT_SUBMITTED
+
             exit_order_ids = self._place_live_exit_legs(rec)
+
             if exit_order_ids is None:
-                log.error(
-                    "[OptionsOrderManager] [LiveExitFailed] %s — live exit orders not "
-                    "confirmed. P&L will be estimated (paper-style). MANUAL REVIEW.",
+                with self._lock:
+                    rec.broker_status = _BRKST_UNRESOLVED
+                log.critical(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — exit orders not "
+                    "placed. Position remains EXIT_SUBMITTED. "
+                    "MANUAL INTERVENTION REQUIRED.",
                     order_id,
                 )
-            # Continue regardless — record estimated P&L locally so the
-            # position is removed from active tracking.
+                return   # position stays EXIT_SUBMITTED
 
+            # Phase 3: poll fills to confirm execution before marking closed
+            exit_fills = self._poll_exit_fills(rec, exit_order_ids)
+            with self._lock:
+                rec.exit_broker_order_ids = exit_order_ids
+                rec.exit_leg_fills        = exit_fills
+
+            all_filled = all(
+                str(f.get("status", "")).upper()
+                in ("TRADED", "FILLED", "PARTIALLY_TRADED")
+                and int(f.get("qty_filled", 0) or 0) > 0
+                for f in exit_fills
+            )
+
+            if not all_filled:
+                with self._lock:
+                    rec.broker_status = _BRKST_UNRESOLVED
+                log.critical(
+                    "[OptionsOrderManager] [ExitUnconfirmed] %s — not all exit legs "
+                    "confirmed filled (statuses=%s). Position remains EXIT_SUBMITTED. "
+                    "MANUAL INTERVENTION REQUIRED.",
+                    order_id, [f.get("status") for f in exit_fills],
+                )
+                return   # position stays EXIT_SUBMITTED
+
+            # All exits confirmed — use actual fill price when computable
+            _actual_exit = self._compute_net_fill_price(exit_fills)
+            if _actual_exit is not None:
+                rec.actual_exit_fill_price = _actual_exit
+                exit_premium = _actual_exit
+            else:
+                log.warning(
+                    "[OptionsOrderManager] Exit fills confirmed but net price "
+                    "incomplete for %s — using B-S estimate.", order_id,
+                )
+
+        # ── Compute P&L and mark closed ───────────────────────────────────
         with self._lock:
             rec = self._orders.get(order_id)
-            if rec is None or rec.status != "open":
+            if rec is None or rec.status not in ("open", "EXIT_SUBMITTED"):
                 return
 
-            # Apply exit slippage (conservative: always increases cost to close).
-            # Credit spreads: cost-to-close rises (worse for seller).
-            # Debit spreads:  exit value falls (worse for buyer).
-            # Using a uniform (1 + SLIPPAGE_PCT) gives the conservative estimate
-            # in both cases because:
-            #   credit PnL = entry - exit  → higher exit → lower PnL ✓
-            #   debit  PnL = exit - entry  → applying (1+slip) then capping is
-            #                               handled via the sign of (exit-entry)
-            # For debit exits we use (1 - SLIPPAGE_PCT) so we receive less.
-            if rec.is_credit:
+            if rec.actual_exit_fill_price is not None:
+                exit_with_slip = rec.actual_exit_fill_price   # actual fills — no added slippage
+            elif rec.is_credit:
                 exit_with_slip = round(exit_premium * (1.0 + SLIPPAGE_PCT), 2)
             else:
                 exit_with_slip = round(exit_premium * (1.0 - SLIPPAGE_PCT), 2)
 
-            # P&L calculation
             lot_rs = rec.lots * rec.lot_size
             if rec.is_credit:
-                # Sold premium: profit = (entry_credit - exit_debit) × lot_rs
                 pnl = round((rec.entry_premium - exit_with_slip) * lot_rs, 2)
             else:
-                # Bought debit: profit = (exit_value - entry_debit) × lot_rs
                 pnl = round((exit_with_slip - rec.entry_premium) * lot_rs, 2)
 
-            rec.exit_premium = exit_with_slip
-            rec.pnl_rs       = pnl
-            rec.exit_reason  = reason
-            rec.status       = "closed"
-            rec.closed_at    = datetime.now()
+            rec.expected_exit_price = exit_with_slip
+            rec.expected_pnl        = pnl
+            rec.exit_premium        = exit_with_slip
+            rec.pnl_rs              = pnl
+
+            # Phase 4: realized P&L supersedes estimated when both sides reconciled
+            realized = self._compute_realized_pnl(rec)
+            if realized is not None:
+                rec.realized_pnl          = realized
+                rec.pnl_rs                = realized
+                rec.reconciliation_status = _RCON_FULL
+
+            rec.exit_reason   = reason
+            rec.status        = "closed"
+            rec.broker_status = _BRKST_CLOSED
+            rec.closed_at     = datetime.now()
 
         self._journal_write_close(rec)
 
-        emoji = "✅" if pnl >= 0 else "❌"
-        # Structured exit log — includes entry + exit + pnl for monitoring
+        emoji = "✅" if rec.pnl_rs >= 0 else "❌"
         log.info(
             "[OptionsExit] %s CLOSED  symbol=%s  strategy=%s  "
-            "entry=%.2f  exit=%.2f (slip applied)  pnl=₹%.0f  reason=%s  "
-            "lots=%d  lot_size=%d",
+            "entry=%.2f  exit=%.2f  pnl=₹%.0f  realized=%s  reason=%s  "
+            "lots=%d  lot_size=%d  reconciliation=%s",
             emoji, rec.symbol, rec.strategy,
-            rec.entry_premium, exit_with_slip, pnl, reason,
-            rec.lots, rec.lot_size,
+            rec.entry_premium, exit_with_slip, rec.pnl_rs,
+            f"₹{rec.realized_pnl:.0f}" if rec.realized_pnl is not None else "estimated",
+            reason, rec.lots, rec.lot_size, rec.reconciliation_status,
         )
 
         # Notify learning tracker
@@ -1120,7 +1405,7 @@ class OptionsOrderManager:
         if not os.path.exists(JOURNAL_PATH):
             with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as fh:
                 csv.DictWriter(fh, fieldnames=JOURNAL_COLUMNS).writeheader()
-            log.info("[OptionsOrderManager] Created journal (v2): %s", JOURNAL_PATH)
+            log.info("[OptionsOrderManager] Created journal (v3): %s", JOURNAL_PATH)
             return
 
         # Migration: if existing file missing v2 columns, archive and recreate
@@ -1138,38 +1423,54 @@ class OptionsOrderManager:
             with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as fh:
                 csv.DictWriter(fh, fieldnames=JOURNAL_COLUMNS).writeheader()
             log.info(
-                "[OptionsOrderManager] Migrated journal to v2 "
+                "[OptionsOrderManager] Migrated journal to v3 "
                 "(added columns %s). Legacy saved at %s.",
                 missing_cols, legacy_path,
             )
 
     def _journal_write_open(self, rec: OptionsOrderRecord) -> None:
         row: Dict[str, Any] = {
-            "order_id":          rec.order_id,
-            "symbol":            rec.symbol,
-            "strategy":          rec.strategy,
-            "option_type":       rec.option_type,
-            "direction":         rec.direction,
-            "lots":              rec.lots,
-            "lot_size":          rec.lot_size,
-            "entry_premium":     rec.entry_premium,
-            "stop_premium":      rec.stop_premium,
-            "target_premium":    rec.target_premium,
-            "max_loss_rs":       rec.max_loss_rs,
-            "max_profit_rs":     rec.max_profit_rs,
-            "expiry_date":       rec.expiry_date.isoformat(),
-            "dte_at_entry":      rec.dte_at_entry,
-            "iv_rank_at_entry":  rec.iv_rank_at_entry,
-            "spot_at_entry":     rec.spot_at_entry,
-            "regime_at_entry":   rec.regime_at_entry,
-            "placed_at":         rec.placed_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "status":            "open",
-            "exit_premium":      "",
-            "pnl_rs":            "",
-            "exit_reason":       "",
-            "closed_at":         "",
-            "legs_json":         json.dumps(rec.legs) if rec.legs else "",
-            "broker_order_ids":  json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
+            "order_id":                rec.order_id,
+            "symbol":                  rec.symbol,
+            "strategy":                rec.strategy,
+            "option_type":             rec.option_type,
+            "direction":               rec.direction,
+            "lots":                    rec.lots,
+            "lot_size":                rec.lot_size,
+            "entry_premium":           rec.entry_premium,
+            "stop_premium":            rec.stop_premium,
+            "target_premium":          rec.target_premium,
+            "max_loss_rs":             rec.max_loss_rs,
+            "max_profit_rs":           rec.max_profit_rs,
+            "expiry_date":             rec.expiry_date.isoformat(),
+            "dte_at_entry":            rec.dte_at_entry,
+            "iv_rank_at_entry":        rec.iv_rank_at_entry,
+            "spot_at_entry":           rec.spot_at_entry,
+            "regime_at_entry":         rec.regime_at_entry,
+            "placed_at":               rec.placed_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "status":                  "open",
+            "exit_premium":            "",
+            "pnl_rs":                  "",
+            "exit_reason":             "",
+            "closed_at":               "",
+            "legs_json":               json.dumps(rec.legs) if rec.legs else "",
+            "broker_order_ids":        json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
+            # v3 fields
+            "broker_status":           rec.broker_status,
+            "reconciliation_status":   rec.reconciliation_status,
+            "entry_leg_fills":         json.dumps(rec.entry_leg_fills) if rec.entry_leg_fills else "",
+            "exit_broker_order_ids":   "",
+            "exit_leg_fills":          "",
+            "actual_entry_fill_price": str(rec.actual_entry_fill_price) if rec.actual_entry_fill_price is not None else "",
+            "actual_exit_fill_price":  "",
+            "expected_pnl":            "",
+            "realized_pnl":            "",
+            "kda_decision":            rec.kda_decision or "",
+            "authorization_source":    rec.authorization_source or "",
+            "klp_score":               str(rec.klp_score) if rec.klp_score is not None else "",
+            "knowledge_provenance":    json.dumps(rec.knowledge_provenance) if rec.knowledge_provenance else "",
+            "leg_outcomes":            "",
+            "outcome_correctness":     "",
         }
         try:
             with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -1181,31 +1482,47 @@ class OptionsOrderManager:
     def _journal_write_close(self, rec: OptionsOrderRecord) -> None:
         """Append a CLOSE row to the journal."""
         row: Dict[str, Any] = {
-            "order_id":          rec.order_id + "_CLOSE",
-            "symbol":            rec.symbol,
-            "strategy":          rec.strategy,
-            "option_type":       rec.option_type,
-            "direction":         "CLOSE",
-            "lots":              rec.lots,
-            "lot_size":          rec.lot_size,
-            "entry_premium":     rec.entry_premium,
-            "stop_premium":      rec.stop_premium,
-            "target_premium":    rec.target_premium,
-            "max_loss_rs":       rec.max_loss_rs,
-            "max_profit_rs":     rec.max_profit_rs,
-            "expiry_date":       rec.expiry_date.isoformat(),
-            "dte_at_entry":      rec.dte_at_entry,
-            "iv_rank_at_entry":  rec.iv_rank_at_entry,
-            "spot_at_entry":     rec.spot_at_entry,
-            "regime_at_entry":   rec.regime_at_entry,
-            "placed_at":         rec.placed_at.strftime("%Y-%m-%d %H:%M:%S"),
-            "status":            "closed",
-            "exit_premium":      rec.exit_premium,
-            "pnl_rs":            rec.pnl_rs,
-            "exit_reason":       rec.exit_reason,
-            "closed_at":         rec.closed_at.strftime("%Y-%m-%d %H:%M:%S") if rec.closed_at else "",
-            "legs_json":         json.dumps(rec.legs) if rec.legs else "",
-            "broker_order_ids":  json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
+            "order_id":                rec.order_id + "_CLOSE",
+            "symbol":                  rec.symbol,
+            "strategy":                rec.strategy,
+            "option_type":             rec.option_type,
+            "direction":               "CLOSE",
+            "lots":                    rec.lots,
+            "lot_size":                rec.lot_size,
+            "entry_premium":           rec.entry_premium,
+            "stop_premium":            rec.stop_premium,
+            "target_premium":          rec.target_premium,
+            "max_loss_rs":             rec.max_loss_rs,
+            "max_profit_rs":           rec.max_profit_rs,
+            "expiry_date":             rec.expiry_date.isoformat(),
+            "dte_at_entry":            rec.dte_at_entry,
+            "iv_rank_at_entry":        rec.iv_rank_at_entry,
+            "spot_at_entry":           rec.spot_at_entry,
+            "regime_at_entry":         rec.regime_at_entry,
+            "placed_at":               rec.placed_at.strftime("%Y-%m-%d %H:%M:%S"),
+            "status":                  "closed",
+            "exit_premium":            rec.exit_premium,
+            "pnl_rs":                  rec.pnl_rs,
+            "exit_reason":             rec.exit_reason,
+            "closed_at":               rec.closed_at.strftime("%Y-%m-%d %H:%M:%S") if rec.closed_at else "",
+            "legs_json":               json.dumps(rec.legs) if rec.legs else "",
+            "broker_order_ids":        json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
+            # v3 fields
+            "broker_status":           rec.broker_status,
+            "reconciliation_status":   rec.reconciliation_status,
+            "entry_leg_fills":         json.dumps(rec.entry_leg_fills) if rec.entry_leg_fills else "",
+            "exit_broker_order_ids":   json.dumps(rec.exit_broker_order_ids) if rec.exit_broker_order_ids else "",
+            "exit_leg_fills":          json.dumps(rec.exit_leg_fills) if rec.exit_leg_fills else "",
+            "actual_entry_fill_price": str(rec.actual_entry_fill_price) if rec.actual_entry_fill_price is not None else "",
+            "actual_exit_fill_price":  str(rec.actual_exit_fill_price) if rec.actual_exit_fill_price is not None else "",
+            "expected_pnl":            str(rec.expected_pnl),
+            "realized_pnl":            str(rec.realized_pnl) if rec.realized_pnl is not None else "",
+            "kda_decision":            rec.kda_decision or "",
+            "authorization_source":    rec.authorization_source or "",
+            "klp_score":               str(rec.klp_score) if rec.klp_score is not None else "",
+            "knowledge_provenance":    json.dumps(rec.knowledge_provenance) if rec.knowledge_provenance else "",
+            "leg_outcomes":            json.dumps(rec.leg_outcomes) if rec.leg_outcomes else "",
+            "outcome_correctness":     rec.outcome_correctness or "",
         }
         try:
             with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -1281,6 +1598,33 @@ class OptionsOrderManager:
                 except Exception:
                     _bids = []
 
+                # v3: restore broker_status / reconciliation_status / fill fields
+                _saved_status = row.get("status", "open")
+                if _saved_status == "EXIT_SUBMITTED":
+                    log.critical(
+                        "[OptionsOrderManager] CRITICAL — restoring %s from journal "
+                        "with status=EXIT_SUBMITTED. Exit may not have completed. "
+                        "MANUAL RECONCILIATION REQUIRED.", oid,
+                    )
+
+                def _safe_json(raw: str) -> object:
+                    try:
+                        return json.loads(raw) if raw else None
+                    except Exception:
+                        return None
+
+                def _safe_float_opt(raw: str) -> Optional[float]:
+                    try:
+                        return float(raw) if raw else None
+                    except Exception:
+                        return None
+
+                _entry_fills = _safe_json(row.get("entry_leg_fills", "")) or []
+                _exit_bids   = _safe_json(row.get("exit_broker_order_ids", "")) or []
+                _exit_fills  = _safe_json(row.get("exit_leg_fills", "")) or []
+                _kp          = _safe_json(row.get("knowledge_provenance", "")) or {}
+                _leg_out     = _safe_json(row.get("leg_outcomes", "")) or []
+
                 rec = OptionsOrderRecord(
                     order_id          = oid,
                     symbol            = row["symbol"],
@@ -1301,8 +1645,24 @@ class OptionsOrderManager:
                     regime_at_entry   = row.get("regime_at_entry", ""),
                     placed_at         = datetime.strptime(row["placed_at"], "%Y-%m-%d %H:%M:%S"),
                     legs              = _legs,
-                    status            = "open",
+                    status            = "open",   # EXIT_SUBMITTED restores as open for re-checking
                     broker_order_ids  = _bids,
+                    # v3 fields
+                    broker_status           = row.get("broker_status", _BRKST_SUBMITTED),
+                    reconciliation_status   = row.get("reconciliation_status", _RCON_UNRECONCILED),
+                    entry_leg_fills         = _entry_fills,
+                    exit_broker_order_ids   = _exit_bids,
+                    exit_leg_fills          = _exit_fills,
+                    actual_entry_fill_price = _safe_float_opt(row.get("actual_entry_fill_price", "")),
+                    actual_exit_fill_price  = _safe_float_opt(row.get("actual_exit_fill_price", "")),
+                    expected_pnl            = float(row.get("expected_pnl", 0) or 0),
+                    realized_pnl            = _safe_float_opt(row.get("realized_pnl", "")),
+                    kda_decision            = row.get("kda_decision") or None,
+                    authorization_source    = row.get("authorization_source") or None,
+                    klp_score               = _safe_float_opt(row.get("klp_score", "")),
+                    knowledge_provenance    = _kp,
+                    leg_outcomes            = _leg_out,
+                    outcome_correctness     = row.get("outcome_correctness") or None,
                 )
                 self._orders[oid] = rec
                 restored += 1
