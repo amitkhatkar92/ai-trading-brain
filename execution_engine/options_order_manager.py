@@ -11,7 +11,8 @@ Separated from the equity OrderManager because options require:
   • Multi-leg awareness        (spread = 2-4 legs)
   • Separate paper journal     (data/options_trades.csv)
 
-Paper-trading only — no live broker integration for options yet.
+Supports both paper and live (DhanBroker) execution.
+Live mode requires PAPER_TRADING=false AND LIVE_TRADING_AUTHORIZED=true.
 All amounts in Indian Rupees (₹).
 
 Exit hierarchy (first condition met wins):
@@ -34,6 +35,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, date, timedelta
 from typing import Dict, List, Optional, Any
 
+import config as _cfg
 from models.trade_signal import TradeSignal, SignalType, SignalDirection
 from data_feeds.options_feed import get_options_feed, NSE_LOT_SIZES
 from utils import get_logger
@@ -55,6 +57,7 @@ JOURNAL_PATH           = "data/options_trades.csv"
 SLIPPAGE_PCT           = 0.005
 
 # Journal CSV columns
+# v2: added legs_json (for live exit after restart) and broker_order_ids
 JOURNAL_COLUMNS = [
     "order_id", "symbol", "strategy", "option_type", "direction",
     "lots", "lot_size", "entry_premium", "stop_premium", "target_premium",
@@ -63,6 +66,8 @@ JOURNAL_COLUMNS = [
     "placed_at", "status",
     # Filled on close:
     "exit_premium", "pnl_rs", "exit_reason", "closed_at",
+    # Live execution (v2):
+    "legs_json", "broker_order_ids",
 ]
 
 
@@ -92,11 +97,13 @@ class OptionsOrderRecord:
     legs:            List[Dict]   # raw leg definitions from signal
 
     # Mutable fields
-    status:          str   = "open"    # open | closed
-    exit_premium:    float = 0.0
-    pnl_rs:          float = 0.0
-    exit_reason:     str   = ""
-    closed_at:       Optional[datetime] = None
+    status:           str       = "open"    # open | closed
+    exit_premium:     float     = 0.0
+    pnl_rs:           float     = 0.0
+    exit_reason:      str       = ""
+    closed_at:        Optional[datetime] = None
+    # Live execution (v2) — empty for paper positions
+    broker_order_ids: List[str] = field(default_factory=list)
 
     @property
     def quantity(self) -> int:
@@ -117,20 +124,36 @@ class OptionsOrderRecord:
 
 class OptionsOrderManager:
     """
-    Execution engine for options positions in paper-trading mode.
+    Execution engine for options positions.
 
+    Routes to DhanBroker when PAPER_TRADING=false AND LIVE_TRADING_AUTHORIZED=true.
+    Falls back to paper simulation otherwise.
     Used by the orchestrator to route options/spread signals away from
     the equity OrderManager.
     """
 
     def __init__(self) -> None:
+        # ── Authorization gate (mirrors equity OrderManager) ──────────────
+        self._paper_mode = getattr(_cfg, "PAPER_TRADING", True)
+        if not self._paper_mode and os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() != "true":
+            log.warning(
+                "[OptionsOrderManager] PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED "
+                "not set — forcing paper mode. Broker will not be initialized."
+            )
+            self._paper_mode = True
+        self._broker     = None if self._paper_mode else self._load_broker()
+
         self._orders:    Dict[str, OptionsOrderRecord] = {}
         self._lock       = threading.Lock()
         self._feed       = get_options_feed()
         self._ensure_journal()
         self._restore_from_journal()
-        log.info("[OptionsOrderManager] Initialised.  Open positions: %d",
-                 len(self._orders))
+        log.info(
+            "[OptionsOrderManager] Initialised.  mode=%s  broker=%s  open_positions=%d",
+            "paper" if self._paper_mode else "live",
+            type(self._broker).__name__ if self._broker else "None",
+            len(self._orders),
+        )
 
     # ── Public API (matches equity OrderManager.execute() contract) ────
 
@@ -261,21 +284,269 @@ class OptionsOrderManager:
             legs             = meta.get("legs", []),
         )
 
-        with self._lock:
-            self._orders[oid] = rec
+        # ── Live execution: place broker legs before committing to journal ──
+        if not self._paper_mode and self._broker is not None:
+            with self._lock:
+                self._orders[oid] = rec   # register first so monitors can see it
+
+            broker_ids = self._place_live_legs(rec, meta)
+            if broker_ids is None:
+                # All legs rolled back inside _place_live_legs; clean up
+                with self._lock:
+                    self._orders.pop(oid, None)
+                log.error(
+                    "[OptionsOrderManager] [LivePlacementFailed] %s %s — "
+                    "leg placement failed; position not recorded.",
+                    rec.symbol, stype,
+                )
+                return None
+            rec.broker_order_ids = broker_ids
+        else:
+            with self._lock:
+                self._orders[oid] = rec
 
         self._journal_write_open(rec)
 
         log.info(
             "[OptionsOrderManager] ✅ PLACED  %s  %s  %s  "
             "lots=%d × lot_size=%d  premium=%.2f  "
-            "stop=%.2f  target=%.2f  expiry=%s  DTE=%d",
+            "stop=%.2f  target=%.2f  expiry=%s  DTE=%d  "
+            "mode=%s  broker_ids=%s",
             rec.symbol, rec.option_type, rec.direction,
             rec.lots, rec.lot_size, rec.entry_premium,
             rec.stop_premium, rec.target_premium,
             rec.expiry_date, rec.dte_at_entry,
+            "paper" if self._paper_mode else "live",
+            rec.broker_order_ids if rec.broker_order_ids else "N/A",
         )
         return rec
+
+    # ── Broker wiring ──────────────────────────────────────────────────
+
+    def _load_broker(self):
+        """Load DhanBroker for live options routing."""
+        broker_name = getattr(_cfg, "ACTIVE_BROKER", "dhan").lower()
+        if broker_name == "dhan":
+            from execution_engine.brokers.dhan_broker import DhanBroker
+            client_id    = getattr(_cfg, "DHAN_CLIENT_ID", "")
+            access_token = getattr(_cfg, "DHAN_ACCESS_TOKEN", "")
+            if not client_id or not access_token:
+                log.warning(
+                    "[OptionsOrderManager] DHAN_CLIENT_ID or DHAN_ACCESS_TOKEN not set — "
+                    "broker not initialized; falling back to paper mode."
+                )
+                self._paper_mode = True
+                return None
+            return DhanBroker(client_id, access_token)
+        log.warning(
+            "[OptionsOrderManager] Broker '%s' not supported for options — paper mode.",
+            broker_name,
+        )
+        self._paper_mode = True
+        return None
+
+    def _place_live_legs(
+        self,
+        rec:  "OptionsOrderRecord",
+        meta: dict,
+    ) -> Optional[List[str]]:
+        """
+        Place each option leg via the live broker.
+
+        BUY legs are placed first (protection before selling).
+        If any leg fails, all already-placed legs are rolled back.
+
+        Returns list of broker order IDs (one per leg) on full success,
+        or None if any leg fails (after rollback attempt).
+        """
+        from data_feeds.dhan_fno_security_map import get_fno_security_map
+        fno_map = get_fno_security_map()
+
+        legs = meta.get("legs", [])
+        if not legs:
+            log.error(
+                "[OptionsOrderManager] [LiveAbort] No legs in meta for %s — cannot place.",
+                rec.order_id,
+            )
+            return None
+
+        lot_qty = rec.lots * rec.lot_size
+        # BUY legs first: ensures we hold protection before writing short positions
+        sorted_legs = sorted(legs, key=lambda l: (0 if l.get("direction") == "BUY" else 1))
+
+        placed: List[tuple] = []   # [(order_id, security_id, transaction_type)]
+
+        for leg in sorted_legs:
+            security_id = fno_map.lookup(
+                underlying      = rec.symbol,
+                expiry_date_str = rec.expiry_date.isoformat(),
+                strike          = float(leg.get("strike", 0)),
+                option_type     = str(leg.get("type", "")),
+            )
+            if security_id is None:
+                log.error(
+                    "[OptionsOrderManager] [ContractNotResolved] %s  "
+                    "leg=%s%s  expiry=%s  — security_id not found; "
+                    "rolling back %d already-placed leg(s).",
+                    rec.symbol, leg.get("strike"), leg.get("type"),
+                    rec.expiry_date.isoformat(), len(placed),
+                )
+                self._rollback_legs(placed)
+                return None
+
+            tx = str(leg.get("direction", "BUY")).upper()
+            order_id = self._broker.place_order(
+                security_id      = security_id,
+                exchange_segment = "NSE_FNO",
+                transaction_type = tx,
+                quantity         = lot_qty,
+                price            = 0.0,
+                order_type       = "MARKET",
+                product_type     = "NRML",
+            )
+
+            if order_id is None:
+                log.error(
+                    "[OptionsOrderManager] [LegRejected] %s  leg=%s%s  — "
+                    "broker returned None; rolling back %d placed leg(s).",
+                    rec.symbol, leg.get("strike"), leg.get("type"), len(placed),
+                )
+                self._rollback_legs(placed)
+                return None
+
+            # SIM order ID means broker is disconnected; reject to prevent phantom live records
+            if str(order_id).startswith("SIM_"):
+                log.error(
+                    "[OptionsOrderManager] [BrokerSimFallback] Live mode but broker "
+                    "returned SIM id '%s'; rolling back %d placed leg(s). "
+                    "Check DhanBroker connection.",
+                    order_id, len(placed),
+                )
+                self._rollback_legs(placed)
+                return None
+
+            placed.append((order_id, security_id, tx))
+            log.info(
+                "[OptionsLeg] ✅ Placed  %s  %s%s  premium≈%.2f  "
+                "qty=%d  security_id=%s  order_id=%s",
+                tx, leg.get("strike"), leg.get("type"),
+                float(leg.get("premium", 0)), lot_qty, security_id, order_id,
+            )
+
+        return [p[0] for p in placed]
+
+    def _rollback_legs(self, placed: List[tuple]) -> None:
+        """
+        Attempt to cancel or reverse already-placed legs after a later leg failed.
+        Called in reverse order (last placed first).
+        Logs CRITICAL if a rollback itself fails — manual intervention required.
+        """
+        if not placed:
+            return
+        for order_id, security_id, original_tx in reversed(placed):
+            try:
+                status = self._broker.get_order_status(order_id)
+                traded = str(status.get("status", "")).upper() in (
+                    "TRADED", "PARTIALLY_TRADED", "FILLED",
+                )
+                if traded:
+                    # Market order already filled — must reverse with opposing order
+                    reverse_tx  = "SELL" if original_tx == "BUY" else "BUY"
+                    filled_qty  = int(status.get("filled_qty", 0)) or 1
+                    rev_id = self._broker.place_order(
+                        security_id      = security_id,
+                        exchange_segment = "NSE_FNO",
+                        transaction_type = reverse_tx,
+                        quantity         = filled_qty,
+                        price            = 0.0,
+                        order_type       = "MARKET",
+                        product_type     = "NRML",
+                    )
+                    log.warning(
+                        "[OptionsRollback] Reversed filled leg order_id=%s via %s → rev_id=%s",
+                        order_id, reverse_tx, rev_id,
+                    )
+                else:
+                    ok = self._broker.cancel_order(order_id)
+                    log.warning(
+                        "[OptionsRollback] Cancelled pending leg order_id=%s  result=%s",
+                        order_id, ok,
+                    )
+            except Exception as exc:
+                log.critical(
+                    "[OptionsRollback] FAILED to rollback leg order_id=%s: %s — "
+                    "MANUAL INTERVENTION REQUIRED.",
+                    order_id, exc,
+                )
+
+    def _place_live_exit_legs(
+        self,
+        rec: "OptionsOrderRecord",
+    ) -> Optional[List[str]]:
+        """
+        Place closing (opposing) orders for each leg of an open position.
+
+        Returns list of exit order IDs on success, None if any leg cannot be closed.
+        A None result is logged and the caller falls through to paper-style P&L.
+        """
+        if not rec.legs:
+            log.critical(
+                "[OptionsOrderManager] [LiveExitFailed] Cannot place live close for %s — "
+                "legs not available (position restored from journal without leg data). "
+                "Falling back to paper-style estimated exit. MANUAL REVIEW REQUIRED.",
+                rec.order_id,
+            )
+            return None
+
+        from data_feeds.dhan_fno_security_map import get_fno_security_map
+        fno_map = get_fno_security_map()
+        lot_qty = rec.lots * rec.lot_size
+        exit_ids: List[str] = []
+
+        for leg in rec.legs:
+            security_id = fno_map.lookup(
+                underlying      = rec.symbol,
+                expiry_date_str = rec.expiry_date.isoformat(),
+                strike          = float(leg.get("strike", 0)),
+                option_type     = str(leg.get("type", "")),
+            )
+            if security_id is None:
+                log.error(
+                    "[OptionsOrderManager] [LiveExitFailed] %s  leg=%s%s  — "
+                    "security_id not found. MANUAL CLOSE REQUIRED.",
+                    rec.order_id, leg.get("strike"), leg.get("type"),
+                )
+                return None
+
+            orig_dir  = str(leg.get("direction", "BUY")).upper()
+            close_dir = "SELL" if orig_dir == "BUY" else "BUY"
+
+            order_id = self._broker.place_order(
+                security_id      = security_id,
+                exchange_segment = "NSE_FNO",
+                transaction_type = close_dir,
+                quantity         = lot_qty,
+                price            = 0.0,
+                order_type       = "MARKET",
+                product_type     = "NRML",
+            )
+            if order_id is None or str(order_id).startswith("SIM_"):
+                log.error(
+                    "[OptionsOrderManager] [LiveExitFailed] %s  leg=%s%s  close=%s — "
+                    "broker rejected; P&L estimated. MANUAL CLOSE REQUIRED.",
+                    rec.order_id, leg.get("strike"), leg.get("type"), close_dir,
+                )
+                return None
+
+            exit_ids.append(order_id)
+            log.info(
+                "[OptionsLegExit] ✅ Closed  %s  %s%s  qty=%d  "
+                "security_id=%s  exit_order_id=%s",
+                close_dir, leg.get("strike"), leg.get("type"),
+                lot_qty, security_id, order_id,
+            )
+
+        return exit_ids
 
     # ── Exit monitoring ────────────────────────────────────────────────
 
@@ -413,6 +684,23 @@ class OptionsOrderManager:
             if rec is None or rec.status != "open":
                 return
 
+        # ── Live exit: attempt to close broker positions ───────────────
+        if not self._paper_mode and self._broker is not None:
+            exit_order_ids = self._place_live_exit_legs(rec)
+            if exit_order_ids is None:
+                log.error(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — live exit orders not "
+                    "confirmed. P&L will be estimated (paper-style). MANUAL REVIEW.",
+                    order_id,
+                )
+            # Continue regardless — record estimated P&L locally so the
+            # position is removed from active tracking.
+
+        with self._lock:
+            rec = self._orders.get(order_id)
+            if rec is None or rec.status != "open":
+                return
+
             # Apply exit slippage (conservative: always increases cost to close).
             # Credit spreads: cost-to-close rises (worse for seller).
             # Debit spreads:  exit value falls (worse for buyer).
@@ -471,7 +759,28 @@ class OptionsOrderManager:
         if not os.path.exists(JOURNAL_PATH):
             with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as fh:
                 csv.DictWriter(fh, fieldnames=JOURNAL_COLUMNS).writeheader()
-            log.info("[OptionsOrderManager] Created journal: %s", JOURNAL_PATH)
+            log.info("[OptionsOrderManager] Created journal (v2): %s", JOURNAL_PATH)
+            return
+
+        # Migration: if existing file missing v2 columns, archive and recreate
+        try:
+            with open(JOURNAL_PATH, "r", encoding="utf-8") as fh:
+                existing_header = next(csv.reader(fh), [])
+        except Exception:
+            existing_header = []
+
+        missing_cols = [c for c in JOURNAL_COLUMNS if c not in existing_header]
+        if missing_cols:
+            legacy_path = JOURNAL_PATH.replace(".csv", "_legacy.csv")
+            import shutil
+            shutil.copy(JOURNAL_PATH, legacy_path)
+            with open(JOURNAL_PATH, "w", newline="", encoding="utf-8") as fh:
+                csv.DictWriter(fh, fieldnames=JOURNAL_COLUMNS).writeheader()
+            log.info(
+                "[OptionsOrderManager] Migrated journal to v2 "
+                "(added columns %s). Legacy saved at %s.",
+                missing_cols, legacy_path,
+            )
 
     def _journal_write_open(self, rec: OptionsOrderRecord) -> None:
         row: Dict[str, Any] = {
@@ -498,6 +807,8 @@ class OptionsOrderManager:
             "pnl_rs":            "",
             "exit_reason":       "",
             "closed_at":         "",
+            "legs_json":         json.dumps(rec.legs) if rec.legs else "",
+            "broker_order_ids":  json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
         }
         try:
             with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -532,6 +843,8 @@ class OptionsOrderManager:
             "pnl_rs":            rec.pnl_rs,
             "exit_reason":       rec.exit_reason,
             "closed_at":         rec.closed_at.strftime("%Y-%m-%d %H:%M:%S") if rec.closed_at else "",
+            "legs_json":         json.dumps(rec.legs) if rec.legs else "",
+            "broker_order_ids":  json.dumps(rec.broker_order_ids) if rec.broker_order_ids else "",
         }
         try:
             with open(JOURNAL_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -565,6 +878,18 @@ class OptionsOrderManager:
                 original_oid = row["order_id"].replace("_CLOSE", "")
                 seen_closed.add(original_oid)
 
+        # Also try legacy file for positions from before v2 migration
+        legacy_path = JOURNAL_PATH.replace(".csv", "_legacy.csv")
+        if os.path.exists(legacy_path):
+            try:
+                with open(legacy_path, newline="", encoding="utf-8") as fh:
+                    for row in csv.DictReader(fh):
+                        if row.get("direction") == "CLOSE":
+                            seen_closed.add(row["order_id"].replace("_CLOSE", ""))
+                        rows.append(dict(row))
+            except Exception as exc:
+                log.debug("[OptionsOrderManager] Legacy journal read failed: %s", exc)
+
         # Restore open positions
         today = date.today()
         restored = 0
@@ -582,27 +907,41 @@ class OptionsOrderManager:
                 continue   # expired — don't restore
 
             try:
+                # Restore legs and broker_order_ids if persisted (v2 journal)
+                _legs_raw = row.get("legs_json") or ""
+                try:
+                    _legs = json.loads(_legs_raw) if _legs_raw else []
+                except Exception:
+                    _legs = []
+
+                _bids_raw = row.get("broker_order_ids") or ""
+                try:
+                    _bids = json.loads(_bids_raw) if _bids_raw else []
+                except Exception:
+                    _bids = []
+
                 rec = OptionsOrderRecord(
-                    order_id         = oid,
-                    symbol           = row["symbol"],
-                    strategy         = row["strategy"],
-                    option_type      = row["option_type"],
-                    direction        = row["direction"],
-                    lots             = int(row.get("lots", 1)),
-                    lot_size         = int(row.get("lot_size", 75)),
-                    entry_premium    = float(row.get("entry_premium", 0)),
-                    stop_premium     = float(row.get("stop_premium", 0)),
-                    target_premium   = float(row.get("target_premium", 0)),
-                    max_loss_rs      = float(row.get("max_loss_rs", 0)),
-                    max_profit_rs    = float(row.get("max_profit_rs", 0)),
-                    expiry_date      = expiry_dt,
-                    dte_at_entry     = int(row.get("dte_at_entry", 0)),
-                    iv_rank_at_entry = float(row.get("iv_rank_at_entry", 50)),
-                    spot_at_entry    = float(row.get("spot_at_entry", 0)),
-                    regime_at_entry  = row.get("regime_at_entry", ""),
-                    placed_at        = datetime.strptime(row["placed_at"], "%Y-%m-%d %H:%M:%S"),
-                    legs             = [],
-                    status           = "open",
+                    order_id          = oid,
+                    symbol            = row["symbol"],
+                    strategy          = row["strategy"],
+                    option_type       = row["option_type"],
+                    direction         = row["direction"],
+                    lots              = int(row.get("lots", 1)),
+                    lot_size          = int(row.get("lot_size", 75)),
+                    entry_premium     = float(row.get("entry_premium", 0)),
+                    stop_premium      = float(row.get("stop_premium", 0)),
+                    target_premium    = float(row.get("target_premium", 0)),
+                    max_loss_rs       = float(row.get("max_loss_rs", 0)),
+                    max_profit_rs     = float(row.get("max_profit_rs", 0)),
+                    expiry_date       = expiry_dt,
+                    dte_at_entry      = int(row.get("dte_at_entry", 0)),
+                    iv_rank_at_entry  = float(row.get("iv_rank_at_entry", 50)),
+                    spot_at_entry     = float(row.get("spot_at_entry", 0)),
+                    regime_at_entry   = row.get("regime_at_entry", ""),
+                    placed_at         = datetime.strptime(row["placed_at"], "%Y-%m-%d %H:%M:%S"),
+                    legs              = _legs,
+                    status            = "open",
+                    broker_order_ids  = _bids,
                 )
                 self._orders[oid] = rec
                 restored += 1
