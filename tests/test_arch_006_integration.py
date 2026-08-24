@@ -19,7 +19,7 @@ Sections:
 """
 from __future__ import annotations
 
-import os, sys, unittest, json
+import os, sys, unittest, json, tempfile
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch, PropertyMock
 from typing import Optional, List
@@ -65,6 +65,15 @@ def _make_decision(score=7.0, modifier=1.0):
 def _make_paper_om() -> OrderManager:
     """OrderManager in paper mode (no broker)."""
     om = OrderManager()
+    assert om._paper_mode or om._broker is None
+    return om
+
+
+def _make_isolated_om() -> OrderManager:
+    """OrderManager with a fresh temp journal — no production positions restored."""
+    _tmp = os.path.join(tempfile.gettempdir(), f"test_arch006_{os.getpid()}.csv")
+    with patch("execution_engine.order_manager.PAPER_TRADE_LOG", _tmp):
+        om = OrderManager()
     assert om._paper_mode or om._broker is None
     return om
 
@@ -471,7 +480,7 @@ class TestBrokerFailureFallback(unittest.TestCase):
 
     def test_f01_broker_returning_none_does_not_create_record(self):
         """_place_entry_with_retry returning None → no OrderRecord created."""
-        om = _make_paper_om()
+        om = _make_isolated_om()
         with patch.object(om, "_place_entry_with_retry", return_value=None):
             sig = _make_signal()
             dec = _make_decision()
@@ -481,7 +490,7 @@ class TestBrokerFailureFallback(unittest.TestCase):
 
     def test_f02_broker_exception_does_not_create_record(self):
         """Broker throwing exception → no OrderRecord created."""
-        om = _make_paper_om()
+        om = _make_isolated_om()
         with patch.object(om, "_place_entry_with_retry", side_effect=RuntimeError("network error")):
             sig = _make_signal()
             dec = _make_decision()
