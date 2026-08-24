@@ -261,6 +261,16 @@ class MasterOrchestrator:
         self.options_risk_engine   = get_options_risk_engine()
         # Pre-warm the learning tracker so it loads persisted weights
         get_options_performance_tracker()
+        # ── Options Knowledge Research Pipeline (background learning loop) ──
+        try:
+            from knowledge_system.options_research_pipeline import (
+                get_options_research_pipeline as _get_orp,
+            )
+            _orp = _get_orp()
+            _orp.start()
+            log.info("[Orchestrator] OptionsResearchPipeline background loop started.")
+        except Exception as _orp_exc:
+            log.warning("[Orchestrator] OptionsResearchPipeline not started: %s", _orp_exc)
 
         # ── Layer 9: Trade Monitoring ──────────────────────────────────
         self.trade_monitor       = TradeMonitor()
@@ -2152,6 +2162,14 @@ class MasterOrchestrator:
             "vix": snapshot.vix,
         }
         for signal in qualified:
+            # Extract opportunity_id from signal notes
+            _sig_notes_meta = {}
+            try:
+                _sig_notes_meta = __import__("json").loads(signal.notes or "{}")
+            except Exception:
+                pass
+            _sig_opp_id = _sig_notes_meta.get("opportunity_id")
+
             # Layer C: OptionsRiskEngine
             approved = self.options_risk_engine.approve_and_size(
                 signal, snapshot,
@@ -2174,6 +2192,7 @@ class MasterOrchestrator:
                         strategy_name = signal.strategy_name or "",
                         observed_at   = datetime.now().isoformat(),
                         state         = "BLOCKED",
+                        opportunity_id = _sig_opp_id,
                         confidence    = signal.confidence,
                         direction     = str(
                             signal.direction.value
@@ -2186,9 +2205,53 @@ class MasterOrchestrator:
                         risk_approved         = False,
                         risk_rejection_reason = "options_risk_engine_rejected",
                     ))
+                    # Register counterfactual monitoring for risk-blocked signals
+                    if _sig_opp_id:
+                        from knowledge_system.options_counterfactual_engine import (
+                            get_options_counterfactual_engine,
+                        )
+                        get_options_counterfactual_engine().register_rejection(
+                            opportunity_id       = _sig_opp_id,
+                            symbol               = signal.symbol,
+                            strategy_name        = signal.strategy_name or "",
+                            direction            = str(signal.direction.value if hasattr(signal.direction, "value") else signal.direction),
+                            rejection_reason     = "options_risk_engine_rejected",
+                            expected_pnl         = 0.0,
+                            expected_entry_price = float(signal.entry_price or 0),
+                            dte                  = int(_sig_notes_meta.get("dte", 0)),
+                            spot                 = float(_sig_notes_meta.get("spot", 0)),
+                            iv                   = 0.0,
+                            regime               = _sig_ctx.get("regime", ""),
+                            confidence           = signal.confidence,
+                        )
                 except Exception:
                     pass
                 continue
+
+            # APPROVED: emit APPROVED state before execution
+            try:
+                from execution_engine.options_observation_journal import (
+                    get_options_observation_journal,
+                    OptionsOpportunityObservation,
+                    OBS_APPROVED,
+                )
+                _j = get_options_observation_journal()
+                _j.record(OptionsOpportunityObservation(
+                    obs_id        = _j.make_obs_id(signal.symbol, signal.strategy_name or ""),
+                    symbol        = signal.symbol,
+                    strategy_name = signal.strategy_name or "",
+                    observed_at   = datetime.now().isoformat(),
+                    state         = OBS_APPROVED,
+                    opportunity_id = _sig_opp_id,
+                    confidence    = signal.confidence,
+                    direction     = str(signal.direction.value if hasattr(signal.direction, "value") else signal.direction),
+                    regime        = _sig_ctx.get("regime", ""),
+                    vix           = _sig_ctx.get("vix", 0.0),
+                    quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
+                    risk_approved = True,
+                ))
+            except Exception:
+                pass
 
             # Layer D: OptionsOrderManager
             order = self.options_order_manager.execute(signal, _DecisionResult(
@@ -2208,7 +2271,7 @@ class MasterOrchestrator:
                     signal._meta_quality if hasattr(signal, "_meta_quality") else 1.0,
                 )
 
-                # Record EXECUTED observation (knowledge loop — Phase 3)
+                # Record EXECUTED observation (knowledge loop — Phase 3/4)
                 try:
                     from execution_engine.options_observation_journal import (
                         get_options_observation_journal,
@@ -2221,6 +2284,7 @@ class MasterOrchestrator:
                         strategy_name = signal.strategy_name or "",
                         observed_at   = datetime.now().isoformat(),
                         state         = "EXECUTED",
+                        opportunity_id = _sig_opp_id,
                         confidence    = signal.confidence,
                         direction     = str(
                             signal.direction.value
@@ -2273,7 +2337,7 @@ class MasterOrchestrator:
                     },
                 ))
             else:
-                # Layer D blocked — record BLOCKED observation (knowledge loop — Phase 3)
+                # Layer D blocked — record BLOCKED observation (knowledge loop — Phase 3/4)
                 try:
                     from execution_engine.options_observation_journal import (
                         get_options_observation_journal,
@@ -2286,6 +2350,7 @@ class MasterOrchestrator:
                         strategy_name = signal.strategy_name or "",
                         observed_at   = datetime.now().isoformat(),
                         state         = "BLOCKED",
+                        opportunity_id = _sig_opp_id,
                         confidence    = signal.confidence,
                         direction     = str(
                             signal.direction.value
@@ -2333,7 +2398,7 @@ class MasterOrchestrator:
         import json as _json
         passed: List[TradeSignal] = []
 
-        # ── Observation helper (knowledge loop — Phase 3) ──────────────────
+        # ── Observation helper (knowledge loop — Phase 3/4) ───────────────────
         def _record_qg_obs(sig, state, check=None, reason=None, checks_passed=None):
             """Record one quality gate observation. Never raises."""
             try:
@@ -2351,6 +2416,8 @@ class MasterOrchestrator:
                     _obs_meta = _json.loads(sig.notes or "{}")
                 except Exception:
                     pass
+                # Extract opportunity_id from signal notes (set at DISCOVERED time)
+                _opportunity_id = _obs_meta.get("opportunity_id")
                 _ks, _score = _ko.observe_opportunity(sig.symbol, sig.strategy_name or "")
                 _obs = OptionsOpportunityObservation(
                     obs_id        = _j.make_obs_id(sig.symbol, sig.strategy_name or ""),
@@ -2358,6 +2425,7 @@ class MasterOrchestrator:
                     strategy_name = sig.strategy_name or "",
                     observed_at   = datetime.now().isoformat(),
                     state         = state,
+                    opportunity_id = _opportunity_id,
                     confidence    = sig.confidence,
                     direction     = str(
                         sig.direction.value
@@ -2373,6 +2441,8 @@ class MasterOrchestrator:
                         else snapshot.regime
                     ),
                     vix               = snapshot.vix,
+                    data_source       = _obs_meta.get("data_source", ""),
+                    iv_source         = _obs_meta.get("iv_source", ""),
                     quality_checks_passed = checks_passed or [],
                     rejection_check       = check,
                     rejection_reason      = reason,
@@ -2380,6 +2450,66 @@ class MasterOrchestrator:
                     knowledge_score       = _score,
                 )
                 _j.record(_obs)
+
+                # Register counterfactual monitoring for rejected signals
+                if state == "REJECTED" and _opportunity_id:
+                    try:
+                        from knowledge_system.options_counterfactual_engine import (
+                            get_options_counterfactual_engine,
+                        )
+                        get_options_counterfactual_engine().register_rejection(
+                            opportunity_id       = _opportunity_id,
+                            symbol               = sig.symbol,
+                            strategy_name        = sig.strategy_name or "",
+                            direction            = str(
+                                sig.direction.value
+                                if hasattr(sig.direction, "value")
+                                else sig.direction
+                            ),
+                            rejection_reason     = reason or check or "quality_gate",
+                            expected_pnl         = 0.0,
+                            expected_entry_price = float(sig.entry_price or 0),
+                            dte                  = int(_obs_meta.get("dte", 0)),
+                            spot                 = float(_obs_meta.get("spot", 0)),
+                            iv                   = float(_obs_meta.get("iv_rank", 0)) / 100.0,
+                            regime               = str(
+                                snapshot.regime.value
+                                if hasattr(snapshot.regime, "value")
+                                else snapshot.regime
+                            ),
+                            confidence           = sig.confidence,
+                        )
+                    except Exception:
+                        pass
+
+                # Shadow scorer: record production decision for quality-gate signals
+                if state in ("SHORTLISTED", "REJECTED") and _opportunity_id:
+                    try:
+                        from learning_system.options_shadow_scorer import (
+                            get_options_shadow_scorer,
+                        )
+                        from knowledge_system.options_feature_extractor import (
+                            _ivr_band, _dte_band,
+                        )
+                        _regime_str = str(
+                            snapshot.regime.value
+                            if hasattr(snapshot.regime, "value")
+                            else snapshot.regime
+                        )
+                        _ivr  = _ivr_band(float(_obs_meta.get("iv_rank", 0.0)))
+                        _dte  = _dte_band(int(_obs_meta.get("dte", 0)))
+                        _ctx  = f"{_regime_str}|{_ivr}|{_dte}"
+                        get_options_shadow_scorer().record_decision(
+                            opportunity_id  = _opportunity_id,
+                            symbol          = sig.symbol,
+                            strategy_name   = sig.strategy_name or "",
+                            context_key     = _ctx,
+                            prod_confidence = sig.confidence,
+                            prod_executed   = (state == "SHORTLISTED"),
+                        )
+                    except Exception:
+                        pass
+
             except Exception:
                 pass
 

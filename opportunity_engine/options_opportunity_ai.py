@@ -20,6 +20,7 @@ Confidence discount of 1.5 applied when chain is synthetic (no live data).
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from models.market_data  import MarketSnapshot, RegimeLabel
@@ -86,6 +87,7 @@ class OptionsOpportunityAI:
         self._feed: OptionsFeed = get_options_feed()
         self._http_calls: int = 0
         self._dte_fallback: int = 0
+        self._current_snapshot = None  # set during each scan for builder access
         log.info("[OptionsOpportunityAI] Initialised — live data feed ready.")
 
     # ── Public interface ───────────────────────────────────────────────
@@ -161,6 +163,7 @@ class OptionsOpportunityAI:
     def _scan_symbol(
         self, symbol: str, snapshot: MarketSnapshot
     ) -> Optional[TradeSignal]:
+        self._current_snapshot = snapshot  # available to _base_confidence via builders
         chain = self._feed.get_chain(symbol, dte_target=20)
         self._http_calls += 1
         if chain is None:
@@ -215,6 +218,102 @@ class OptionsOpportunityAI:
             )
             return None
 
+        # ── DISCOVERED: emit full market context before strategy selection ──
+        # This is the foundation of the knowledge lifecycle.  Every discovered
+        # opportunity — regardless of whether it proceeds — gets a record with
+        # full chain context (OI, PCR, IV provenance, bid-ask spread) attached.
+        opportunity_id = None
+        try:
+            from knowledge_system.options_opportunity_registry import (
+                get_options_opportunity_registry,
+            )
+            from execution_engine.options_observation_journal import (
+                get_options_observation_journal,
+                OptionsOpportunityObservation,
+                OBS_DISCOVERED,
+                IV_SOURCE_LIVE_MARKET, IV_SOURCE_MODEL_ESTIMATE,
+                DATA_SOURCE_ANGEL_ONE, DATA_SOURCE_YFINANCE, DATA_SOURCE_SYNTHETIC,
+            )
+            registry = get_options_opportunity_registry()
+            journal  = get_options_observation_journal()
+
+            # Determine strategy name for the opportunity_id — use tentative
+            tentative_strat = self._select_strategy(snapshot, chain) or "UNKNOWN"
+            opportunity_id  = registry.new_opportunity_id(symbol)
+
+            # Determine IV and data provenance from chain
+            _data_src  = getattr(chain, "data_source", "") or (
+                DATA_SOURCE_ANGEL_ONE if chain.is_live else DATA_SOURCE_SYNTHETIC
+            )
+            _iv_src = (
+                IV_SOURCE_LIVE_MARKET if _data_src == DATA_SOURCE_YFINANCE
+                else IV_SOURCE_MODEL_ESTIMATE if _data_src == DATA_SOURCE_ANGEL_ONE
+                else "DERIVED"
+            )
+
+            # Build per-leg context for the ATM contracts
+            legs_ctx = []
+            for leg_contract in [chain.atm_call(), chain.atm_put()]:
+                if leg_contract:
+                    legs_ctx.append({
+                        "strike":        leg_contract.strike,
+                        "option_type":   leg_contract.option_type,
+                        "premium":       leg_contract.premium,
+                        "bid":           leg_contract.bid,
+                        "ask":           leg_contract.ask,
+                        "iv":            leg_contract.iv,
+                        "delta":         leg_contract.delta,
+                        "gamma":         leg_contract.gamma,
+                        "theta":         leg_contract.theta,
+                        "vega":          leg_contract.vega,
+                        "open_interest": leg_contract.open_interest,
+                        "volume":        leg_contract.volume,
+                        "iv_source":     getattr(leg_contract, "iv_source", _iv_src),
+                    })
+
+            # Compute time of day
+            _hour = datetime.now().hour
+            _tod = (
+                "PRE_MARKET" if _hour < 9
+                else "OPENING"  if _hour < 10
+                else "CLOSING"  if _hour >= 15
+                else "NORMAL"
+            )
+
+            obs_disc = OptionsOpportunityObservation(
+                obs_id        = journal.make_obs_id(symbol, tentative_strat),
+                symbol        = symbol,
+                strategy_name = tentative_strat,
+                observed_at   = datetime.now().isoformat(),
+                state         = OBS_DISCOVERED,
+                opportunity_id = opportunity_id,
+                confidence    = self._base_confidence(chain, "pre_strategy"),
+                direction     = str(snapshot.regime.value if hasattr(snapshot.regime, "value") else snapshot.regime),
+                dte           = chain.dte,
+                iv_rank       = chain.iv_rank,
+                chain_quality = quality_score,
+                regime        = str(snapshot.regime.value if hasattr(snapshot.regime, "value") else snapshot.regime),
+                vix           = float(getattr(snapshot, "vix", 0) or 0),
+                data_source   = _data_src,
+                iv_source     = _iv_src,
+                greek_source  = (
+                    "LIVE_MARKET" if _iv_src == IV_SOURCE_LIVE_MARKET
+                    else "MODEL_ESTIMATE"
+                ),
+                spot_price    = chain.spot,
+                atm_iv        = chain.atm_iv,
+                total_ce_oi   = chain.total_ce_oi,
+                total_pe_oi   = chain.total_pe_oi,
+                pcr           = chain.pcr,
+                atm_bid_ask_spread = getattr(chain, "atm_bid_ask_spread_pct", 0.0),
+                time_of_day   = _tod,
+                events_today  = list(getattr(snapshot, "events_today", None) or []),
+                legs_context  = legs_ctx,
+            )
+            journal.record(obs_disc)
+        except Exception as _disc_exc:
+            log.debug("[OptionsOpportunityAI] DISCOVERED record failed: %s", _disc_exc)
+
         strategy = self._select_strategy(snapshot, chain)
         if strategy is None:
             return None
@@ -239,6 +338,13 @@ class OptionsOpportunityAI:
             meta["chain_quality"]  = quality_score
             meta["chain_issues"]   = quality_issues
             meta["is_live"]        = chain.is_live
+            meta["opportunity_id"] = opportunity_id   # stable lifecycle ID
+            meta["data_source"]    = getattr(chain, "data_source", "")
+            meta["iv_source"]      = (
+                "LIVE_MARKET" if getattr(chain, "data_source", "") == "YFINANCE"
+                else "MODEL_ESTIMATE" if getattr(chain, "data_source", "") == "ANGEL_ONE"
+                else "DERIVED"
+            )
             signal.notes = json.dumps(meta)
         except Exception:
             pass
@@ -355,9 +461,17 @@ class OptionsOpportunityAI:
 
         legs = [
             {"type": "CE", "strike": atm_c.strike,  "direction": "BUY",
-             "premium": atm_c.premium,  "iv": atm_c.iv,  "delta": atm_c.delta},
+             "premium": atm_c.premium,  "iv": atm_c.iv,  "delta": atm_c.delta,
+             "gamma": atm_c.gamma, "theta": atm_c.theta, "vega": atm_c.vega,
+             "open_interest": atm_c.open_interest, "volume": atm_c.volume,
+             "bid": atm_c.bid, "ask": atm_c.ask,
+             "iv_source": getattr(atm_c, "iv_source", "")},
             {"type": "CE", "strike": sell_c.strike, "direction": "SELL",
-             "premium": sell_c.premium, "iv": sell_c.iv, "delta": sell_c.delta},
+             "premium": sell_c.premium, "iv": sell_c.iv, "delta": sell_c.delta,
+             "gamma": sell_c.gamma, "theta": sell_c.theta, "vega": sell_c.vega,
+             "open_interest": sell_c.open_interest, "volume": sell_c.volume,
+             "bid": sell_c.bid, "ask": sell_c.ask,
+             "iv_source": getattr(sell_c, "iv_source", "")},
         ]
         meta = {
             "strategy_type": "BULL_CALL_SPREAD",
@@ -380,7 +494,7 @@ class OptionsOpportunityAI:
             entry_price   = net_debit,
             stop_loss     = stop_prem,
             target_price  = target_prem,
-            confidence    = self._base_confidence(chain, "debit_spread"),
+            confidence    = self._base_confidence(chain, "debit_spread", strategy_name=strategy, snapshot=self._current_snapshot),
             source_agent  = "OptionsOpportunityAI",
             strategy_name = strategy,
             strike_price  = float(atm_c.strike),
@@ -444,9 +558,17 @@ class OptionsOpportunityAI:
 
         legs = [
             {"type": "PE", "strike": atm_p.strike,  "direction": "BUY",
-             "premium": atm_p.premium,  "iv": atm_p.iv,  "delta": atm_p.delta},
+             "premium": atm_p.premium,  "iv": atm_p.iv,  "delta": atm_p.delta,
+             "gamma": atm_p.gamma, "theta": atm_p.theta, "vega": atm_p.vega,
+             "open_interest": atm_p.open_interest, "volume": atm_p.volume,
+             "bid": atm_p.bid, "ask": atm_p.ask,
+             "iv_source": getattr(atm_p, "iv_source", "")},
             {"type": "PE", "strike": sell_p.strike, "direction": "SELL",
-             "premium": sell_p.premium, "iv": sell_p.iv, "delta": sell_p.delta},
+             "premium": sell_p.premium, "iv": sell_p.iv, "delta": sell_p.delta,
+             "gamma": sell_p.gamma, "theta": sell_p.theta, "vega": sell_p.vega,
+             "open_interest": sell_p.open_interest, "volume": sell_p.volume,
+             "bid": sell_p.bid, "ask": sell_p.ask,
+             "iv_source": getattr(sell_p, "iv_source", "")},
         ]
         meta = {
             "strategy_type": "BEAR_PUT_SPREAD",
@@ -469,7 +591,7 @@ class OptionsOpportunityAI:
             entry_price   = net_debit,
             stop_loss     = stop_prem,
             target_price  = target_prem,
-            confidence    = self._base_confidence(chain, "debit_spread"),
+            confidence    = self._base_confidence(chain, "debit_spread", strategy_name=strategy, snapshot=self._current_snapshot),
             source_agent  = "OptionsOpportunityAI",
             strategy_name = strategy,
             strike_price  = float(atm_p.strike),
@@ -550,13 +672,29 @@ class OptionsOpportunityAI:
 
         legs = [
             {"type": "CE", "strike": sell_c.strike, "direction": "SELL",
-             "premium": sell_c.premium, "iv": sell_c.iv, "delta": sell_c.delta},
+             "premium": sell_c.premium, "iv": sell_c.iv, "delta": sell_c.delta,
+             "gamma": sell_c.gamma, "theta": sell_c.theta, "vega": sell_c.vega,
+             "open_interest": sell_c.open_interest, "volume": sell_c.volume,
+             "bid": sell_c.bid, "ask": sell_c.ask,
+             "iv_source": getattr(sell_c, "iv_source", "")},
             {"type": "CE", "strike": buy_c.strike,  "direction": "BUY",
-             "premium": buy_c.premium,  "iv": buy_c.iv,  "delta": buy_c.delta},
+             "premium": buy_c.premium,  "iv": buy_c.iv,  "delta": buy_c.delta,
+             "gamma": buy_c.gamma, "theta": buy_c.theta, "vega": buy_c.vega,
+             "open_interest": buy_c.open_interest, "volume": buy_c.volume,
+             "bid": buy_c.bid, "ask": buy_c.ask,
+             "iv_source": getattr(buy_c, "iv_source", "")},
             {"type": "PE", "strike": sell_p.strike, "direction": "SELL",
-             "premium": sell_p.premium, "iv": sell_p.iv, "delta": sell_p.delta},
+             "premium": sell_p.premium, "iv": sell_p.iv, "delta": sell_p.delta,
+             "gamma": sell_p.gamma, "theta": sell_p.theta, "vega": sell_p.vega,
+             "open_interest": sell_p.open_interest, "volume": sell_p.volume,
+             "bid": sell_p.bid, "ask": sell_p.ask,
+             "iv_source": getattr(sell_p, "iv_source", "")},
             {"type": "PE", "strike": buy_p.strike,  "direction": "BUY",
-             "premium": buy_p.premium,  "iv": buy_p.iv,  "delta": buy_p.delta},
+             "premium": buy_p.premium,  "iv": buy_p.iv,  "delta": buy_p.delta,
+             "gamma": buy_p.gamma, "theta": buy_p.theta, "vega": buy_p.vega,
+             "open_interest": buy_p.open_interest, "volume": buy_p.volume,
+             "bid": buy_p.bid, "ask": buy_p.ask,
+             "iv_source": getattr(buy_p, "iv_source", "")},
         ]
         meta = {
             "strategy_type": "IRON_CONDOR",
@@ -582,7 +720,7 @@ class OptionsOpportunityAI:
             entry_price   = net_credit,
             stop_loss     = stop_prem,
             target_price  = target_prem,
-            confidence    = self._base_confidence(chain, "credit_spread"),
+            confidence    = self._base_confidence(chain, "credit_spread", strategy_name=strategy, snapshot=self._current_snapshot),
             source_agent  = "OptionsOpportunityAI",
             strategy_name = strategy,
             strike_price  = float(atm),
@@ -622,9 +760,17 @@ class OptionsOpportunityAI:
 
         legs = [
             {"type": "CE", "strike": atm_c.strike, "direction": "BUY",
-             "premium": atm_c.premium, "iv": atm_c.iv, "delta": atm_c.delta},
+             "premium": atm_c.premium, "iv": atm_c.iv, "delta": atm_c.delta,
+             "gamma": atm_c.gamma, "theta": atm_c.theta, "vega": atm_c.vega,
+             "open_interest": atm_c.open_interest, "volume": atm_c.volume,
+             "bid": atm_c.bid, "ask": atm_c.ask,
+             "iv_source": getattr(atm_c, "iv_source", "")},
             {"type": "PE", "strike": atm_p.strike, "direction": "BUY",
-             "premium": atm_p.premium, "iv": atm_p.iv, "delta": atm_p.delta},
+             "premium": atm_p.premium, "iv": atm_p.iv, "delta": atm_p.delta,
+             "gamma": atm_p.gamma, "theta": atm_p.theta, "vega": atm_p.vega,
+             "open_interest": atm_p.open_interest, "volume": atm_p.volume,
+             "bid": atm_p.bid, "ask": atm_p.ask,
+             "iv_source": getattr(atm_p, "iv_source", "")},
         ]
         meta = {
             "strategy_type": "LONG_STRADDLE",
@@ -646,7 +792,7 @@ class OptionsOpportunityAI:
             entry_price   = total_debit,
             stop_loss     = stop_prem,
             target_price  = target_prem,
-            confidence    = self._base_confidence(chain, "straddle"),
+            confidence    = self._base_confidence(chain, "straddle", strategy_name=strategy, snapshot=self._current_snapshot),
             source_agent  = "OptionsOpportunityAI",
             strategy_name = strategy,
             strike_price  = float(atm_c.strike),
@@ -657,8 +803,25 @@ class OptionsOpportunityAI:
 
     # ── Confidence scoring ─────────────────────────────────────────────
 
-    def _base_confidence(self, chain: OptionsChain, stype: str) -> float:
-        """Return 0–10 confidence based on chain quality, IVR fit, and DTE."""
+    def _base_confidence(
+        self,
+        chain: OptionsChain,
+        stype: str,
+        strategy_name: str = "",
+        snapshot=None,
+    ) -> float:
+        """
+        Return 0–10 confidence based on chain quality, IVR fit, DTE,
+        learned strategy×regime weights, and knowledge store influence.
+
+        Learning connections (Phase 4 fix — gaps closed):
+          1. OptionsPerformanceTracker.get_weight() → multiplicative weight
+             based on historical win_rate for this strategy×regime pair.
+          2. OptionsKnowledgeStore.get_influence() → bounded additive delta
+             only when knowledge is in VALIDATED or AUTHENTICATED state.
+          3. Both connections are wrapped in try/except — failures fall back
+             to the static formula, preserving existing production behaviour.
+        """
         base = 6.5
         if chain.is_live:
             base += 0.5
@@ -670,4 +833,54 @@ class OptionsOpportunityAI:
             base += 0.5
         if stype == "credit_spread" and chain.iv_rank >= IVR_HIGH_PREMIUM:
             base += 0.7
+
+        # ── 1. OptionsPerformanceTracker weight (learned, persisted) ──────
+        try:
+            from learning_system.options_performance_tracker import (
+                get_options_performance_tracker,
+            )
+            regime_str = ""
+            if snapshot is not None:
+                regime_str = str(
+                    snapshot.regime.value
+                    if hasattr(snapshot.regime, "value")
+                    else snapshot.regime
+                )
+            # Map stype to canonical strategy type name for weight lookup
+            stype_map = {
+                "debit_spread":  "BULL_CALL_SPREAD",
+                "credit_spread": "IRON_CONDOR",
+                "straddle":      "LONG_STRADDLE",
+            }
+            lookup_name = strategy_name or stype_map.get(stype, stype.upper())
+            tracker = get_options_performance_tracker()
+            weight  = tracker.get_weight(lookup_name, regime_str)
+            # weight 1.0 → no change; 0.9 → -0.15; 0.5 → -0.75
+            base += (weight - 1.0) * 1.5
+        except Exception:
+            pass
+
+        # ── 2. OptionsKnowledgeStore influence (validated knowledge only) ──
+        try:
+            from knowledge_system.options_knowledge_store import get_options_knowledge_store
+            from knowledge_system.options_feature_extractor import (
+                _ivr_band, _dte_band,
+            )
+            if snapshot is not None and chain is not None:
+                regime_str = str(
+                    snapshot.regime.value
+                    if hasattr(snapshot.regime, "value")
+                    else snapshot.regime
+                )
+                ivr_band  = _ivr_band(chain.iv_rank)
+                dte_band  = _dte_band(chain.dte)
+                ctx_key   = f"{regime_str}|{ivr_band}|{dte_band}"
+                sn = strategy_name or stype
+                store     = get_options_knowledge_store()
+                influence, ks_state = store.get_influence(sn, ctx_key)
+                # influence is ±0.05/0.10 fraction → scale to 10-pt system
+                base += influence * 10.0
+        except Exception:
+            pass
+
         return min(round(base, 1), 9.5)

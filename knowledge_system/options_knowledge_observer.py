@@ -28,17 +28,26 @@ Absolute invariants (never violated):
   5. This is an observational accumulator, not a decision authority.
      It reports what the data shows — nothing more.
 
+  UPDATED v2: Added persistence to data/options_ko_state.json so the observer
+  survives restarts.  In-memory-only was identified as a critical gap in
+  Phase 4 audit: after every restart the observer reset to DEVELOPING and
+  couldn't build towards VALIDATED even after many sessions.
+
 Singleton: get_options_knowledge_observer()
 """
 
 from __future__ import annotations
 
+import json
+import os
 import threading
 from typing import Dict, List, Optional, Tuple
 
 from utils import get_logger
 
 log = get_logger(__name__)
+
+_KO_PERSIST_PATH = "data/options_ko_state.json"
 
 # ── Transition thresholds ──────────────────────────────────────────────────
 _MIN_OBS           = 10    # observations before leaving DEVELOPING
@@ -65,6 +74,7 @@ class OptionsKnowledgeObserver:
         self._lock         = threading.Lock()
         self._obs_count: int        = 0
         self._outcomes:  List[Dict] = []   # {"actual_pnl": float, "expected_pnl": float, "is_win": bool}
+        self._load_state()
 
     # ── Public API ─────────────────────────────────────────────────────────
 
@@ -118,6 +128,7 @@ class OptionsKnowledgeObserver:
                 "expected_pnl": expected_pnl,
                 "is_win":       actual_pnl > 0.0,
             })
+            self._save_state_locked()
 
     def get_state(self) -> str:
         """Return the current knowledge state."""
@@ -163,6 +174,37 @@ class OptionsKnowledgeObserver:
             return 0.0
         wins = sum(1 for o in self._outcomes if o.get("is_win", False))
         return wins / len(self._outcomes)
+
+    def _save_state_locked(self) -> None:
+        """Persist current state to disk (called with lock held)."""
+        try:
+            os.makedirs("data", exist_ok=True)
+            data = {
+                "obs_count": self._obs_count,
+                "outcomes":  self._outcomes,
+            }
+            tmp = _KO_PERSIST_PATH + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as fh:
+                json.dump(data, fh)
+            os.replace(tmp, _KO_PERSIST_PATH)
+        except Exception as exc:
+            log.debug("[OptionsKnowledgeObserver] Save failed: %s", exc)
+
+    def _load_state(self) -> None:
+        """Restore persisted state on startup."""
+        if not os.path.exists(_KO_PERSIST_PATH):
+            return
+        try:
+            with open(_KO_PERSIST_PATH, "r", encoding="utf-8") as fh:
+                data = json.load(fh)
+            self._obs_count = int(data.get("obs_count", 0))
+            self._outcomes  = data.get("outcomes", [])
+            log.info(
+                "[OptionsKnowledgeObserver] Restored: obs_count=%d outcomes=%d",
+                self._obs_count, len(self._outcomes),
+            )
+        except Exception as exc:
+            log.debug("[OptionsKnowledgeObserver] Load failed: %s", exc)
 
 
 # ── Module-level singleton ─────────────────────────────────────────────────

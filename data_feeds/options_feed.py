@@ -92,6 +92,7 @@ class OptionContract:
     open_interest: int
     volume:        int
     is_live:       bool   # False when constructed from Black-Scholes
+    iv_source:     str = ""  # LIVE_MARKET / MODEL_ESTIMATE / DERIVED / UNAVAILABLE
 
 
 @dataclass
@@ -107,8 +108,39 @@ class OptionsChain:
     iv_rank:    float = 50.0  # 0–100 percentile vs rolling 252-day window
     is_live:    bool  = False  # True if data came from live chain
     fetched_at: datetime = field(default_factory=datetime.now)
+    data_source: str = ""  # DATA_SOURCE_ANGEL_ONE / DATA_SOURCE_YFINANCE / DATA_SOURCE_SYNTHETIC
 
     # ── Convenience accessors ──────────────────────────────────────────
+
+    @property
+    def pcr(self) -> float:
+        """Put-Call Ratio by total open interest.  0 if no OI data."""
+        ce_oi = sum(c.open_interest for c in self.calls)
+        pe_oi = sum(p.open_interest for p in self.puts)
+        return round(pe_oi / ce_oi, 4) if ce_oi > 0 else 0.0
+
+    @property
+    def total_ce_oi(self) -> int:
+        return sum(c.open_interest for c in self.calls)
+
+    @property
+    def total_pe_oi(self) -> int:
+        return sum(p.open_interest for p in self.puts)
+
+    @property
+    def contracts(self) -> list:
+        """All contracts (calls + puts) as a flat list."""
+        return self.calls + self.puts
+
+    @property
+    def atm_bid_ask_spread_pct(self) -> float:
+        """ATM bid-ask spread as fraction of mid-price (0–1)."""
+        atm = self.atm_call()
+        if atm and atm.bid > 0 and atm.ask > 0:
+            mid = (atm.bid + atm.ask) / 2.0
+            if mid > 0:
+                return round((atm.ask - atm.bid) / mid, 4)
+        return 0.0
 
     def atm_strike(self) -> float:
         """Round spot to nearest strike interval."""
@@ -471,6 +503,7 @@ class OptionsFeed:
                             open_interest=int(getattr(_c, "oi", 0) or 0),
                             volume=int(getattr(_c, "volume", 0) or 0),
                             is_live=True,
+                            iv_source="MODEL_ESTIMATE",
                         )
                         if _c.is_call:
                             _calls_ao.append(_contract)
@@ -484,6 +517,7 @@ class OptionsFeed:
                         _chain_ao = OptionsChain(
                             symbol=symbol, spot=_spot, expiry=_expiry_dt, dte=_dte,
                             calls=_calls_ao, puts=_puts_ao, atm_iv=_atm_iv_ao, is_live=True,
+                            data_source="ANGEL_ONE",
                         )
                         log.info(
                             "[OptionsFeed] AngelOne live chain %s  DTE=%d  spot=%.0f  "
@@ -710,6 +744,7 @@ class OptionsFeed:
             chain = OptionsChain(
                 symbol=symbol, spot=spot, expiry=expiry_dt, dte=dte,
                 calls=calls, puts=puts, atm_iv=atm_iv, is_live=True,
+                data_source="YFINANCE",
             )
             log.info(
                 "[OptionsFeed] Live chain %s  DTE=%d  spot=%.0f  ATM-IV=%.1f%%  "
@@ -756,6 +791,7 @@ class OptionsFeed:
                     open_interest=int(row.get("openInterest") or 0),
                     volume=int(row.get("volume") or 0),
                     is_live=True,
+                    iv_source="LIVE_MARKET",
                 ))
         except Exception as exc:
             log.debug("[OptionsFeed] _parse_leg error: %s", exc)

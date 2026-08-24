@@ -80,7 +80,7 @@ class OptionsOutcomeObserver:
     # ── Internal ───────────────────────────────────────────────────────────
 
     def _do_record(self, rec) -> None:
-        """Write OUTCOME_OBSERVED to journal and feed knowledge observer."""
+        """Write OUTCOME_OBSERVED to journal and feed knowledge observer + research pipeline."""
         from execution_engine.options_observation_journal import (
             get_options_observation_journal,
             OptionsOpportunityObservation,
@@ -106,6 +106,14 @@ class OptionsOutcomeObserver:
         actual_pnl   = getattr(rec, "pnl_rs", None)
         expected_pnl = getattr(rec, "expected_pnl", None)
 
+        # Extract opportunity_id from knowledge_provenance (attached at execution time)
+        opportunity_id = None
+        try:
+            kprov = getattr(rec, "knowledge_provenance", None) or {}
+            opportunity_id = kprov.get("opportunity_id")
+        except Exception:
+            pass
+
         # Write OUTCOME_OBSERVED entry to observation journal
         obs = OptionsOpportunityObservation(
             obs_id        = obs_journal.make_obs_id(
@@ -116,6 +124,9 @@ class OptionsOutcomeObserver:
             strategy_name = getattr(rec, "strategy", ""),
             observed_at   = datetime.now().isoformat(),
             state         = OBS_OUTCOME_OBSERVED,
+
+            # Lifecycle identity
+            opportunity_id = opportunity_id,
 
             # Signal context preserved from execution record
             direction     = getattr(rec, "direction", ""),
@@ -148,13 +159,31 @@ class OptionsOutcomeObserver:
                 expected_pnl = float(expected_pnl),
             )
 
+        # Trigger the research pipeline to process this new outcome immediately
+        try:
+            from knowledge_system.options_research_pipeline import (
+                get_options_research_pipeline,
+            )
+            get_options_research_pipeline().trigger_now()
+        except Exception:
+            pass
+
+        # Update shadow scorer with outcome
+        try:
+            from learning_system.options_shadow_scorer import get_options_shadow_scorer
+            if opportunity_id and actual_pnl is not None:
+                get_options_shadow_scorer().record_outcome(opportunity_id, float(actual_pnl))
+        except Exception:
+            pass
+
         log.info(
             "[OptionsOutcomeObserver] Outcome recorded: %s  P&L=₹%.0f  "
-            "hold_days=%s  knowledge_state=%s",
+            "hold_days=%s  knowledge_state=%s  opportunity_id=%s",
             getattr(rec, "order_id", "?"),
             float(actual_pnl) if actual_pnl is not None else 0.0,
             hold_days,
             ko.get_state(),
+            opportunity_id or "None",
         )
 
 
