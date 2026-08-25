@@ -3,7 +3,9 @@ import json
 from collections import Counter
 from pathlib import Path
 
-lol_path = Path("/app/data/lol/LOL_2026-08-25.jsonl")
+import os
+_base = os.environ.get("LOL_BASE", "/app/data/lol")
+lol_path = Path(_base) / "LOL_2026-08-25.jsonl"
 data = [json.loads(l) for l in lol_path.read_text().splitlines() if l.strip()]
 recs = {}
 for r in data:
