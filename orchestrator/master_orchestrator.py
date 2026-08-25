@@ -1215,7 +1215,7 @@ class MasterOrchestrator:
             _get_lol2().update_decisions(
                 original_signals=signals,
                 enriched_signals=enriched_signals,
-                kda_results=_kda_results if 'kda_results' in dir() else {},
+                kda_results=_kda_results if '_kda_results' in locals() else {},
                 trading_date=_lol_trading_date,
             )
         except Exception as _lol_dec_exc:
@@ -6132,6 +6132,22 @@ class MasterOrchestrator:
                 )
         except Exception as _lol_eod_exc:
             log.debug("[LOL-EOD] Outcome fill skipped: %s", _lol_eod_exc)
+
+        # ── LOL→KDA: Evidence bridge — ingest LOL outcomes into knowledge ledger ─
+        # Runs after fill_pending_outcomes so OUTCOME_OBSERVED records are ready.
+        # Converts LOL outcome_class → EVIDENCE records in knowledge_evidence_ledger.jsonl.
+        # Non-blocking; never modifies execution, risk, or broker layers.
+        try:
+            from learning_system.lol_evidence_bridge import ingest_lol_outcomes as _lol_bridge
+            _lol_bridge_result = _lol_bridge()
+            if _lol_bridge_result.get("new_records", 0):
+                log.info(
+                    "[LOL-BRIDGE] Evidence ingested: new=%d skipped=%d",
+                    _lol_bridge_result.get("new_records", 0),
+                    _lol_bridge_result.get("skipped", 0),
+                )
+        except Exception as _lol_bridge_exc:
+            log.debug("[LOL-BRIDGE] Bridge skipped: %s", _lol_bridge_exc)
 
         # ── KLP-002: Outcome engine — fill pending KLP observations ───────────
         # Runs every EOD; processes yesterday's and earlier pending observations.
