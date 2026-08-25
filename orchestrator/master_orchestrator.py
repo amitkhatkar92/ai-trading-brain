@@ -968,7 +968,7 @@ class MasterOrchestrator:
         # Scores and ranks all signals using KNOWLEDGE_RESEARCH_SCORE_v1,
         # selects a knowledge top-5, and writes KNOWLEDGE_OBSERVATION records.
         # Runs BEFORE StrategyLab to ensure independence.  Never raises.
-        _lol_trading_date = getattr(snapshot, "date", None) or _dt.now().strftime("%Y-%m-%d")
+        _lol_trading_date = getattr(snapshot, "date", None) or datetime.now().strftime("%Y-%m-%d")
         try:
             from learning_system.learning_observation_ledger import get_lol as _get_lol
             _get_lol().record_observations(signals, _lol_trading_date)
@@ -1157,8 +1157,8 @@ class MasterOrchestrator:
                     from pathlib import Path as _KP
                     _kda_cmp_dir = _KP("data/klp/kda")
                     _kda_cmp_dir.mkdir(parents=True, exist_ok=True)
-                    _kda_cmp_path = _kda_cmp_dir / f"kda_vs_stratlab_{_dt.now().strftime('%Y-%m-%d')}.jsonl"
-                    _kda_cmp_ts   = _dt.now().isoformat()
+                    _kda_cmp_path = _kda_cmp_dir / f"kda_vs_stratlab_{datetime.now().strftime('%Y-%m-%d')}.jsonl"
+                    _kda_cmp_ts   = datetime.now().isoformat()
                     with open(_kda_cmp_path, "a", encoding="utf-8") as _kda_cmp_fh:
                         for _cmp_sig in signals:
                             _cr = _kda_results.get(_cmp_sig.symbol, {})
@@ -2028,7 +2028,7 @@ class MasterOrchestrator:
                 _get_rt_sl().ingest_rejection(
                     symbol=_s.symbol,
                     strategy=str(_strat or "UNKNOWN"),
-                    trade_date=_dt.now().strftime("%Y-%m-%d"),
+                    trade_date=datetime.now().strftime("%Y-%m-%d"),
                     decision_score=float(getattr(_s, "confidence", 0.0) or 0.0),
                     quality_score=float(_bt_score or 0.0),
                     quality_tier="STRATEGY_REJECTION",
@@ -6848,11 +6848,31 @@ class MasterOrchestrator:
             log.debug("Telegram market-close notify failed: %s", exc)
 
     def _guarded_cycle(self) -> None:
-        """Run a full cycle only during market hours; log a skip otherwise."""
-        if self._is_market_session():
-            self.run_full_cycle()
-        else:
+        """Run a full cycle; exceptions are caught so schedule.next_run always advances."""
+        import traceback as _tb
+        if not self._is_market_session():
             log.debug("[Orchestrator] Outside market session — cycle skipped.")
+            return
+        _slot = datetime.now().strftime("%H:%M")
+        try:
+            self.run_full_cycle()
+            try:
+                from orchestrator.scheduler_health import get_scheduler_health
+                get_scheduler_health().record_slot_success(_slot)
+            except Exception:
+                pass
+        except Exception as _exc:
+            log.critical(
+                "[GuardedCycle] \u26a0\ufe0f  CYCLE FAILURE  slot=%s  error=%s\n%s",
+                _slot, _exc, _tb.format_exc(),
+            )
+            try:
+                from orchestrator.scheduler_health import get_scheduler_health
+                get_scheduler_health().record_slot_failure(_slot, str(_exc))
+            except Exception:
+                pass
+            # DO NOT re-raise — schedule library must advance next_run to prevent
+            # the infinite 15-second overdue-job loop (DTA-LIVE-004).
 
     def _run_oios_weekly_research(self) -> None:
         """
@@ -7015,7 +7035,27 @@ class MasterOrchestrator:
         sched_lib.every().day.at("15:30").do(self._market_close_notify)  # 15:30 IST = NSE close
 
         # ── EOD learning ───────────────────────────────────────────────
-        sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(self.run_eod_learning)
+        def _guarded_eod():
+            # EOD must never raise into run_pending() — independent of intraday failures.
+            import traceback as _tb
+            try:
+                self.run_eod_learning()
+                try:
+                    from orchestrator.scheduler_health import get_scheduler_health
+                    get_scheduler_health().record_eod_success()
+                except Exception:
+                    pass
+            except Exception as _exc:
+                log.critical(
+                    "[GuardedEOD] \u26a0\ufe0f  EOD FAILURE  error=%s\n%s",
+                    _exc, _tb.format_exc(),
+                )
+                try:
+                    from orchestrator.scheduler_health import get_scheduler_health
+                    get_scheduler_health().record_eod_failure(str(_exc))
+                except Exception:
+                    pass
+        sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(_guarded_eod)
 
         # ── Post-market deep scan (Phase D) — 16:45 IST ───────────────
         sched_lib.every().day.at(SCHEDULE["post_market_scan"]).do(self._run_post_market_scan)
@@ -7089,6 +7129,14 @@ class MasterOrchestrator:
             source_agent="MasterOrchestrator",
             payload={"ts": datetime.now().isoformat()},
         ))
+        try:
+            from orchestrator.scheduler_health import get_scheduler_health
+            import os as _os_sh
+            get_scheduler_health().record_startup(
+                container_id=_os_sh.environ.get("HOSTNAME", datetime.now().isoformat())
+            )
+        except Exception:
+            pass
 
         def _run(_stop_event: threading.Event):
             _heartbeat_counter = 0

@@ -417,6 +417,15 @@ class StrategyPerformanceTracker:
                 self._stats[name] = StrategyStats(**raw)
         except Exception as exc:
             log.warning("[PerfTracker] Load failed: %s", exc)
+        # Reconcile persisted enabled flag against authoritative thresholds.
+        # Runs in a separate loop so a _check_disable error never wipes _stats.
+        # Prevents a strategy with consec_losses >= MAX_CONSEC_LOSSES from
+        # being incorrectly marked enabled=True after restart.
+        for _s in list(self._stats.values()):
+            try:
+                self._check_disable(_s)
+            except Exception:
+                pass
 
 
 # ── Singleton ─────────────────────────────────────────────────────────────────
