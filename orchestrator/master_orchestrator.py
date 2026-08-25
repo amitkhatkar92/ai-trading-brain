@@ -854,6 +854,21 @@ class MasterOrchestrator:
             payload={"ts": datetime.now().isoformat()},
         ))
 
+        # ── S/R Level validity guard — runs once per calendar day ────────────
+        # If container started late (missed 08:00 premarket_init), stale levels
+        # would persist. The same-day guard in validate_and_refresh_sr_levels()
+        # makes this a no-op after the first successful run each day.
+        try:
+            from opportunity_engine.equity_scanner_ai import validate_and_refresh_sr_levels
+            _sr = validate_and_refresh_sr_levels()
+            if _sr.get("repaired", 0) > 0:
+                log.warning(
+                    "[SRLevelGuard] %d stale S/R levels repaired before cycle — "
+                    "symbols: %s", _sr["repaired"], _sr.get("broken_symbols", []),
+                )
+        except Exception as _sr_exc:
+            log.debug("[SRLevelGuard] skipped: %s", _sr_exc)
+
         # ── STEP 0: Global Market Intelligence ────────────────────────
         with self.system_monitor.time_layer("GlobalIntelligence"):
             log.info("── Layer 1: Global Market Intelligence ──")

@@ -529,6 +529,10 @@ _EXPLORE_SKIP_THRESHOLD: int = 3
 # Cleared at the start of each _prepared_watchlist() call.
 _INVALIDATED_THIS_CYCLE: Dict[str, str] = {}
 
+# ── S/R level refresh guard — prevents repeated yfinance calls within same day ──
+# Set to today's ISO date after a successful validate_and_refresh_sr_levels() run.
+_sr_last_refresh_date: str = ""
+
 # ── Fix 6: Symbol→sector lookup (from nifty500_universe.json) ────────────────
 # Built once at import time so exploration candidates from _live_watchlist()
 # (which carries no sector metadata) can receive a proper sector tag.
@@ -2135,12 +2139,21 @@ def validate_and_refresh_sr_levels() -> dict:
     any broken entries (resistance < LTP or support > LTP).
 
     Returns dict: {repaired: int, total: int, broken_symbols: list, error: str|None}
-    Called by orchestrator._premarket_init() at 08:00 each trading day.
+    Called by orchestrator._premarket_init() at 08:00 and at the start of each
+    run_full_cycle() — the same-day guard (_sr_last_refresh_date) makes it a
+    no-op after the first successful run each calendar day.
     """
+    global _sr_last_refresh_date
     import yfinance as _yf
     import re as _re
     from datetime import date as _date, datetime as _datetime
     from pathlib import Path as _Path
+
+    _today_str = _date.today().isoformat()
+    if _sr_last_refresh_date == _today_str:
+        log.debug("[SR_Validator] Already refreshed today (%s) — skipped.", _today_str)
+        return {"repaired": 0, "total": len(_BASE_WATCHLIST + _EXTENDED_WATCHLIST),
+                "broken_symbols": [], "error": None, "skipped": True}
 
     _scanner_path = _Path(__file__)
     _log_prefix   = "[SR_Validator]"
@@ -2199,6 +2212,7 @@ def validate_and_refresh_sr_levels() -> dict:
 
         if not _broken:
             log.info("%s All %d S/R levels valid — no repair needed.", _log_prefix, len(all_entries))
+            _sr_last_refresh_date = _today_str  # mark as done even when no repair needed
             return {"repaired": 0, "total": len(all_entries), "broken_symbols": [], "error": None}
 
         log.warning(
@@ -2273,6 +2287,7 @@ def validate_and_refresh_sr_levels() -> dict:
         )
 
         _scanner_path.write_text(_src, encoding="utf-8")
+        _sr_last_refresh_date = _today_str  # mark as done for today
         log.info(
             "%s Repair complete: %d/%d symbols patched. last_level_update=%s",
             _log_prefix, _repaired, len(_broken), _today,

@@ -622,19 +622,28 @@ class CapitalRiskEngine:
 
     def _size_position(self, sig: TradeSignal, budget: float) -> int:
         """
-        Institutional position sizing:
+        Knowledge-driven position sizing:
             qty = Risk Amount / Stop Distance
 
-        Risk Amount = budget * MAX_RISK_PER_TRADE_PCT
+        Risk Amount = budget * MAX_RISK_PER_TRADE_PCT * knowledge_multiplier
+        knowledge_multiplier = 0.5 + (confidence / 10) * 2.5   → range [0.5×, 3.0×]
         Stop Distance = |entry - stop_loss|
 
+        Higher-confidence signals (per KDA/KLP) receive proportionally more risk budget.
         Result is also capped so the notional cost <= strategy budget.
         """
         sl_distance = abs(sig.entry_price - sig.stop_loss)
         if sl_distance < 0.001 or sig.entry_price <= 0:
             return 0
 
-        risk_amount   = budget * MAX_RISK_PER_TRADE_PCT
+        # Knowledge-driven risk scaling — confidence 0→10 maps to 0.5×→3.0× base
+        _conf     = max(0.0, min(10.0, float(getattr(sig, "confidence", 5.0) or 5.0)))
+        _k_mult   = 0.5 + (_conf / 10.0) * 2.5
+        risk_amount = budget * MAX_RISK_PER_TRADE_PCT * _k_mult
+        log.debug(
+            "[KnowledgeSizing] %s conf=%.1f k_mult=%.2f risk_amt=%.2f sl_dist=%.2f",
+            sig.symbol, _conf, _k_mult, risk_amount, sl_distance,
+        )
         qty_by_risk   = int(risk_amount / sl_distance)
 
         # Hard cap: can't buy more than the budget allows
