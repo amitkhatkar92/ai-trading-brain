@@ -54,8 +54,10 @@ _RECOVERY_SOURCE = "RECOVERED_FROM_MOP_RC001"
 
 # Lifecycle constants (mirrors LOL module to avoid import coupling)
 _OBSERVED          = "OBSERVED"
-_OUTCOME_PENDING   = "PENDING"
+_OUTCOME_PENDING_LC = "OUTCOME_PENDING"  # lifecycle state — eligible for outcome fill
+_OUTCOME_PENDING   = "PENDING"           # outcome_class — awaiting T+1 data
 _OUTCOME_HORIZON   = 5
+_KDA_NOT_REACHED   = "KDA_NOT_REACHED"   # KDA never ran for these recovered signals
 
 
 # ── obs_id — identical algorithm to LearningObservationLedger._make_obs_id ───
@@ -126,15 +128,15 @@ def _build_lol_record(mop_row: Dict[str, Any], trading_date: str) -> Optional[Di
             "stop_loss":              stop,
             "target_price":           target,
             "rr_ratio":               float(rr) if rr is not None else None,
-            "lifecycle_state":        _OBSERVED,
+            "lifecycle_state":        _OUTCOME_PENDING_LC,
             "klp_score":              float(c_score) if c_score is not None else conf,
             "klp_selected":           None,
             "klp_rank":               None,
-            "strategy_decision":      None,
+            "strategy_decision":      "NOT_REACHED",
             "strategy_name":          strategy or None,
             "strategy_rejection_reason": None,
-            "kda_decision":           None,
-            "kda_evidence_state":     None,
+            "kda_decision":           _KDA_NOT_REACHED,
+            "kda_evidence_state":     "NOT_REACHED",
             "authorization_source":   None,
             "executed":               False,
             "order_id":               None,

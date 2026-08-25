@@ -140,6 +140,12 @@ BLOCKED_CORRECT        = "BLOCKED_CORRECT"
 BLOCKED_INCORRECT      = "BLOCKED_INCORRECT"
 SHORTLISTED_NOT_EXECUTED = "SHORTLISTED_NOT_EXECUTED"
 MISSED_OPPORTUNITY     = "MISSED_OPPORTUNITY"
+
+# ── KDA error sentinel constants (not lifecycle states) ───────────────────────
+# These appear in the kda_decision field to distinguish error conditions
+# from genuine knowledge-evaluation outcomes.
+KDA_NOT_REACHED    = "KDA_NOT_REACHED"    # outer KDA block never ran (pipeline crashed before KDA)
+KDA_PIPELINE_ERROR = "KDA_PIPELINE_ERROR" # KDA ran but returned status=KNOWLEDGE_PIPELINE_ERROR
 KDA_FALSE_POSITIVE     = "KDA_FALSE_POSITIVE"
 KDA_FALSE_NEGATIVE     = "KDA_FALSE_NEGATIVE"
 KNOWLEDGE_AGREEMENT    = "KNOWLEDGE_AGREEMENT"
@@ -329,6 +335,26 @@ class LearningObservationLedger:
             log.debug("[LOL] record_execution error: %s", exc)
             return False
 
+    def update_cre_blocking(
+        self,
+        signals:       List[Any],
+        block_reason:  str,
+        trading_date:  Optional[str] = None,
+    ) -> int:
+        """
+        Record signals blocked by CapitalRiskEngine (e.g. QTY_ZERO) as BLOCKED.
+        These are signals that passed StrategyLab but could not be sized.
+        The block_reason is stored so CRE blocks are distinguishable from
+        RiskGuardian blocks.  Outcome fill will classify them as
+        BLOCKED_CORRECT / BLOCKED_INCORRECT at T+1+.
+        Never raises.
+        """
+        try:
+            return self._update_cre_blocking_impl(signals, block_reason, trading_date)
+        except Exception as exc:
+            log.debug("[LOL] update_cre_blocking error: %s", exc)
+            return 0
+
     # ── Public API: EOD outcome fill ─────────────────────────────────────────
 
     def fill_pending_outcomes(
@@ -492,8 +518,18 @@ class LearningObservationLedger:
                 if not rec:
                     continue
                 kda_r   = kda_results.get(symbol, {})
-                kda_dec = kda_r.get("kda_decision") or "KNOWLEDGE_INSUFFICIENT_EVIDENCE"
-                kda_ev  = kda_r.get("evidence_state") or "NO_EVIDENCE"
+                # Distinguish error states from genuine insufficient-evidence
+                _kda_status = kda_r.get("status") if kda_r else None
+                if _kda_status == "KNOWLEDGE_PIPELINE_ERROR":
+                    kda_dec = KDA_PIPELINE_ERROR
+                    kda_ev  = "PIPELINE_ERROR"
+                elif not kda_r:
+                    # Empty dict = outer KDA block never reached this symbol
+                    kda_dec = KDA_NOT_REACHED
+                    kda_ev  = "NOT_REACHED"
+                else:
+                    kda_dec = kda_r.get("kda_decision") or "KNOWLEDGE_INSUFFICIENT_EVIDENCE"
+                    kda_ev  = kda_r.get("evidence_state") or "NO_EVIDENCE"
                 auth_src = (
                     "BOTH"         if symbol in enriched_syms and kda_r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
                     else "STRATEGY_LAB" if symbol in enriched_syms
@@ -527,6 +563,40 @@ class LearningObservationLedger:
                 updated += 1
             except Exception as exc:
                 log.debug("[LOL] update_decisions error for signal: %s", exc)
+        return updated
+
+    def _update_cre_blocking_impl(
+        self,
+        signals:      List[Any],
+        block_reason: str,
+        trading_date: Optional[str],
+    ) -> int:
+        td  = trading_date or date.today().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
+        updated = 0
+        for sig in signals:
+            try:
+                symbol = str(getattr(sig, "symbol", ""))
+                entry  = float(getattr(sig, "entry_price", 0.0) or 0.0)
+                obs_id = _make_obs_id(symbol, td, entry)
+                rec    = dict(self._pending.get(obs_id) or {})
+                if not rec:
+                    continue
+                rec["lifecycle_state"]           = BLOCKED
+                rec["decision_at"]               = now
+                rec["block_reason"]              = block_reason
+                rec["strategy_decision"]         = "PASS"
+                rec["strategy_rejection_reason"] = None
+                rec["authorization_source"]      = "NONE"
+                # Preserve KDA state already recorded (or mark as not-reached)
+                if not rec.get("kda_decision"):
+                    rec["kda_decision"]      = KDA_NOT_REACHED
+                    rec["kda_evidence_state"] = "NOT_REACHED"
+                self._append(rec)
+                self._pending[obs_id] = rec
+                updated += 1
+            except Exception as exc:
+                log.debug("[LOL] CRE blocking update error: %s", exc)
         return updated
 
     # ── Internal: outcome fill ────────────────────────────────────────────────

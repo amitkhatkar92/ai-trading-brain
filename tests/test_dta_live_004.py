@@ -567,8 +567,10 @@ class TestAntiLookahead:
             assert rec.get("actual_return_pct") is None
             assert rec.get("executed") is False
             assert rec.get("order_id") is None
-            assert rec.get("kda_decision") is None
-            assert rec.get("strategy_decision") is None
+            # DTA-LIVE-005: kda_decision is now KDA_NOT_REACHED (honest) instead of None
+            assert rec.get("kda_decision") in (None, "KDA_NOT_REACHED")
+            # DTA-LIVE-005: strategy_decision is now NOT_REACHED (honest) instead of None
+            assert rec.get("strategy_decision") in (None, "NOT_REACHED")
 
 
 # ════════════════════════════════════════════════════════════════════════════

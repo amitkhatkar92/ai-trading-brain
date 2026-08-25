@@ -1044,7 +1044,11 @@ class MasterOrchestrator:
                     "distortion_risk_level": str(
                         getattr(_dist_info, "risk_level", "NORMAL") or "NORMAL"
                         if _dist_info else "NORMAL"),
-                    "sector_flows": dict(getattr(snapshot, "sector_flows", {}) or {}),
+                    "sector_flows": {
+                        sf.sector_name: sf.flow_score
+                        for sf in (getattr(snapshot, "sector_flows", []) or [])
+                        if hasattr(sf, "sector_name")
+                    },
                     "advance_decline": float(
                         getattr(snapshot, "advance_decline_ratio", 0.0) or 0.0),
                 }
@@ -1228,6 +1232,24 @@ class MasterOrchestrator:
                 enriched_signals, snapshot, portfolio
             )
         _diag.record_stage("CapitalRiskEngine", len(enriched_signals), len(cre_signals))
+
+        # ── LOL: Record CRE-blocked signals (QTY_ZERO etc.) ──────────────────
+        # Signals that passed StrategyLab but were blocked by CapitalRiskEngine
+        # are recorded as BLOCKED with block_reason for counterfactual analysis.
+        # Non-blocking: never affects the production path.
+        try:
+            from learning_system.learning_observation_ledger import get_lol as _get_lol_cre
+            _cre_pass_syms   = {s.symbol for s in cre_signals}
+            _cre_blocked_sigs = [s for s in enriched_signals if s.symbol not in _cre_pass_syms]
+            if _cre_blocked_sigs:
+                _get_lol_cre().update_cre_blocking(
+                    signals=_cre_blocked_sigs,
+                    block_reason="CRE_QTY_ZERO",
+                    trading_date=_lol_trading_date,
+                )
+                log.debug("[LOL] CRE blocking recorded for %d signals", len(_cre_blocked_sigs))
+        except Exception as _lol_cre_exc:
+            log.debug("[LOL] CRE blocking update skipped: %s", _lol_cre_exc)
 
         # ── [PortfolioCapacityAudit] — slot utilization ───────────────────
         try:
