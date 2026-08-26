@@ -137,6 +137,9 @@ Full cycle:          172ms  ✅  HEALTHY
 | `opportunity_engine/equity_scanner_ai.py` | MOP-RC-001: compute+attach observational fields in `scan()`, extend `[EdgeTelemetry]`, call observer | No |
 | `opportunity_engine/mop_rc001_observer.py` | NEW — MOP-RC-001 append-only JSONL observer, `record_signal_observation()`, `write_daily_summary_md()` | N/A |
 | `test_mop_rc001.py` | NEW — 15 tests (T001–T015): formula, None-safety, invariance, no look-ahead, dedup | N/A |
+| `.gitignore` + `.dockerignore` | Gitignore runtime-grown data: KEL, shadow evidence, KSL state, options data, iv_history, LOL JSONL, scanner_memory, regime_history, scheduler_health, trade_analytics | No |
+| `build_manifest.json` | Regenerated; deploy command now includes `generate_build_manifest.py` to prevent DeploymentDrift | No |
+| `orchestrator/master_orchestrator.py` | Universe rebuild: Monday-only guard removed, schedule moved from 08:30 to 16:15 IST, runs daily post-market | No |
 
 ---
 
