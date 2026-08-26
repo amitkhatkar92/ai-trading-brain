@@ -6332,7 +6332,33 @@ class MasterOrchestrator:
         except Exception as _lol_bridge_exc:
             log.error("[LOL-BRIDGE] Bridge error (non-critical): %s", _lol_bridge_exc)
 
-        # ── KLP-002: Outcome engine — fill pending KLP observations ───────────
+        # ── K-001: Failure taxonomy — classify today's outcome records ──────────
+        try:
+            from learning_system.failure_taxonomy import write_failure_summary as _fail_tax
+            import json as _ftjson
+            from pathlib import Path as _FTPath
+            _today_str   = __import__("datetime").date.today().isoformat()
+            _lol_dir     = _FTPath("data/lol")
+            _lol_recs_ft: list = []
+            _lol_ft_file = _lol_dir / f"LOL_{_today_str}.jsonl"
+            if _lol_ft_file.exists():
+                with _lol_ft_file.open("r", encoding="utf-8") as _ft_fh:
+                    for _ft_line in _ft_fh:
+                        _ft_line = _ft_line.strip()
+                        if _ft_line:
+                            try:
+                                _lol_recs_ft.append(_ftjson.loads(_ft_line))
+                            except Exception:
+                                pass
+            if _lol_recs_ft:
+                _ft_result = _fail_tax(_lol_recs_ft, trading_date=_today_str)
+                log.info("[K-001] Failure taxonomy: classified=%d cats=%s",
+                         _ft_result.get("total_classified", 0),
+                         _ft_result.get("categories", {}))
+        except Exception as _ft_exc:
+            log.debug("[K-001] Failure taxonomy skipped: %s", _ft_exc)
+
+        # ── KLP-002: fill pending KLP observations ───────────────────────────
         # Runs every EOD; processes yesterday's and earlier pending observations.
         # Never modifies executed orders, positions, or risk controls.
         try:
@@ -6348,6 +6374,18 @@ class MasterOrchestrator:
                 )
         except Exception as _klpe_exc:
             log.debug("[KLP-002] Outcome engine skipped: %s", _klpe_exc)
+
+        # ── D-008: HBE daily persistence snapshot ─────────────────────────────
+        try:
+            from opportunity_engine.historical_behaviour_engine import (
+                HistoricalBehaviourEngine as _HBE,
+            )
+            _hbe_snap = _HBE()
+            _hbe_snap.load_outcomes()
+            _hbe_snap.write_daily_snapshot()
+            log.info("[HBE] Daily snapshot written: %d outcomes.", _hbe_snap.get_outcome_count())
+        except Exception as _hbe_snap_exc:
+            log.debug("[HBE] Daily snapshot skipped: %s", _hbe_snap_exc)
 
         # ── KDA-003: EOD knowledge update — outcomes, comparisons, authority ──
         # Processes today's KDA shadow decisions: evaluates outcomes from OHLCV bars,

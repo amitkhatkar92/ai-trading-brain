@@ -24,13 +24,21 @@ The guardian stores intraday state and resets at market open.
 """
 
 from __future__ import annotations
+import json
+import os
+import tempfile
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional
 
 from models import TradeSignal, Portfolio, MarketSnapshot
 from utils  import get_logger
 from config import DD_REDUCE_PCT, DD_PAUSE_PCT, DD_REDUCE_FACTOR
+
+_STATE_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data", "risk_guardian_state.json",
+)
 
 log = get_logger(__name__)
 
@@ -77,7 +85,8 @@ class FailSafeRiskGuardian:
             execute(decision.approved_signals)
     """
 
-    def __init__(self, total_capital: float = 1_000_000) -> None:
+    def __init__(self, total_capital: float = 1_000_000,
+                 state_file: Optional[str] = None) -> None:
         self._capital           = total_capital
         self._daily_pnl         = 0.0
         self._open_trades       = 0
@@ -85,6 +94,10 @@ class FailSafeRiskGuardian:
         self._trading_halted    = False
         self._halt_reason       = ""
         self._session_date: Optional[date] = None
+        self._state_file        = state_file or _STATE_FILE
+        # Restore persisted state BEFORE normal session reset so today's
+        # accumulated loss and any active halt survive a container restart.
+        self._load_state()
         log.info(
             "[RiskGuardian] Initialised. Capital=₹%.0f | MaxDailyLoss=%.0f%% | "
             "MaxPortfolioRisk=%.0f%% | MaxOpenTrades=%d | KillVIX=%.0f",
@@ -132,8 +145,9 @@ class FailSafeRiskGuardian:
             self._consec_losses = 0
         else:
             self._consec_losses += 1
-        log.info("[RiskGuardian] Trade recorded. DailyPnL=₹%+,.0f | "
+        log.info("[RiskGuardian] Trade recorded. DailyPnL=\u20b9%+.0f | "
                  "ConsecLosses=%d", self._daily_pnl, self._consec_losses)
+        self._save_state()  # persist after every P&L mutation
 
     def record_open_trade(self) -> None:
         self._open_trades += 1
@@ -187,6 +201,7 @@ class FailSafeRiskGuardian:
         if vix >= KILL_SWITCH_VIX:
             self._trading_halted = True
             self._halt_reason    = f"VIX={vix:.1f} ≥ {KILL_SWITCH_VIX}"
+            self._save_state()
             log.critical("[RiskGuardian] 🛑 KILL SWITCH ACTIVATED — %s",
                          self._halt_reason)
             return ("KILL_SWITCH", f"VIX={vix:.1f} signals market panic. "
@@ -197,6 +212,7 @@ class FailSafeRiskGuardian:
         if daily_loss_pct >= MAX_DAILY_LOSS_PCT:
             self._trading_halted = True
             self._halt_reason    = f"DailyLoss={daily_loss_pct:.2f}%"
+            self._save_state()
             log.error("[RiskGuardian] 🛑 DAILY LOSS LIMIT — %s",
                       self._halt_reason)
             return ("DAILY_LOSS_LIMIT",
@@ -254,3 +270,85 @@ class FailSafeRiskGuardian:
             self._open_trades    = 0
             self._trading_halted = False
             self._halt_reason    = ""
+            self._save_state()  # persist clean new-session state
+
+    # ── Persistence ───────────────────────────────────────────────────────
+    def _save_state(self) -> None:
+        """Atomically persist intraday kill-switch state to disk."""
+        # Ensure session_date is always set — record_trade_result may be called
+        # before evaluate(), which is the only other place that sets _session_date.
+        if self._session_date is None:
+            self._session_date = date.today()
+        state = {
+            "session_date":   self._session_date.isoformat(),
+            "daily_pnl":      self._daily_pnl,
+            "trading_halted": self._trading_halted,
+            "halt_reason":    self._halt_reason,
+            "consec_losses":  self._consec_losses,
+            "last_updated":   datetime.now(timezone.utc).isoformat(),
+        }
+        try:
+            os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
+            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(self._state_file),
+                                       prefix=".rg_state_", suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(state, fh, indent=2)
+                os.replace(tmp, self._state_file)
+            except Exception:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
+                raise
+        except Exception as exc:
+            log.warning("[RiskGuardian] State save failed (non-critical): %s", exc)
+
+    def _load_state(self) -> None:
+        """Restore persisted intraday state. Fails safe on missing/corrupt file."""
+        today = date.today()
+        try:
+            if not os.path.exists(self._state_file):
+                return  # no prior state — safe default (all zeros)
+            with open(self._state_file, encoding="utf-8") as fh:
+                raw = fh.read()
+            state = json.loads(raw)
+            saved_date_str = state.get("session_date")
+            if not saved_date_str:
+                return  # corrupt/empty — fail safe
+            saved_date = date.fromisoformat(saved_date_str)
+            if saved_date != today:
+                log.info(
+                    "[RiskGuardian] Persisted state is from %s (not today %s) "
+                    "— starting fresh session.",
+                    saved_date, today,
+                )
+                return  # previous day — normal new-session start
+            # Same trading date — restore accumulated loss and halt state
+            self._session_date   = saved_date
+            self._daily_pnl      = float(state.get("daily_pnl", 0.0))
+            self._trading_halted = bool(state.get("trading_halted", False))
+            self._halt_reason    = str(state.get("halt_reason", ""))
+            self._consec_losses  = int(state.get("consec_losses", 0))
+            if self._trading_halted:
+                log.warning(
+                    "[RiskGuardian] ⚠️  RESTORED HALT from prior run: %s | "
+                    "DailyPnL=\u20b9%+.0f",
+                    self._halt_reason, self._daily_pnl,
+                )
+            else:
+                log.info(
+                    "[RiskGuardian] Restored intraday state: DailyPnL=\u20b9%+.0f "
+                    "ConsecLosses=%d",
+                    self._daily_pnl, self._consec_losses,
+                )
+        except Exception as exc:
+            # Any failure → fail safe (all-zero state, no halt assumed)
+            log.warning(
+                "[RiskGuardian] State load failed — starting fresh (safe default): %s",
+                exc,
+            )
+            self._daily_pnl      = 0.0
+            self._trading_halted = False
+            self._halt_reason    = ""
+            self._session_date   = None

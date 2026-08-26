@@ -147,7 +147,7 @@ class KLPOutcomeEngine:
         for date_str in dates:
             pending = self._load_pending_obs(date_str)
             for obs in pending:
-                obs_id = obs.get("obs_id", "")
+                obs_id = obs.get("observation_id") or obs.get("obs_id", "")
                 if obs_id in self._outcomes_written:
                     summary["skipped_dedup"] += 1
                     continue
@@ -191,14 +191,15 @@ class KLPOutcomeEngine:
                     continue
                 et = rec.get("event_type", "")
                 if et == "OUTCOME_UPDATE":
-                    completed_obs_ids.add(rec.get("obs_id", ""))
+                    completed_obs_ids.add(rec.get("observation_id") or rec.get("obs_id", ""))
                 elif et == "KNOWLEDGE_OBSERVATION":
                     all_obs.append(rec)
 
         # Return observations without outcomes that have valid price data
         pending = []
         for obs in all_obs:
-            if obs.get("obs_id") in completed_obs_ids:
+            _oid = obs.get("observation_id") or obs.get("obs_id", "")
+            if _oid in completed_obs_ids:
                 continue
             if not obs.get("reference_entry"):
                 continue
@@ -258,8 +259,10 @@ class KLPOutcomeEngine:
     ) -> Dict[str, Any]:
         now_utc  = datetime.now(timezone.utc)
         date_str = obs.get("trading_date", now_utc.strftime("%Y-%m-%d"))
+        _obs_id  = obs.get("observation_id") or obs.get("obs_id", "")
         return {
-            "obs_id":              obs.get("obs_id", ""),
+            "obs_id":              _obs_id,          # backward-compat alias
+            "observation_id":      _obs_id,          # canonical field (matches LOL)
             "event_type":          "OUTCOME_UPDATE",
             "ts_utc":              now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "trading_date":        date_str,

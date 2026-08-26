@@ -898,15 +898,47 @@ class HistoricalBehaviourEngine:
 
     # ── Diagnostic output ─────────────────────────────────────────────────────
 
+    def write_daily_snapshot(self, output_dir: Optional[Path] = None) -> None:
+        """
+        D-008: Write a daily summary snapshot of the HBE state to disk.
+        Idempotent — safe to call multiple times; overwrites today's file.
+        Non-fatal — swallows all errors.
+        """
+        try:
+            base = output_dir or _HBE_OUTPUT_DIR
+            base.mkdir(parents=True, exist_ok=True)
+            today_str = date.today().isoformat()
+            snap_path = base / f"hbe_snapshot_{today_str}.json"
+            symbol_counts = self.get_symbol_counts()
+            snapshot = {
+                "snapshot_date":    today_str,
+                "ts_utc":           datetime.now(timezone.utc).isoformat(),
+                "outcome_count":    len(self._outcomes),
+                "symbol_count":     len(symbol_counts),
+                "symbols":          symbol_counts,
+                "loaded":           self._loaded,
+                "version":          _VERSION,
+            }
+            import tempfile
+            fd, tmp = tempfile.mkstemp(dir=str(base), prefix=".hbe_snap_", suffix=".tmp")
+            try:
+                with __import__("os").fdopen(fd, "w", encoding="utf-8") as fh:
+                    json.dump(snapshot, fh, indent=2)
+                __import__("os").replace(tmp, str(snap_path))
+            except Exception:
+                try:
+                    __import__("os").unlink(tmp)
+                except OSError:
+                    pass
+                raise
+        except Exception as exc:
+            pass  # non-fatal
+
     def write_diagnostic_record(
         self,
         profile: BehaviourProfile,
         output_dir: Optional[Path] = None,
     ) -> None:
-        """
-        Append a diagnostic record to the HBE ledger.
-        Non-fatal — silently swallows all errors.
-        """
         try:
             base = output_dir or _HBE_OUTPUT_DIR
             base.mkdir(parents=True, exist_ok=True)

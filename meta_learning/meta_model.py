@@ -40,6 +40,7 @@ log = get_logger(__name__)
 
 K_NEIGHBOURS = 5       # reduced from 10 (GAP-004): activates with ~21 observations on disk
 DEFAULT_PRED  = 0.0    # fallback when no history for a strategy
+MIN_PER_STRATEGY_OBS = 3  # P-002: minimum observations per strategy before predicting
 
 
 @dataclass
@@ -100,6 +101,14 @@ class MetaModel:
         for strat in strategies:
             strat_obs = [o for o in self._obs if o.strategy == strat]
             if not strat_obs:
+                preds[strat] = DEFAULT_PRED
+                continue
+            if len(strat_obs) < MIN_PER_STRATEGY_OBS:
+                # P-002: insufficient per-strategy observations — avoid noisy prediction
+                log.debug(
+                    "[MetaModel] P-002: %s has only %d obs (min=%d) — using equal-weight fallback.",
+                    strat, len(strat_obs), MIN_PER_STRATEGY_OBS,
+                )
                 preds[strat] = DEFAULT_PRED
                 continue
             preds[strat] = self._knn_predict(fvec, strat_obs)

@@ -200,20 +200,34 @@ def _ingest_impl(
                 skipped += 1
                 continue
 
-            # Anti-lookahead: outcome_at must be after decision_at
+            # Anti-lookahead: STRICT — both timestamps required; outcome must be AFTER decision.
+            # Missing decision_at = no temporal proof = inadmissible (not just unchecked).
             outcome_at  = rec.get("outcome_at")
             decision_at = rec.get("decision_at")
-            if outcome_at and decision_at:
-                try:
-                    if outcome_at <= decision_at:
-                        log.debug(
-                            "[LOL-BRIDGE] Skipping %s: outcome_at (%s) not after decision_at (%s)",
-                            obs_id, outcome_at, decision_at,
-                        )
-                        skipped += 1
-                        continue
-                except Exception:
-                    pass
+            if not outcome_at or not decision_at:
+                log.info(
+                    "[LOL-BRIDGE] Skipping %s: missing temporal proof "
+                    "(outcome_at=%s decision_at=%s) — no_lookahead cannot be asserted.",
+                    obs_id, outcome_at, decision_at,
+                )
+                skipped += 1
+                continue
+            try:
+                if outcome_at <= decision_at:
+                    log.warning(
+                        "[LOL-BRIDGE] Skipping %s: lookahead violation — "
+                        "outcome_at (%s) not after decision_at (%s).",
+                        obs_id, outcome_at, decision_at,
+                    )
+                    skipped += 1
+                    continue
+            except Exception as _cmp_exc:
+                log.warning(
+                    "[LOL-BRIDGE] Skipping %s: timestamp comparison error: %s",
+                    obs_id, _cmp_exc,
+                )
+                skipped += 1
+                continue
 
             # Idempotency: skip if already in ledger
             dedup_key = f"{_LOL_SOURCE_PREFIX}{obs_id}"

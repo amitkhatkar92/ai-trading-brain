@@ -19,7 +19,7 @@ import tempfile
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
@@ -100,6 +100,10 @@ AET_MAX_WAIT_CANDLES      = 5     # max candles a CONFIRMATION slot may wait [RA
 # ── Paper trade journal ───────────────────────────────────────────────────
 _DATA_DIR        = os.path.join(os.path.dirname(__file__), "..", "data")
 PAPER_TRADE_LOG  = os.path.join(_DATA_DIR, "paper_trades.csv")
+# Live execution journal — append-only JSONL, written in both paper and live modes.
+# Provides position recovery on container restart independent of broker API.
+_LIVE_DIR        = os.path.join(_DATA_DIR, "live")
+LIVE_ORDER_LOG   = os.path.join(_LIVE_DIR, "live_orders.jsonl")
 _JOURNAL_HEADER  = [
     "timestamp", "order_id", "symbol", "direction", "quantity",
     "entry_price", "stop_loss", "target", "strategy",
@@ -449,10 +453,16 @@ class OrderManager:
             self._prefetch_restored_ltps() # immediately resolve LTP for restored positions
         else:
             log.info("[OrderManager] Active broker: %s", ACTIVE_BROKER.upper())
+            # Ensure live journal directory exists
+            os.makedirs(_LIVE_DIR, exist_ok=True)
+            log.info("[OrderManager] Live order journal: %s", os.path.abspath(LIVE_ORDER_LOG))
             # ORJ-001: reconcile historical SIM_ paper artifacts that were left
             # open before the PAPER→LIVE transition.  Append-only; never touches
             # live positions or Dhan orders.
             self._reconcile_sim_paper_artifacts()
+            # H-001: Restore open positions from live journal (fast-path) or broker API
+            # (authoritative path).  Ensures position state survives container restarts.
+            self._restore_from_live_journal()
             # Startup fill reconciliation: query broker for any restored live orders
             # whose fill_status is unresolved from a prior run.
             try:
@@ -875,6 +885,10 @@ class OrderManager:
         self._orders[order_id] = record
         self._update_portfolio(signal, qty)
 
+        # Write to live journal for restart recovery (live mode)
+        if not self._paper_mode:
+            self._append_live_journal("OPEN", record)
+
         # Phase 7 — [ReEntryAudit]: telemetry-only check (does NOT block the order)
         _prev = _RECENT_CLOSE_TIMES.get(signal.symbol)
         if _prev is not None:
@@ -1035,6 +1049,12 @@ class OrderManager:
                         os.fsync(rf.fileno())
             except Exception as rf_exc:
                 log.debug("[OrderManager] Closed-registry write failed: %s", rf_exc)
+        else:
+            # Live mode: append CLOSE to live journal for restart recovery
+            self._append_live_journal(
+                "CLOSE", rec,
+                extra={"exit_price": exit_price, "pnl": pnl, "reason": reason},
+            )
         try:
             from notifications.notifier_manager import get_notifier
             _r_risk = abs(rec.entry_price - rec.stop_loss)
@@ -3795,6 +3815,133 @@ class OrderManager:
         )
         return count
 
+    # ── Live execution journal (JSONL) ────────────────────────────────────────
+    # Written in live mode so container restarts can recover in-flight positions
+    # without depending on the broker API being reachable.
+
+    def _append_live_journal(self, event: str, rec: "OrderRecord",
+                             extra: Optional[dict] = None) -> None:
+        """Append one OPEN/CLOSE event line to LIVE_ORDER_LOG."""
+        try:
+            os.makedirs(_LIVE_DIR, exist_ok=True)
+            entry: dict = {
+                "event":             event,
+                "timestamp":         datetime.now(timezone.utc).isoformat(),
+                "order_id":          rec.order_id,
+                "broker_order_id":   rec.broker_order_id,
+                "symbol":            rec.symbol,
+                "direction":         rec.direction,
+                "quantity":          rec.quantity,
+                "entry_price":       rec.entry_price,
+                "stop_loss":         rec.stop_loss,
+                "target_price":      rec.target,
+                "strategy":          rec.strategy,
+                "opportunity_id":    getattr(rec, "opportunity_id", ""),
+                "fill_status":       rec.fill_status,
+                "actual_fill_price": rec.actual_fill_price,
+            }
+            if extra:
+                entry.update(extra)
+            with open(LIVE_ORDER_LOG, "a", encoding="utf-8") as fh:
+                fh.write(json.dumps(entry, default=str) + "\n")
+        except Exception as exc:
+            log.warning("[LiveJournal] Write failed (non-critical): %s", exc)
+
+    def _restore_from_live_journal(self) -> None:
+        """
+        H-001: On live-mode startup, replay LIVE_ORDER_LOG to re-hydrate any
+        open positions that were active when the container was last killed.
+
+        Restored positions get fill_status='JOURNAL_RESTORED' so
+        reconcile_startup_fills() will then fetch actual broker state.
+        """
+        if self._paper_mode:
+            return
+
+        opened: dict = {}
+        closed: set  = set()
+        today  = datetime.now()
+        cutoff = today - timedelta(days=7)
+
+        if not os.path.exists(LIVE_ORDER_LOG):
+            log.info("[LiveJournal] No live order journal found — starting with empty state.")
+            return
+
+        try:
+            with open(LIVE_ORDER_LOG, encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        row = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    oid   = row.get("order_id", "")
+                    event = row.get("event", "")
+                    if not oid:
+                        continue
+                    ts_str = row.get("timestamp", "")
+                    try:
+                        ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                        if ts.replace(tzinfo=None) < cutoff:
+                            continue
+                    except Exception:
+                        pass
+                    if event == "OPEN":
+                        opened[oid] = row
+                    elif event in ("CLOSE", "SESSION_EXPIRED", "REJECTED"):
+                        closed.add(oid)
+        except Exception as exc:
+            log.warning("[LiveJournal] Could not read journal at startup: %s", exc)
+            return
+
+        to_restore = {oid: row for oid, row in opened.items() if oid not in closed}
+        if not to_restore:
+            log.info("[LiveJournal] Startup: no open positions to restore.")
+            return
+
+        log.warning(
+            "[LiveJournal] \u26a0\ufe0f  Restoring %d open position(s) from live journal. "
+            "Verify against broker dashboard before the next cycle.",
+            len(to_restore),
+        )
+        for oid, row in to_restore.items():
+            try:
+                rec = OrderRecord(
+                    order_id          = oid,
+                    broker_order_id   = row.get("broker_order_id") or "",
+                    symbol            = row.get("symbol", "UNKNOWN"),
+                    direction         = row.get("direction", "BUY"),
+                    quantity          = int(row.get("quantity") or 0),
+                    entry_price       = float(row.get("entry_price") or 0),
+                    stop_loss         = float(row.get("stop_loss") or 0),
+                    target            = float(row.get("target_price") or 0),
+                    strategy          = row.get("strategy", ""),
+                    fill_status       = "JOURNAL_RESTORED",
+                    actual_fill_price = float(row.get("actual_fill_price") or
+                                              row.get("entry_price") or 0),
+                )
+                self._orders[oid] = rec
+                self._portfolio.positions[rec.symbol] = {
+                    "order_id":    oid,
+                    "direction":   rec.direction,
+                    "quantity":    rec.quantity,
+                    "entry_price": rec.actual_fill_price or rec.entry_price,
+                    "stop_loss":   rec.stop_loss,
+                    "target":      rec.target,
+                    "strategy":    rec.strategy,
+                }
+                log.warning(
+                    "[LiveJournal] Restored: %s %s qty=%d fill=%.2f order_id=%s",
+                    rec.direction, rec.symbol, rec.quantity,
+                    rec.actual_fill_price, oid,
+                )
+            except Exception as _rec_exc:
+                log.error("[LiveJournal] Could not restore order_id=%s: %s", oid, _rec_exc)
+
+        self._restore_stats["restored_today"] = len(to_restore)
+
     def reconcile_startup_fills(self) -> int:
         """
         On startup: query Dhan for any restored live order whose fill_status
@@ -3810,7 +3957,7 @@ class OrderManager:
             return 0
         reconciled = 0
         for oid, rec in list(self._orders.items()):
-            if rec.fill_status not in ("", "PENDING", "UNRESOLVED"):
+            if rec.fill_status not in ("", "PENDING", "UNRESOLVED", "JOURNAL_RESTORED"):
                 continue  # already resolved
             if oid.startswith("SIM_"):
                 continue  # paper / sim — not a live order

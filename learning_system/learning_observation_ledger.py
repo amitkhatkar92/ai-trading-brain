@@ -668,7 +668,14 @@ class LearningObservationLedger:
             updated.update(outcome)
             updated["lifecycle_state"] = OUTCOME_OBSERVED
             updated["event_type"]      = OUTCOME_OBSERVED
-            updated["outcome_at"] = datetime.now(timezone.utc).isoformat()
+            # outcome_at = actual market bar date (first bar used = T+1 after decision)
+            # processed_at = wall-clock time this EOD job ran (for audit/latency tracking)
+            _outcome_bar_date = bars[0].get("date") if bars else None
+            if _outcome_bar_date:
+                updated["outcome_at"]    = str(_outcome_bar_date) + "T15:30:00+05:30"
+            else:
+                updated["outcome_at"]    = datetime.now(timezone.utc).isoformat()
+            updated["processed_at"]  = datetime.now(timezone.utc).isoformat()
             updated["no_lookahead"] = True
             self._append(updated)
             self._pending.pop(obs_id, None)
