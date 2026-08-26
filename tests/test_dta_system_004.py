@@ -700,6 +700,146 @@ class TestLiveExecutionJournal:
             _om.LIVE_ORDER_LOG = orig
             _om._LIVE_DIR = orig_dir
 
+    def test_T036_opportunity_id_persisted_in_open_event(self, tmp_path):
+        """OPEN event carries opportunity_id from OrderRecord."""
+        import execution_engine.order_manager as _om
+        live_log = str(tmp_path / "live_orders.jsonl")
+        orig = _om.LIVE_ORDER_LOG; orig_dir = _om._LIVE_DIR
+        try:
+            _om.LIVE_ORDER_LOG = live_log
+            _om._LIVE_DIR = str(tmp_path)
+            from execution_engine.order_manager import OrderManager, OrderRecord
+            om = OrderManager.__new__(OrderManager)
+            om._paper_mode = False
+            rec = OrderRecord(
+                order_id="LIVE_036", symbol="INFY", direction="BUY",
+                quantity=5, entry_price=1800.0, stop_loss=1760.0, target=1870.0,
+                strategy="Momentum", opportunity_id="TEST-OPP-036",
+            )
+            om._append_live_journal("OPEN", rec)
+        finally:
+            _om.LIVE_ORDER_LOG = orig
+            _om._LIVE_DIR = orig_dir
+
+        row = json.loads(Path(live_log).read_text().splitlines()[0])
+        assert row["opportunity_id"] == "TEST-OPP-036"
+
+    def test_T037_opportunity_id_persisted_in_close_event(self, tmp_path):
+        """CLOSE event carries same opportunity_id as OPEN event."""
+        import execution_engine.order_manager as _om
+        live_log = str(tmp_path / "live_orders.jsonl")
+        orig = _om.LIVE_ORDER_LOG; orig_dir = _om._LIVE_DIR
+        try:
+            _om.LIVE_ORDER_LOG = live_log
+            _om._LIVE_DIR = str(tmp_path)
+            from execution_engine.order_manager import OrderManager, OrderRecord
+            om = OrderManager.__new__(OrderManager)
+            om._paper_mode = False
+            rec = OrderRecord(
+                order_id="LIVE_037", symbol="RELIANCE", direction="BUY",
+                quantity=3, entry_price=2900.0, stop_loss=2840.0, target=3000.0,
+                strategy="Breakout", opportunity_id="TEST-OPP-037",
+            )
+            om._append_live_journal("OPEN", rec)
+            om._append_live_journal("CLOSE", rec,
+                extra={"exit_price": 3000.0, "pnl": 300.0, "reason": "TARGET_HIT"})
+        finally:
+            _om.LIVE_ORDER_LOG = orig
+            _om._LIVE_DIR = orig_dir
+
+        lines = [json.loads(l) for l in Path(live_log).read_text().splitlines()]
+        assert lines[0]["opportunity_id"] == "TEST-OPP-037"
+        assert lines[1]["opportunity_id"] == "TEST-OPP-037"
+
+    def test_T038_opportunity_id_restored_from_journal(self, tmp_path):
+        """opportunity_id is recovered when restoring OPEN events at restart."""
+        import execution_engine.order_manager as _om
+        jf = tmp_path / "live_orders.jsonl"
+        ts = datetime.now(timezone.utc).isoformat()
+        jf.write_text(json.dumps({
+            "event": "OPEN", "timestamp": ts, "order_id": "LIVE_038",
+            "symbol": "TCS", "direction": "BUY", "quantity": 2,
+            "entry_price": 4000.0, "stop_loss": 3900.0, "target_price": 4200.0,
+            "strategy": "Momentum", "fill_status": "FILLED",
+            "actual_fill_price": 4005.0, "broker_order_id": "B038",
+            "opportunity_id": "TEST-OPP-038",
+        }) + "\n")
+        orig = _om.LIVE_ORDER_LOG; orig_dir = _om._LIVE_DIR
+        try:
+            _om.LIVE_ORDER_LOG = str(jf)
+            _om._LIVE_DIR = str(tmp_path)
+            from execution_engine.order_manager import OrderManager
+            from models import Portfolio
+            om = OrderManager.__new__(OrderManager)
+            om._paper_mode = False
+            om._orders = {}
+            om._restore_stats = {"restored_today": 0}
+            om._portfolio = Portfolio(capital=100_000)
+            om._restore_from_live_journal()
+        finally:
+            _om.LIVE_ORDER_LOG = orig
+            _om._LIVE_DIR = orig_dir
+
+        rec = om._orders.get("LIVE_038")
+        assert rec is not None
+        assert rec.opportunity_id == "TEST-OPP-038"
+
+    def test_T039_broker_without_get_fill_details_skips_reconcile(self, tmp_path):
+        """reconcile_startup_fills() skips gracefully if broker lacks get_fill_details."""
+        from execution_engine.order_manager import OrderManager, OrderRecord
+        om = OrderManager.__new__(OrderManager)
+        om._paper_mode = False
+        om._orders = {}
+        rec = OrderRecord(
+            order_id="LIVE_039", symbol="HDFC", direction="BUY",
+            quantity=1, entry_price=1600.0, stop_loss=1560.0, target=1680.0,
+            strategy="Test", fill_status="JOURNAL_RESTORED",
+        )
+        om._orders["LIVE_039"] = rec
+        # Broker with NO get_fill_details (simulates old-style adapter)
+        class _NoFillDetailsBroker:
+            pass
+        om._broker = _NoFillDetailsBroker()
+        count = om.reconcile_startup_fills()
+        assert count == 0  # skipped, not crashed
+        assert rec.fill_status == "JOURNAL_RESTORED"  # unchanged
+
+    def test_T040_broker_with_get_fill_details_reconciles(self, tmp_path):
+        """reconcile_startup_fills() uses get_fill_details when present on broker."""
+        from execution_engine.order_manager import OrderManager, OrderRecord
+        om = OrderManager.__new__(OrderManager)
+        om._paper_mode = False
+        om._orders = {}
+        rec = OrderRecord(
+            order_id="LIVE_040", symbol="WIPRO", direction="BUY",
+            quantity=4, entry_price=500.0, stop_loss=480.0, target=540.0,
+            strategy="Test", fill_status="JOURNAL_RESTORED",
+        )
+        om._orders["LIVE_040"] = rec
+
+        class _FillDetailsBroker:
+            def get_fill_details(self, order_id):
+                return {
+                    "status": "FILLED", "actual_fill_price": 501.0,
+                    "filled_quantity": 4, "requested_price": 500.0,
+                    "order_status_raw": "TRADED", "fill_timestamp": "",
+                    "reconciliation_source": "TEST",
+                }
+
+        om._broker = _FillDetailsBroker()
+        # Use real _reconcile_fill but stub the broker
+        def fake_reconcile(r):
+            fill = om._broker.get_fill_details(r.order_id)
+            r.fill_status       = fill["status"]
+            r.actual_fill_price = fill["actual_fill_price"]
+        om._reconcile_fill = fake_reconcile
+        count = om.reconcile_startup_fills()
+        assert count == 1
+        assert rec.fill_status == "FILLED"
+        assert rec.actual_fill_price == 501.0
+
+
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # H-001: Live Position Restore
@@ -946,37 +1086,40 @@ class TestLivePositionRestore:
         assert "LIVE_400" in om._orders
 
     def test_T049_reconcile_startup_fills_handles_journal_restored(self, tmp_path):
-        """reconcile_startup_fills() processes JOURNAL_RESTORED status."""
-        import execution_engine.order_manager as _om
+        """reconcile_startup_fills() processes JOURNAL_RESTORED via real-shaped broker."""
         from execution_engine.order_manager import OrderManager, OrderRecord
+
+        class _RealShapedBroker:
+            """Shaped like DhanBroker — has get_fill_details, not MagicMock."""
+            def get_fill_details(self, order_id):
+                return {
+                    "status": "FILLED", "actual_fill_price": 601.0,
+                    "filled_quantity": 5, "requested_price": 600.0,
+                    "order_status_raw": "TRADED", "fill_timestamp": "",
+                    "reconciliation_source": "TEST",
+                }
+
         om = OrderManager.__new__(OrderManager)
         om._paper_mode = False
-        om._orders    = {}
+        om._orders = {}
         rec = OrderRecord(
-            order_id    = "LIVE_500",
-            symbol      = "SBIN",
-            direction   = "BUY",
-            quantity    = 5,
-            entry_price = 600.0,
-            stop_loss   = 580.0,
-            target      = 640.0,
-            strategy    = "Momentum",
-            fill_status = "JOURNAL_RESTORED",
+            order_id="LIVE_500", symbol="SBIN", direction="BUY",
+            quantity=5, entry_price=600.0, stop_loss=580.0, target=640.0,
+            strategy="Momentum", fill_status="JOURNAL_RESTORED",
         )
         om._orders["LIVE_500"] = rec
-        mock_broker = MagicMock()
-        mock_broker.get_fill_details = MagicMock(return_value={
-            "fill_status": "FILLED", "fill_price": 601.0, "quantity": 5,
-        })
-        om._broker = mock_broker
-        # Patch _reconcile_fill to just mark FILLED
+        om._broker = _RealShapedBroker()
+
         def fake_reconcile(r):
-            r.fill_status = "FILLED"
-            r.actual_fill_price = 601.0
+            fill = om._broker.get_fill_details(r.order_id)
+            r.fill_status       = fill["status"]
+            r.actual_fill_price = fill["actual_fill_price"]
         om._reconcile_fill = fake_reconcile
+
         count = om.reconcile_startup_fills()
         assert count == 1
         assert om._orders["LIVE_500"].fill_status == "FILLED"
+        assert om._orders["LIVE_500"].actual_fill_price == 601.0
 
     def test_T050_multiple_positions_all_restored(self, tmp_path):
         """Multiple distinct OPEN events are all restored."""

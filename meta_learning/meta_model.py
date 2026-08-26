@@ -11,6 +11,7 @@ Algorithm
 2. Given a query feature vector for a specific strategy:
    a. Find the k most similar historical observations (Euclidean distance).
    b. Compute inverse-distance weighted average of their R-multiples.
+   c. Optionally apply a bounded regime modifier from RegimeStrategyMap.
 3. Return predicted_r for every known strategy.
 
 This is essentially a non-parametric regressor that:
@@ -26,12 +27,25 @@ Performance characteristics:
 k (nearest neighbours): 10 (configurable)
 distance metric: normalised Euclidean over feature space [0,1]^8
 distance weight: 1 / (d + 1e-6)   (inverse, never divide by zero)
+
+P-004 Regime Modifier
+-----------------------
+When `predict()` receives `regime` and `regime_map` arguments, a bounded
+per-strategy modifier is applied after the k-NN prediction:
+
+  - Source: RegimeStrategyMap.rank_strategies(regime, candidates)
+  - Guard: only applied when RegimeEntry.reliable == True (requires ≥5 trades)
+  - Cap: ±_MAX_REGIME_MODIFIER (0.20) — cannot override gates or exceed max
+  - Additive: modifier is clipped so the final prediction stays in a safe band
+
+This is advisory-only research data. It never changes risk limits or bypass
+any decision gate. If regime_map is None, no modifier is applied.
 """
 
 from __future__ import annotations
 import math
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Dict, List, Optional
 
 from utils import get_logger
 from .feature_extractor import FeatureVector
@@ -41,6 +55,9 @@ log = get_logger(__name__)
 K_NEIGHBOURS = 5       # reduced from 10 (GAP-004): activates with ~21 observations on disk
 DEFAULT_PRED  = 0.0    # fallback when no history for a strategy
 MIN_PER_STRATEGY_OBS = 3  # P-002: minimum observations per strategy before predicting
+
+# P-004: maximum absolute regime modifier (additive, ± this value)
+_MAX_REGIME_MODIFIER = 0.20
 
 
 @dataclass
@@ -60,6 +77,11 @@ class MetaModel:
         model.add(observation)
         preds = model.predict(current_features, strategies=["Mean_Rev", "ORB"])
         # preds → {"Mean_Rev": 1.35, "ORB": 0.72}
+
+    With P-004 regime modifier::
+        from meta_learning.regime_strategy_map import get_regime_strategy_map
+        preds = model.predict(features, strategies, regime="TRENDING_BULL",
+                              regime_map=get_regime_strategy_map())
     """
 
     def __init__(self, k: int = K_NEIGHBOURS) -> None:
@@ -85,19 +107,39 @@ class MetaModel:
             log.info("[MetaModel] Reached %d observations — model is now active.",
                      len(self._obs))
 
-    def predict(self, features: FeatureVector,
-                strategies: list[str]) -> dict[str, float]:
+    def predict(
+        self,
+        features:    FeatureVector,
+        strategies:  list[str],
+        regime:      Optional[str] = None,
+        regime_map:  Optional[object] = None,   # RegimeStrategyMap | None
+    ) -> dict[str, float]:
         """
         Returns {strategy_name: predicted_r_multiple} for each strategy.
         Uses k-NN weighted regression per strategy.
         Falls back to DEFAULT_PRED when there is no history.
+
+        P-004: If `regime` and `regime_map` are provided, applies a bounded
+        per-strategy regime modifier (+/- _MAX_REGIME_MODIFIER = 0.20).
+        The modifier is only applied when RegimeEntry.reliable is True
+        (≥ MIN_REGIME_TRADES observations in that regime).
         """
         if not self._obs:
             return {s: DEFAULT_PRED for s in strategies}
 
         fvec = features.to_list()
-        preds: dict[str, float] = {}
 
+        # P-004: build regime modifier table upfront (once per call, not per strategy)
+        regime_modifiers: Dict[str, float] = {}
+        if regime and regime_map is not None:
+            try:
+                regime_modifiers = _build_regime_modifiers(
+                    regime, regime_map, strategies
+                )
+            except Exception as exc:
+                log.debug("[MetaModel] P-004 regime modifier build failed: %s", exc)
+
+        preds: dict[str, float] = {}
         for strat in strategies:
             strat_obs = [o for o in self._obs if o.strategy == strat]
             if not strat_obs:
@@ -111,7 +153,17 @@ class MetaModel:
                 )
                 preds[strat] = DEFAULT_PRED
                 continue
-            preds[strat] = self._knn_predict(fvec, strat_obs)
+            raw_pred = self._knn_predict(fvec, strat_obs)
+            # P-004: apply regime modifier if available
+            modifier = regime_modifiers.get(strat, 0.0)
+            if modifier != 0.0:
+                preds[strat] = raw_pred + modifier
+                log.debug(
+                    "[MetaModel] P-004 %s: knn=%.3f modifier=%.3f => %.3f (regime=%s)",
+                    strat, raw_pred, modifier, preds[strat], regime,
+                )
+            else:
+                preds[strat] = raw_pred
 
         return preds
 
@@ -140,6 +192,33 @@ class MetaModel:
         if total_w == 0:
             return DEFAULT_PRED
         return sum(w * r for w, r in top_k) / total_w
+
+
+def _build_regime_modifiers(
+    regime:     str,
+    regime_map: object,  # RegimeStrategyMap instance
+    strategies: List[str],
+) -> Dict[str, float]:
+    """
+    Build {strategy: modifier} table from RegimeStrategyMap.
+    Modifier is bounded to ±_MAX_REGIME_MODIFIER.
+    Only non-zero when RegimeEntry.reliable == True (≥ MIN_REGIME_TRADES trades).
+    Returns empty dict on any failure (fail safe).
+    """
+    modifiers: Dict[str, float] = {}
+    try:
+        ranked = regime_map.rank_strategies(regime, strategies)
+        # ranked is [(strategy_name, expectancy_score)] sorted by expectancy
+        for strategy_name, expectancy in ranked:
+            # expectancy is win_rate*avg_win_R - loss_rate*avg_loss_R
+            # We use it directly as a modifier (it is already in R-multiple space)
+            modifier = max(-_MAX_REGIME_MODIFIER,
+                           min(_MAX_REGIME_MODIFIER, float(expectancy)))
+            if modifier != 0.0:
+                modifiers[strategy_name] = modifier
+    except Exception as exc:
+        log.debug("[MetaModel] _build_regime_modifiers error: %s", exc)
+    return modifiers
 
 
 def _euclidean(a: list[float], b: list[float]) -> float:

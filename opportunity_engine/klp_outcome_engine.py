@@ -168,6 +168,30 @@ class KLPOutcomeEngine:
                 self._outcomes_written.add(obs_id)
                 summary["processed"] += 1
 
+            # D-009 / KLP-002: Also fill SCAN_NO_SETUP directional outcomes
+            no_setup_pending = self._load_pending_no_setup_obs(date_str)
+            for obs in no_setup_pending:
+                obs_id = obs.get("observation_id") or obs.get("obs_id", "")
+                if obs_id in self._outcomes_written:
+                    summary["skipped_dedup"] += 1
+                    continue
+
+                result = self._compute_no_setup_outcome(obs)
+                if result.get("outcome_status") == OUTCOME_PENDING:
+                    summary["skipped_pending"] += 1
+                    continue
+                if result.get("outcome_status") == OUTCOME_NO_DATA:
+                    summary["skipped_no_data"] += 1
+                    continue
+
+                rec = self._build_no_setup_outcome_record(obs, result)
+                self._write_record(rec, date_str)
+
+                with _DEDUP_LOCK:
+                    _OUTCOMES_WRITTEN_THIS_SESSION.add(obs_id)
+                self._outcomes_written.add(obs_id)
+                summary["processed"] += 1
+
         return summary
 
     def _load_pending_obs(self, date_str: str) -> List[Dict[str, Any]]:
@@ -290,6 +314,114 @@ class KLPOutcomeEngine:
             "bars_available":      outcome.get("bars_available", 0),
             "outcome_version":     "KLP_OUTCOME_v1",
             "no_lookahead":        True,
+        }
+
+    def _load_pending_no_setup_obs(self, date_str: str) -> List[Dict[str, Any]]:
+        """Return SCAN_NO_SETUP records that have not yet received an outcome."""
+        klp_file = self._data_dir / f"KLP_{date_str}.jsonl"
+        if not klp_file.exists():
+            return []
+
+        completed_ids: Set[str] = set()
+        candidates: List[Dict[str, Any]] = []
+
+        with klp_file.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                et = rec.get("event_type", "")
+                if et == "SCAN_NO_SETUP_OUTCOME":
+                    completed_ids.add(rec.get("observation_id") or rec.get("obs_id", ""))
+                elif et == "SCAN_NO_SETUP":
+                    candidates.append(rec)
+
+        return [
+            obs for obs in candidates
+            if (obs.get("observation_id") or obs.get("obs_id", "")) not in completed_ids
+        ]
+
+    def _compute_no_setup_outcome(self, obs: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Compute retrospective outcome for a SCAN_NO_SETUP observation.
+        Uses the symbol's T+1..T+5 price vs scan LTP to estimate missed move.
+        Never raises; returns {outcome_status: OUTCOME_PENDING} when data unavailable.
+        """
+        trading_date = obs.get("trading_date", "")
+        symbol       = (obs.get("symbol") or "").strip()
+        ltp          = float(obs.get("ltp") or obs.get("reference_ltp") or 0.0)
+
+        if not trading_date or not symbol:
+            return {"outcome_status": OUTCOME_NO_DATA}
+
+        today = date.today()
+        try:
+            t1 = date.fromisoformat(trading_date) + timedelta(days=1)
+        except Exception:
+            return {"outcome_status": OUTCOME_NO_DATA}
+
+        if t1 > today:
+            return {"outcome_status": OUTCOME_PENDING}
+
+        try:
+            bars = self._ohlcv_fetcher(symbol, trading_date)
+        except Exception:
+            return {"outcome_status": OUTCOME_NO_DATA}
+
+        if not bars:
+            return {"outcome_status": OUTCOME_NO_DATA}
+
+        def ret_at(n: int) -> Optional[float]:
+            if n <= len(bars) and ltp > 0:
+                return round((float(bars[n - 1]["close"]) / ltp - 1.0) * 100.0, 4)
+            return None
+
+        highs = [float(b["high"]) for b in bars]
+        lows  = [float(b["low"])  for b in bars]
+
+        mfe = round(max((h / ltp - 1.0) * 100.0 for h in highs), 4) if ltp > 0 else None
+        mae = round(min((l / ltp - 1.0) * 100.0 for l in lows),  4) if ltp > 0 else None
+
+        return {
+            "outcome_status": OUTCOME_EXPIRED if len(bars) >= _OUTCOME_HORIZON_DAYS else OUTCOME_PENDING,
+            "t1_ret_pct":     ret_at(1),
+            "t3_ret_pct":     ret_at(3),
+            "t5_ret_pct":     ret_at(5),
+            "mfe_pct":        mfe,
+            "mae_pct":        mae,
+            "bars_available": len(bars),
+        }
+
+    def _build_no_setup_outcome_record(
+        self,
+        obs: Dict[str, Any],
+        outcome: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Build append-only SCAN_NO_SETUP_OUTCOME record from outcome data."""
+        now_utc  = datetime.now(timezone.utc)
+        _obs_id  = obs.get("observation_id") or obs.get("obs_id", "")
+        return {
+            "obs_id":          _obs_id,
+            "observation_id":  _obs_id,
+            "event_type":      "SCAN_NO_SETUP_OUTCOME",
+            "ts_utc":          now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "trading_date":    obs.get("trading_date", ""),
+            "symbol":          obs.get("symbol", ""),
+            "scan_reason":     obs.get("reason", ""),
+            "reference_ltp":   obs.get("ltp") or obs.get("reference_ltp"),
+            "t1_ret_pct":      outcome.get("t1_ret_pct"),
+            "t3_ret_pct":      outcome.get("t3_ret_pct"),
+            "t5_ret_pct":      outcome.get("t5_ret_pct"),
+            "mfe_pct":         outcome.get("mfe_pct"),
+            "mae_pct":         outcome.get("mae_pct"),
+            "bars_available":  outcome.get("bars_available", 0),
+            "no_lookahead":    True,
+            "broker_calls":    0,
+            "outcome_version": "SCAN_NO_SETUP_OUTCOME_v1",
         }
 
     def _write_record(self, rec: Dict[str, Any], date_str: str) -> None:

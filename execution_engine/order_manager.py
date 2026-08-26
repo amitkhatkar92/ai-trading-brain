@@ -268,6 +268,10 @@ class OrderRecord:
     slippage_pct:          float = 0.0   # slippage_abs / requested_price × 100
     reconciliation_ts:     str   = ""    # ISO timestamp of last reconciliation attempt
     reconciliation_source: str   = ""    # "DHAN_GET_ORDER_BY_ID" | "PAPER" | "SIM"
+    # ── Universal opportunity lineage ID ──────────────────────────────────
+    # Set from signal.opportunity_id at execute() time so every downstream
+    # store (live journal, outcome, KEL) can join on this single key.
+    opportunity_id:        str   = ""
 
 
 @dataclass
@@ -871,6 +875,7 @@ class OrderManager:
             initial_stop_loss = signal.stop_loss,   # immutable — never overwrite
             broker_order_id   = order_id,
             requested_price   = signal.entry_price,
+            opportunity_id    = getattr(signal, "opportunity_id", "") or "",
         )
         # Reconcile fill immediately after placement (live: queries broker, paper/sim: marks synthetic)
         self._reconcile_fill(record)
@@ -1089,6 +1094,12 @@ class OrderManager:
                     "close_reason": reason,
                 },
             ))
+        except Exception:
+            pass
+        # ── K-002: exit analytics record (research-only, non-fatal) ──────────
+        try:
+            from learning_system.exit_analytics import record_exit
+            record_exit(rec, exit_price=exit_price, pnl=pnl, reason=reason)
         except Exception:
             pass
         return True
@@ -3921,6 +3932,7 @@ class OrderManager:
                     fill_status       = "JOURNAL_RESTORED",
                     actual_fill_price = float(row.get("actual_fill_price") or
                                               row.get("entry_price") or 0),
+                    opportunity_id    = row.get("opportunity_id") or "",
                 )
                 self._orders[oid] = rec
                 self._portfolio.positions[rec.symbol] = {

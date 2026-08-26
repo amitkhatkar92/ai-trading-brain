@@ -368,6 +368,8 @@ class MasterOrchestrator:
         self.weekend_intelligence = WeekendIntelligenceEngine(orchestrator=self)
         # Cache last snapshot so the EOD learning cycle can run EDE
         self._last_snapshot: Optional[MarketSnapshot] = None
+        # K-003: Accumulate today's signals for cross-signal aggregation at EOD
+        self._todays_signals: list = []
         # Last completed cycle report — read by Telegram /cycle command
         self._last_cycle_report: dict = {}
         # Feed-degraded escalation counter (symbol → consecutive degraded cycles)
@@ -1818,6 +1820,8 @@ class MasterOrchestrator:
         cycle_report = self.system_monitor.finalize_cycle()
         self.system_monitor.print_cycle_table(cycle_report)
         self._last_snapshot = snapshot    # cache for EOD EDE cycle
+        # K-003: accumulate today's signals for cross-signal EOD research
+        self._todays_signals.extend(signals)
         self._consecutive_cycle_aborts = 0  # GAP-030: reset on success
         # Inform ODM of outcome so it can tune density tier next cycle
         self.odm.record_cycle(signals_generated=len(signals), approved_trades=len(sim_result.approved_trades))
@@ -4893,6 +4897,9 @@ class MasterOrchestrator:
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
         log.info("── Layer 10: EOD Learning ──")
+        # K-003: take a snapshot of today's signals then reset for next session
+        _eod_todays_signals = list(getattr(self, "_todays_signals", []))
+        self._todays_signals = []
         trades = list(self.trade_monitor.get_closed_trades())
 
         # Recover any trades closed before a mid-day restart (not in in-memory
@@ -6357,6 +6364,23 @@ class MasterOrchestrator:
                          _ft_result.get("categories", {}))
         except Exception as _ft_exc:
             log.debug("[K-001] Failure taxonomy skipped: %s", _ft_exc)
+
+        # ── K-003: Cross-signal aggregation EOD research record ───────────────
+        # Summarises all signals generated today into a single window record.
+        # Research-only; never modifies execution, risk, or strategy.
+        try:
+            from learning_system.cross_signal_aggregator import (
+                record_signal_window as _record_sig_window,
+            )
+            _csa_signals = _eod_todays_signals
+            _csa_snap    = getattr(self, "_last_snapshot", None)
+            if _csa_signals and _csa_snap is not None:
+                _csa_result = _record_sig_window(_csa_signals, _csa_snap,
+                                                 trading_date=_today_str)
+                log.info("[K-003] Cross-signal: %d signals aggregated",
+                         _csa_result.get("total_signals", 0))
+        except Exception as _csa_exc:
+            log.debug("[K-003] Cross-signal aggregation skipped: %s", _csa_exc)
 
         # ── KLP-002: fill pending KLP observations ───────────────────────────
         # Runs every EOD; processes yesterday's and earlier pending observations.

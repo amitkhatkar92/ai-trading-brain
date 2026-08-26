@@ -168,3 +168,55 @@ class DhanBroker:
         except Exception as exc:
             log.warning("[DhanBroker] get_order_status failed %s: %s", order_id, exc)
             return {}
+
+    def get_fill_details(self, order_id: str) -> Dict[str, Any]:
+        """
+        Canonical fill-detail query for fill reconciliation (matches DhanFeed interface).
+        Delegates to get_order_status() — no new Dhan API calls.
+        Never raises; fails safe (never assumes FILLED on error).
+        """
+        result: Dict[str, Any] = {
+            "status":                "API_ERROR",
+            "broker_order_id":       order_id,
+            "requested_price":       0.0,
+            "actual_fill_price":     0.0,
+            "filled_quantity":       0,
+            "requested_qty":         0,
+            "order_status_raw":      "",
+            "fill_timestamp":        "",
+            "reconciliation_source": "DHAN_BROKER",
+        }
+        try:
+            raw = self.get_order_status(order_id)
+            if not raw:
+                return result
+            raw_status = str(raw.get("status", "")).upper()
+            if raw_status == "SIM":
+                result["status"] = "SIM"
+                return result
+            # Map Dhan raw statuses to canonical values (same mapping as DhanFeed)
+            if raw_status in ("TRADED", "COMPLETE", "FULLY_EXECUTED", "FILLED"):
+                canonical = "FILLED"
+            elif raw_status in ("PARTIALLY_TRADED", "PART_TRADED", "PARTIAL",
+                                "PARTIALLY_FILLED"):
+                canonical = "PARTIALLY_FILLED"
+            elif raw_status in ("REJECTED", "INVALID_REQUEST"):
+                canonical = "REJECTED"
+            elif raw_status in ("CANCELLED", "CANCELED", "EXPIRED"):
+                canonical = "CANCELLED"
+            elif raw_status in ("PENDING", "TRANSIT", "OPEN",
+                                "TRIGGER_PENDING", "UNKNOWN"):
+                canonical = "PENDING"
+            else:
+                canonical = "PENDING"  # fail safe — never assume filled
+            avg_price = float(raw.get("avg_fill_price", 0.0) or 0.0)
+            result.update({
+                "status":            canonical,
+                "actual_fill_price": avg_price if canonical in (
+                    "FILLED", "PARTIALLY_FILLED") else 0.0,
+                "filled_quantity":   int(raw.get("filled_qty", 0) or 0),
+                "order_status_raw":  raw_status,
+            })
+        except Exception as exc:
+            log.warning("[DhanBroker] get_fill_details failed %s: %s", order_id, exc)
+        return result
