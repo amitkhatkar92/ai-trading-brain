@@ -127,9 +127,26 @@ class TelemetryLogger:
         manager only manages transactions, not connection lifetime).
         WAL mode is enabled so the read-only dashboard container can query
         concurrently without blocking writes.
+        Auto-recovers if the on-disk file is malformed: closes the corrupt
+        connection, deletes the file, and opens a fresh one.
         """
         if self._db_conn is None:
             conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
+            try:
+                conn.execute("PRAGMA integrity_check")
+            except sqlite3.DatabaseError:
+                # Corrupt file — drop connection, delete file, start fresh
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+                try:
+                    import os as _os
+                    _os.remove(DB_PATH)
+                except Exception:
+                    pass
+                conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
+                log.warning("[TelemetryLogger] Corrupt DB detected — recreated fresh: %s", DB_PATH)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")
             self._db_conn = conn
@@ -238,6 +255,15 @@ class TelemetryLogger:
                 )
                 conn.commit()
 
+        except sqlite3.DatabaseError as exc:
+            # Connection became corrupt mid-run — reset so next event auto-recovers
+            log.warning("[TelemetryLogger] DB error, resetting connection: %s", exc)
+            try:
+                if self._db_conn:
+                    self._db_conn.close()
+            except Exception:
+                pass
+            self._db_conn = None
         except Exception as exc:
             log.debug("[TelemetryLogger] Error processing event: %s", exc)
 
