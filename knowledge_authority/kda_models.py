@@ -289,6 +289,7 @@ class KDADecisionRecord:
     no_lookahead:              bool = True
     broker_calls:              int = 0
     orders:                    int = 0
+    opportunity_id:            str = ""   # UUID4 from scanner; joins LOL/KLP/broker records
 
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -382,6 +383,7 @@ class KDADecisionRecord:
             no_lookahead=True,
             broker_calls=0,
             orders=0,
+            opportunity_id=str(d.get("opportunity_id", "") or ""),
         )
 
 

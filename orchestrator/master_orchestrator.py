@@ -6307,14 +6307,30 @@ class MasterOrchestrator:
         try:
             from learning_system.lol_evidence_bridge import ingest_lol_outcomes as _lol_bridge
             _lol_bridge_result = _lol_bridge()
-            if _lol_bridge_result.get("new_records", 0):
+            _lol_new    = _lol_bridge_result.get("new_records", 0) or _lol_bridge_result.get("lol_evidence_created", 0)
+            _lol_pend   = _lol_bridge_result.get("lol_pending", 0)
+            _lol_skip   = _lol_bridge_result.get("skipped", 0) or _lol_bridge_result.get("lol_evidence_duplicate", 0)
+            _lol_fail   = _lol_bridge_result.get("lol_evidence_failed", 0)
+            _lol_result = _lol_bridge_result.get("last_run_result", "")
+            if _lol_new:
                 log.info(
-                    "[LOL-BRIDGE] Evidence ingested: new=%d skipped=%d",
-                    _lol_bridge_result.get("new_records", 0),
-                    _lol_bridge_result.get("skipped", 0),
+                    "[LOL-BRIDGE] Evidence ingested: new=%d skipped=%d failed=%d pending=%d",
+                    _lol_new, _lol_skip, _lol_fail, _lol_pend,
+                )
+            elif _lol_result == "NO_ELIGIBLE_OUTCOMES":
+                log.warning(
+                    "[LOL-BRIDGE] 0 eligible outcomes — all %d LOL records still pending "
+                    "EOD fill. EOD learning will produce 0 evidence tonight. "
+                    "This is EXPECTED when no trades were closed today.",
+                    _lol_pend,
+                )
+            else:
+                log.info(
+                    "[LOL-BRIDGE] No new evidence. result=%s new=%d skip=%d fail=%d pend=%d",
+                    _lol_result, _lol_new, _lol_skip, _lol_fail, _lol_pend,
                 )
         except Exception as _lol_bridge_exc:
-            log.debug("[LOL-BRIDGE] Bridge skipped: %s", _lol_bridge_exc)
+            log.error("[LOL-BRIDGE] Bridge error (non-critical): %s", _lol_bridge_exc)
 
         # ── KLP-002: Outcome engine — fill pending KLP observations ───────────
         # Runs every EOD; processes yesterday's and earlier pending observations.

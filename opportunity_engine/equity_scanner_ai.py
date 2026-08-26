@@ -1432,6 +1432,14 @@ class EquityScannerAI:
                     sig._vix = float(snapshot.vix or 0.0)
                 except Exception:
                     pass
+                # ── Universal opportunity lineage ID — generated ONCE here ─────────
+                # Threads through LOL → KLP → KDA → broker for end-to-end traceability.
+                try:
+                    import uuid as _uuid
+                    if not sig.opportunity_id:
+                        sig.opportunity_id = str(_uuid.uuid4())
+                except Exception:
+                    pass
                 # ─────────────────────────────────────────────────────────────────
                 signals.append(sig)
                 # ── EdgeTelemetry: lightweight signal feature snapshot ─────────

@@ -252,6 +252,18 @@ class OrderRecord:
     # Phase B: always 0 (dry-run only).  Phase C: incremented on CONTINUE.
     # Persisted in expiry_retries.json sidecar when Phase C is active.
     extension_count:     int   = 0
+    # ── Broker fill reconciliation ─────────────────────────────────────────
+    # For live orders: populated by _reconcile_fill() after placement.
+    # Never invented — stays at defaults (fill_status="") until confirmed.
+    broker_order_id:       str   = ""    # echoes order_id; SIM_* for paper/sim
+    fill_status:           str   = ""    # FILLED | PARTIALLY_FILLED | REJECTED | CANCELLED | PENDING | UNRESOLVED | ""
+    actual_fill_price:     float = 0.0   # average fill price from broker (0 until confirmed)
+    requested_price:       float = 0.0   # signal price at order time
+    filled_quantity:       int   = 0     # actual filled qty (may differ from .quantity)
+    slippage_abs:          float = 0.0   # actual_fill - requested_price (signed)
+    slippage_pct:          float = 0.0   # slippage_abs / requested_price × 100
+    reconciliation_ts:     str   = ""    # ISO timestamp of last reconciliation attempt
+    reconciliation_source: str   = ""    # "DHAN_GET_ORDER_BY_ID" | "PAPER" | "SIM"
 
 
 @dataclass
@@ -441,6 +453,12 @@ class OrderManager:
             # open before the PAPER→LIVE transition.  Append-only; never touches
             # live positions or Dhan orders.
             self._reconcile_sim_paper_artifacts()
+            # Startup fill reconciliation: query broker for any restored live orders
+            # whose fill_status is unresolved from a prior run.
+            try:
+                self.reconcile_startup_fills()
+            except Exception as _rsf_exc:
+                log.debug("[StartupReconcile] Startup fill reconciliation skipped: %s", _rsf_exc)
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC
@@ -841,7 +859,19 @@ class OrderManager:
             signal_distortion = bool(_ctx.get("distortion", False)),
             confidence_score  = float(getattr(decision, "confidence_score", 5.0)),
             initial_stop_loss = signal.stop_loss,   # immutable — never overwrite
+            broker_order_id   = order_id,
+            requested_price   = signal.entry_price,
         )
+        # Reconcile fill immediately after placement (live: queries broker, paper/sim: marks synthetic)
+        self._reconcile_fill(record)
+        # If broker REJECTED this order, do not create a phantom open position
+        if record.fill_status == "REJECTED":
+            log.warning(
+                "[OrderManager] Order %s REJECTED by broker — "
+                "position NOT registered. No phantom position created.",
+                order_id,
+            )
+            return None
         self._orders[order_id] = record
         self._update_portfolio(signal, qty)
 
@@ -942,7 +972,9 @@ class OrderManager:
         self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
                            order_type="MARKET")
 
-        pnl = (exit_price - rec.entry_price) * rec.quantity
+        # Use actual fill price (from broker reconciliation) when available for P&L accuracy
+        _entry_for_pnl = rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price
+        pnl = (exit_price - _entry_for_pnl) * rec.quantity
         if rec.direction in ("SELL", "SHORT"):
             pnl = -pnl
 
@@ -1286,7 +1318,19 @@ class OrderManager:
                 signal_regime     = slot.signal_regime,
                 signal_vix        = slot.signal_vix,
                 initial_stop_loss = slot.signal.stop_loss,   # immutable
+                broker_order_id   = order_id,
+                requested_price   = slot.signal.entry_price,
             )
+            # Reconcile fill with broker before registering position
+            self._reconcile_fill(rec)
+            if rec.fill_status == "REJECTED":
+                log.warning(
+                    "[OrderManager] AET order %s REJECTED by broker — "
+                    "position NOT registered for %s.",
+                    order_id, slot.signal.symbol,
+                )
+                to_remove.append(sid)
+                continue
             self._orders[order_id] = rec
             self._update_portfolio(slot.signal, slot.qty)
 
@@ -2054,6 +2098,80 @@ class OrderManager:
             order_type       = order_type,
         )
 
+    def _reconcile_fill(self, rec: "OrderRecord") -> None:
+        """
+        Query the broker for actual fill details and update rec in place.
+
+        Called immediately after a live order is placed.  Also called at
+        startup for any order with fill_status="" (unresolved from a prior run).
+
+        SAFETY: never raises; fill failure just leaves fill_status="UNRESOLVED".
+        Paper and SIM modes record PAPER / SIM fill without a broker call.
+        """
+        from datetime import timezone as _tz
+        _now_iso = datetime.now(_tz.utc).isoformat()
+        # Paper / sim: record synthetic fill and return
+        if self._paper_mode or not self._broker:
+            rec.fill_status           = "PAPER" if self._paper_mode else "SIM"
+            rec.actual_fill_price     = rec.entry_price  # signal price as assumed fill
+            rec.requested_price       = rec.entry_price
+            rec.filled_quantity       = rec.quantity
+            rec.slippage_abs          = 0.0
+            rec.slippage_pct          = 0.0
+            rec.reconciliation_ts     = _now_iso
+            rec.reconciliation_source = "PAPER" if self._paper_mode else "SIM"
+            return
+        # Live: query broker
+        if not hasattr(self._broker, "get_fill_details"):
+            rec.fill_status           = "UNRESOLVED"
+            rec.reconciliation_ts     = _now_iso
+            rec.reconciliation_source = "BROKER_API_UNAVAILABLE"
+            return
+        try:
+            fill = self._broker.get_fill_details(rec.order_id)
+            rec.fill_status           = fill.get("status", "UNKNOWN")
+            rec.actual_fill_price     = float(fill.get("actual_fill_price") or 0.0)
+            rec.requested_price       = rec.entry_price  # signal price (requested)
+            rec.filled_quantity       = int(fill.get("filled_quantity") or 0)
+            rec.reconciliation_ts     = _now_iso
+            rec.reconciliation_source = fill.get("reconciliation_source", "DHAN_GET_ORDER_BY_ID")
+            if rec.actual_fill_price > 0 and rec.requested_price > 0:
+                rec.slippage_abs = rec.actual_fill_price - rec.requested_price
+                rec.slippage_pct = (rec.slippage_abs / rec.requested_price) * 100.0
+            # If partially filled: update quantity to actual filled qty
+            if rec.fill_status == "PARTIALLY_FILLED" and rec.filled_quantity > 0:
+                log.warning(
+                    "[FillReconcile] %s PARTIAL FILL: requested=%d filled=%d "
+                    "fill_price=%.2f slippage=%.2f%%",
+                    rec.symbol, rec.quantity, rec.filled_quantity,
+                    rec.actual_fill_price, rec.slippage_pct,
+                )
+                rec.quantity = rec.filled_quantity
+            elif rec.fill_status == "REJECTED":
+                log.warning(
+                    "[FillReconcile] %s order REJECTED by broker — "
+                    "position will NOT be registered.",
+                    rec.symbol,
+                )
+            elif rec.fill_status == "FILLED":
+                log.info(
+                    "[FillReconcile] %s FILLED: qty=%d fill_price=%.2f "
+                    "slippage=%.2f%%",
+                    rec.symbol, rec.filled_quantity,
+                    rec.actual_fill_price, rec.slippage_pct,
+                )
+            elif rec.fill_status in ("PENDING", "UNKNOWN", "UNRESOLVED", "API_ERROR"):
+                log.info(
+                    "[FillReconcile] %s order_id=%s fill_status=%s — "
+                    "will retry on next reconciliation cycle.",
+                    rec.symbol, rec.order_id, rec.fill_status,
+                )
+        except Exception as exc:
+            rec.fill_status           = "UNRESOLVED"
+            rec.reconciliation_ts     = _now_iso
+            rec.reconciliation_source = "ERROR"
+            log.debug("[FillReconcile] reconcile error for %s: %s", rec.order_id, exc)
+
     def _update_portfolio(self, sig: TradeSignal, qty: int):
         pos = Position(
             symbol           = sig.symbol,
@@ -2393,10 +2511,11 @@ class OrderManager:
                     )
 
                     exit_price = _ltp_map.get(rec.symbol, rec.entry_price)
+                    _entry_for_pnl = rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price
                     if rec.direction == "BUY":
-                        pnl = round((exit_price - rec.entry_price) * rec.quantity, 2)
+                        pnl = round((exit_price - _entry_for_pnl) * rec.quantity, 2)
                     else:
-                        pnl = round((rec.entry_price - exit_price) * rec.quantity, 2)
+                        pnl = round((_entry_for_pnl - exit_price) * rec.quantity, 2)
 
                     # Per-position try/except: a write failure for one position
                     # rolls back to "open" so it retries cleanly next cycle rather
@@ -3675,4 +3794,48 @@ class OrderManager:
             count,
         )
         return count
+
+    def reconcile_startup_fills(self) -> int:
+        """
+        On startup: query Dhan for any restored live order whose fill_status
+        is blank (not yet reconciled from a prior run).
+
+        Safe to call at startup after _restore_from_journal().
+        Never raises.  Returns count of orders reconciled.
+        """
+        if self._paper_mode or not self._broker:
+            return 0
+        if not hasattr(self._broker, "get_fill_details"):
+            log.debug("[StartupReconcile] broker has no get_fill_details — skipped.")
+            return 0
+        reconciled = 0
+        for oid, rec in list(self._orders.items()):
+            if rec.fill_status not in ("", "PENDING", "UNRESOLVED"):
+                continue  # already resolved
+            if oid.startswith("SIM_"):
+                continue  # paper / sim — not a live order
+            self._reconcile_fill(rec)
+            reconciled += 1
+            log.info(
+                "[StartupReconcile] order_id=%s symbol=%s fill_status=%s "
+                "fill_price=%.2f filled_qty=%d",
+                oid, rec.symbol, rec.fill_status,
+                rec.actual_fill_price, rec.filled_quantity,
+            )
+            # If broker says REJECTED: deregister to avoid phantom position
+            if rec.fill_status == "REJECTED":
+                self._orders.pop(oid, None)
+                self._portfolio.positions.pop(rec.symbol, None)
+                log.warning(
+                    "[StartupReconcile] %s order %s was REJECTED — "
+                    "removed phantom position.",
+                    rec.symbol, oid,
+                )
+        if reconciled:
+            log.info(
+                "[StartupReconcile] Reconciled %d order(s) at startup. "
+                "Broker is the source of truth for live fill status.",
+                reconciled,
+            )
+        return reconciled
 

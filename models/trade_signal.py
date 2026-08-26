@@ -57,10 +57,17 @@ class TradeSignal:
     adv_crore: float                     = 0.0   # Average Daily Volume in ₹ crore; used by LiquidityGuard to cap position size
     entry_zone_low:  float               = 0.0   # entry − ATR(14)×0.10  — lower bound of acceptable entry zone
     entry_zone_high: float               = 0.0   # entry + ATR(14)×0.10  — upper bound of acceptable entry zone
+    # ── Universal opportunity lineage — threads through scanner→LOL→KLP→KDA→broker ──
+    # Generated once by EquityScannerAI; never regenerated after that.
+    opportunity_id:       Optional[str]   = None  # UUID4; parent key across all stores
+
     # ── MOP-RC-001: Observational fields — research only, never used in any decision ──
     expected_move_pct:    Optional[float] = None  # (atr/entry_price) × rr × 100 — research proxy
     _obs_candidate_score: Optional[float] = None  # scanner score at signal time
     _obs_regime:          Optional[str]   = None  # regime label at signal time
+    # Stamped at scanner output for rejection audit + LOL context
+    scanner_regime_label: Optional[str]   = None  # copy of _obs_regime for direct access
+    _vix:                 Optional[float] = None  # India VIX at signal time
 
     # ── KDA authority fields — set by orchestrator after KDA runs ──
     authorization_source: Optional[str]  = None  # "KDA" | "STRATEGY_LAB" | "BOTH"

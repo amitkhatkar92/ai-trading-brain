@@ -488,6 +488,7 @@ class KnowledgeDecisionPipeline:
             "broker_calls": 0,
             "orders": 0,
             "decision_id": kda_record.decision_id,
+            "opportunity_id": kda_record.opportunity_id,
             "symbol": sym,
             "direction": direction,
             "trading_date": today,
@@ -768,6 +769,7 @@ class KnowledgeDecisionPipeline:
             "strategy_name": str(getattr(signal, "strategy_name", "") or ""),
             "obs_regime": str(market_ctx.get("regime") or ""),
             "obs_sector": _sector(sym),
+            "opportunity_id": str(getattr(signal, "opportunity_id", "") or ""),
             "no_lookahead": True,
         }
 

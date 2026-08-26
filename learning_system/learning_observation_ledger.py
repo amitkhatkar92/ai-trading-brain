@@ -195,9 +195,12 @@ def _empty_record(
     return {
         # identity
         "observation_id":       obs_id,
+        "opportunity_id":       None,   # universal lineage key (UUID from scanner)
         "symbol":               symbol,
         "direction":            direction,
         "trading_date":         trading_date,
+        # event taxonomy
+        "event_type":           "OBSERVED",  # matches lifecycle_state on creation
         # timestamps
         "observed_at":          observed_at,
         "decision_at":          None,
@@ -325,6 +328,7 @@ class LearningObservationLedger:
                 return False
             rec = dict(rec)
             rec["lifecycle_state"] = EXECUTED
+            rec["event_type"]      = EXECUTED
             rec["executed"]        = True
             rec["order_id"]        = order_id
             rec["execution_at"]    = executed_at or datetime.now(timezone.utc).isoformat()
@@ -481,6 +485,8 @@ class LearningObservationLedger:
                     trading_date=td, observed_at=now,
                     entry_price=entry, stop_loss=stop, target_price=target,
                 )
+                # Propagate universal opportunity lineage ID from scanner
+                rec["opportunity_id"] = str(getattr(sig, "opportunity_id", "") or "")
                 rec["klp_score"]  = float(getattr(sig, "_obs_candidate_score", conf) or conf)
                 rec["rr_ratio"]   = rr
                 rec["knowledge_provenance"] = {
@@ -549,6 +555,7 @@ class LearningObservationLedger:
                     # signal entered the production path (DECISION_RECORDED = awaiting execution gating)
                     new_state = OUTCOME_PENDING
                 rec["lifecycle_state"]           = new_state
+                rec["event_type"]                = new_state  # mirrors lifecycle_state
                 rec["decision_at"]               = now
                 rec["strategy_decision"]         = "PASS" if symbol in enriched_syms else "REJECT"
                 rec["strategy_name"]             = strategy_name
@@ -583,6 +590,7 @@ class LearningObservationLedger:
                 if not rec:
                     continue
                 rec["lifecycle_state"]           = BLOCKED
+                rec["event_type"]                = BLOCKED
                 rec["decision_at"]               = now
                 rec["block_reason"]              = block_reason
                 rec["strategy_decision"]         = "PASS"
@@ -659,6 +667,7 @@ class LearningObservationLedger:
             updated = dict(rec)
             updated.update(outcome)
             updated["lifecycle_state"] = OUTCOME_OBSERVED
+            updated["event_type"]      = OUTCOME_OBSERVED
             updated["outcome_at"] = datetime.now(timezone.utc).isoformat()
             updated["no_lookahead"] = True
             self._append(updated)

@@ -2027,8 +2027,7 @@ class DhanFeed(BaseFeed):
 
     # ── Order Placement (live trading) ────────────────────────────────────
 
-    def place_order(
-        self,
+    def place_order(        self,
         symbol:        str,
         transaction:   str,   # "BUY" | "SELL"
         quantity:      int,
@@ -2116,6 +2115,98 @@ class DhanFeed(BaseFeed):
         except Exception as exc:
             log.error("[DhanFeed] cancel_order(%s) failed: %s", order_id, exc)
             return False
+
+    def get_fill_details(self, order_id: str) -> Dict[str, Any]:
+        """
+        Query Dhan for the current fill status of an order.
+
+        Returns a structured dict:
+          status           : "FILLED" | "PARTIALLY_FILLED" | "REJECTED" |
+                             "CANCELLED" | "PENDING" | "UNKNOWN" | "API_ERROR"
+          broker_order_id  : the order_id queried
+          requested_price  : price at which order was placed (from Dhan record)
+          actual_fill_price: average fill price (0.0 if not filled)
+          filled_quantity  : number of shares actually filled
+          requested_qty    : original requested quantity
+          order_status_raw : raw status string from Dhan
+          fill_timestamp   : ISO timestamp of last update from Dhan
+          reconciliation_source : "DHAN_GET_ORDER_BY_ID"
+
+        Never raises — returns {"status": "API_ERROR"} on any failure.
+        """
+        result: Dict[str, Any] = {
+            "status":                "API_ERROR",
+            "broker_order_id":       order_id,
+            "requested_price":       0.0,
+            "actual_fill_price":     0.0,
+            "filled_quantity":       0,
+            "requested_qty":         0,
+            "order_status_raw":      "",
+            "fill_timestamp":        "",
+            "reconciliation_source": "DHAN_GET_ORDER_BY_ID",
+        }
+        if not self._live or not self._dhan:
+            result["status"] = "API_ERROR"
+            result["error"]  = "not_connected"
+            return result
+        try:
+            resp = self._dhan.get_order_by_id(order_id)
+            # dhanhq v2 returns {status: "success", data: {...}} or data directly
+            data = resp
+            if isinstance(resp, dict):
+                if resp.get("status") in ("failure", "failed"):
+                    result["status"] = "API_ERROR"
+                    result["error"]  = str(resp.get("remarks", ""))
+                    return result
+                data = resp.get("data") or resp
+            if isinstance(data, dict) and isinstance(data.get("data"), dict):
+                data = data["data"]  # double-nested
+            if not isinstance(data, dict):
+                result["status"] = "API_ERROR"
+                result["error"]  = "unexpected_response_type"
+                return result
+
+            raw_status   = str(data.get("orderStatus", data.get("status", ""))).upper()
+            avg_price    = float(data.get("averageTradedPrice", data.get("avg_price", 0.0)) or 0.0)
+            filled_qty   = int(data.get("filledQty", data.get("filled_qty", 0)) or 0)
+            requested_qty = int(data.get("quantity", data.get("qty", 0)) or 0)
+            req_price    = float(data.get("price", 0.0) or 0.0)
+            updated_ts   = str(data.get("updateTime", data.get("update_time", "")) or "")
+
+            # Map Dhan raw status to canonical status
+            if raw_status in ("TRADED", "COMPLETE", "FULLY_EXECUTED", "FILLED"):
+                canonical = "FILLED"
+            elif raw_status in ("PARTIALLY_TRADED", "PART_TRADED", "PARTIAL"):
+                canonical = "PARTIALLY_FILLED"
+            elif raw_status in ("REJECTED", "INVALID_REQUEST"):
+                canonical = "REJECTED"
+            elif raw_status in ("CANCELLED", "CANCELED"):
+                canonical = "CANCELLED"
+            elif raw_status in ("PENDING", "TRANSIT", "OPEN", "TRIGGER_PENDING"):
+                canonical = "PENDING"
+            else:
+                canonical = "UNKNOWN"
+
+            result.update({
+                "status":            canonical,
+                "requested_price":   req_price,
+                "actual_fill_price": avg_price if canonical in ("FILLED", "PARTIALLY_FILLED") else 0.0,
+                "filled_quantity":   filled_qty,
+                "requested_qty":     requested_qty,
+                "order_status_raw":  raw_status,
+                "fill_timestamp":    updated_ts,
+            })
+            log.info(
+                "[DhanFillDetails] order_id=%s status=%s fill_price=%.2f "
+                "filled_qty=%d/%d",
+                order_id, canonical, result["actual_fill_price"],
+                filled_qty, requested_qty,
+            )
+        except Exception as exc:
+            result["status"] = "API_ERROR"
+            result["error"]  = str(exc)
+            log.debug("[DhanFeed] get_fill_details(%s) error: %s", order_id, exc)
+        return result
 
     def get_positions(self) -> List[Dict]:
         """Fetch open positions from Dhan account."""

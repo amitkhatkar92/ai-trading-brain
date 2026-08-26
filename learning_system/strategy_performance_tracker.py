@@ -158,6 +158,10 @@ class StrategyPerformanceTracker:
         self._stats: Dict[str, StrategyStats] = {}
         self._load()
         log.info("[StrategyPerformanceTracker] Loaded %d strategy records.", len(self._stats))
+        # Ensure the file exists on disk so it survives restarts even with 0 trades.
+        # _save() is normally called only when a trade is recorded; write baseline here.
+        if not os.path.exists(PERF_FILE):
+            self._save()
 
     # ── Public API ────────────────────────────────────────────────────────────
 

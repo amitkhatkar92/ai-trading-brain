@@ -288,6 +288,7 @@ class KnowledgeDecisionAuthority:
             information_contributions=contributions,
             counterfactual_results=counterfactuals,
             exit_conditions=exit_conds,
+            opportunity_id=str(obs.get("opportunity_id", "") or ""),
         )
 
     # ── Angle evaluation ──────────────────────────────────────────────────────

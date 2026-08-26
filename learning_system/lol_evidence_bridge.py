@@ -237,7 +237,24 @@ def _ingest_impl(
             existing_keys.add(dedup_key)
 
     if not new_evidence:
-        return {"new_records": 0, "skipped": skipped, "error": None}
+        # Always write state so operators can confirm the bridge ran, even when
+        # 0 records were eligible (all outcomes still PENDING, no bridge needed).
+        state = _load_state(s_path)
+        _now_iso = datetime.now(timezone.utc).isoformat()
+        state["last_run"]                  = _now_iso
+        state["last_run_result"]           = "NO_ELIGIBLE_OUTCOMES"
+        state["last_lol_pending"]          = skipped
+        state["last_lol_evidence_created"] = 0
+        state["last_lol_evidence_failed"]  = 0
+        _save_state(s_path, state)
+        log.info(
+            "[LOL-BRIDGE] Run complete: lol_pending=%d lol_outcomes_eligible=0 "
+            "lol_evidence_created=0 lol_evidence_skipped=%d — state written.",
+            skipped, skipped,
+        )
+        return {"new_records": 0, "skipped": skipped, "error": None,
+                "lol_pending": skipped, "lol_evidence_created": 0,
+                "lol_evidence_duplicate": 0, "lol_evidence_failed": 0}
 
     # Append to knowledge evidence ledger
     k_ledger.parent.mkdir(parents=True, exist_ok=True)
@@ -251,17 +268,25 @@ def _ingest_impl(
 
     # Update state
     state = _load_state(s_path)
-    state["last_run"]                   = datetime.now(timezone.utc).isoformat()
+    _now_iso = datetime.now(timezone.utc).isoformat()
+    state["last_run"]                   = _now_iso
+    state["last_run_result"]            = "OK"
+    state["last_lol_pending"]           = skipped
+    state["last_lol_evidence_created"]  = len(new_evidence)
+    state["last_lol_evidence_failed"]   = 0
     state["total_lol_records_ingested"] = (
         state.get("total_lol_records_ingested", 0) + len(new_evidence)
     )
     _save_state(s_path, state)
 
     log.info(
-        "[LOL-BRIDGE] Ingested %d new evidence records (skipped=%d)",
-        len(new_evidence), skipped,
+        "[LOL-BRIDGE] Run complete: lol_pending=%d lol_outcomes_eligible=%d "
+        "lol_evidence_created=%d lol_evidence_duplicate=%d",
+        skipped, len(new_evidence) + skipped, len(new_evidence), skipped,
     )
-    return {"new_records": len(new_evidence), "skipped": skipped, "error": None}
+    return {"new_records": len(new_evidence), "skipped": skipped, "error": None,
+            "lol_pending": skipped, "lol_evidence_created": len(new_evidence),
+            "lol_evidence_duplicate": skipped, "lol_evidence_failed": 0}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -352,6 +377,8 @@ def _build_evidence_record(
         "source":        "lol_live",
         "no_lookahead":  bool(rec.get("no_lookahead", True)),
         "recorded_at":   datetime.now(timezone.utc).isoformat(),
+        # Universal lineage ID — threads from scanner through all stores
+        "opportunity_id": rec.get("opportunity_id"),
     }
 
 
