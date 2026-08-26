@@ -43,7 +43,7 @@ services:
     
     # Health check — verify PID lock exists (process is alive and holds the lock)
     healthcheck:
-      test: ["CMD", "sh", "-c", "test -f /app/data/trading_engine.pid && kill -0 $(cat /app/data/trading_engine.pid) 2>/dev/null || (test -f /tmp/trading_engine.pid && kill -0 $(cat /tmp/trading_engine.pid) 2>/dev/null)"]
+      test: ["CMD", "python3", "-c", "import json,os; f='/tmp/trading_engine.pid' if os.path.exists('/tmp/trading_engine.pid') else 'data/trading_engine.pid'; d=json.load(open(f)); os.kill(d['pid'],0)"]
       interval: 30s
       timeout: 10s
       retries: 3
