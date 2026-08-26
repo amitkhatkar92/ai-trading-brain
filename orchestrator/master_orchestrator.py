@@ -4746,21 +4746,19 @@ class MasterOrchestrator:
 
     def _run_weekly_universe_rebuild(self) -> None:
         """
-        Fix 7 — Rebuild nifty500_universe.json every Monday at 08:30 IST.
-        Writes the 230-symbol universe seed to disk via _write_universe_json().
-        The seed is the authoritative source; NSE direct is unreachable from
-        the VPS (Akamai block), so the embedded list is used until a live
-        fetch is wired in.
+        Rebuild nifty500_universe.json daily at 16:15 IST (post-market).
+        Writing runs every trading day so the evening candidate scan always
+        uses the freshest symbol set.  NSE direct is unreachable from the VPS
+        (Akamai block), so the embedded 230-symbol list is used; the value of
+        the daily run is that the subsequent post-market scan at 16:45 scores
+        all symbols against today's closing prices instead of stale data.
 
-        Guard: only runs on Mondays (weekday == 0).  If the existing file is
-        less than 24 hours old the rebuild is skipped.
+        Guard: skips NSE holidays and files less than 20 hours old.
         """
-        if datetime.now().weekday() != 0:   # 0 = Monday
-            return
         try:
             from config import is_nse_holiday
             if is_nse_holiday():
-                log.info("[UniverseRebuild] NSE HOLIDAY (Monday) — universe rebuild skipped.")
+                log.info("[UniverseRebuild] NSE HOLIDAY — universe rebuild skipped.")
                 return
 
             import time as _time
@@ -4768,11 +4766,11 @@ class MasterOrchestrator:
             _universe_file = _Path(__file__).parent.parent / "data" / "nifty500_universe.json"
             if _universe_file.exists():
                 age_h = (_time.time() - _universe_file.stat().st_mtime) / 3600.0
-                if age_h < 24.0:
+                if age_h < 20.0:
                     log.info("[UniverseRebuild] nifty500_universe.json is only %.1fh old — skipping.", age_h)
                     return
 
-            log.info("[UniverseRebuild] Monday 08:30 — writing universe seed (230 symbols)...")
+            log.info("[UniverseRebuild] 16:15 — writing universe seed (230 symbols)...")
             from opportunity_engine.market_scanner import _write_universe_json
             success = _write_universe_json()
             if success:
@@ -7110,9 +7108,10 @@ class MasterOrchestrator:
             lambda: self._run_intraday_refresh("afternoon")
         )
 
-        # ── Fix 7: Weekly nifty500_universe.json rebuild — Monday 08:30 IST ──
-        # Keeps the Phase D scanner's source pool fresh on a weekly cadence.
-        sched_lib.every().day.at("08:30").do(self._run_weekly_universe_rebuild)
+        # ── Fix 7: Daily nifty500_universe.json rebuild — 16:15 IST (post-market) ──
+        # Runs every trading day so the 16:45 post-market candidate scan always
+        # scores all 230 symbols against today's closing prices.
+        sched_lib.every().day.at("16:15").do(self._run_weekly_universe_rebuild)
 
         # ── Weekend intelligence ────────────────────────────────────────
         # Day-of-week guard is inside the runner methods; every().day fires
