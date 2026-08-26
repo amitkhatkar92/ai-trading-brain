@@ -156,7 +156,7 @@ git commit -m "<message>"
 git push origin main
 
 # 3 — Deploy to VPS (single command)
-ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && git pull origin main && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
+ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && git pull origin main && python3 scripts/generate_build_manifest.py && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
 ```
 
 ### Definition of done

@@ -28,6 +28,12 @@ data/trading_brain.db
 # so docker builds stay fast even when VPS accumulates 30-100MB of evidence data.
 data/knowledge_evidence_ledger.jsonl
 data/shadow_evidence_ledger.jsonl
+data/ksl/*.json
+data/research_question_queue.jsonl
+data/regime_probability_history.json
+data/scanner_memory.json
+data/iv_history.json
+data/lol/LOL_*.jsonl
 docs/
 tests/
 *.md
