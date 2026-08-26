@@ -473,6 +473,15 @@ class OrderManager:
                 self.reconcile_startup_fills()
             except Exception as _rsf_exc:
                 log.debug("[StartupReconcile] Startup fill reconciliation skipped: %s", _rsf_exc)
+            # D-006: AET confirmation slots are in-memory only and cannot survive restarts.
+            # Any CONFIRMATION-deferred trade pending at crash time is permanently lost.
+            # The scanner will re-identify the setup on the next cycle if conditions hold.
+            # This is logged at startup so the operator is aware of the limitation.
+            log.info(
+                "[OrderManager] Note: AET confirmation slots are session-only. "
+                "Any pending CONFIRMATION trades from a prior session are lost and "
+                "will be re-evaluated by the scanner on the next cycle."
+            )
 
     # ─────────────────────────────────────────────────────────────────
     # PUBLIC
@@ -988,8 +997,27 @@ class OrderManager:
 
         # Reverse direction to close — use MARKET so exits always fill immediately
         close_dir = "SELL" if rec.direction == "BUY" else "BUY"
-        self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
-                           order_type="MARKET")
+        _exit_order_id = self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
+                                            order_type="MARKET")
+        # D-001: If live broker rejected the exit order, do NOT mark closed — position
+        # stays open in local state so TradeMonitor will retry on the next cycle.
+        if not self._paper_mode and _exit_order_id is None:
+            log.error(
+                "[OrderManager] ❌ EXIT ORDER FAILED for %s order_id=%s — "
+                "broker returned None. Position remains OPEN. "
+                "TradeMonitor will retry on next cycle.",
+                rec.symbol, order_id,
+            )
+            try:
+                from notifications.notifier_manager import get_notifier
+                get_notifier().send_alert(
+                    f"⚠️ <b>[ExitFailed]</b> Could not send exit order for "
+                    f"<b>{rec.symbol}</b> ({order_id}). Position still OPEN at broker. "
+                    f"Manual intervention may be required."
+                )
+            except Exception:
+                pass
+            return False
 
         # Use actual fill price (from broker reconciliation) when available for P&L accuracy
         _entry_for_pnl = rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price
@@ -3871,6 +3899,7 @@ class OrderManager:
 
         opened: dict = {}
         closed: set  = set()
+        closed_rows: dict = {}  # D-003: oid → CLOSE row for cooldown restore
         today  = datetime.now()
         cutoff = today - timedelta(days=7)
 
@@ -3903,9 +3932,48 @@ class OrderManager:
                         opened[oid] = row
                     elif event in ("CLOSE", "SESSION_EXPIRED", "REJECTED"):
                         closed.add(oid)
+                        closed_rows[oid] = row  # D-003: keep for cooldown restore
         except Exception as exc:
             log.warning("[LiveJournal] Could not read journal at startup: %s", exc)
             return
+
+        # D-003: Restore EARLY_LOSS cooldown state from today's CLOSE events.
+        # Without this, a 24h EARLY_LOSS cooldown would be silently lost on restart,
+        # allowing immediate re-entry into a losing setup.
+        for oid, row in closed_rows.items():
+            try:
+                reason = row.get("reason", "")
+                symbol = row.get("symbol", "")
+                if not symbol or not reason:
+                    continue
+                ts_str = row.get("timestamp", "")
+                close_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
+                close_dt = close_dt.replace(tzinfo=None)  # normalize to naive local
+                direction = row.get("direction", "")
+                _r = 0.0
+                try:
+                    entry_p = float(row.get("entry_price") or 0)
+                    stop_p  = float(row.get("stop_loss") or 0)
+                    pnl_v   = float(row.get("pnl") or 0)
+                    qty_v   = int(row.get("quantity") or 1)
+                    risk    = abs(entry_p - stop_p) * qty_v
+                    _r = round(pnl_v / risk, 3) if risk > 0 else 0.0
+                except Exception:
+                    pass
+                _RECENT_CLOSE_TIMES[symbol.strip()] = {
+                    "time":      close_dt,
+                    "r":         _r,
+                    "direction": direction,
+                    "reason":    reason,
+                }
+            except Exception as _ct_exc:
+                log.debug("[LiveJournal] Cooldown restore error for %s: %s", oid, _ct_exc)
+
+        if _RECENT_CLOSE_TIMES:
+            log.info(
+                "[LiveJournal] Restored %d close-time entries for cooldown tracking.",
+                len(_RECENT_CLOSE_TIMES),
+            )
 
         to_restore = {oid: row for oid, row in opened.items() if oid not in closed}
         if not to_restore:

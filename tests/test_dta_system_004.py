@@ -118,13 +118,21 @@ class TestRiskGuardianPersistence:
         assert g._trading_halted is False
 
     def test_T008_corrupt_state_file_is_safe(self, tmp_path):
-        """Corrupt state file starts fresh (fail-safe default)."""
+        """Corrupt state file quarantines the file and HALTS trading (fail closed).
+
+        D-002 fix: previously this resets to False (fail open), which is dangerous.
+        A corrupt state file could mean a crash during a halt. Fail closed is the
+        correct safe behavior — operator must manually restart.
+        """
         from risk_guardian.risk_guardian import FailSafeRiskGuardian
         sf = str(tmp_path / "rg.json")
         Path(sf).write_text("NOT_VALID_JSON{{{{")
-        g = FailSafeRiskGuardian(total_capital=100_000, state_file=sf)
+        with patch("notifications.notifier_manager.get_notifier", side_effect=RuntimeError):
+            g = FailSafeRiskGuardian(total_capital=100_000, state_file=sf)
         assert g._daily_pnl == 0.0
-        assert g._trading_halted is False
+        assert g._trading_halted is True          # D-002 fix: fail closed, not fail open
+        assert "CORRUPT" in g._halt_reason.upper()
+        assert not os.path.exists(sf)             # corrupt file must be quarantined
 
     def test_T009_halt_reason_preserved(self, tmp_path):
         """halt_reason string is restored correctly."""

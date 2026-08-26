@@ -213,7 +213,18 @@ def _ingest_impl(
                 skipped += 1
                 continue
             try:
-                if outcome_at <= decision_at:
+                # D-004: Parse both timestamps to UTC datetime before comparing.
+                # Lexicographic string comparison fails when formats mix UTC ("Z" / "+00:00")
+                # and IST ("+05:30") — e.g. "2026-08-26T15:30:00+05:30" lexicographically
+                # greater than "2026-08-26T14:30:00+00:00" but actually 30 min earlier.
+                from datetime import timezone as _tz
+                def _to_utc(ts: str) -> datetime:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=_tz.utc)
+                    return dt.astimezone(_tz.utc)
+
+                if _to_utc(outcome_at) <= _to_utc(decision_at):
                     log.warning(
                         "[LOL-BRIDGE] Skipping %s: lookahead violation — "
                         "outcome_at (%s) not after decision_at (%s).",

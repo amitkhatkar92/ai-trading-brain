@@ -343,12 +343,31 @@ class FailSafeRiskGuardian:
                     self._daily_pnl, self._consec_losses,
                 )
         except Exception as exc:
-            # Any failure → fail safe (all-zero state, no halt assumed)
-            log.warning(
-                "[RiskGuardian] State load failed — starting fresh (safe default): %s",
-                exc,
+            # D-002: Corrupt state file — quarantine it, alert operator, and fail CLOSED
+            # (halt trading) rather than silently reset to zero.  A corrupt state file
+            # could mean a crash during a halt → resetting to zero would let trading
+            # resume past a financial safety threshold.
+            _quarantine = self._state_file + ".corrupt"
+            try:
+                import shutil
+                shutil.move(self._state_file, _quarantine)
+            except Exception:
+                pass
+            log.error(
+                "[RiskGuardian] ⚠️  State file CORRUPT — quarantined to %s. "
+                "Halting trading as a precaution. Operator must verify. Error: %s",
+                _quarantine, exc,
             )
             self._daily_pnl      = 0.0
-            self._trading_halted = False
-            self._halt_reason    = ""
-            self._session_date   = None
+            self._trading_halted = True   # fail closed — never assume safe
+            self._halt_reason    = "STATE_FILE_CORRUPT"
+            self._session_date   = date.today()
+            try:
+                from notifications.notifier_manager import get_notifier as _gn
+                _gn().send_alert(
+                    "⚠️ <b>[RiskGuardian] State file CORRUPT</b>\n"
+                    f"Quarantined: {_quarantine}\n"
+                    "Trading halted as precaution. Verify manually and restart if safe."
+                )
+            except Exception:
+                pass

@@ -33,7 +33,8 @@ _MAX_HISTORY = 200  # keep last N slot events
 
 
 def _now_iso() -> str:
-    return datetime.now().isoformat(timespec="seconds")
+    from datetime import timezone
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
 class SchedulerHealth:
