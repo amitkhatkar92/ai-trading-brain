@@ -1227,8 +1227,10 @@ class TelegramCommandBot:
                 auth = json.loads(auth_path.read_text())
                 lines.append(f"Authority: <b>{auth.get('authority_status', 'NOT_VALIDATED')}</b>")
                 lines.append(f"Total decisions: {auth.get('total_decisions', 0)}")
-                lines.append(f"Direction accuracy: {auth.get('direction_accuracy') and f\"{auth.get('direction_accuracy'):.1%}\" or 'N/A'}")
-                lines.append(f"Target hit rate: {auth.get('target_hit_rate') and f\"{auth.get('target_hit_rate'):.1%}\" or 'N/A'}")
+                _dir_acc = auth.get('direction_accuracy')
+                lines.append(f"Direction accuracy: {f'{_dir_acc:.1%}' if _dir_acc else 'N/A'}")
+                _tgt_hit = auth.get('target_hit_rate')
+                lines.append(f"Target hit rate: {f'{_tgt_hit:.1%}' if _tgt_hit else 'N/A'}")
                 lines.append(f"Next gate: {auth.get('next_gate_label', '?')}")
                 lines.append("")
             else:

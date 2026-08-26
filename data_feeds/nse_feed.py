@@ -189,9 +189,16 @@ class NSEFeed(BaseFeed):
                     symbol, type(raw).__name__, str(raw)[:120], type(raw).__name__,
                 )
                 return self._sim_options_chain(symbol, expiry)
-            records     = raw["records"]
+            records     = raw.get("records") or raw.get("filtered", {}) or {}
+            if not records or "underlyingValue" not in records:
+                log.warning(
+                    "[NSEFeed] options_chain %s: 'records' key missing or incomplete "
+                    "(top_keys=%s) — using sim fallback",
+                    symbol, list(raw.keys())[:6],
+                )
+                return self._sim_options_chain(symbol, expiry)
             spot        = float(records["underlyingValue"])
-            expiry_dates= records["expiryDates"]
+            expiry_dates= records.get("expiryDates") or records.get("expiryDate", [])
             chosen_exp  = expiry or (expiry_dates[0] if expiry_dates else "")
 
             contracts: List[OptionsContract] = []

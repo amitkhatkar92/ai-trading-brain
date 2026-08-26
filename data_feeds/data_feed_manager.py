@@ -236,8 +236,8 @@ class DataFeedManager:
     def __init__(self) -> None:
         self.yahoo    = YahooFeed()
         self.nse      = NSEFeed()
-        self.angelone = _AngelOneFeedCls() if _HAS_ANGELONE else _DisabledAngelOne()  # PRIMARY Indian data source (optional)
-        self.dhan     = DhanFeed()      # FALLBACK for Indian data; also handles order execution
+        self.dhan     = DhanFeed()      # PRIMARY Indian data source + order execution
+        self.angelone = _AngelOneFeedCls() if _HAS_ANGELONE else _DisabledAngelOne()  # FALLBACK Indian data source (optional)
         self._stats = _FeedCycleStats()
         self._last_yahoo_refresh: Optional[datetime] = None   # Phase 2: track last successful Yahoo refresh
         self._options_synthetic: bool = False   # legacy flag — kept for backward compat
@@ -250,36 +250,33 @@ class DataFeedManager:
 
     def _startup_feed_validation(self) -> None:
         """Log a structured feed validation block at startup."""
-        # AngelOne is primary — always log its status first
-        ao_live = getattr(self.angelone, "is_live", False)
-        log.info(
-            "[FeedValidation] AngelOne feed (PRIMARY): is_live=%s  "
-            "auto-refreshes via TOTP — no daily manual token required.",
-            ao_live,
-        )
-        if not ao_live:
-            log.warning(
-                "[FeedValidation] AngelOne feed NOT live at startup. "
-                "Check ANGELONE_API_KEY / ANGELONE_CLIENT_ID / ANGELONE_TOTP_SECRET in .env."
-            )
-        # Dhan is secondary (execution + data fallback) — token may or may not be present
+        # Dhan is primary — always log its status first
         state = self.dhan.auth_state()
         if not state["token_present"]:
-            log.info(
-                "[FeedValidation] Dhan token absent — AngelOne handles Indian data. "
-                "Dhan is still used for order execution if credentials allow. "
-                "Send /token <token> via Telegram if Dhan data is also desired."
+            log.warning(
+                "[FeedValidation] Dhan token absent — send /token <token> via Telegram to restore. "
+                "Falling back to AngelOne/yfinance for data."
             )
         elif state["token_expired"]:
             log.warning(
-                "[FeedValidation] Dhan token EXPIRED — AngelOne handles Indian data. "
-                "api_mode=FALLBACK. Send /token <new_token> to restore Dhan data."
+                "[FeedValidation] Dhan token EXPIRED — api_mode=FALLBACK. "
+                "DTA-001 cron runs at 02:00 IST to refresh automatically."
             )
         else:
             log.info(
-                "[FeedValidation] Dhan feed: token_present=%s  api_mode=%s  expires_in=%s  "
-                "(secondary data; primary is AngelOne)",
+                "[FeedValidation] Dhan feed (PRIMARY): token_present=%s  api_mode=%s  expires_in=%s",
                 state["token_present"], state["api_mode"], state["expires_in_h"],
+            )
+        # AngelOne is secondary (TOTP auto-refresh, no daily manual token)
+        ao_live = getattr(self.angelone, "is_live", False)
+        log.info(
+            "[FeedValidation] AngelOne feed (SECONDARY/FALLBACK): is_live=%s",
+            ao_live,
+        )
+        if not ao_live:
+            log.info(
+                "[FeedValidation] AngelOne not live — set ANGELONE_API_KEY / "
+                "ANGELONE_CLIENT_ID / ANGELONE_TOTP_SECRET in .env to activate."
             )
         # Singleton audit — confirm only one instance of each feed is active
         log.info(
@@ -687,16 +684,16 @@ class DataFeedManager:
         """Get a market quote. Indian symbols: AngelOne → Dhan → Yahoo. Global: Yahoo."""
         bare = symbol.upper().replace(".NS", "").replace(".BO", "")
         if bare not in self._GLOBAL_SYMBOLS:
-            # AngelOne: primary Indian data source (TOTP auto-refresh, no daily token)
-            if self.angelone.is_live:
-                q = self.angelone.get_quote(bare)
-                if q and q.ltp > 0:
-                    self._stats.record(q)
-                    return q
-            # Dhan: fallback for Indian symbols
+            # Dhan: primary Indian data source
             from .dhan_feed import DHAN_SECURITY_MAP
             if self.dhan.is_live and symbol.upper() in DHAN_SECURITY_MAP:
                 q = self.dhan.get_quote(symbol)
+                if q and q.ltp > 0:
+                    self._stats.record(q)
+                    return q
+            # AngelOne: fallback for Indian symbols
+            if self.angelone.is_live:
+                q = self.angelone.get_quote(bare)
                 if q and q.ltp > 0:
                     self._stats.record(q)
                     return q
@@ -705,15 +702,15 @@ class DataFeedManager:
         return q
 
     def get_indian_quote(self, symbol: str) -> Optional[TickerQuote]:
-        """Get an Indian market quote — AngelOne primary, Dhan fallback, then NSEFeed."""
+        """Get an Indian market quote — Dhan primary, AngelOne fallback, then NSEFeed."""
         bare = symbol.upper().replace(".NS", "").replace(".BO", "")
-        if self.angelone.is_live:
-            q = self.angelone.get_quote(bare)
+        if self.dhan.is_live:
+            q = self.dhan.get_quote(symbol)
             if q and q.ltp > 0:
                 self._stats.record(q)
                 return q
-        if self.dhan.is_live:
-            q = self.dhan.get_quote(symbol)
+        if self.angelone.is_live:
+            q = self.angelone.get_quote(bare)
             if q and q.ltp > 0:
                 self._stats.record(q)
                 return q
@@ -722,10 +719,10 @@ class DataFeedManager:
         return q
 
     def get_multiple_quotes(self, symbols: List[str]) -> Dict[str, TickerQuote]:
-        """Batch fetch quotes. Indian symbols: AngelOne → Dhan → Yahoo. Global: Yahoo.
+        """Batch fetch quotes. Indian symbols: Dhan → AngelOne → Yahoo. Global: Yahoo.
 
-        AngelOne is the primary Indian feed (TOTP auto-refresh, no daily manual token).
-        Dhan is a fallback for symbols AngelOne misses. Yahoo handles global symbols.
+        Dhan is the primary Indian feed (also used for order execution).
+        AngelOne is fallback for symbols Dhan misses. Yahoo handles global symbols.
 
         Phase 1 (FeedTrace): emits [FeedTrace] DEBUG logs at each stage.
         Phase 2 (Timing):    tracks self._last_yahoo_refresh on any Yahoo hit.
@@ -743,26 +740,26 @@ class DataFeedManager:
         global_ = [s for s in symbols if _bare(s) in self._GLOBAL_SYMBOLS]
         indian  = [s for s in symbols if _bare(s) not in self._GLOBAL_SYMBOLS]
 
-        # ── AngelOne: primary for all Indian symbols ─────────────────────────
-        if self.angelone.is_live and indian:
-            ao_result = self.angelone.get_multiple_quotes(indian)
-            result.update(ao_result)
-            ao_missed = [s for s in indian if s not in ao_result]
-            log.debug("[FeedTrace] stage=ANGELONE_RAW requested=%d returned=%d missed=%d",
-                      len(indian), len(ao_result), len(ao_missed))
-        else:
-            ao_missed = indian
-
-        # ── Dhan: fallback for what AngelOne missed ───────────────────────────
-        if ao_missed and self.dhan.is_live:
+        # ── Dhan: primary for all Indian symbols ─────────────────────────────
+        if self.dhan.is_live and indian:
             from .dhan_feed import DHAN_SECURITY_MAP
-            dhan_candidates = [s for s in ao_missed if _bare(s) in DHAN_SECURITY_MAP]
+            dhan_candidates = [s for s in indian if _bare(s) in DHAN_SECURITY_MAP]
             if dhan_candidates:
                 dhan_result = self.dhan.get_multiple_quotes(dhan_candidates)
                 result.update(dhan_result)
-                log.debug("[FeedTrace] stage=DHAN_FALLBACK requested=%d returned=%d",
+                log.debug("[FeedTrace] stage=DHAN_PRIMARY requested=%d returned=%d",
                           len(dhan_candidates), len(dhan_result))
-                ao_missed = [s for s in ao_missed if s not in dhan_result]
+            ao_missed = [s for s in indian if s not in result]
+        else:
+            ao_missed = indian
+
+        # ── AngelOne: fallback for what Dhan missed ───────────────────────────
+        if ao_missed and self.angelone.is_live:
+            ao_result = self.angelone.get_multiple_quotes(ao_missed)
+            result.update(ao_result)
+            log.debug("[FeedTrace] stage=ANGELONE_FALLBACK requested=%d returned=%d",
+                      len(ao_missed), len(ao_result))
+            ao_missed = [s for s in ao_missed if s not in ao_result]
 
         # ── Yahoo: global symbols + any Indian still missed ───────────────────
         yahoo_targets = global_ + ao_missed
@@ -809,17 +806,17 @@ class DataFeedManager:
         Priority: AngelOneFeed → DhanFeed → NSEFeed (indian) → YahooFeed.
         """
         bare = symbol.upper().replace(".NS", "").replace(".BO", "")
-        # AngelOne: primary for NSE equities and indices
+        # Dhan: primary for NSE equities and indices
+        from .dhan_feed import DHAN_SECURITY_MAP
+        if self.dhan.is_live and symbol.upper() in DHAN_SECURITY_MAP and bare not in self._GLOBAL_SYMBOLS:
+            bars = self.dhan.get_history(symbol, days, interval)
+            if bars:
+                return bars
+        # AngelOne: fallback for Indian symbols
         if self.angelone.is_live and bare not in self._GLOBAL_SYMBOLS:
             ao_bars = self.angelone.get_history(bare, days, interval)
             if ao_bars:
                 return ao_bars
-        # Dhan: fallback for Indian symbols it knows
-        from .dhan_feed import DHAN_SECURITY_MAP
-        if self.dhan.is_live and symbol.upper() in DHAN_SECURITY_MAP:
-            bars = self.dhan.get_history(symbol, days, interval)
-            if bars:
-                return bars
         if indian:
             return self.nse.get_history(symbol, days, interval)
         return self.yahoo.get_history(symbol, days, interval)

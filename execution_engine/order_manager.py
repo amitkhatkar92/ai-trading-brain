@@ -946,6 +946,22 @@ class OrderManager:
         if rec.direction in ("SELL", "SHORT"):
             pnl = -pnl
 
+        # Deduct real transaction costs (brokerage, STT, exchange charges, GST)
+        try:
+            from models.transaction_costs import get_cost_model, InstrumentType
+            _cost = get_cost_model().compute(
+                symbol=rec.symbol,
+                quantity=abs(rec.quantity),
+                entry_price=rec.entry_price,
+                exit_price=exit_price,
+                instrument_type=InstrumentType.EQUITY_INTRADAY,
+            )
+            pnl -= _cost.total_cost
+            log.debug("[OrderManager] TxnCost %s: ₹%.0f  NetPnL=₹%+.0f",
+                      rec.symbol, _cost.total_cost, pnl)
+        except Exception:
+            pass
+
         rec.status       = "closed"
         rec.pnl          = round(pnl, 2)
         rec.closed_at    = datetime.now()

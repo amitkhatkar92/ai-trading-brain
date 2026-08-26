@@ -65,6 +65,7 @@ class RiskManagerAI:
                 # ── KDA-003: rejection tracking (non-critical) ─────────────
                 try:
                     from analysis.rejection_tracker import get_rejection_tracker as _get_rt_f
+                    _vix_val = float(getattr(sig, "_vix", 0.0) or 0.0)
                     _get_rt_f().ingest_rejection(
                         symbol=sig.symbol,
                         strategy=str(getattr(sig, "strategy_name", "") or "UNKNOWN"),
@@ -76,6 +77,8 @@ class RiskManagerAI:
                         price_at_rejection=float(getattr(sig, "entry_price", 0.0) or 0.0),
                         direction=str(sig.direction.value if hasattr(sig.direction, "value") else sig.direction),
                         market_regime=str(getattr(sig, "scanner_regime_label", "") or "UNKNOWN"),
+                        vix=_vix_val,
+                        vix_bucket="LOW" if _vix_val < 15 else "MED" if _vix_val < 25 else "HIGH",
                     )
                 except Exception:
                     pass

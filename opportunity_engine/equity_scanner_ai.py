@@ -1427,6 +1427,9 @@ class EquityScannerAI:
                         )
                     sig._obs_candidate_score = stock.get("score")
                     sig._obs_regime = getattr(snapshot.regime, "value", str(snapshot.regime))
+                    # Stamp regime label and VIX onto signal for rejection audit context
+                    sig.scanner_regime_label = sig._obs_regime
+                    sig._vix = float(snapshot.vix or 0.0)
                 except Exception:
                     pass
                 # ─────────────────────────────────────────────────────────────────

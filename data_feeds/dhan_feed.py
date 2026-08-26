@@ -1534,8 +1534,15 @@ class DhanFeed(BaseFeed):
                         self._dhan_consecutive_failures += 1
                         if self._dhan_consecutive_failures >= self._DHAN_CIRCUIT_OPEN_AFTER:
                             self._trip_circuit()
-                    # Fallback all symbols in this segment
+                    # MULTI_SID_REJECTED: batch endpoint blocked, retry each symbol individually
                     for sym, _ in sym_sid_pairs:
+                        if _ftype == "MULTI_SID_REJECTED":
+                            _sq = self.get_quote(sym)
+                            if _sq and _sq.ltp > 0:
+                                result[sym] = _sq
+                                _success += 1
+                                _seg_success[seg] = _seg_success.get(seg, 0) + 1
+                                continue
                         _fb = self._yf_quote(sym) or self._sim_quote(sym)
                         if _fb:
                             result[sym] = _fb
