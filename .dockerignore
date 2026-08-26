@@ -34,6 +34,26 @@ data/regime_probability_history.json
 data/scanner_memory.json
 data/iv_history.json
 data/lol/LOL_*.jsonl
+data/options_*.json
+data/options_*.jsonl
+data/options_*.csv
+data/scheduler_health.json
+data/trade_analytics_*.json
+# Strategy/learning runtime state — never bake into image
+data/strategy_performance.json
+data/odm_state.json
+data/knowledge_pipeline_health.json
+data/ml_performance_dataset.json
+data/paper_trading_daily.json
+# Research outputs — large, VPS-generated
+data/discovered_edges.json
+data/evolved_strategies.json
+data/ars_hypothesis_registry.json
+data/ars_study_*.json
+data/ars/rc/history.json
+data/mover_discovery_v3_shadow.jsonl
+data/mover_discovery_v3_shadow_raw.jsonl
+data/klp/knowledge_fusion/source_inventory.jsonl
 docs/
 tests/
 *.md

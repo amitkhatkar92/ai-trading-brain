@@ -93,6 +93,33 @@ data/scanner_memory.json
 data/iv_history.json
 data/lol/LOL_*.jsonl
 
+# ── Options runtime data — generated fresh each session ──────────────────────
+data/options_*.json
+data/options_*.jsonl
+data/options_*.csv
+
+# ── Other runtime state files ─────────────────────────────────────────────────
+data/scheduler_health.json
+data/trade_analytics_*.json
+
+# ── Strategy / learning runtime state — CRITICAL: never reset these ──────────
+# git pull must NEVER overwrite these; they are the system's earned knowledge.
+data/strategy_performance.json      # win rates per strategy — rebuilt every EOD
+data/odm_state.json                 # OpportunityDensityMonitor signal tier history
+data/knowledge_pipeline_health.json # KDA pipeline health metrics
+data/ml_performance_dataset.json    # MetaLearning k-NN training records (21+ obs)
+data/paper_trading_daily.json       # daily P&L summary
+
+# ── Research outputs generated on VPS — months of accumulated work ────────────
+data/discovered_edges.json          # 600KB+ discovered trading edges
+data/evolved_strategies.json        # evolved strategy index cache
+data/ars_hypothesis_registry.json   # ARS hypothesis registry
+data/ars_study_*.json               # ARS study outputs
+data/ars/rc/history.json            # ARS research coordinator history
+data/mover_discovery_v3_shadow.jsonl
+data/mover_discovery_v3_shadow_raw.jsonl
+data/klp/knowledge_fusion/source_inventory.jsonl
+
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
 

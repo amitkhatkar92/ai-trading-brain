@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
-  "commit": "0a293e2",
-  "commit_full": "0a293e23ce66a4a8ade752e7743f9d0d6b368a4d",
+  "commit": "d12f380",
+  "commit_full": "d12f380e5101e8b13d682d8f3bb45bbf7f50938c",
   "branch": "main",
-  "commit_message": "fix: prevent git pull from wiping runtime VPS data - gitignore runtime state files, fix deploy to regenerate build manifest",
-  "build_timestamp": "2026-08-26T13:09:53.947042+05:30",
+  "commit_message": "docs: update architecture log with all recent changes",
+  "build_timestamp": "2026-08-26T13:19:03.674357+05:30",
   "python_version": "3.14.3",
   "platform": "Windows",
   "file_hashes": {
