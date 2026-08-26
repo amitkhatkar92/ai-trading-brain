@@ -38,6 +38,9 @@ jobs:
           fi
           echo "✅ All required secrets present"
 
+      - name: Validate Docker Compose config
+        run: docker compose config >/dev/null
+
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -131,4 +134,3 @@ jobs:
             docker image prune -af 2>/dev/null || true
             DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
             echo "[ disk   ] ✅ disk free after deploy: ${DISK_FREE}"
-
