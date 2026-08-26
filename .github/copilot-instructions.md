@@ -137,7 +137,8 @@ Full cycle:          172ms  ✅  HEALTHY
 | `opportunity_engine/equity_scanner_ai.py` | MOP-RC-001: compute+attach observational fields in `scan()`, extend `[EdgeTelemetry]`, call observer | No |
 | `opportunity_engine/mop_rc001_observer.py` | NEW — MOP-RC-001 append-only JSONL observer, `record_signal_observation()`, `write_daily_summary_md()` | N/A |
 | `test_mop_rc001.py` | NEW — 15 tests (T001–T015): formula, None-safety, invariance, no look-ahead, dedup | N/A |
-| `.gitignore` + `.dockerignore` | Gitignore runtime-grown data: KEL, shadow evidence, KSL state, options data, iv_history, LOL JSONL, scanner_memory, regime_history, scheduler_health, trade_analytics | No |
+| `.gitignore` + `.dockerignore` | Gitignore ALL runtime/research data: KEL, shadow evidence, KSL state, options, iv_history, LOL, scanner_memory, regime_history, scheduler_health, trade_analytics, **strategy_performance, odm_state, knowledge_pipeline_health, ml_performance_dataset, paper_trading_daily, discovered_edges, evolved_strategies, ars_hypothesis_registry, ars_study_\*.json, ars/rc/history.json, mover_discovery\*, klp/knowledge_fusion/source_inventory** | No |
+| `scripts/safe_pull.sh` | NEW — backs up all runtime data, runs git pull, restores files. Use instead of bare `git pull` in deployment commands | N/A |
 | `build_manifest.json` | Regenerated; deploy command now includes `generate_build_manifest.py` to prevent DeploymentDrift | No |
 | `orchestrator/master_orchestrator.py` | Universe rebuild: Monday-only guard removed, schedule moved from 08:30 to 16:15 IST, runs daily post-market | No |
 
@@ -159,7 +160,8 @@ git commit -m "<message>"
 git push origin main
 
 # 3 — Deploy to VPS (single command)
-ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && git pull origin main && python3 scripts/generate_build_manifest.py && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
+# safe_pull.sh backs up runtime data → pulls → restores data → no knowledge lost
+ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && bash scripts/safe_pull.sh && python3 scripts/generate_build_manifest.py && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
 ```
 
 ### Definition of done
