@@ -32,7 +32,8 @@ DATASET_PATH = os.path.join(
 )
 
 # Minimum records before model training is meaningful
-MIN_RECORDS_TO_TRAIN = 20
+# Lowered from 20 to 10 (GAP-004): activates with existing observations
+MIN_RECORDS_TO_TRAIN = 10
 
 
 @dataclass

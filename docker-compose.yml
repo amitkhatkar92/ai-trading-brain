@@ -29,8 +29,8 @@ services:
       - TZ=Asia/Kolkata  # IST — all schedule times are in IST
       - RUNNING_IN_DOCKER=1  # Required — main.py exits if this is absent
     
-    # Resource limits
-    mem_limit: 2g
+    # Resource limits — 3 g headroom for KEL rebuild, AMLS, and research ops
+    mem_limit: 3g
     cpus: '1.0'
 
     # File descriptor limit — default ulimit of 1024 is exhausted by yfinance's
@@ -41,13 +41,13 @@ services:
         soft: 65536
         hard: 65536
     
-    # Health check
+    # Health check — verify PID lock exists (process is alive and holds the lock)
     healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      test: ["CMD", "sh", "-c", "test -f /app/data/trading_engine.pid && kill -0 $(cat /app/data/trading_engine.pid) 2>/dev/null || (test -f /tmp/trading_engine.pid && kill -0 $(cat /tmp/trading_engine.pid) 2>/dev/null)"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 60s
     
     # Logging
     logging:
@@ -71,11 +71,14 @@ services:
     volumes:
       - ./data:/app/data:ro
       - ./control_tower:/app/control_tower:ro
+      - .env:/app/.env:ro          # GAP-026: dashboard reads config env vars
 
     environment:
       - TZ=Asia/Kolkata   # Match trading brain — all timestamps are IST
 
-    
+    mem_limit: 1g
+    cpus: '0.5'
+
     ports:
       - "8501:8501"  # Streamlit dashboard
     

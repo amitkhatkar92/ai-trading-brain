@@ -1,4 +1,22 @@
 """
+DEPRECATED — master_orchestrator_vps.py
+========================================
+This file is a stale copy of the VPS orchestrator from a previous deployment.
+It has diverged from orchestrator/master_orchestrator.py (e.g. uses hardcoded
+capital=1_000_000 risk limits, missing layer integrations) and MUST NOT be run.
+
+Use  orchestrator/master_orchestrator.py  for all production and paper trading.
+GAP-011 resolution: this file now refuses to execute.
+"""
+import sys
+raise RuntimeError(
+    "DEPRECATED: master_orchestrator_vps.py must not be executed.\n"
+    "Use orchestrator/master_orchestrator.py instead.\n"
+    "If you need to run the trading engine, use: python main.py --schedule"
+)
+
+# ── Original content preserved below for reference only ──────────────────────
+"""
 Layer 1 — Master Orchestrator AI
 =====================================
 The central brain of the AI Trading Brain system.
@@ -17,7 +35,7 @@ Flow:
       → trade_monitoring → learning_system
 
 EDA (Event-Driven Architecture) layer:
-  Each completed layer step publishes typed events to the EventBus.
+  Each completed step publishes typed events to the EventBus.
   Any other agent can subscribe to those events for reactive behaviour.
   The TaskQueue is used for scheduled background tasks (monitoring,
   EOD learning) so they never block the main trading cycle.

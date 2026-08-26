@@ -122,10 +122,6 @@ SCHEDULE = {
     # ── Multi-Stage Market Preparation Engine ──────────────────────────────
     "post_market_scan":       "16:45",   # Phase D: full Nifty500 scanner   (runs ~20 min, after MF NAV settle)
     "premarket_refiner":      "08:45",   # Phase G: pre-open conviction decay + gap refresh
-    # ── Legacy aliases (kept for backward compatibility) ───────────────────
-    "market_regime_analysis": "09:05",
-    "opportunity_scan":       "09:10",
-    "mid_day_review":         "13:00",
     # ── Weekend intelligence ────────────────────────────────────────────────
     "saturday_intelligence":  "08:00",   # Saturday: deep accumulation cycle
     "sunday_intelligence":    "09:00",   # Sunday:   Monday tactical preparation
@@ -264,21 +260,15 @@ PREPARED_UNIVERSE_ACTIVATION_DATE: str = "2026-05-22"
 RESEARCH_WEIGHT_LEGACY_STATIC:     float = 0.25
 RESEARCH_WEIGHT_PREPARED_V1:       float = 1.00
 
-# Minimum number of PREPARED_UNIVERSE_V1 trades required per strategy before
+# Minimum PREPARED_UNIVERSE_V1 trades required per strategy before ANY
 # auto-disable, threshold mutation, or adaptive suppression may fire.
-# Below this sample: strategy is protected — no punitive adaptive action.
-MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT: int = 25
+# Lowered from 25 to 5 (GAP-003): the original value was calibrated for
+# high-frequency systems; this system trades ~1-2/day so 25 is unreachable.
+MIN_PREPARED_UNIVERSE_TRADES_FOR_STRATEGY_JUDGMENT: int = 5
 
-# System-wide adaptive mutation freeze (Patch 21/24).
-# Until total PREPARED_UNIVERSE_V1 trades across all strategies reaches this
-# threshold, ALL adaptive mutations are frozen:
-#   • strategy auto-disabling
-#   • adaptive threshold changes
-#   • overlay amplification
-#   • exploration budget expansion
-#   • confidence auto-scaling / demotion
-# Observation, reporting, ranking, and telemetry are always permitted.
-MIN_CLEAN_PREPARED_TRADES: int = 100
+# System-wide adaptive mutation freeze.
+# Lowered from 100 to 15 (GAP-003): allow governance to activate sooner.
+MIN_CLEAN_PREPARED_TRADES: int = 15
 
 # ── Scanner resource bounds (prevent silent infrastructure creep) ──────────
 SCANNER_MAX_SYMBOLS:          int   = 600    # hard cap on symbols attempted per run

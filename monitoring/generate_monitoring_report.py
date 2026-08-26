@@ -29,8 +29,12 @@ def generate_report(root_dir: str = None) -> Dict:
     if root_dir is None:
         root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     
-    # Initialize tracker
-    tracker = FirstMonthTracker(initial_capital=1_000_000, root_dir=root_dir)
+    # Initialize tracker — read capital from config so it tracks actual deployment
+    try:
+        from config import TOTAL_CAPITAL as _TC
+    except Exception:
+        _TC = 1_000_000
+    tracker = FirstMonthTracker(initial_capital=_TC, root_dir=root_dir)
     tracker.update()
     
     # Get KPI snapshot

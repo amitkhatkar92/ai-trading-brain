@@ -38,7 +38,7 @@ from .feature_extractor import FeatureVector
 
 log = get_logger(__name__)
 
-K_NEIGHBOURS = 10      # top-k neighbours used for prediction
+K_NEIGHBOURS = 5       # reduced from 10 (GAP-004): activates with ~21 observations on disk
 DEFAULT_PRED  = 0.0    # fallback when no history for a strategy
 
 

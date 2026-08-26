@@ -262,13 +262,19 @@ class MasterOrchestrator:
         # Pre-warm the learning tracker so it loads persisted weights
         get_options_performance_tracker()
         # ── Options Knowledge Research Pipeline (background learning loop) ──
+        # GAP-024: only start when live options data is actually available
         try:
             from knowledge_system.options_research_pipeline import (
                 get_options_research_pipeline as _get_orp,
             )
-            _orp = _get_orp()
-            _orp.start()
-            log.info("[Orchestrator] OptionsResearchPipeline background loop started.")
+            from data_feeds import get_feed_manager as _gfm_orp
+            _orp_cap = _gfm_orp().get_options_capability("NIFTY")
+            if _orp_cap.get("chain_live", False):
+                _orp = _get_orp()
+                _orp.start()
+                log.info("[Orchestrator] OptionsResearchPipeline background loop started (live chain confirmed).")
+            else:
+                log.info("[Orchestrator] OptionsResearchPipeline NOT started — Dhan options chain unavailable (synthetic data only).")
         except Exception as _orp_exc:
             log.warning("[Orchestrator] OptionsResearchPipeline not started: %s", _orp_exc)
 
@@ -335,7 +341,7 @@ class MasterOrchestrator:
 
         # ── Operational layers ─────────────────────────────────────────
         self.system_monitor      = SystemMonitor()
-        self.performance_evaluator = PerformanceEvaluator(capital=1_000_000)
+        self.performance_evaluator = PerformanceEvaluator(capital=TOTAL_CAPITAL)  # GAP-005 fix
         self.research_lab        = ResearchLab()
         # ── Validation Engine ──────────────────────────────────────────
         self.validation_engine   = ValidationEngine(n_mc_runs=1_000)
@@ -390,6 +396,9 @@ class MasterOrchestrator:
         # Counts cycles where open positions existed but the price feed was empty.
         # Incremented in _do_monitor; reset to 0 on any successful check_all().
         self._missed_monitor_cycles: int = 0
+        # GAP-030: consecutive full-cycle abort counter (market intelligence failure)
+        # Sends a Telegram alert after 5 consecutive aborts and resets on any success.
+        self._consecutive_cycle_aborts: int = 0
 
         # ── Persistence + Notifications ───────────────────────────────
         try:
@@ -445,6 +454,33 @@ class MasterOrchestrator:
                     log.warning("[UniverseBootstrap] Universe seed write failed — scanner will use 230-symbol builtin fallback.")
         except Exception as _ub_exc:
             log.warning("[UniverseBootstrap] Could not write universe seed: %s", _ub_exc)
+
+        # GAP-023: Startup health gate — verify critical components initialised
+        _failed_components = []
+        for _comp_name, _comp_obj in [
+            ("OrderManager",          self.order_manager),
+            ("TradeMonitor",          self.trade_monitor),
+            ("RiskGuardian",          self.risk_guardian),
+            ("LearningEngine",        self.learning_engine),
+            ("EquityScanner",         self.equity_scanner),
+        ]:
+            if _comp_obj is None:
+                _failed_components.append(_comp_name)
+        if _failed_components:
+            log.critical("[StartupHealthGate] CRITICAL: %d component(s) failed to init: %s",
+                         len(_failed_components), _failed_components)
+            try:
+                from notifications.notifier_manager import get_notifier as _sng
+                _sng().send_alert(
+                    f"\u26a0\ufe0f STARTUP FAILURE: {len(_failed_components)} critical components failed.\n"
+                    f"Failed: {_failed_components}\n"
+                    f"Trading disabled until restart."
+                )
+            except Exception:
+                pass
+            self._halt = True
+        else:
+            log.info("[StartupHealthGate] All critical components initialised successfully.")
 
     # ──────────────────────────────────────────────────────────────────
     # EDA SETUP
@@ -909,6 +945,21 @@ class MasterOrchestrator:
         if snapshot is None:
             log.error("Market intelligence failed. Aborting cycle.")
             self.system_monitor.finalize_cycle(had_error=True)
+            # GAP-030: consecutive abort circuit breaker
+            self._consecutive_cycle_aborts += 1
+            if self._consecutive_cycle_aborts >= 5:
+                log.critical("[CircuitBreaker] %d consecutive cycle aborts — market data failure persistent.",
+                             self._consecutive_cycle_aborts)
+                try:
+                    from notifications.notifier_manager import get_notifier as _cb_ntf
+                    _cb_ntf().send_alert(
+                        f"\u26a0\ufe0f CIRCUIT BREAKER: {self._consecutive_cycle_aborts} consecutive cycle aborts.\n"
+                        f"MarketIntelligence returning None. Data feed may be down.\n"
+                        f"System is running but generating zero signals."
+                    )
+                    self._consecutive_cycle_aborts = 0  # reset after alert
+                except Exception:
+                    pass
             return
         if self._abort_if_timed_out("MarketIntelligence"): return
 
@@ -1140,9 +1191,19 @@ class MasterOrchestrator:
                     _seen.add(_sig.symbol)
 
                 # Phase 2: add KDA-only authorized signals (StrategyLab rejected)
+                # GAP-029: require minimum confidence for KDA-only signals (no backtest validation)
+                _KDA_ONLY_MIN_CONFIDENCE = 7.5  # higher bar since no backtest gate
                 _kda_only_added = 0
                 for _orig_sig in signals:
                     if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
+                        continue
+                    # GAP-029: enforce elevated confidence gate for KDA-only path
+                    if _orig_sig.confidence < _KDA_ONLY_MIN_CONFIDENCE:
+                        log.info(
+                            "[KDA-AUTHORITY] %s: KDA-only blocked — confidence %.1f < %.1f "
+                            "(no backtest gate; elevated threshold enforced).",
+                            _orig_sig.symbol, _orig_sig.confidence, _KDA_ONLY_MIN_CONFIDENCE,
+                        )
                         continue
                     _r3 = _kda_results[_orig_sig.symbol]
                     _kda_hor_src3 = _r3.get("horizon_source", "NONE")
@@ -1625,12 +1686,27 @@ class MasterOrchestrator:
         signals_for_debate = final_approved_signals
 
         # ── STEP 6: Debate + Decision ──────────────────────────────────
+        # GAP-013: run debates concurrently (one thread per signal)
         executed: List[dict] = []
         with self.system_monitor.time_layer("DebateAndDecision"):
-            for signal in signals_for_debate:
-                row = self._run_debate_and_decide(signal, snapshot)
-                if row:
-                    executed.append(row)
+            if len(signals_for_debate) > 1:
+                from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
+                with ThreadPoolExecutor(max_workers=min(len(signals_for_debate), 4),
+                                        thread_name_prefix="debate") as _pool:
+                    _futs = {_pool.submit(self._run_debate_and_decide, sig, snapshot): sig
+                             for sig in signals_for_debate}
+                    for _fut in _as_completed(_futs):
+                        try:
+                            row = _fut.result()
+                            if row:
+                                executed.append(row)
+                        except Exception as _de_exc:
+                            log.warning("[DebateAndDecision] parallel debate error: %s", _de_exc)
+            else:
+                for signal in signals_for_debate:
+                    row = self._run_debate_and_decide(signal, snapshot)
+                    if row:
+                        executed.append(row)
         _diag.record_stage("DebateAndDecision", len(signals_for_debate), len(executed),
                            "CONFIDENCE_BELOW_THRESHOLD_6.5")
 
@@ -1742,6 +1818,7 @@ class MasterOrchestrator:
         cycle_report = self.system_monitor.finalize_cycle()
         self.system_monitor.print_cycle_table(cycle_report)
         self._last_snapshot = snapshot    # cache for EOD EDE cycle
+        self._consecutive_cycle_aborts = 0  # GAP-030: reset on success
         # Inform ODM of outcome so it can tune density tier next cycle
         self.odm.record_cycle(signals_generated=len(signals), approved_trades=len(sim_result.approved_trades))
         # ── PER-CYCLE FEED HEALTH SUMMARY ─────────────────────────────
@@ -4066,10 +4143,26 @@ class MasterOrchestrator:
         """
         if datetime.now().weekday() != 5:
             return
+        log.info("[WeekendResearch] Saturday deep accumulation cycle starting.")
+        try:
+            if self.notifier:
+                self.notifier.market_alert("🔬 Weekend Research", "Saturday deep accumulation cycle starting...")
+        except Exception:
+            pass
         try:
             self.weekend_intelligence.run_saturday_cycle()
+            try:
+                if self.notifier:
+                    self.notifier.market_alert("✅ Weekend Research", "Saturday deep accumulation cycle complete.")
+            except Exception:
+                pass
         except Exception as exc:
             log.error("[WeekendResearch] Saturday cycle crashed: %s", exc, exc_info=True)
+            try:
+                if self.notifier:
+                    self.notifier.market_alert("⚠️ Weekend Research FAILED", f"Saturday cycle error: {exc}")
+            except Exception:
+                pass
 
     def _run_sunday_intelligence(self) -> None:
         """
@@ -4078,10 +4171,26 @@ class MasterOrchestrator:
         """
         if datetime.now().weekday() != 6:
             return
+        log.info("[MondayPreparation] Sunday Monday preparation cycle starting.")
+        try:
+            if self.notifier:
+                self.notifier.market_alert("🔬 Weekend Research", "Sunday Monday prep cycle starting...")
+        except Exception:
+            pass
         try:
             self.weekend_intelligence.run_sunday_cycle()
+            try:
+                if self.notifier:
+                    self.notifier.market_alert("✅ Weekend Research", "Sunday Monday prep cycle complete.")
+            except Exception:
+                pass
         except Exception as exc:
             log.error("[MondayPreparation] Sunday cycle crashed: %s", exc, exc_info=True)
+            try:
+                if self.notifier:
+                    self.notifier.market_alert("⚠️ Monday Prep FAILED", f"Sunday cycle error: {exc}")
+            except Exception:
+                pass
 
     def _run_post_market_scan(self) -> None:
         """
@@ -4917,6 +5026,18 @@ class MasterOrchestrator:
 
         if not trades:
             log.info("[EOD-Learn] No closed trades today — learning skipped.")
+            # GAP-016: notify even on zero-trade days so user knows system ran
+            if self.notifier:
+                try:
+                    _today_str = datetime.now().strftime("%d %b %Y")
+                    self.notifier.market_alert(
+                        "📊 EOD Summary",
+                        f"Date: {_today_str}\nNo closed trades today.\n"
+                        f"Open positions: {len(self.order_manager.get_open_orders()) if self.order_manager else 0}\n"
+                        f"System running normally.",
+                    )
+                except Exception:
+                    pass
         else:
             log.info("[EOD-Learn] Processing %d closed trade(s) (in-memory + CSV).", len(trades))
         self.learning_engine.learn(trades)
@@ -5181,7 +5302,6 @@ class MasterOrchestrator:
         try:
             self.strategy_health.tick_session()
             log.info("[EOD] SHM session tick complete.")
-
             # G-001: post-cooldown revalidation trigger ──────────────────────
             # If tick_session() just marked any strategy as revalidation_pending,
             # log a structured governance event.  Does NOT enable the strategy.
@@ -5311,6 +5431,18 @@ class MasterOrchestrator:
             _dia_eod(context="eod")
         except Exception as _dia_eod_exc:
             log.debug("[DeploymentIntegrityAudit] eod skipped: %s", _dia_eod_exc)
+
+        # GAP-008/018/021/025: daily data cleanup (KDA files, attrition, LOL, FRZ backups)
+        try:
+            from scripts.data_cleanup import run_daily_cleanup as _run_dc
+            _dc_result = _run_dc()
+            _kda_del   = _dc_result.get("kda", {}).get("deleted", 0)
+            _lol_del   = _dc_result.get("lol", {}).get("deleted", 0)
+            _frz_del   = _dc_result.get("frz_backups", {}).get("deleted", 0)
+            log.info("[DataCleanup] EOD: kda_deleted=%d lol_deleted=%d frz_deleted=%d",
+                     _kda_del, _lol_del, _frz_del)
+        except Exception as _dc_exc:
+            log.debug("[DataCleanup] EOD cleanup failed (non-critical): %s", _dc_exc)
 
         # ── [ExposureCapSummary] + [LearningOpportunityAudit] + [ExposureCapVerdict] ─
         try:
@@ -6820,6 +6952,37 @@ class MasterOrchestrator:
             log.info("[Orchestrator] 🏖️  NSE HOLIDAY — market-close notify skipped.")
             return
         log.info("[Orchestrator] 🔔 Market CLOSE — 15:30 notification")
+
+        # GAP-007: Paper mode EOD force-close — close all intraday positions with
+        # best available LTP so learning engine receives real closed-trade records.
+        # Carry positions (CARRY order_type) are NOT force-closed.
+        try:
+            import config as _cfg_mc
+            if getattr(_cfg_mc, "PAPER_TRADING", False):
+                _mc_orders = self.order_manager.get_open_orders()
+                _mc_intraday = [o for o in _mc_orders if getattr(o, "order_type", "") != "CARRY"]
+                if _mc_intraday:
+                    log.info("[PaperEOD] Force-closing %d intraday paper position(s) at 15:30.",
+                             len(_mc_intraday))
+                    for _mc_rec in _mc_intraday:
+                        try:
+                            from data_feeds import get_feed_manager as _gfm_mc
+                            _IDX_MC = {"NIFTY", "BANKNIFTY", "INDIAVIX"}
+                            _sym_mc = _mc_rec.symbol if _mc_rec.symbol in _IDX_MC else f"{_mc_rec.symbol}.NS"
+                            _q_mc = _gfm_mc().get_quote(_sym_mc)
+                            _ltp_mc = float(_q_mc.ltp) if (_q_mc and _q_mc.ltp and _q_mc.ltp > 0) else _mc_rec.entry_price
+                        except Exception:
+                            _ltp_mc = _mc_rec.entry_price
+                        try:
+                            self.order_manager.close_position(
+                                _mc_rec.order_id, _ltp_mc,
+                                reason="close_eod_paper",
+                            )
+                            log.info("[PaperEOD] Closed %s @ %.2f", _mc_rec.symbol, _ltp_mc)
+                        except Exception as _mc_close_exc:
+                            log.warning("[PaperEOD] Could not close %s: %s", _mc_rec.symbol, _mc_close_exc)
+        except Exception as _paper_eod_exc:
+            log.warning("[PaperEOD] Force-close block failed: %s", _paper_eod_exc)
 
         # ── EOD risk summary (no forced close) ────────────────────────────
         # Log the state of every open position so the next session starts

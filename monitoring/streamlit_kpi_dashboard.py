@@ -69,9 +69,13 @@ def show_first_month_kpi_dashboard():
     st.markdown("# 📊 First-Month KPI Monitoring")
     st.markdown("**Goals for March 2026:** Track 4 critical metrics")
     
-    # Initialize tracker
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    tracker = FirstMonthTracker(initial_capital=1_000_000, root_dir=root_dir)
+    try:
+        import sys; sys.path.insert(0, root_dir)
+        from config import TOTAL_CAPITAL as _TC
+    except Exception:
+        _TC = 1_000_000
+    tracker = FirstMonthTracker(initial_capital=_TC, root_dir=root_dir)
     tracker.update()
     
     kpi_data = tracker.export_json()

@@ -118,6 +118,21 @@ data/ars_study_*.json               # ARS study outputs
 data/ars/rc/history.json            # ARS research coordinator history
 data/mover_discovery_v3_shadow.jsonl
 data/mover_discovery_v3_shadow_raw.jsonl
+
+# ── Per-session monitoring / rebuild runtime state ────────────────────────────
+data/monitor_state.json
+data/nifty500_universe.json
+data/closed_orders_*.txt
+data/expiry_retries.json
+data/borderline_rejections.json
+data/stability_ledger.json
+data/rejection_audit.db
+
+# ── KDA daily comparison + scan attrition (written every intraday cycle) ──────
+# Retained for 30 days then summarised by data_cleanup.py — raw files not needed
+data/klp/kda/
+data/predictive_gap/
+data/klp/knowledge_fusion/source_inventory.jsonl
 data/klp/knowledge_fusion/source_inventory.jsonl
 
 # ── Docker ────────────────────────────────────────────────────────────────────
