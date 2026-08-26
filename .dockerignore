@@ -24,6 +24,10 @@ data/logs/*
 data/*.db
 data/control_tower.db
 data/trading_brain.db
+# Large runtime-grown knowledge stores — gitignored, but also exclude from build context
+# so docker builds stay fast even when VPS accumulates 30-100MB of evidence data.
+data/knowledge_evidence_ledger.jsonl
+data/shadow_evidence_ledger.jsonl
 docs/
 tests/
 *.md

@@ -78,6 +78,12 @@ data/.bootstrap_probe
 data/.hc_probe
 data/replay.db
 
+# ── Large runtime-grown knowledge stores (written by momentum_knowledge_builder)
+# These grow to 30-100MB on VPS and must NOT be overwritten by git pull.
+# The seed content (2,356 records) is committed once; the VPS version is live.
+data/knowledge_evidence_ledger.jsonl
+data/shadow_evidence_ledger.jsonl
+
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
 
