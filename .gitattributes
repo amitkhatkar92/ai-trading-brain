@@ -1,0 +1,3 @@
+﻿# Force Unix LF on files that must not have CRLF on Linux
+*.cron text eol=lf
+*.sh text eol=lf

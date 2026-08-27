@@ -1,0 +1,5 @@
+# DTA-001: Dhan token auto-refresh
+# Primary: 01:50 IST (20:20 UTC)
+50 1 * * 1-5 root docker exec ai-trading-brain python /app/scripts/dhan_auth/dhan_token_agent.py --refresh >> /root/ai-trading-brain/data/logs/dta_cron.log 2>&1
+# Retry: 02:30 IST (21:00 UTC) - skipped if token already fresh
+30 2 * * 1-5 root docker exec ai-trading-brain python /app/scripts/dhan_auth/dhan_token_agent.py --refresh >> /root/ai-trading-brain/data/logs/dta_cron.log 2>&1
