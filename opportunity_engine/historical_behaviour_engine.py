@@ -603,6 +603,60 @@ def _float_or_none(v: Any) -> Optional[float]:
         return None
 
 
+def _load_bootstrap_file(path: Path) -> List[OutcomeRecord]:
+    """Load a BOOTSTRAP_*.jsonl file of serialised OutcomeRecords."""
+    records: List[OutcomeRecord] = []
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    d = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not d.get("obs_id"):
+                    continue
+                try:
+                    records.append(OutcomeRecord(
+                        obs_id=d["obs_id"],
+                        trading_date=str(d.get("trading_date", "")),
+                        symbol=str(d.get("symbol", "")).upper(),
+                        direction=str(d.get("direction", "BUY")).upper(),
+                        regime=str(d.get("regime", "")),
+                        sector=str(d.get("sector", "")),
+                        reference_entry=float(d.get("reference_entry") or 0.0),
+                        knowledge_target=float(d.get("knowledge_target") or 0.0),
+                        knowledge_stop=float(d.get("knowledge_stop") or 0.0),
+                        atr=float(d.get("atr") or 0.0),
+                        atr_pct=float(d.get("atr_pct") or 0.0),
+                        scanner_confidence=float(d.get("scanner_confidence") or 0.0),
+                        candidate_score=float(d.get("candidate_score") or 0.0),
+                        knowledge_score=float(d.get("knowledge_score") or 0.0),
+                        knowledge_rr=float(d.get("knowledge_rr") or 0.0),
+                        first_event=str(d.get("first_event", "OUTCOME_EXPIRED")),
+                        first_event_day=d.get("first_event_day"),
+                        target_hit=bool(d.get("target_hit", False)),
+                        stop_hit=bool(d.get("stop_hit", False)),
+                        t1_ret_pct=_float_or_none(d.get("t1_ret_pct")),
+                        t3_ret_pct=_float_or_none(d.get("t3_ret_pct")),
+                        t5_ret_pct=_float_or_none(d.get("t5_ret_pct")),
+                        mfe_pct=_float_or_none(d.get("mfe_pct")),
+                        mae_pct=_float_or_none(d.get("mae_pct")),
+                        days_to_event=(None if d.get("days_to_event") is None
+                                       else int(d["days_to_event"])),
+                        no_lookahead=bool(d.get("no_lookahead", True)),
+                        source_type=str(d.get("source_type", "HISTORICAL")),
+                        validation_partition=str(d.get("validation_partition", "")),
+                    ))
+                except (KeyError, TypeError, ValueError):
+                    continue
+    except OSError:
+        pass
+    return records
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # V2 Score preview
 # ─────────────────────────────────────────────────────────────────────────────
@@ -716,7 +770,7 @@ class HistoricalBehaviourEngine:
 
     def load_outcomes(self, klp_dir: Optional[Path] = None) -> int:
         """
-        Scan all KLP_*.jsonl files and load completed outcomes.
+        Scan KLP_*.jsonl (live/paper) and BOOTSTRAP_*.jsonl (historical) files.
         Returns total completed outcomes loaded.
         """
         base = klp_dir or self._data_dir
@@ -724,13 +778,20 @@ class HistoricalBehaviourEngine:
         seen_obs_ids: set = set()
 
         try:
+            # Live/paper outcomes from observation+outcome pairs
             for klp_file in sorted(base.glob("KLP_*.jsonl")):
-                # Extract date from filename: KLP_YYYY-MM-DD.jsonl
                 stem = klp_file.stem  # "KLP_2026-08-20"
                 parts = stem.split("_", 1)
                 trading_date = parts[1] if len(parts) == 2 else stem
                 obs_map, outcome_map = _load_klp_file(klp_file)
                 for rec in _join_and_parse(obs_map, outcome_map, trading_date):
+                    if rec.obs_id not in seen_obs_ids:
+                        all_records.append(rec)
+                        seen_obs_ids.add(rec.obs_id)
+
+            # Historical bootstrap OutcomeRecords
+            for bfile in sorted(base.glob("BOOTSTRAP_*.jsonl")):
+                for rec in _load_bootstrap_file(bfile):
                     if rec.obs_id not in seen_obs_ids:
                         all_records.append(rec)
                         seen_obs_ids.add(rec.obs_id)

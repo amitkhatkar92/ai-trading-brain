@@ -154,6 +154,11 @@ def _fetch_post_decision_bars(
                          progress=False, auto_adjust=True, timeout=8)
         if df is None or df.empty:
             return []
+        import pandas as _pd
+        if isinstance(df.columns, _pd.MultiIndex):
+            df = df.copy()
+            df.columns = df.columns.droplevel(level=-1)
+            df = df.loc[:, ~df.columns.duplicated()]
         bars = []
         for idx, row in df.iterrows():
             bars.append(OHLCVBar(

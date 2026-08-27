@@ -1306,17 +1306,24 @@ def test_t072_run_bootstrap_returns_dict_with_status(tmp_path, monkeypatch):
 
 def test_t073_run_bootstrap_idempotency_skips_if_recent(tmp_path, monkeypatch):
     """
-    Idempotency: if bootstrap ran today, a second call returns status=SKIPPED.
+    Idempotency: if bootstrap ran today AND the BOOTSTRAP disk file exists,
+    a second call returns status=SKIPPED.
     Proves production wiring won't re-run on every container restart.
     """
     import json as _json
     import learning_system.historical_bootstrap as _hb_mod
+    from learning_system.historical_bootstrap import _write_bootstrap_to_disk
+
+    today_str = date.today().isoformat()
 
     # Write a state file with today's date
     state_path = tmp_path / "bootstrap_state.json"
     state_path.write_text(
-        _json.dumps({"last_run_date": date.today().isoformat()}), encoding="utf-8"
+        _json.dumps({"last_run_date": today_str}), encoding="utf-8"
     )
+    # Also write the bootstrap disk file to simulate a complete prior run.
+    # Without this file the new logic re-runs to persist records to the canonical store.
+    _write_bootstrap_to_disk([_rec(source_type="HISTORICAL")], tmp_path, today_str)
     monkeypatch.setattr(
         _hb_mod, "_BOOTSTRAP_STATE_PATH_RELATIVE",
         str(state_path),

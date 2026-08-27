@@ -478,6 +478,27 @@ _BOOTSTRAP_STATE_PATH_RELATIVE = "data/klp/bootstrap_state.json"
 _BOOTSTRAP_REFRESH_DAYS        = 30   # re-run every 30 calendar days
 
 
+def _bootstrap_disk_path(klp_dir: Any, run_date: str) -> Any:
+    """Return Path for BOOTSTRAP_YYYY-MM-DD.jsonl in klp_dir."""
+    from pathlib import Path as _P
+    return _P(klp_dir) / f"BOOTSTRAP_{run_date}.jsonl"
+
+
+def _write_bootstrap_to_disk(records: List["OutcomeRecord"], klp_dir: Any, run_date: str) -> Any:
+    """Atomically write OutcomeRecords to BOOTSTRAP_YYYY-MM-DD.jsonl. Returns file path."""
+    import json as _json
+    import os as _os
+    from dataclasses import asdict as _asdict
+    from pathlib import Path as _P
+    target = _bootstrap_disk_path(_P(klp_dir), run_date)
+    tmp = str(target) + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as fh:
+        for rec in records:
+            fh.write(_json.dumps(_asdict(rec)) + "\n")
+    _os.replace(tmp, str(target))
+    return target
+
+
 def run_bootstrap_if_needed(
     symbols:   Optional[List[str]] = None,
     days_back: int                 = _DEFAULT_LOOKBACK_DAYS,
@@ -512,15 +533,26 @@ def run_bootstrap_if_needed(
                 if _last_run:
                     _delta = (_date.today() - _date.fromisoformat(_last_run)).days
                     if _delta < _BOOTSTRAP_REFRESH_DAYS:
+                        # Only truly skip if the on-disk BOOTSTRAP file also exists.
+                        # If missing (e.g. D016-001 transition), re-run to persist.
+                        _klp_dir_check = _state_path.parent
+                        _disk_file_check = _bootstrap_disk_path(_klp_dir_check, _last_run)
+                        if _disk_file_check.exists():
+                            log.info(
+                                "[KBS-001] Bootstrap already ran %d days ago (<%d), "
+                                "disk file present — skipping.",
+                                _delta, _BOOTSTRAP_REFRESH_DAYS,
+                            )
+                            return {
+                                "status": "SKIPPED",
+                                "reason": f"last_run={_last_run} delta={_delta}d",
+                                "records_injected": 0,
+                            }
                         log.info(
-                            "[KBS-001] Bootstrap already ran %d days ago (<%d) — skipping.",
-                            _delta, _BOOTSTRAP_REFRESH_DAYS,
+                            "[KBS-001] Bootstrap ran %d days ago but disk file missing "
+                            "— re-running to persist to canonical store.",
+                            _delta,
                         )
-                        return {
-                            "status": "SKIPPED",
-                            "reason": f"last_run={_last_run} delta={_delta}d",
-                            "records_injected": 0,
-                        }
             except Exception as _sg_exc:
                 log.debug("[KBS-001] Could not read bootstrap state: %s", _sg_exc)
 
@@ -538,7 +570,17 @@ def run_bootstrap_if_needed(
             log.warning("[KBS-001] %s", _msg)
             return {"status": "NO_DATA", "reason": _msg, "records_injected": 0}
 
-        # ── Inject into HBE singleton ─────────────────────────────────────
+        # ── Persist records to canonical disk store ─────────────────────────
+        # This is the canonical source — KDP/HBE reads BOOTSTRAP_*.jsonl on reload.
+        _klp_dir = _state_path.parent
+        _today_str = _date.today().isoformat()
+        _disk_file = _write_bootstrap_to_disk(_records, _klp_dir, _today_str)
+        log.info(
+            "[KBS-001] Bootstrap records written → %s (%d records)",
+            _disk_file.name, len(_records),
+        )
+
+        # ── Inject into HBE singleton (for immediate in-session use) ─────────
         from opportunity_engine.historical_behaviour_engine import get_hbe as _get_hbe
         _hbe = _get_hbe()
         # Ensure prior KLP live outcomes are loaded before merging bootstrap data
@@ -546,13 +588,12 @@ def run_bootstrap_if_needed(
             _hbe.load_outcomes()
         _injected = _hbe.load_bootstrap_records(_records)
         log.info(
-            "[KBS-001] Injected %d new records into HBE (deduped from %d generated). "
+            "[KBS-001] Injected %d new records into HBE singleton (deduped from %d generated). "
             "HBE pool size now %d.",
             _injected, len(_records), _hbe.get_outcome_count(),
         )
 
         # ── Persist state ─────────────────────────────────────────────────
-        _today_str = _date.today().isoformat()
         _state_data = {
             "last_run_date":     _today_str,
             "records_generated": len(_records),
@@ -570,6 +611,7 @@ def run_bootstrap_if_needed(
             "records_generated": len(_records),
             "records_injected":  _injected,
             "last_run_date":     _today_str,
+            "disk_file":         str(_disk_file),
         }
 
     except Exception as _exc:

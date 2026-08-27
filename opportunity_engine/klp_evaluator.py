@@ -485,6 +485,7 @@ def _build_obs_record(
 
     return {
         "obs_id":                       _make_obs_id(sym, date_str, sig),
+        "opportunity_id":               getattr(sig, "opportunity_id", None),
         "event_type":                   "KNOWLEDGE_OBSERVATION",
         "ts_utc":                       now_utc.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "trading_date":                 date_str,

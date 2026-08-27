@@ -629,6 +629,11 @@ def _fetch_ohlcv_yfinance(
         )
         if df is None or df.empty:
             return []
+        import pandas as _pd
+        if isinstance(df.columns, _pd.MultiIndex):
+            df = df.copy()
+            df.columns = df.columns.droplevel(level=-1)
+            df = df.loc[:, ~df.columns.duplicated()]
 
         bars = []
         for ts, row in df.iterrows():
