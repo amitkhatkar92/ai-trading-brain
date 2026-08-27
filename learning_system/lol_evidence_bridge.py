@@ -113,6 +113,12 @@ _OUTCOME_CLASS_MAP: Dict[str, Optional[Tuple[str, str]]] = {
     "KNOWLEDGE_DISAGREEMENT": None,
     "OUTCOME_UNKNOWN":     None,
     "OUTCOME_PENDING":     None,
+    # D15-004: explicit skips — direction outcome unknown, no learning value
+    "SESSION_EXPIRED":     None,   # signal expired without execution
+    "BROKER_REJECT":       None,   # broker rejected, direction outcome unknown
+    "PARTIAL_FILL":        None,   # partial execution, ambiguous
+    "EXECUTION_FAILURE":   None,   # internal execution failure
+    "NO_SETUP":            None,   # no signal generated
 }
 
 

@@ -549,6 +549,14 @@ class KnowledgeDecisionAuthority:
             return DecisionAuthority.KNOWLEDGE
         return DecisionAuthority.NONE
 
+    # D15-001: HOLD requires USEFUL+ evidence — DEVELOPING (ESS 3–9) cannot
+    # distinguish insufficient evidence from negative evidence.
+    _HOLD_ELIGIBLE_STATES = frozenset({
+        EvidenceState.USEFUL,
+        EvidenceState.VALIDATED,
+        EvidenceState.DECISION_ELIGIBLE,
+    })
+
     def _determine_decision(
         self,
         direction:      str,
@@ -564,10 +572,12 @@ class KnowledgeDecisionAuthority:
         n_contradict = len(contradicting)
         n_support    = len(supporting)
 
-        # Material conflict: evidence reviewed but actively contradicted → HOLD.
-        # StrategyLab cannot override a KDA HOLD (spec: KDA rejects = StrategyLab blocked).
+        # Material conflict: HOLD requires USEFUL+ evidence (ESS >= 10).
+        # DEVELOPING state returns WAIT — cannot assert a negative conclusion.
         if n_contradict > n_support and n_contradict >= 3:
-            return KDADecision.KNOWLEDGE_HOLD
+            if evidence_state in self._HOLD_ELIGIBLE_STATES:
+                return KDADecision.KNOWLEDGE_HOLD
+            return KDADecision.KNOWLEDGE_WAIT
 
         # For ALL non-insufficient states with no material conflict, KDA expresses a
         # directional view. evidence_state remains visible on the record to show quality.

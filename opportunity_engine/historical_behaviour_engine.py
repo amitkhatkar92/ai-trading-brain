@@ -588,6 +588,8 @@ def _join_and_parse(
             mae_pct=_float_or_none(outcome.get("mae_pct")),
             days_to_event=days_to_event,
             no_lookahead=True,
+            source_type=str(obs.get("source_type") or "LIVE"),
+            validation_partition=str(obs.get("validation_partition") or ""),
         ))
     return records
 
@@ -748,6 +750,24 @@ class HistoricalBehaviourEngine:
         for r in self._outcomes:
             counts[r.symbol] = counts.get(r.symbol, 0) + 1
         return counts
+
+    def load_bootstrap_records(self, records: List[OutcomeRecord]) -> int:
+        """
+        D15-003: Inject historical bootstrap OutcomeRecords into the evidence pool.
+
+        Only records with source_type='HISTORICAL' are accepted to prevent
+        accidental injection of live/paper data through this path.
+        Returns the count of records successfully injected.
+        """
+        valid = [r for r in records if r.source_type == "HISTORICAL"]
+        seen  = {r.obs_id for r in self._outcomes}
+        added = 0
+        for r in valid:
+            if r.obs_id not in seen:
+                self._outcomes.append(r)
+                seen.add(r.obs_id)
+                added += 1
+        return added
 
     # ── Profile ───────────────────────────────────────────────────────────────
 

@@ -90,6 +90,8 @@ class OutcomeRecord:
     mae_pct:          Optional[float]   # max adverse excursion % (sign: - = bad for long)
     days_to_event:    Optional[int]     # trading days from trading_date to first_event_day
     no_lookahead:     bool = True
+    source_type:      str  = "LIVE"        # LIVE | PAPER | HISTORICAL
+    validation_partition: str = ""          # TRAIN | VALIDATION | OOS | RECENT_OOS | ""
 
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self)
