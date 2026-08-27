@@ -676,7 +676,23 @@ class LearningObservationLedger:
             else:
                 updated["outcome_at"]    = datetime.now(timezone.utc).isoformat()
             updated["processed_at"]  = datetime.now(timezone.utc).isoformat()
-            updated["no_lookahead"] = True
+            # D-022: verify temporal order before asserting no_lookahead=True.
+            # Outcome must be strictly after decision. If comparison fails, mark False.
+            try:
+                from datetime import timezone as _tz
+                def _to_utc(ts: str) -> datetime:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if dt.tzinfo is None:
+                        dt = dt.replace(tzinfo=_tz.utc)
+                    return dt.astimezone(_tz.utc)
+                _decision_at = updated.get("decision_at", "")
+                _outcome_at  = updated.get("outcome_at",  "")
+                updated["no_lookahead"] = (
+                    bool(_decision_at) and bool(_outcome_at)
+                    and _to_utc(_outcome_at) > _to_utc(_decision_at)
+                )
+            except Exception:
+                updated["no_lookahead"] = False  # uncertain → fail closed
             self._append(updated)
             self._pending.pop(obs_id, None)
             self._outcome_written.add(obs_id)
@@ -700,6 +716,8 @@ class LearningObservationLedger:
                 line = json.dumps(record, default=str) + "\n"
                 with path.open("a", encoding="utf-8") as fh:
                     fh.write(line)
+                    fh.flush()
+                    os.fsync(fh.fileno())  # D-021: ensure outcome records survive OS crash
             except Exception as exc:
                 log.debug("[LOL] Append error: %s", exc)
 

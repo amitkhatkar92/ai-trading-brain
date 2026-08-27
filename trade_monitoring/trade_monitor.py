@@ -100,6 +100,10 @@ class TradeMonitor:
         # [DataGuard] warning is logged.  Counter resets on any price change.
         self._dg_last_price: Dict[str, float]  = {}  # order_id → last resolved LTP
         self._dg_stale_count: Dict[str, int]   = {}  # order_id → consecutive unchanged cycles
+        # D-009: track orders where close_position() returned False so we do NOT
+        # immediately re-trigger. Suppresses re-trigger for _CLOSE_FAIL_SUPPRESS_CYCLES
+        # cycles, then retries.  Cleared when close_position() succeeds.
+        self._close_failed: Dict[str, int]     = {}  # order_id → consecutive failures
         # LTP resolution — per-cycle state exposed to master_orchestrator.
         # Populated by _get_ltp during each check_all call so the orchestrator
         # can sync portfolio position LTPs with LTPGuard-validated values instead
@@ -793,7 +797,29 @@ class TradeMonitor:
             log.debug("[TradeAnalytics] record failed (non-fatal): %s", _ae)
 
         if self._order_manager:
-            self._order_manager.close_position(oid, ltp, reason=canonical_reason)
+            # D-009: suppress re-trigger if a previous close attempt already failed.
+            # Prevents duplicate broker close orders when broker is temporarily unavailable.
+            _CLOSE_FAIL_SUPPRESS_CYCLES = 3
+            _fail_count = self._close_failed.get(oid, 0)
+            if _fail_count > 0 and _fail_count < _CLOSE_FAIL_SUPPRESS_CYCLES:
+                self._close_failed[oid] = _fail_count + 1
+                log.warning(
+                    "[TradeMonitor] Close suppressed for %s %s (attempt %d/%d) \u2014 "
+                    "previous broker call failed. Will retry in %d cycle(s).",
+                    order.symbol, oid, _fail_count, _CLOSE_FAIL_SUPPRESS_CYCLES,
+                    _CLOSE_FAIL_SUPPRESS_CYCLES - _fail_count,
+                )
+                return
+            closed_ok = self._order_manager.close_position(oid, ltp, reason=canonical_reason)
+            if closed_ok:
+                self._close_failed.pop(oid, None)
+            else:
+                self._close_failed[oid] = self._close_failed.get(oid, 0) + 1
+                log.error(
+                    "[TradeMonitor] \u274c close_position returned False for %s %s \u2014 "
+                    "will retry after %d suppression cycle(s). Operator should verify broker state.",
+                    order.symbol, oid, _CLOSE_FAIL_SUPPRESS_CYCLES - 1,
+                )
 
     # ── LTPGuard threshold ────────────────────────────────────────────
     _LTP_GUARD_MAX_DEVIATION   = 0.20  # flag prices that deviate >20% from last known

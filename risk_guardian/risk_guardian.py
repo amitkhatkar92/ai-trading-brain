@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+import threading
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Optional
@@ -95,6 +96,7 @@ class FailSafeRiskGuardian:
         self._halt_reason       = ""
         self._session_date: Optional[date] = None
         self._state_file        = state_file or _STATE_FILE
+        self._state_lock        = threading.Lock()  # D-016: protect concurrent _save_state calls
         # Restore persisted state BEFORE normal session reset so today's
         # accumulated loss and any active halt survive a container restart.
         self._load_state()
@@ -288,19 +290,22 @@ class FailSafeRiskGuardian:
             "last_updated":   datetime.now(timezone.utc).isoformat(),
         }
         try:
-            os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
-            fd, tmp = tempfile.mkstemp(dir=os.path.dirname(self._state_file),
-                                       prefix=".rg_state_", suffix=".tmp")
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                    json.dump(state, fh, indent=2)
-                os.replace(tmp, self._state_file)
-            except Exception:
+            with self._state_lock:  # D-016: serialize concurrent save calls
+                os.makedirs(os.path.dirname(self._state_file), exist_ok=True)
+                fd, tmp = tempfile.mkstemp(dir=os.path.dirname(self._state_file),
+                                           prefix=".rg_state_", suffix=".tmp")
                 try:
-                    os.unlink(tmp)
-                except OSError:
-                    pass
-                raise
+                    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                        json.dump(state, fh, indent=2)
+                        fh.flush()
+                        os.fsync(fh.fileno())  # D-020: flush to disk before rename
+                    os.replace(tmp, self._state_file)
+                except Exception:
+                    try:
+                        os.unlink(tmp)
+                    except OSError:
+                        pass
+                    raise
         except Exception as exc:
             log.warning("[RiskGuardian] State save failed (non-critical): %s", exc)
 

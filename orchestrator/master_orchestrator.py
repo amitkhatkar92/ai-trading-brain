@@ -4896,6 +4896,14 @@ class MasterOrchestrator:
 
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
+        # D-017: Duplicate EOD guard — prevent double win-rate counting on restart.
+        # schedule library fires jobs at wall-clock times; if the process restarts
+        # mid-session, the 15:35 job may fire again in the same calendar day.
+        _today = datetime.now().strftime("%Y-%m-%d")
+        if getattr(self, "_last_eod_date", None) == _today:
+            log.info("[EOD] Duplicate guard: already ran EOD learning for %s — skipping.", _today)
+            return
+        self._last_eod_date = _today
         log.info("── Layer 10: EOD Learning ──")
         # K-003: take a snapshot of today's signals then reset for next session
         _eod_todays_signals = list(getattr(self, "_todays_signals", []))

@@ -598,7 +598,14 @@ class OrderManager:
                         if _swap_pos and _swap_pos.has_live_ltp and _swap_pos.ltp > 0
                         else _swap_rec.entry_price
                     )
-                    self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                    # D-014: abort swap if close fails — do not consume rotation quota
+                    if not self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT"):
+                        log.error(
+                            "[SmartSwap] Close failed for %s — swap aborted. "
+                            "New signal %s rejected to avoid duplicate exposure.",
+                            _swap_sym, signal.symbol,
+                        )
+                        return None
                     self._swap_rotation_date = _ss_today
                     log.info(
                         "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
@@ -664,7 +671,14 @@ class OrderManager:
                     if _swap_pos and _swap_pos.has_live_ltp and _swap_pos.ltp > 0
                     else _swap_rec.entry_price
                 )
-                self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT")
+                # D-014: abort swap if close fails — do not consume rotation quota
+                if not self.close_position(_swap_oid, _exit_px, reason="REPLACEMENT"):
+                    log.error(
+                        "[SmartSwap] Close failed for %s — swap aborted. "
+                        "New signal %s rejected to avoid duplicate exposure.",
+                        _swap_sym, signal.symbol,
+                    )
+                    return None
                 self._swap_rotation_date = _ss_today
                 log.info(
                     "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
@@ -896,12 +910,15 @@ class OrderManager:
                 order_id,
             )
             return None
-        self._orders[order_id] = record
-        self._update_portfolio(signal, qty)
-
-        # Write to live journal for restart recovery (live mode)
+        # D-011: Write to live journal BEFORE registering in local state.
+        # If process crashes between journal write and _orders update, restart
+        # recovers correctly via _restore_from_live_journal.
         if not self._paper_mode:
             self._append_live_journal("OPEN", record)
+        self._orders[order_id] = record
+        # D-013: Use record.quantity (updated by _reconcile_fill for partial fills)
+        # rather than original qty variable which reflects the requested quantity.
+        self._update_portfolio(signal, record.quantity)
 
         # Phase 7 — [ReEntryAudit]: telemetry-only check (does NOT block the order)
         _prev = _RECENT_CLOSE_TIMES.get(signal.symbol)
@@ -1172,7 +1189,12 @@ class OrderManager:
                 # Win Rate / Expectancy / Sharpe calculations.
                 _was_monitored = _pos is not None and getattr(_pos, "has_live_ltp", False)
                 _close_reason  = "emergency_close" if _was_monitored else "ORPHAN_CLOSE"
-                self.close_position(oid, _exit_px, reason=_close_reason)
+                if not self.close_position(oid, _exit_px, reason=_close_reason):
+                    log.warning(
+                        "[OrderManager] Limit expiry close failed for %s %s — "
+                        "position remains open. Will retry next cycle.",
+                        rec.symbol, oid,
+                    )
 
     def get_portfolio(self) -> Portfolio:
         return self._portfolio
@@ -1390,8 +1412,11 @@ class OrderManager:
                 )
                 to_remove.append(sid)
                 continue
+            # D-011: journal before local state; D-013: use reconciled quantity
+            if not self._paper_mode:
+                self._append_live_journal("OPEN", rec)  # D-010: live journal for AET
             self._orders[order_id] = rec
-            self._update_portfolio(slot.signal, slot.qty)
+            self._update_portfolio(slot.signal, rec.quantity)  # D-013
 
             log.info(
                 "[OrderManager] ✅ AET CONFIRMED: %s %s  "
@@ -1532,9 +1557,13 @@ class OrderManager:
             if cancel_reason.startswith("limit_expired_"):
                 self._register_reentry(rec, candle_seconds)
 
-            # Journal the cancellation
+            # D-018: journal the cancellation in both paper and live mode
             if self._paper_mode:
                 self._journal_cancel(rec, reason=cancel_reason)
+            else:
+                self._append_live_journal(
+                    "CANCELLED", rec, extra={"reason": cancel_reason}
+                )
 
             cancelled.append(order_id)
 
@@ -1683,6 +1712,9 @@ class OrderManager:
                 signal_vix        = slot.signal_vix,
                 initial_stop_loss = slot.stop_loss,   # immutable
             )
+            # D-011: journal before local state; D-010: live mode journal write
+            if not self._paper_mode:
+                self._append_live_journal("OPEN", rec)
             self._orders[new_oid] = rec
 
             # Re-add to portfolio
@@ -4003,15 +4035,20 @@ class OrderManager:
                     opportunity_id    = row.get("opportunity_id") or "",
                 )
                 self._orders[oid] = rec
-                self._portfolio.positions[rec.symbol] = {
-                    "order_id":    oid,
-                    "direction":   rec.direction,
-                    "quantity":    rec.quantity,
-                    "entry_price": rec.actual_fill_price or rec.entry_price,
-                    "stop_loss":   rec.stop_loss,
-                    "target":      rec.target,
-                    "strategy":    rec.strategy,
-                }
+                # D-008: use Position object, not plain dict — downstream code
+                # accesses pos.ltp, pos.has_live_ltp, etc. as attributes.
+                _fill_price = rec.actual_fill_price or rec.entry_price
+                self._portfolio.positions[rec.symbol] = Position(
+                    symbol          = rec.symbol,
+                    quantity        = rec.quantity if rec.direction == "BUY" else -rec.quantity,
+                    avg_entry_price = _fill_price,
+                    ltp             = _fill_price,
+                    stop_loss       = rec.stop_loss,
+                    target_price    = rec.target,
+                    strategy_name   = rec.strategy,
+                    has_live_ltp    = False,
+                    restore_time    = datetime.now(),
+                )
                 log.warning(
                     "[LiveJournal] Restored: %s %s qty=%d fill=%.2f order_id=%s",
                     rec.direction, rec.symbol, rec.quantity,
@@ -4049,14 +4086,14 @@ class OrderManager:
                 oid, rec.symbol, rec.fill_status,
                 rec.actual_fill_price, rec.filled_quantity,
             )
-            # If broker says REJECTED: deregister to avoid phantom position
-            if rec.fill_status == "REJECTED":
+            # If broker says REJECTED or CANCELLED: deregister to avoid phantom position
+            if rec.fill_status in ("REJECTED", "CANCELLED"):
                 self._orders.pop(oid, None)
                 self._portfolio.positions.pop(rec.symbol, None)
                 log.warning(
-                    "[StartupReconcile] %s order %s was REJECTED — "
+                    "[StartupReconcile] %s order %s has broker status %s — "
                     "removed phantom position.",
-                    rec.symbol, oid,
+                    rec.symbol, oid, rec.fill_status,
                 )
         if reconciled:
             log.info(
