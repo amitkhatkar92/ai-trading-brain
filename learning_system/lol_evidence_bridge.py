@@ -24,6 +24,9 @@ LOL outcome_class          Classification       MissReason
 ---------                  ---------------      ----------
 EXECUTED_WIN               CORRECT_SELECT       NOT_APPLICABLE
 TARGET_EXIT                CORRECT_SELECT       NOT_APPLICABLE
+EXECUTED_LOSS              INCORRECT_SELECT     NOT_APPLICABLE
+STOP_EXIT                  INCORRECT_SELECT     NOT_APPLICABLE
+EARLY_EXIT                 INCORRECT_SELECT     NOT_APPLICABLE
 REJECTED_INCORRECT         RANKING_MISS         STRATEGY_REJECTION
 BLOCKED_INCORRECT          RANKING_MISS         RISK_REJECTION
 MISSED_OPPORTUNITY         RANKING_MISS         NOT_APPLICABLE
@@ -70,10 +73,11 @@ _OUTCOME_OBSERVED = "OUTCOME_OBSERVED"
 _LEARNING_PROCESSED = "LEARNING_PROCESSED"  # also eligible
 
 # ── Classification strings (mirrors ksl_models.Classification enum) ──────────
-_CORRECT_SELECT = "CORRECT_SELECT"
-_RANKING_MISS   = "RANKING_MISS"
-_CORRECT_REJECT = "CORRECT_REJECT"
-_UNRESOLVED     = "UNRESOLVED"
+_CORRECT_SELECT   = "CORRECT_SELECT"
+_INCORRECT_SELECT = "INCORRECT_SELECT"   # D13-001: executed trade that lost
+_RANKING_MISS     = "RANKING_MISS"
+_CORRECT_REJECT   = "CORRECT_REJECT"
+_UNRESOLVED       = "UNRESOLVED"
 
 # ── MissReason strings (mirrors ksl_models.MissReason enum) ──────────────────
 _NOT_APPLICABLE      = "NOT_APPLICABLE"
@@ -82,14 +86,17 @@ _RISK_REJECTION      = "RISK_REJECTION"
 
 # ── Outcome class → (classification, miss_reason) mapping ───────────────────
 #
-# Only outcome classes with a clean, unambiguous mapping to the existing KSL
-# Classification taxonomy are included.  Ambiguous cases (e.g. EXECUTED_LOSS,
-# KDA_FALSE_POSITIVE) are skipped to avoid polluting the evidence store with
-# noise that could degrade KFE angle quality.
+# D13-001: EXECUTED_LOSS, STOP_EXIT, EARLY_EXIT now map to INCORRECT_SELECT so
+# that losses reach KEL alongside wins.  Without this, the knowledge base
+# accumulates only positive evidence, creating survivorship bias.
 _OUTCOME_CLASS_MAP: Dict[str, Optional[Tuple[str, str]]] = {
-    # Executed and won → KDA / pipeline correctly selected the signal
+    # Executed and won → pipeline correctly selected the signal
     "EXECUTED_WIN":    (_CORRECT_SELECT, _NOT_APPLICABLE),
     "TARGET_EXIT":     (_CORRECT_SELECT, _NOT_APPLICABLE),
+    # Executed and lost → pipeline selected incorrectly (D13-001 fix)
+    "EXECUTED_LOSS":   (_INCORRECT_SELECT, _NOT_APPLICABLE),
+    "STOP_EXIT":       (_INCORRECT_SELECT, _NOT_APPLICABLE),
+    "EARLY_EXIT":      (_INCORRECT_SELECT, _NOT_APPLICABLE),
     # Signal was rejected / blocked; direction would have been right → missed opportunity
     "REJECTED_INCORRECT":  (_RANKING_MISS, _STRATEGY_REJECTION),
     "BLOCKED_INCORRECT":   (_RANKING_MISS, _RISK_REJECTION),
@@ -98,11 +105,8 @@ _OUTCOME_CLASS_MAP: Dict[str, Optional[Tuple[str, str]]] = {
     # Signal was rejected / blocked; direction was wrong → correct rejection
     "REJECTED_CORRECT":    (_CORRECT_REJECT, _NOT_APPLICABLE),
     "BLOCKED_CORRECT":     (_CORRECT_REJECT, _NOT_APPLICABLE),
-    # All other outcome classes: None → skip
-    "EXECUTED_LOSS":       None,
+    # Ambiguous / insufficient information → skip
     "EXECUTED_FLAT":       None,
-    "EARLY_EXIT":          None,
-    "STOP_EXIT":           None,
     "SHORTLISTED_NOT_EXECUTED": None,
     "KDA_FALSE_POSITIVE":  None,
     "KNOWLEDGE_AGREEMENT": None,

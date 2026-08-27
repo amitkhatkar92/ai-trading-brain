@@ -91,7 +91,6 @@ class KLPOutcomeEngine:
     ) -> None:
         self._data_dir     = Path(data_dir) if data_dir else _DEFAULT_DATA_DIR
         self._ohlcv_fetcher = _ohlcv_fetcher or _fetch_ohlcv_yfinance
-        self._outcomes_written: Set[str] = set()   # instance-scoped dedup
         self._outcomes_written: Set[str] = set()   # instance-level dedup
 
     # ─────────────────────────────────────────────────────────────────────────

@@ -1230,6 +1230,8 @@ class MasterOrchestrator:
                     else:
                         _orig_sig.target_source = "ATR_FALLBACK"
                         _orig_sig.stop_source   = "ATR_FALLBACK"
+                    # D13-005: attribute KDA-only trades to KDA, not the scanner strategy
+                    _orig_sig.strategy_name = "KDA_AUTHORITY"
                     _merged.append(_orig_sig)
                     _seen.add(_orig_sig.symbol)
                     _kda_only_added += 1
@@ -3476,11 +3478,12 @@ class MasterOrchestrator:
                 event_type=EventType.TRADE_APPROVED,
                 source_agent="DecisionEngine",
                 payload={
-                    "symbol":   signal.symbol,
-                    "strategy": signal.strategy_name or "",
-                    "score":    decision.confidence_score,
-                    "modifier": decision.position_size_modifier,
-                    "votes":    {v.agent_name: v.score for v in votes},
+                    "symbol":    signal.symbol,
+                    "strategy":  signal.strategy_name or "",
+                    "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
+                    "score":     decision.confidence_score,
+                    "modifier":  decision.position_size_modifier,
+                    "votes":     {v.agent_name: v.score for v in votes},
                 },
             ))
 
@@ -3566,10 +3569,11 @@ class MasterOrchestrator:
                 event_type=EventType.TRADE_REJECTED,
                 source_agent="DecisionEngine",
                 payload={
-                    "symbol":   signal.symbol,
-                    "strategy": signal.strategy_name or "",
-                    "score":    decision.confidence_score,
-                    "reason":   decision.summary(),
+                    "symbol":    signal.symbol,
+                    "strategy":  signal.strategy_name or "",
+                    "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
+                    "score":     decision.confidence_score,
+                    "reason":    decision.summary(),
                 },
             ))
         return None

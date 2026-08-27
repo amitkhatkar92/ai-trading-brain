@@ -348,7 +348,11 @@ class TestGAP002EvidenceBridge:
 
     def test_d_ambiguous_outcome_class_skipped(self, tmp_dirs):
         """
-        GAP-002-D: EXECUTED_LOSS (ambiguous) must not be written to the ledger.
+        GAP-002-D (updated for D13-001 fix): EXECUTED_LOSS now maps to
+        INCORRECT_SELECT and IS written to the ledger.
+        The original test expected 0 records because EXECUTED_LOSS was
+        previously skipped.  The DTA-013-FIX corrects this: losses must
+        reach KEL so the knowledge base learns from both wins and losses.
         """
         lol_dir, ledger, state = tmp_dirs
         from learning_system.lol_evidence_bridge import ingest_lol_outcomes
@@ -367,9 +371,13 @@ class TestGAP002EvidenceBridge:
             state_path=state,
         )
 
-        assert result["new_records"] == 0
-        assert result["skipped"] >= 1
-        assert not ledger.exists() or len(_read_ledger(ledger)) == 0
+        # D13-001 fix: EXECUTED_LOSS now produces one INCORRECT_SELECT record
+        assert result["new_records"] == 1, (
+            "D13-001 fix: EXECUTED_LOSS must now reach KEL as INCORRECT_SELECT"
+        )
+        recs = _read_ledger(ledger)
+        assert len(recs) == 1
+        assert recs[0]["classification"] == "INCORRECT_SELECT"
 
     def test_e_duplicate_obs_id_is_idempotent(self, tmp_dirs):
         """
@@ -506,31 +514,35 @@ class TestGAP002EvidenceBridge:
 
     def test_j_outcome_class_mapping_all_supported(self, tmp_dirs):
         """
-        Additional-J: All 8 supported outcome classes produce the correct
+        Additional-J: All supported outcome classes produce the correct
         classification and miss_reason in the ledger.
+        Updated for D13-001: EXECUTED_LOSS, STOP_EXIT, EARLY_EXIT now map
+        to INCORRECT_SELECT.
         """
         lol_dir, ledger, state = tmp_dirs
         from learning_system.lol_evidence_bridge import ingest_lol_outcomes
 
         supported = [
             # (outcome_class, expected_classification, expected_miss_reason)
-            ("EXECUTED_WIN",       "CORRECT_SELECT", "NOT_APPLICABLE"),
-            ("TARGET_EXIT",        "CORRECT_SELECT", "NOT_APPLICABLE"),
-            ("REJECTED_INCORRECT", "RANKING_MISS",   "STRATEGY_REJECTION"),
-            ("BLOCKED_INCORRECT",  "RANKING_MISS",   "RISK_REJECTION"),
-            ("MISSED_OPPORTUNITY", "RANKING_MISS",   "NOT_APPLICABLE"),
-            ("KDA_FALSE_NEGATIVE", "RANKING_MISS",   "NOT_APPLICABLE"),
-            ("REJECTED_CORRECT",   "CORRECT_REJECT", "NOT_APPLICABLE"),
-            ("BLOCKED_CORRECT",    "CORRECT_REJECT", "NOT_APPLICABLE"),
+            ("EXECUTED_WIN",       "CORRECT_SELECT",   "NOT_APPLICABLE"),
+            ("TARGET_EXIT",        "CORRECT_SELECT",   "NOT_APPLICABLE"),
+            ("EXECUTED_LOSS",      "INCORRECT_SELECT", "NOT_APPLICABLE"),   # D13-001
+            ("STOP_EXIT",          "INCORRECT_SELECT", "NOT_APPLICABLE"),   # D13-001
+            ("EARLY_EXIT",         "INCORRECT_SELECT", "NOT_APPLICABLE"),   # D13-001
+            ("REJECTED_INCORRECT", "RANKING_MISS",     "STRATEGY_REJECTION"),
+            ("BLOCKED_INCORRECT",  "RANKING_MISS",     "RISK_REJECTION"),
+            ("MISSED_OPPORTUNITY", "RANKING_MISS",     "NOT_APPLICABLE"),
+            ("KDA_FALSE_NEGATIVE", "RANKING_MISS",     "NOT_APPLICABLE"),
+            ("REJECTED_CORRECT",   "CORRECT_REJECT",   "NOT_APPLICABLE"),
+            ("BLOCKED_CORRECT",    "CORRECT_REJECT",   "NOT_APPLICABLE"),
         ]
 
         for i, (oc, expected_cls, expected_mr) in enumerate(supported):
             rec = _make_lol_record(
                 obs_id=f"obs-map-{i}",
                 outcome_class=oc,
-                actual_return=(2.5 if "INCORRECT" in oc or "NEGATIVE" in oc
-                               else -1.5 if "CORRECT" in oc and "SELECT" not in expected_cls
-                               else 3.0),
+                actual_return=(2.5 if "INCORRECT" in oc or "NEGATIVE" in oc or "WIN" in oc or "TARGET" in oc
+                               else -1.5),
             )
             lol_file = lol_dir / f"LOL_2026-09-{10 + i:02d}.jsonl"
             with lol_file.open("w") as f:

@@ -610,12 +610,15 @@ def _normalise_rejection(row: Dict[str, Any]) -> KnowledgeFusionRecord:
 def _normalise_ct_decision(row: Dict[str, Any]) -> KnowledgeFusionRecord:
     sym  = (row.get("symbol") or "").upper().strip()
     date_str = str(row.get("ts") or "")[:10]
+    # D13-002: use stored direction when available; NULL for older rows that predate the fix
+    raw_dir = (row.get("direction") or "").upper()
+    dirn = "BUY" if raw_dir in ("UP", "BUY", "LONG", "BULL") else "SELL" if raw_dir in ("DOWN", "SELL", "SHORT", "BEAR") else None
 
     return KnowledgeFusionRecord(
         fusion_id=f"CT_{sym}_{date_str}_{uuid.uuid4().hex[:6]}",
         trading_date=date_str,
         symbol=sym,
-        direction="BUY",      # ct_decisions does not store direction — default
+        direction=dirn or "BUY",   # legacy rows without direction default to BUY
         sector=_sector(sym),
         regime=str(row.get("regime") or "").upper() or None,
         vix=_flt(row.get("vix")),

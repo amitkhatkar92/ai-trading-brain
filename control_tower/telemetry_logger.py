@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS ct_decisions (
     cycle_id        TEXT,
     symbol          TEXT,
     strategy        TEXT,
+    direction       TEXT,
     confidence      REAL,
     decision        TEXT,
     rejection_reason TEXT,
@@ -158,13 +159,15 @@ class TelemetryLogger:
             conn.execute(_CREATE_EVENTS)
             conn.execute(_CREATE_CYCLES)
             conn.execute(_CREATE_DECISIONS)
-            # Migration: add risk_rejection_summary if not present (idempotent)
-            try:
-                conn.execute(
-                    "ALTER TABLE ct_cycles ADD COLUMN risk_rejection_summary TEXT"
-                )
-            except Exception:
-                pass  # Column already exists
+            # Migrations: add new columns to existing databases (idempotent)
+            for _migration in (
+                "ALTER TABLE ct_cycles ADD COLUMN risk_rejection_summary TEXT",
+                "ALTER TABLE ct_decisions ADD COLUMN direction TEXT",   # D13-002
+            ):
+                try:
+                    conn.execute(_migration)
+                except Exception:
+                    pass  # column already exists
             conn.commit()
 
     # ── Event handler ──────────────────────────────────────────────────────
@@ -323,14 +326,15 @@ class TelemetryLogger:
 
         conn.execute(
             "INSERT INTO ct_decisions"
-            "(cycle_id,symbol,strategy,confidence,decision,rejection_reason,"
+            "(cycle_id,symbol,strategy,direction,confidence,decision,rejection_reason,"
             "technical_score,risk_score,macro_score,sentiment_score,regime_score,"
             "position_modifier,ts)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (
                 self._current_cycle or "",
                 symbol,
                 strategy,
+                (payload.get("direction") or "").upper() or None,  # D13-002
                 payload.get("score", 0),
                 decision,
                 payload.get("reason", "") if not approved else "",

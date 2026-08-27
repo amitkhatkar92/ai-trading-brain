@@ -44,6 +44,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
+from utils import get_logger
+
+log = get_logger(__name__)
+
 # ── Output directory (overridable for tests via KLPEvaluator(data_dir=...)) ──
 _DEFAULT_DATA_DIR = Path(__file__).parent.parent / "data" / "klp"
 
@@ -134,7 +138,8 @@ class KLPEvaluator:
         """
         try:
             return self._evaluate_impl(signals, snapshot)
-        except Exception:
+        except Exception as _exc:
+            log.warning("[KLP-001] evaluate_and_record error: %s", _exc)
             return []
 
     def annotate_strategy_outcome(
@@ -163,8 +168,8 @@ class KLPEvaluator:
                 rejected_reasons or {},
                 snapshot,
             )
-        except Exception:
-            pass
+        except Exception as _exc:
+            log.warning("[KLP-001] annotate_strategy_outcome error: %s", _exc)
 
     def get_today_stats(self, date_str: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -173,7 +178,8 @@ class KLPEvaluator:
         """
         try:
             return self._stats_impl(date_str)
-        except Exception:
+        except Exception as _exc:
+            log.warning("[KLP-001] get_today_stats error: %s", _exc)
             return {"klp_observations": 0, "klp_annotations": 0, "klp_selected": 0,
                     "klp_overrules": 0, "klp_file": None}
 
@@ -340,8 +346,8 @@ class KLPEvaluator:
                 for rec in records:
                     fh.write(json.dumps(rec, ensure_ascii=False))
                     fh.write("\n")
-        except Exception:
-            pass
+        except Exception as _exc:
+            log.warning("[KLP-001] _write error: %s", _exc)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
