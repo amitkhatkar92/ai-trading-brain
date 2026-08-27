@@ -913,6 +913,7 @@ def _fetch_ohlcv(symbol: str, decision_date: str, horizon: int = 5) -> List[Dict
     """Fetch T+1..T+horizon daily bars. No bars on or before decision_date."""
     try:
         import yfinance as yf
+        import pandas as _pd
         from datetime import timedelta
         d0    = date.fromisoformat(decision_date)
         start = (d0 + timedelta(days=1)).isoformat()
@@ -922,20 +923,29 @@ def _fetch_ohlcv(symbol: str, decision_date: str, horizon: int = 5) -> List[Dict
                          auto_adjust=True, timeout=8)
         if df is None or df.empty:
             return []
+        # D019-001: normalise MultiIndex columns (yfinance ≥ 0.2.28/1.x single-symbol)
+        if isinstance(df.columns, _pd.MultiIndex):
+            df = df.copy()
+            df.columns = df.columns.droplevel(level=-1)
+            df = df.loc[:, ~df.columns.duplicated()]
         bars = []
         for idx, row in df.iterrows():
             bar_date = str(idx.date()) if hasattr(idx, "date") else str(idx)[:10]
             if bar_date <= decision_date:
                 continue  # strict anti-lookahead
-            bars.append({
-                "date":  bar_date,
-                "open":  float(row["Open"]),
-                "high":  float(row["High"]),
-                "low":   float(row["Low"]),
-                "close": float(row["Close"]),
-            })
+            try:
+                bars.append({
+                    "date":  bar_date,
+                    "open":  float(row["Open"]),
+                    "high":  float(row["High"]),
+                    "low":   float(row["Low"]),
+                    "close": float(row["Close"]),
+                })
+            except (KeyError, TypeError, ValueError) as row_exc:
+                log.warning("[LOL-OHLCV] %s %s row parse error: %s", symbol, bar_date, row_exc)
         return bars[:horizon]
-    except Exception:
+    except Exception as exc:
+        log.warning("[LOL-OHLCV] %s bar fetch failed for %s: %s", symbol, decision_date, exc)
         return []
 
 
