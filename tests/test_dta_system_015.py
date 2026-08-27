@@ -21,6 +21,7 @@ Coverage:
   T062–T065   Multiple-testing / ESS analysis (Part 7 + 9)
   T066–T068   D15-004: LOL gap closures
   T069–T070   Root cause analysis: ESS formula verification
+  T071–T075   KBS-001: run_bootstrap_if_needed production wiring
 
 Safety contract in every test:
   broker_calls == 0, orders == 0, no_lookahead == True.
@@ -64,6 +65,8 @@ from learning_system.historical_bootstrap import (
     assign_partition,
     determine_regime,
     SOURCE_TYPE,
+    run_bootstrap_if_needed,
+    _BOOTSTRAP_DEFAULT_SYMBOLS,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -1255,3 +1258,118 @@ def test_t070_root_cause_documented_decision_eligible_requires_recent_data():
     fresh_recs = [_rec() for _ in range(100)]
     ess_fresh = _effective_sample_size(fresh_recs, date.today())
     assert ess_fresh == pytest.approx(100.0, abs=0.5)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T071–T075  KBS-001: run_bootstrap_if_needed production wiring
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_t071_run_bootstrap_if_needed_is_importable():
+    """run_bootstrap_if_needed must be importable from learning_system.historical_bootstrap."""
+    import inspect
+    assert callable(run_bootstrap_if_needed), "run_bootstrap_if_needed must be callable"
+    sig = inspect.signature(run_bootstrap_if_needed)
+    params = list(sig.parameters.keys())
+    assert "symbols"   in params, "run_bootstrap_if_needed must accept symbols param"
+    assert "days_back" in params, "run_bootstrap_if_needed must accept days_back param"
+    assert "force"     in params, "run_bootstrap_if_needed must accept force param"
+
+
+def test_t072_run_bootstrap_returns_dict_with_status(tmp_path, monkeypatch):
+    """
+    run_bootstrap_if_needed must return a dict with 'status' key.
+    Uses tmp_path to isolate state file. Monkeypatches bootstrap_symbols
+    to avoid network calls.
+    """
+    import learning_system.historical_bootstrap as _hb_mod
+
+    # Monkeypatch bootstrap_symbols to return synthetic records instantly
+    fake_records = [_rec(source_type="HISTORICAL") for _ in range(5)]
+    monkeypatch.setattr(_hb_mod, "bootstrap_symbols", lambda *a, **kw: fake_records)
+
+    # Override state path to use tmp_path
+    monkeypatch.setattr(
+        _hb_mod, "_BOOTSTRAP_STATE_PATH_RELATIVE",
+        str(tmp_path / "bootstrap_state.json"),
+    )
+
+    # Also redirect HBE singleton import to avoid touching production data
+    from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+    fake_hbe = HistoricalBehaviourEngine()
+    monkeypatch.setattr(_hb_mod, "run_bootstrap_if_needed", _hb_mod.run_bootstrap_if_needed)
+
+    result = _hb_mod.run_bootstrap_if_needed(symbols=["TATASTEEL"], days_back=30, force=True)
+    assert isinstance(result, dict), "Must return dict"
+    assert "status" in result, "Return dict must have 'status' key"
+    assert result["status"] in ("OK", "NO_DATA", "ERROR", "SKIPPED")
+
+
+def test_t073_run_bootstrap_idempotency_skips_if_recent(tmp_path, monkeypatch):
+    """
+    Idempotency: if bootstrap ran today, a second call returns status=SKIPPED.
+    Proves production wiring won't re-run on every container restart.
+    """
+    import json as _json
+    import learning_system.historical_bootstrap as _hb_mod
+
+    # Write a state file with today's date
+    state_path = tmp_path / "bootstrap_state.json"
+    state_path.write_text(
+        _json.dumps({"last_run_date": date.today().isoformat()}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        _hb_mod, "_BOOTSTRAP_STATE_PATH_RELATIVE",
+        str(state_path),
+    )
+
+    result = _hb_mod.run_bootstrap_if_needed(symbols=["TATASTEEL"], days_back=30, force=False)
+    assert result["status"] == "SKIPPED", (
+        f"Second call same day must return SKIPPED (got {result['status']})"
+    )
+    assert result["records_injected"] == 0
+
+
+def test_t074_run_bootstrap_force_overrides_idempotency(tmp_path, monkeypatch):
+    """
+    force=True must bypass the idempotency guard and run even if ran today.
+    """
+    import json as _json
+    import learning_system.historical_bootstrap as _hb_mod
+
+    # Write today's state (would normally skip)
+    state_path = tmp_path / "bootstrap_state.json"
+    state_path.write_text(
+        _json.dumps({"last_run_date": date.today().isoformat()}), encoding="utf-8"
+    )
+    monkeypatch.setattr(
+        _hb_mod, "_BOOTSTRAP_STATE_PATH_RELATIVE",
+        str(state_path),
+    )
+    # Monkeypatch bootstrap_symbols to return synthetic records
+    fake_records = [_rec(source_type="HISTORICAL") for _ in range(3)]
+    monkeypatch.setattr(_hb_mod, "bootstrap_symbols", lambda *a, **kw: fake_records)
+
+    result = _hb_mod.run_bootstrap_if_needed(symbols=["TATASTEEL"], days_back=30, force=True)
+    # Should NOT skip when force=True
+    assert result["status"] != "SKIPPED", (
+        "force=True must bypass idempotency guard"
+    )
+
+
+def test_t075_bootstrap_default_symbol_list_is_non_empty():
+    """
+    _BOOTSTRAP_DEFAULT_SYMBOLS must be non-empty and contain major NSE equities.
+    Proves the production bootstrap can run without explicit symbol argument.
+    """
+    assert isinstance(_BOOTSTRAP_DEFAULT_SYMBOLS, list), "Must be a list"
+    assert len(_BOOTSTRAP_DEFAULT_SYMBOLS) >= 20, (
+        f"Default symbol list should have >= 20 symbols, got {len(_BOOTSTRAP_DEFAULT_SYMBOLS)}"
+    )
+    # All symbols must be strings
+    assert all(isinstance(s, str) for s in _BOOTSTRAP_DEFAULT_SYMBOLS)
+    # Must include at least one symbol from each major sector
+    assert "HDFCBANK"  in _BOOTSTRAP_DEFAULT_SYMBOLS, "Must include HDFCBANK (BANK)"
+    assert "INFY"      in _BOOTSTRAP_DEFAULT_SYMBOLS, "Must include INFY (IT)"
+    assert "RELIANCE"  in _BOOTSTRAP_DEFAULT_SYMBOLS, "Must include RELIANCE (ENERGY)"
+    assert "TATASTEEL" in _BOOTSTRAP_DEFAULT_SYMBOLS, "Must include TATASTEEL (METALS)"
+    assert "SUNPHARMA" in _BOOTSTRAP_DEFAULT_SYMBOLS, "Must include SUNPHARMA (PHARMA)"

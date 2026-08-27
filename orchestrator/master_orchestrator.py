@@ -311,6 +311,31 @@ class MasterOrchestrator:
         except Exception as _kdp_init_exc:
             log.warning("[Orchestrator] KnowledgeDecisionPipeline not loaded: %s", _kdp_init_exc)
             self.knowledge_pipeline = None
+        # ── KBS-001: Historical Knowledge Bootstrap (background, idempotent) ─
+        # Injects up to 1yr of breakout-signal OutcomeRecords into the HBE pool
+        # so KDA can produce DEVELOPING/USEFUL evidence from day 1 rather than
+        # waiting months for live observations to accumulate.
+        # Runs in a background thread so it never delays startup.
+        # Idempotency: noop if bootstrap ran within the last 30 calendar days.
+        def _run_kb_bootstrap():
+            try:
+                from learning_system.historical_bootstrap import run_bootstrap_if_needed as _kbs_run
+                _kbs_result = _kbs_run()
+                log.info(
+                    "[KBS-001] Background bootstrap complete: status=%s injected=%d",
+                    _kbs_result.get("status"), _kbs_result.get("records_injected", 0),
+                )
+            except Exception as _kbs_exc:
+                log.warning("[KBS-001] Background bootstrap failed (non-critical): %s", _kbs_exc)
+        try:
+            import threading as _threading_kbs
+            _kbs_thread = _threading_kbs.Thread(
+                target=_run_kb_bootstrap, daemon=True, name="KBS001-bootstrap"
+            )
+            _kbs_thread.start()
+            log.info("[KBS-001] Historical bootstrap thread started.")
+        except Exception as _kbs_thread_exc:
+            log.warning("[KBS-001] Could not start bootstrap thread: %s", _kbs_thread_exc)
         # ── R-001 Phase 2: Platform Intelligence Gateway adapter ──────────────
         try:
             from market_learning.pig_integration import PIGTradingAdapter, PIGInfluencePolicy

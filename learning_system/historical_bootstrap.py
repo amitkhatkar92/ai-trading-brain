@@ -438,3 +438,134 @@ def bootstrap_symbols(
                 all_records.append(r)
                 seen.add(r.obs_id)
     return all_records
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Production entry point — idempotent, runs at most once every 30 days
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Default symbol set: top NSE equities across major sectors
+# Matches the scanner's primary universe so HBE gets evidence for the signals
+# most likely to appear in production cycles.
+_BOOTSTRAP_DEFAULT_SYMBOLS = [
+    # Banking
+    "HDFCBANK", "ICICIBANK", "SBIN", "AXISBANK", "KOTAKBANK",
+    # IT
+    "INFY", "TCS", "WIPRO", "HCLTECH", "TECHM",
+    # Energy
+    "RELIANCE", "ONGC", "BPCL", "NTPC", "POWERGRID",
+    # Auto
+    "MARUTI", "TATAMOTORS", "M&M", "BAJAJ-AUTO", "EICHERMOT",
+    # Pharma
+    "SUNPHARMA", "DRREDDY", "CIPLA", "LUPIN", "DIVISLAB",
+    # FMCG
+    "HINDUNILVR", "ITC", "NESTLEIND", "BRITANNIA", "DABUR",
+    # Metals
+    "TATASTEEL", "JSWSTEEL", "HINDALCO",
+    # Consumer / Misc
+    "ASIANPAINT", "HAVELLS", "TITAN",
+    # Telecom
+    "BHARTIARTL",
+]
+
+_BOOTSTRAP_STATE_PATH_RELATIVE = "data/klp/bootstrap_state.json"
+_BOOTSTRAP_REFRESH_DAYS        = 30   # re-run every 30 calendar days
+
+
+def run_bootstrap_if_needed(
+    symbols:   Optional[List[str]] = None,
+    days_back: int                 = _DEFAULT_LOOKBACK_DAYS,
+    force:     bool                = False,
+) -> dict:
+    """
+    KBS-001 Production Entry Point.
+
+    Generates historical OutcomeRecords for the configured symbol list and
+    injects them into the HBE singleton (get_hbe()).  Idempotent: will not
+    re-run if bootstrap was completed within _BOOTSTRAP_REFRESH_DAYS calendar
+    days, unless force=True.
+
+    Returns a summary dict (never raises).
+    """
+    import json as _json
+    import os as _os
+    from pathlib import Path as _Path
+    from datetime import date as _date
+
+    try:
+        # ── Resolve state file path ───────────────────────────────────────
+        _root = _Path(__file__).resolve().parents[1]
+        _state_path = _root / _BOOTSTRAP_STATE_PATH_RELATIVE
+        _state_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # ── Idempotency guard ─────────────────────────────────────────────
+        if not force and _state_path.exists():
+            try:
+                _state = _json.loads(_state_path.read_text(encoding="utf-8"))
+                _last_run = _state.get("last_run_date", "")
+                if _last_run:
+                    _delta = (_date.today() - _date.fromisoformat(_last_run)).days
+                    if _delta < _BOOTSTRAP_REFRESH_DAYS:
+                        log.info(
+                            "[KBS-001] Bootstrap already ran %d days ago (<%d) — skipping.",
+                            _delta, _BOOTSTRAP_REFRESH_DAYS,
+                        )
+                        return {
+                            "status": "SKIPPED",
+                            "reason": f"last_run={_last_run} delta={_delta}d",
+                            "records_injected": 0,
+                        }
+            except Exception as _sg_exc:
+                log.debug("[KBS-001] Could not read bootstrap state: %s", _sg_exc)
+
+        # ── Generate records ──────────────────────────────────────────────
+        _symbols = symbols or _BOOTSTRAP_DEFAULT_SYMBOLS
+        log.info(
+            "[KBS-001] Starting historical bootstrap for %d symbols (days_back=%d).",
+            len(_symbols), days_back,
+        )
+        _records = bootstrap_symbols(_symbols, days_back=days_back)
+        log.info("[KBS-001] Generated %d historical OutcomeRecords.", len(_records))
+
+        if not _records:
+            _msg = "bootstrap_symbols returned 0 records — data unavailable"
+            log.warning("[KBS-001] %s", _msg)
+            return {"status": "NO_DATA", "reason": _msg, "records_injected": 0}
+
+        # ── Inject into HBE singleton ─────────────────────────────────────
+        from opportunity_engine.historical_behaviour_engine import get_hbe as _get_hbe
+        _hbe = _get_hbe()
+        # Ensure prior KLP live outcomes are loaded before merging bootstrap data
+        if not _hbe._loaded:
+            _hbe.load_outcomes()
+        _injected = _hbe.load_bootstrap_records(_records)
+        log.info(
+            "[KBS-001] Injected %d new records into HBE (deduped from %d generated). "
+            "HBE pool size now %d.",
+            _injected, len(_records), _hbe.get_outcome_count(),
+        )
+
+        # ── Persist state ─────────────────────────────────────────────────
+        _today_str = _date.today().isoformat()
+        _state_data = {
+            "last_run_date":     _today_str,
+            "records_generated": len(_records),
+            "records_injected":  _injected,
+            "symbols":           _symbols,
+            "days_back":         days_back,
+        }
+        _tmp = str(_state_path) + ".tmp"
+        _Path(_tmp).write_text(_json.dumps(_state_data, indent=2), encoding="utf-8")
+        _os.replace(_tmp, str(_state_path))
+        log.info("[KBS-001] Bootstrap state persisted → %s", _state_path.name)
+
+        return {
+            "status":            "OK",
+            "records_generated": len(_records),
+            "records_injected":  _injected,
+            "last_run_date":     _today_str,
+        }
+
+    except Exception as _exc:
+        log.warning("[KBS-001] run_bootstrap_if_needed failed (non-critical): %s", _exc)
+        return {"status": "ERROR", "error": str(_exc), "records_injected": 0}
