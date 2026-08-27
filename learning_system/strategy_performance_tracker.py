@@ -158,6 +158,9 @@ class StrategyPerformanceTracker:
         self._stats: Dict[str, StrategyStats] = {}
         self._load()
         log.info("[StrategyPerformanceTracker] Loaded %d strategy records.", len(self._stats))
+        # D11-008: session-level dedup set prevents EOD double-run from double-counting.
+        # In-memory only; harmless to reset on restart (EOD disk guard handles cross-restart dedup).
+        self._seen_order_ids: set = set()
         # Ensure the file exists on disk so it survives restarts even with 0 trades.
         # _save() is normally called only when a trade is recorded; write baseline here.
         if not os.path.exists(PERF_FILE):
@@ -185,6 +188,15 @@ class StrategyPerformanceTracker:
         # trades are excluded to prevent contaminated data from corrupting
         # governance intelligence.
         if order_id:
+            # D11-008: idempotency guard — same order_id must never be counted twice
+            if order_id in self._seen_order_ids:
+                log.warning(
+                    "[PerfTracker] Duplicate record_trade() for order_id=%s strategy=%s "
+                    "— skipped (EOD double-run protection).",
+                    order_id, strategy,
+                )
+                return self._get_or_create(strategy)
+            self._seen_order_ids.add(order_id)
             try:
                 from data_integrity.trade_classifier import classify_trades, TradeClassification as _TC
                 _cls_map = classify_trades()

@@ -173,9 +173,16 @@ def _yf_ticker(symbol: str) -> str:
     return _GLOBAL_SYMBOL_MAP.get(s, s if s.endswith(".NS") else f"{s}.NS")
 
 
-def _make_obs_id(symbol: str, trading_date: str, entry_price: float) -> str:
-    """Stable observation ID: deterministic per signal. Same symbol+date+entry → same ID."""
+def _make_obs_id(symbol: str, trading_date: str, entry_price: float,
+                 opportunity_id: str = "") -> str:
+    """Stable observation ID: deterministic per signal.
+    D11-009: include opportunity_id when present so separate scan cycles
+    for the same symbol+date+price produce distinct observations.
+    Backward compatible: existing records with no opportunity_id keep their old hash
+    (empty opportunity_id omits the suffix, preserving the original raw string)."""
     raw = f"{symbol}|{trading_date}|{entry_price:.4f}"
+    if opportunity_id:
+        raw = f"{raw}|{opportunity_id}"
     import hashlib
     return "LOL_" + hashlib.sha1(raw.encode()).hexdigest()[:16]
 
@@ -480,7 +487,8 @@ class LearningObservationLedger:
                     dir_raw.value.upper() if hasattr(dir_raw, "value")
                     else str(dir_raw).upper()
                 )
-                obs_id = _make_obs_id(symbol, td, entry)
+                obs_id = _make_obs_id(symbol, td, entry,
+                                      opportunity_id=str(getattr(sig, "opportunity_id", "") or ""))
                 # Idempotent: skip if already OBSERVED for this session
                 if obs_id in self._pending:
                     continue
@@ -523,7 +531,8 @@ class LearningObservationLedger:
             try:
                 symbol  = str(getattr(sig, "symbol", ""))
                 entry   = float(getattr(sig, "entry_price", 0.0) or 0.0)
-                obs_id  = _make_obs_id(symbol, td, entry)
+                obs_id  = _make_obs_id(symbol, td, entry,
+                                       opportunity_id=str(getattr(sig, "opportunity_id", "") or ""))
                 rec     = dict(self._pending.get(obs_id) or {})
                 if not rec:
                     continue
@@ -589,7 +598,8 @@ class LearningObservationLedger:
             try:
                 symbol = str(getattr(sig, "symbol", ""))
                 entry  = float(getattr(sig, "entry_price", 0.0) or 0.0)
-                obs_id = _make_obs_id(symbol, td, entry)
+                obs_id = _make_obs_id(symbol, td, entry,
+                                      opportunity_id=str(getattr(sig, "opportunity_id", "") or ""))
                 rec    = dict(self._pending.get(obs_id) or {})
                 if not rec:
                     continue

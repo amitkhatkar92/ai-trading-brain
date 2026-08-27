@@ -372,6 +372,9 @@ class OrderManager:
         # Serialises all reads + writes to expiry_retries.json so concurrent
         # monitoring threads can never interleave or produce a torn write.
         self._expiry_sidecar_lock = threading.Lock()
+        # D11-003: guards _orders dict and _portfolio.positions against concurrent
+        # reads-during-write from scheduler + TradeMonitor worker threads.
+        self._orders_lock = threading.RLock()
         # Daily telemetry counters for dup-guard decisions.
         self._dup_guard_stats: Dict[str, Any] = {
             "overrides_by_profit":          0,
@@ -391,6 +394,12 @@ class OrderManager:
         # Used to deregister positions that are closed by smart-swap so they are
         # not phantom-monitored and do not produce spurious SL/analytics events.
         self._trade_monitor = None
+        # Optional RiskGuardian reference: set via inject_risk_guardian() after init.
+        # D11-001: allows close_position() to call record_trade_result() exactly once.
+        self._risk_guardian = None
+        # D11-001: idempotency set — prevents double-counting if close_position() is
+        # re-entered (e.g. emergency_close after a SmartSwap that already closed it).
+        self._rg_recorded_oids: set = set()
         # Set of order_ids whose profit extension SL-lock was restored from the
         # journal. TradeMonitor reads this in register() to skip _can_extend().
         self._restored_extended_oids: set = set()
@@ -491,6 +500,10 @@ class OrderManager:
     def inject_trade_monitor(self, trade_monitor) -> None:
         """Wire in the TradeMonitor so smart-swap can deregister replaced positions."""
         self._trade_monitor = trade_monitor
+
+    def inject_risk_guardian(self, risk_guardian) -> None:
+        """D11-001: Wire in FailSafeRiskGuardian so close_position() can call record_trade_result()."""
+        self._risk_guardian = risk_guardian
 
     def execute(self, signal: TradeSignal,
                 decision: DecisionResult,
@@ -754,6 +767,17 @@ class OrderManager:
             log.warning("[OrderManager] Zero quantity after modifier for %s.", signal.symbol)
             return None
 
+        # D11-004: hard block on invalid stop_loss before any broker call
+        import math as _math
+        if (not signal.stop_loss or signal.stop_loss <= 0
+                or not _math.isfinite(signal.stop_loss)):
+            log.error(
+                "[OrderManager] BLOCKED %s — invalid stop_loss=%.4f "
+                "(must be a finite positive number).",
+                signal.symbol, signal.stop_loss or 0,
+            )
+            return None
+
         # ── FIX 3A: Guard against exceeding capital per single trade ──
         notional_capital = qty * signal.entry_price
         trade_utilization_pct = (notional_capital / self._portfolio.capital) * 100.0 if self._portfolio.capital > 0 else 0.0
@@ -916,10 +940,17 @@ class OrderManager:
         # recovers correctly via _restore_from_live_journal.
         if not self._paper_mode:
             self._append_live_journal("OPEN", record)
-        self._orders[order_id] = record
+        with self._orders_lock:
+            self._orders[order_id] = record
         # D-013: Use record.quantity (updated by _reconcile_fill for partial fills)
         # rather than original qty variable which reflects the requested quantity.
         self._update_portfolio(signal, record.quantity)
+        # D11-001: notify RiskGuardian that a new trade is open
+        if self._risk_guardian is not None:
+            try:
+                self._risk_guardian.record_open_trade()
+            except Exception as _rg_exc:
+                log.debug("[OrderManager] record_open_trade failed: %s", _rg_exc)
 
         # Phase 7 — [ReEntryAudit]: telemetry-only check (does NOT block the order)
         _prev = _RECENT_CLOSE_TIMES.get(signal.symbol)
@@ -1148,6 +1179,19 @@ class OrderManager:
             record_exit(rec, exit_price=exit_price, pnl=pnl, reason=reason)
         except Exception:
             pass
+        # D11-001: wire record_trade_result() exactly once per confirmed close.
+        # Guard with _rg_recorded_oids to prevent double-counting on retry paths.
+        # Use getattr for safety when OrderManager is constructed via __new__ in tests.
+        _rg = getattr(self, "_risk_guardian", None)
+        _rg_oids = getattr(self, "_rg_recorded_oids", None)
+        if _rg is not None and (_rg_oids is None or order_id not in _rg_oids):
+            try:
+                if _rg_oids is not None:
+                    _rg_oids.add(order_id)
+                _rg.record_trade_result(pnl, pnl >= 0)
+                _rg.record_closed_trade()
+            except Exception as _rg_exc:
+                log.error("[OrderManager] record_trade_result failed for %s: %s", order_id, _rg_exc)
         return True
 
     def close_all_positions(self):
@@ -1201,14 +1245,18 @@ class OrderManager:
         return self._portfolio
 
     def get_open_orders(self) -> List[OrderRecord]:
-        return [r for r in self._orders.values() if r.status == "open"]
+        # D11-003: snapshot under lock to prevent RuntimeError during concurrent write
+        with self._orders_lock:
+            return [r for r in list(self._orders.values()) if r.status == "open"]
 
     def get_open_order_ids(self) -> frozenset:
         """Return frozenset of all open order_ids currently tracked in memory.
         Used by CycleHealthMonitor to distinguish carries from CSV orphans."""
-        return frozenset(
-            oid for oid, rec in self._orders.items() if rec.status == "open"
-        )
+        # D11-003: snapshot under lock to prevent RuntimeError during concurrent write
+        with self._orders_lock:
+            return frozenset(
+                oid for oid, rec in list(self._orders.items()) if rec.status == "open"
+            )
 
     def get_restore_stats(self) -> Dict[str, Any]:
         """Return restore diagnostics captured at startup by _restore_from_journal().
@@ -1290,6 +1338,45 @@ class OrderManager:
                 log.debug("[PartialFill] status check failed %s: %s", oid, exc)
         return updated
 
+    def reconcile_pending_orders(self) -> List[str]:
+        """D11-005: Re-query broker for any intraday orders still in PENDING/UNRESOLVED state.
+        Called once per monitoring cycle so limit orders resolve without waiting for restart.
+        Safe to call frequently — skips paper mode and resolved orders.
+        Returns list of order_ids whose fill_status changed this cycle.
+        """
+        if self._paper_mode or not self._broker:
+            return []
+        if not hasattr(self._broker, "get_fill_details"):
+            return []
+        updated: List[str] = []
+        for oid, rec in list(self._orders.items()):
+            if rec.status != "open":
+                continue
+            if rec.fill_status not in ("PENDING", "UNRESOLVED", "API_ERROR", "UNKNOWN"):
+                continue
+            if oid.startswith("SIM_"):
+                continue
+            prev_status = rec.fill_status
+            self._reconcile_fill(rec)
+            if rec.fill_status != prev_status:
+                log.info(
+                    "[PendingReconcile] %s %s: %s → %s  fill_price=%.2f  qty=%d",
+                    rec.symbol, oid, prev_status, rec.fill_status,
+                    rec.actual_fill_price, rec.filled_quantity,
+                )
+                updated.append(oid)
+                # If now REJECTED or CANCELLED: remove phantom position
+                if rec.fill_status in ("REJECTED", "CANCELLED"):
+                    with self._orders_lock:
+                        self._orders.pop(oid, None)
+                    self._portfolio.positions.pop(rec.symbol, None)
+                    log.warning(
+                        "[PendingReconcile] %s %s resolved as %s — "
+                        "phantom position removed.",
+                        rec.symbol, oid, rec.fill_status,
+                    )
+        return updated
+
     def attempt_aet_confirmations(
         self,
         current_vix:       float = 0.0,
@@ -1362,6 +1449,16 @@ class OrderManager:
                 slot.candles_waited += 1
                 continue
 
+            # D11-007: re-check kill-switch before deferred broker placement
+            if self._risk_guardian is not None and self._risk_guardian._trading_halted:
+                log.warning(
+                    "[OrderManager] AET slot %s BLOCKED — RiskGuardian halt active (%s). "
+                    "Slot discarded.",
+                    sid, self._risk_guardian._halt_reason,
+                )
+                to_remove.append(sid)
+                continue
+
             # ── All conditions met — place the order now ───────────────
             # Re-evaluate the zone at current (now-calmer) VIX for best price
             _confirmed_zone = self._calc_entry_zone_price(
@@ -1417,7 +1514,8 @@ class OrderManager:
             # D-011: journal before local state; D-013: use reconciled quantity
             if not self._paper_mode:
                 self._append_live_journal("OPEN", rec)  # D-010: live journal for AET
-            self._orders[order_id] = rec
+            with self._orders_lock:
+                self._orders[order_id] = rec
             self._update_portfolio(slot.signal, rec.quantity)  # D-013
 
             log.info(
@@ -1428,6 +1526,13 @@ class OrderManager:
             )
             if self._paper_mode:
                 self._journal_write_aet_confirmed(rec, slot)
+
+            # D11-001: notify RiskGuardian of new open trade
+            if self._risk_guardian is not None:
+                try:
+                    self._risk_guardian.record_open_trade()
+                except Exception as _rg_exc:
+                    log.debug("[OrderManager] AET record_open_trade failed: %s", _rg_exc)
 
             new_records.append(rec)
             to_remove.append(sid)
@@ -1605,6 +1710,15 @@ class OrderManager:
         if current_prices is None:
             current_prices = {}
 
+        # D11-007: re-check kill-switch before any deferred placement
+        if self._risk_guardian is not None and self._risk_guardian._trading_halted:
+            log.warning(
+                "[OrderManager] attempt_all_reentries: skipping all slots — "
+                "RiskGuardian halt active (%s).",
+                self._risk_guardian._halt_reason,
+            )
+            return []
+
         now         = datetime.now()
         new_records = []
         slots_to_remove = []
@@ -1715,10 +1829,21 @@ class OrderManager:
                 initial_stop_loss = slot.stop_loss,   # immutable
                 opportunity_id    = slot.opportunity_id,  # D10-002: propagated
             )
+            # D11-002: reconcile fill before registering — same lifecycle as execute()
+            self._reconcile_fill(rec)
+            if rec.fill_status == "REJECTED":
+                log.warning(
+                    "[OrderManager] Reentry %s REJECTED by broker — "
+                    "position NOT registered. Slot retry budget consumed.",
+                    new_oid,
+                )
+                slot.retry_count += 1
+                continue
             # D-011: journal before local state; D-010: live mode journal write
             if not self._paper_mode:
                 self._append_live_journal("OPEN", rec)
-            self._orders[new_oid] = rec
+            with self._orders_lock:
+                self._orders[new_oid] = rec
 
             # Re-add to portfolio
             pos = Position(
@@ -1744,6 +1869,13 @@ class OrderManager:
 
             if self._paper_mode:
                 self._journal_write_reentry(rec, slot)
+
+            # D11-001: notify RiskGuardian of new open trade
+            if self._risk_guardian is not None:
+                try:
+                    self._risk_guardian.record_open_trade()
+                except Exception as _rg_exc:
+                    log.debug("[OrderManager] reentry record_open_trade failed: %s", _rg_exc)
 
             new_records.append(rec)
 
@@ -2258,6 +2390,15 @@ class OrderManager:
                     rec.actual_fill_price, rec.slippage_pct,
                 )
                 rec.quantity = rec.filled_quantity
+            elif rec.fill_status == "PARTIALLY_FILLED" and rec.filled_quantity <= 0:
+                # D11-006: zero-quantity partial fill — broker sent inconsistent state
+                log.error(
+                    "[FillReconcile] %s PARTIALLY_FILLED but filled_quantity=%d "
+                    "\u2014 marking UNRESOLVED; no position will be registered.",
+                    rec.symbol, rec.filled_quantity,
+                )
+                rec.fill_status = "UNRESOLVED"
+                rec.reconciliation_source = "PARTIAL_ZERO_QTY"
             elif rec.fill_status == "REJECTED":
                 log.warning(
                     "[FillReconcile] %s order REJECTED by broker — "

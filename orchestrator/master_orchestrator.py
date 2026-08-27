@@ -255,6 +255,9 @@ class MasterOrchestrator:
 
         # ── Layer 8: Execution ─────────────────────────────────────────
         self.order_manager       = OrderManager()
+        # D11-001: wire RiskGuardian into OrderManager so close_position() can
+        # call record_trade_result() on every confirmed trade close.
+        self.order_manager.inject_risk_guardian(self.risk_guardian)
 
         # ── Layer 8b: Options Execution (dedicated, lot-aware) ─────────
         self.options_order_manager = get_options_order_manager()
@@ -1578,6 +1581,33 @@ class MasterOrchestrator:
         ))
         if not guardian_decision.approved:
             log.warning("[RiskGuardian] BLOCKED: %s", guardian_decision.reason)
+            # D11-013: persist RiskGuardian-blocked signals so false-rejection rate is learnable
+            try:
+                from analysis.rejection_tracker import get_rejection_tracker as _get_rt_rg
+                _rg_rt = _get_rt_rg()
+                _rg_blocked_signals = list(getattr(guardian_decision, "rejected_signals", []) or [])
+                _rg_block_reason = (guardian_decision.reason or "GUARDIAN_BLOCKED")[:200]
+                _rg_rule         = (guardian_decision.rule_triggered or "GUARDIAN_BLOCKED")[:80]
+                for _rg_sig in _rg_blocked_signals:
+                    try:
+                        _rg_rt.ingest_rejection(
+                            symbol=str(getattr(_rg_sig, "symbol", "UNKNOWN")),
+                            strategy=str(getattr(_rg_sig, "strategy_name", "UNKNOWN") or "UNKNOWN"),
+                            trade_date=datetime.now().strftime("%Y-%m-%d"),
+                            decision_score=float(getattr(_rg_sig, "confidence_score", 0.0) or 0.0),
+                            quality_score=0.0,
+                            quality_tier="RISK_GUARDIAN_BLOCKED",
+                            rejected_reason=_rg_block_reason,
+                            price_at_rejection=float(getattr(_rg_sig, "entry_price", 0.0) or 0.0),
+                            direction=str(getattr(_rg_sig, "direction", {}) and
+                                          getattr(_rg_sig.direction, "value",
+                                                  str(getattr(_rg_sig, "direction", "BUY"))) or "BUY"),
+                            market_regime=_rg_rule,
+                        )
+                    except Exception:
+                        pass
+            except Exception:
+                pass
             _diag.record_stage("RiskGuardian",
                                len(sim_result.approved_trades) if hasattr(sim_result, 'approved_trades') else 0,
                                0, guardian_decision.reason or "GUARDIAN_BLOCKED")
@@ -4103,6 +4133,17 @@ class MasterOrchestrator:
         except Exception as _pf_exc:
             log.debug("[Monitor] reconcile_partial_fills skipped: %s", _pf_exc)
 
+        # D11-005: intraday re-reconciliation of PENDING/UNRESOLVED orders
+        try:
+            _pr_updated = self.order_manager.reconcile_pending_orders()
+            if _pr_updated:
+                log.info(
+                    "[Monitor] PendingReconcile resolved %d order(s): %s",
+                    len(_pr_updated), _pr_updated,
+                )
+        except Exception as _pr_exc:
+            log.debug("[Monitor] reconcile_pending_orders skipped: %s", _pr_exc)
+
     def _persist_monitor_ts(self, ts: datetime) -> None:
         """Atomically write _last_monitor_ts to data/monitor_state.json.
 
@@ -4937,7 +4978,12 @@ class MasterOrchestrator:
                     pass
                 raise
         except Exception as _pe:
-            log.warning("[EOD] Could not persist EOD status: %s", _pe)
+            log.error(
+                "[EOD] Could not persist EOD status to disk: %s  "
+                "— EOD may re-run on next container restart. "
+                "In-memory guard active for current process.",
+                _pe,
+            )
         log.info("── Layer 10: EOD Learning ──")
         # K-003: take a snapshot of today's signals then reset for next session
         _eod_todays_signals = list(getattr(self, "_todays_signals", []))
