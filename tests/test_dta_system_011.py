@@ -1075,13 +1075,16 @@ class TestD11013RgBlockedSignalsPersisted:
         assert call_args_list[0]["rejected_reason"] == reason
         assert call_args_list[0]["quality_tier"] == "RISK_GUARDIAN_BLOCKED"
 
-    def test_T092_no_execution_from_blocked_signal(self):
+    def test_T092_no_execution_from_blocked_signal(self, tmp_path):
         """A signal blocked by RiskGuardian must never reach execute()."""
         from risk_guardian.risk_guardian import FailSafeRiskGuardian
         from models import MarketSnapshot
         from datetime import datetime as _dt2
 
-        rg = FailSafeRiskGuardian(total_capital=50000)
+        # D12-002: use isolated state file so this test never writes to production
+        # data/risk_guardian_state.json — the VIX=50 evaluate() call saves state.
+        rg = FailSafeRiskGuardian(total_capital=50000,
+                                   state_file=str(tmp_path / "rg_state.json"))
         rg._trading_halted = True
         rg._halt_reason = "KILL_SWITCH"
 

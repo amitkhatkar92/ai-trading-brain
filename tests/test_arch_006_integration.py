@@ -783,8 +783,10 @@ class TestRiskIndependence(unittest.TestCase):
 
     def test_l02_risk_guardian_returns_block_on_vix_breach(self):
         """FailSafeRiskGuardian must return BLOCK on extreme VIX."""
+        import tempfile as _tmp, os as _tos
         from risk_guardian.risk_guardian import FailSafeRiskGuardian, KILL_SWITCH_VIX
-        rg = FailSafeRiskGuardian()
+        _sf = _tos.path.join(_tmp.mkdtemp(), "rg_arch006.json")
+        rg = FailSafeRiskGuardian(state_file=_sf)
         try:
             from models.market_data import MarketSnapshot, RegimeLabel, VolatilityLevel
             from datetime import datetime

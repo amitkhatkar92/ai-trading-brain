@@ -2808,6 +2808,19 @@ class OrderManager:
                         # Prune from the persistence sidecar — position is done.
                         self._update_expiry_retry_sidecar(oid, 0)
                         expired += 1
+                        # D12-001: carry expiry P&L must reach RiskGuardian so the
+                        # 2% daily loss kill-switch accounts for overnight positions.
+                        _rg = getattr(self, "_risk_guardian", None)
+                        _rg_oids = getattr(self, "_rg_recorded_oids", None)
+                        if _rg is not None and (_rg_oids is None or oid not in _rg_oids):
+                            try:
+                                if _rg_oids is not None:
+                                    _rg_oids.add(oid)
+                                _rg.record_trade_result(pnl, pnl >= 0)
+                                _rg.record_closed_trade()
+                            except Exception as _rg_exc:
+                                log.error("[OrderManager] carry record_trade_result failed %s: %s",
+                                          oid, _rg_exc)
 
                     except Exception as row_exc:
                         # Rollback: position stays exposure-active, retry next cycle
