@@ -302,6 +302,7 @@ class ReentrySlot:
     signal_regime:     str
     signal_vix:        float
     window_expires_at: datetime  # original placed_at + reentry_window_candles
+    opportunity_id:    str  = ""  # D10-002: propagate from original OrderRecord
     retry_count:       int = 0
     max_retries:       int = REENTRY_MAX_RETRIES
 
@@ -1401,6 +1402,7 @@ class OrderManager:
                 initial_stop_loss = slot.signal.stop_loss,   # immutable
                 broker_order_id   = order_id,
                 requested_price   = slot.signal.entry_price,
+                opportunity_id    = getattr(slot.signal, "opportunity_id", "") or "",  # D10-001
             )
             # Reconcile fill with broker before registering position
             self._reconcile_fill(rec)
@@ -1711,6 +1713,7 @@ class OrderManager:
                 signal_regime     = slot.signal_regime,
                 signal_vix        = slot.signal_vix,
                 initial_stop_loss = slot.stop_loss,   # immutable
+                opportunity_id    = slot.opportunity_id,  # D10-002: propagated
             )
             # D-011: journal before local state; D-010: live mode journal write
             if not self._paper_mode:
@@ -1919,6 +1922,7 @@ class OrderManager:
             signal_regime     = rec.signal_regime,
             signal_vix        = rec.signal_vix,
             window_expires_at = window_end,
+            opportunity_id    = getattr(rec, "opportunity_id", "") or "",  # D10-002
             max_retries       = REENTRY_MAX_RETRIES,
         )
         self._reentry_slots[rec.order_id] = slot
@@ -3108,12 +3112,12 @@ class OrderManager:
         if ltp_live and pos is not None and pos.ltp_tick_count < _DUP_GUARD_LTP_CONF_TICKS:
             if high_confidence_signal:
                 log.info(
-                    "[DupGuard] %s low-confidence LTP bypassed — strong signal score=%.1f (tick=%d/%d).",
-                    symbol, decision_score, pos.ltp_tick_count, _DUP_GUARD_LTP_CONF_TICKS,
+                    "[DupGuard] %s LTP low tick-count (%d/%d) but high-confidence signal (score=%.1f) — tick threshold bypassed.",  # D10-007
+                    symbol, pos.ltp_tick_count, _DUP_GUARD_LTP_CONF_TICKS, decision_score,
                 )
             else:
                 log.info(
-                    "[DupGuard] %s low-confidence LTP (tick=%d/%d) → using age-only.",
+                    "[DupGuard] %s low tick-count LTP (%d/%d) → falling back to age-only evaluation.",  # D10-007
                     symbol, pos.ltp_tick_count, _DUP_GUARD_LTP_CONF_TICKS,
                 )
                 ltp_live = False
