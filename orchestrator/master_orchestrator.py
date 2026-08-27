@@ -4896,14 +4896,33 @@ class MasterOrchestrator:
 
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
-        # D-017: Duplicate EOD guard — prevent double win-rate counting on restart.
-        # schedule library fires jobs at wall-clock times; if the process restarts
-        # mid-session, the 15:35 job may fire again in the same calendar day.
+        # D-017 + D8-003 SOB: guard survives container restart via disk persistence.
+        # In-memory _last_eod_date resets to None on restart, so load from disk first.
+        from pathlib import Path as _EodPath
+        import json as _eod_json
+        _EOD_STATUS_FILE = _EodPath("data/eod_status.json")
         _today = datetime.now().strftime("%Y-%m-%d")
+        if getattr(self, "_last_eod_date", None) is None:
+            try:
+                if _EOD_STATUS_FILE.exists():
+                    self._last_eod_date = _eod_json.loads(
+                        _EOD_STATUS_FILE.read_text(encoding="utf-8")
+                    ).get("last_eod_date", "")
+            except Exception as _le:
+                log.warning("[EOD] Could not load EOD status file: %s", _le)
         if getattr(self, "_last_eod_date", None) == _today:
             log.info("[EOD] Duplicate guard: already ran EOD learning for %s — skipping.", _today)
             return
         self._last_eod_date = _today
+        # Persist so restart cannot trigger a second run for the same day
+        try:
+            _EOD_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            _EOD_STATUS_FILE.write_text(
+                _eod_json.dumps({"last_eod_date": _today}, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as _pe:
+            log.warning("[EOD] Could not persist EOD status: %s", _pe)
         log.info("── Layer 10: EOD Learning ──")
         # K-003: take a snapshot of today's signals then reset for next session
         _eod_todays_signals = list(getattr(self, "_todays_signals", []))

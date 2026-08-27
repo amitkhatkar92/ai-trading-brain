@@ -155,6 +155,7 @@ class TradeMonitor:
             self._dg_last_price.pop(order_id, None)
             self._dg_stale_count.pop(order_id, None)
             self._stale_alerted.pop(order_id, None)
+            self._close_failed.pop(order_id, None)  # D8-001: clean up suppression state
             log.info("[TradeMonitor] Deregistered (swap-replaced): %s %s",
                      rec.symbol, order_id)
 

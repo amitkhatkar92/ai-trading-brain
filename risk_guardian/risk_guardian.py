@@ -142,11 +142,14 @@ class FailSafeRiskGuardian:
 
     def record_trade_result(self, pnl: float, won: bool) -> None:
         """Call after each trade closes to update intraday state."""
-        self._daily_pnl += pnl
-        if won:
-            self._consec_losses = 0
-        else:
-            self._consec_losses += 1
+        # D8-002: protect read-modify-write under lock; _save_state() acquires its own
+        # internal lock so it must be called OUTSIDE this block to avoid deadlock.
+        with self._state_lock:
+            self._daily_pnl += pnl
+            if won:
+                self._consec_losses = 0
+            else:
+                self._consec_losses += 1
         log.info("[RiskGuardian] Trade recorded. DailyPnL=\u20b9%+.0f | "
                  "ConsecLosses=%d", self._daily_pnl, self._consec_losses)
         self._save_state()  # persist after every P&L mutation

@@ -2261,7 +2261,9 @@ class OrderManager:
             rec.fill_status           = "UNRESOLVED"
             rec.reconciliation_ts     = _now_iso
             rec.reconciliation_source = "ERROR"
-            log.debug("[FillReconcile] reconcile error for %s: %s", rec.order_id, exc)
+            # D8-004: escalate to ERROR — silent broker failures are invisible at DEBUG
+            log.error("[FillReconcile] broker reconcile FAILED for %s: %s",
+                      rec.order_id, exc, exc_info=True)
 
     def _update_portfolio(self, sig: TradeSignal, qty: int):
         pos = Position(

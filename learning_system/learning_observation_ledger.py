@@ -452,6 +452,10 @@ class LearningObservationLedger:
                     OUTCOME_OBSERVED, LEARNING_PROCESSED
                 ):
                     self._pending[obs_id] = rec
+                else:
+                    # D8-003: restore dedup set from disk so EOD after restart
+                    # does not write duplicate OUTCOME_OBSERVED records
+                    self._outcome_written.add(obs_id)
 
     # ── Internal: record observations ────────────────────────────────────────
 
