@@ -223,11 +223,17 @@ def fetch_ohlcv(ticker: str, start: str, end: str) -> Optional[Any]:
 def _df_to_lists(df: Any) -> Tuple[List[str], List[float], List[float], List[float], List[float]]:
     """Convert yfinance DataFrame to (dates, opens, highs, lows, closes)."""
     import pandas as pd
+    # Flatten MultiIndex columns returned by yfinance >= 0.2.28 / 1.x for single-symbol downloads.
+    # Without this, df["Open"].iloc[i] returns a Series (not scalar) → float() TypeError.
+    if isinstance(df.columns, pd.MultiIndex):
+        df = df.copy()
+        df.columns = df.columns.droplevel(level=-1)
+        df = df.loc[:, ~df.columns.duplicated()]
     dates   = [str(idx.date()) for idx in df.index]
-    opens   = [float(df["Open"].iloc[i])  for i in range(len(df))]
-    highs   = [float(df["High"].iloc[i])  for i in range(len(df))]
-    lows    = [float(df["Low"].iloc[i])   for i in range(len(df))]
-    closes  = [float(df["Close"].iloc[i]) for i in range(len(df))]
+    opens   = [float(v) for v in df["Open"].tolist()]
+    highs   = [float(v) for v in df["High"].tolist()]
+    lows    = [float(v) for v in df["Low"].tolist()]
+    closes  = [float(v) for v in df["Close"].tolist()]
     return dates, opens, highs, lows, closes
 
 
