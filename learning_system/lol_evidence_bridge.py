@@ -256,6 +256,15 @@ def _ingest_impl(
 
             classification, miss_reason = mapping
 
+            # D9-007: warn when lineage ID is missing — KEL record will have no
+            # opportunity_id, making signal→decision→outcome chain untraceable.
+            if not rec.get("opportunity_id"):
+                log.warning(
+                    "[LOL-BRIDGE] %s has no opportunity_id — evidence written "
+                    "without lineage (KDA trace broken for this observation).",
+                    obs_id,
+                )
+
             # Build evidence record (event_type="EVIDENCE" for KFE compatibility)
             evidence = _build_evidence_record(rec, obs_id, classification, miss_reason)
             new_evidence.append(evidence)
@@ -400,10 +409,14 @@ def _build_evidence_record(
         "regime":        regime,
         # Provenance
         "source":        "lol_live",
+        # no_lookahead defaults True because the bridge verifies timestamps
+        # (outcome_at > decision_at) before calling _build_evidence_record().
+        # Only override to False when the source LOL record explicitly set it False.
         "no_lookahead":  bool(rec.get("no_lookahead", True)),
         "recorded_at":   datetime.now(timezone.utc).isoformat(),
         # Universal lineage ID — threads from scanner through all stores
-        "opportunity_id": rec.get("opportunity_id"),
+        # D9-007: do not propagate empty lineage ID — warn instead of silently writing None
+        "opportunity_id": rec.get("opportunity_id") or None,
     }
 
 

@@ -4916,11 +4916,26 @@ class MasterOrchestrator:
         self._last_eod_date = _today
         # Persist so restart cannot trigger a second run for the same day
         try:
+            import os as _eod_os
+            import tempfile as _eod_tmp
             _EOD_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            _EOD_STATUS_FILE.write_text(
-                _eod_json.dumps({"last_eod_date": _today}, indent=2),
-                encoding="utf-8",
+            _content = _eod_json.dumps({"last_eod_date": _today}, indent=2)
+            # D9-010: atomic fsync write — survive process kill between write and flush
+            _fd, _tmp = _eod_tmp.mkstemp(
+                dir=str(_EOD_STATUS_FILE.parent), prefix=".eod_status_", suffix=".tmp"
             )
+            try:
+                with _eod_os.fdopen(_fd, "w", encoding="utf-8") as _fh:
+                    _fh.write(_content)
+                    _fh.flush()
+                    _eod_os.fsync(_fh.fileno())
+                _eod_os.replace(_tmp, str(_EOD_STATUS_FILE))
+            except Exception:
+                try:
+                    _eod_os.unlink(_tmp)
+                except OSError:
+                    pass
+                raise
         except Exception as _pe:
             log.warning("[EOD] Could not persist EOD status: %s", _pe)
         log.info("── Layer 10: EOD Learning ──")

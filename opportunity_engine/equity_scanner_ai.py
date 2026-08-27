@@ -1491,6 +1491,18 @@ class EquityScannerAI:
                 stock.get("rsi", 0), stock.get("volume_ratio", 0),
                 getattr(snapshot.regime, "value", snapshot.regime),
             )
+            # D-009: Record scanned-but-no-setup observation for symbols that passed
+            # quality checks but didn't generate a signal.
+            # Only for prepared candidates (validated, high-quality symbols) to avoid
+            # flooding the observation store with low-quality watchlist entries.
+            if not sig and stock.get("_prepared") and reason not in (
+                "vol_too_low", "no_data", "price_too_low"
+            ):
+                try:
+                    from opportunity_engine.scan_no_signal_observer import record_no_signal
+                    record_no_signal(stock, snapshot, reason)
+                except Exception:
+                    pass
 
         _sc_t4 = time.monotonic()  # P1 diagnostic — after scanner AI loop
         _regime_str = getattr(snapshot.regime, "value", str(snapshot.regime))

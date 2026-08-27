@@ -69,10 +69,24 @@ def generate() -> dict:
     IST = timezone(timedelta(hours=5, minutes=30))
     now = datetime.now(IST)
 
-    commit      = _git(["rev-parse", "--short", "HEAD"])
-    commit_full = _git(["rev-parse", "HEAD"])
-    branch      = _git(["rev-parse", "--abbrev-ref", "HEAD"])
-    message     = _git(["log", "-1", "--pretty=%s"])
+    # Preserve git metadata from an existing manifest when git is unavailable
+    # (e.g. inside Docker build where .git is not in the build context).
+    _prev: dict = {}
+    _out_path = ROOT / "build_manifest.json"
+    if _out_path.exists():
+        try:
+            _prev = json.loads(_out_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    def _git_or_prev(args: list[str], key: str) -> str:
+        val = _git(args)
+        return val if val != "unknown" else _prev.get(key, "unknown")
+
+    commit      = _git_or_prev(["rev-parse", "--short", "HEAD"], "commit")
+    commit_full = _git_or_prev(["rev-parse", "HEAD"],            "commit_full")
+    branch      = _git_or_prev(["rev-parse", "--abbrev-ref", "HEAD"], "branch")
+    message     = _git_or_prev(["log", "-1", "--pretty=%s"],     "commit_message")
 
     file_hashes: dict[str, str] = {}
     missing: list[str] = []

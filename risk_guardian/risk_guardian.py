@@ -342,7 +342,8 @@ class FailSafeRiskGuardian:
                 log.warning(
                     "[RiskGuardian] ⚠️  RESTORED HALT from prior run: %s | "
                     "DailyPnL=\u20b9%+.0f",
-                    self._halt_reason, self._daily_pnl,
+                    # D9-011: truncate to prevent log aggregation overflow
+                    self._halt_reason[:100], self._daily_pnl,
                 )
             else:
                 log.info(

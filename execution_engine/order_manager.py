@@ -2158,6 +2158,12 @@ class OrderManager:
                 trigger_price=sig.stop_loss,
                 price=round(sig.stop_loss * 0.995, 2),
             )
+        # D9-005: broker connected but lacks SL method — operator must be aware
+        log.warning(
+            "[OrderManager] SL placement skipped for %s — broker lacks place_sl_order(). "
+            "Position will use software-only 5-minute monitoring cycle.",
+            sig.symbol,
+        )
         return None
 
     def _broker_place(self, symbol: str, direction: str,
@@ -2231,6 +2237,16 @@ class OrderManager:
                 rec.slippage_pct = (rec.slippage_abs / rec.requested_price) * 100.0
             # If partially filled: update quantity to actual filled qty
             if rec.fill_status == "PARTIALLY_FILLED" and rec.filled_quantity > 0:
+                # D9-002: reject zero fill price — corrupted price poisons P&L and learning
+                if rec.actual_fill_price <= 0:
+                    log.error(
+                        "[FillReconcile] %s PARTIAL FILL has zero fill price "
+                        "(filled=%d price=%.2f) — marking UNRESOLVED for retry.",
+                        rec.symbol, rec.filled_quantity, rec.actual_fill_price,
+                    )
+                    rec.fill_status = "UNRESOLVED"
+                    rec.reconciliation_source = "PARTIAL_ZERO_PRICE"
+                    return
                 log.warning(
                     "[FillReconcile] %s PARTIAL FILL: requested=%d filled=%d "
                     "fill_price=%.2f slippage=%.2f%%",
@@ -3551,6 +3567,9 @@ class OrderManager:
                         # Carry restore: use original CSV stop_loss (before extension adjustment)
                         # as the immutable risk anchor.
                         initial_stop_loss = float(row.get("stop_loss", 0) or 0),
+                        # D9-008: restore zone_price; default to entry_price if missing in
+                        # older journal rows (prevents zero zone_price in re-entry checks).
+                        zone_price = float(row.get("zone_price") or row.get("entry_price") or 0) or float(row.get("entry_price", 0) or 0),
                     )
                     if _ext_entry:
                         # Tell TradeMonitor (via register()) not to re-fire extension.
