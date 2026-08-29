@@ -1455,7 +1455,9 @@ class EquityScannerAI:
                     if sig.entry_price and sig.entry_price != sig.stop_loss else 0.0
                 )
                 _in_bull = (snapshot.regime == RegimeLabel.BULL_TREND)
-                if sig.direction == SignalDirection.SHORT:
+                if getattr(sig, "strategy_name", "") == "knowledge_referred":
+                    _setup = "knowledge_referred"
+                elif sig.direction == SignalDirection.SHORT:
                     _setup = "high_rsi_short"
                 elif _ltp > _res > 0:
                     _setup = "breakout"
@@ -1966,20 +1968,26 @@ class EquityScannerAI:
         extra_strategies: list | None = None,
     ) -> "tuple[TradeSignal | None, str]":
         """
-        Returns (TradeSignal, 'signal_found') on match.
-        Returns (None, reason_code) on rejection.
+        Returns (TradeSignal, 'signal_found') on pattern match.
+        Returns (TradeSignal, 'knowledge_referred') for candidates that pass
+            data-quality gates but don't match any predefined setup pattern.
+            These signals reach KDA for knowledge-first evaluation.
+        Returns (None, reason_code) ONLY for hard rejections (data quality / safety):
 
-        Reason codes (for [UniverseAudit] breakdown):
-          high_atr          — ATR% > volatility guard threshold
-          bear_market       — hard regime block
+        Hard rejections — (None, reason_code):
+          high_atr          — ATR% > volatility guard threshold (data quality)
+          bear_market       — hard regime block (safety gate)
+
+        Knowledge-referred — (TradeSignal[knowledge_referred], 'knowledge_referred'):
           breakout_vol_low  — LTP above resistance; vol_ratio < min
           breakout_rsi_hi   — LTP above resistance + volume; RSI ≥ 75
           retest_rsi_oob    — LTP in resistance retest zone; RSI outside 50-65
-          pullback_miss     — bull trend; near support; RSI/vol not in zone
-          bull_gate         — bull trend; no breakout/retest/pullback; S4+S5 blocked
-          short_conditions  — range/volatile; RSI < 67 or price < resistance*0.99
+          bull_gate         — bull trend; no breakout/retest/pullback pattern matched
           bounce_price_hi   — RSI oversold but price above support zone
-          rsi_neutral       — RSI 46-66, price in mid-range (no extreme setup)
+          rsi_neutral       — RSI 46-66, price in mid-range
+
+        DTA-SYSTEM-019: all non-safety rejections produce knowledge_referred signals
+        so every data-quality-passing candidate reaches KDA evaluation.
         """
         ltp        = stock["ltp"]
         resistance = stock["resistance"]
@@ -2014,9 +2022,9 @@ class EquityScannerAI:
         # vol_ratio_min may be relaxed by ODM (default 2.0 → as low as 1.4 in SECONDARY).
         if ltp > resistance:
             if vol_ratio < vol_ratio_min:
-                return None, "breakout_vol_low"
+                return self._build_knowledge_referred_signal(stock, snapshot, "breakout_vol_low"), "knowledge_referred"
             if rsi >= 75:
-                return None, "breakout_rsi_hi"
+                return self._build_knowledge_referred_signal(stock, snapshot, "breakout_rsi_hi"), "knowledge_referred"
             # Setup 1 matched
             _rr = RR_STRONG_BREAKOUT if vol_ratio >= 3.0 else RR_NORMAL_BREAKOUT
             sig = TradeSignal(
@@ -2042,7 +2050,7 @@ class EquityScannerAI:
         # Active in all non-bear regimes including BULL_TREND.
         if resistance * 0.995 <= ltp <= resistance * 1.01:
             if not (50 <= rsi <= 65):
-                return None, "retest_rsi_oob"
+                return self._build_knowledge_referred_signal(stock, snapshot, "retest_rsi_oob"), "knowledge_referred"
             sig = TradeSignal(
                 symbol          = stock["symbol"],
                 direction       = SignalDirection.BUY,
@@ -2099,8 +2107,10 @@ class EquityScannerAI:
                     entry_zone_high = round(ltp + atr * 0.10, 2),
                 )
                 return sig, "signal_found"
-            # Setup 3 failed — in bull trend setups 4+5 (mean-reversion) are blocked
-            return None, "bull_gate"
+            # Setup 3 not matched — stock is in bull trend but didn't qualify for
+            # trend_pullback.  Refer to KDA for knowledge-based evaluation.
+            # DTA-SYSTEM-019: was return None, 'bull_gate'
+            return self._build_knowledge_referred_signal(stock, snapshot, "bull_gate"), "knowledge_referred"
 
         # ── Range / Volatile regimes only past this point ─────────────
         # Setup 4: High RSI Short
@@ -2131,7 +2141,7 @@ class EquityScannerAI:
         # to support within the normal distribution (fix for backlog #10).
         if rsi <= 45:
             if ltp > support * 1.02:
-                return None, "bounce_price_hi"
+                return self._build_knowledge_referred_signal(stock, snapshot, "bounce_price_hi"), "knowledge_referred"
             sig = TradeSignal(
                 symbol          = stock["symbol"],
                 direction       = SignalDirection.BUY,
@@ -2151,8 +2161,68 @@ class EquityScannerAI:
             )
             return sig, "signal_found"
 
-        # RSI 46-66, price in middle of range — no extreme setup matches
-        return None, "rsi_neutral"
+        # RSI 46-66, price in middle of range — no extreme setup matched.
+        # Refer to KDA for knowledge-based evaluation.  DTA-SYSTEM-019.
+        return self._build_knowledge_referred_signal(stock, snapshot, "rsi_neutral"), "knowledge_referred"
+
+    def _build_knowledge_referred_signal(
+        self,
+        stock: Dict[str, Any],
+        snapshot: MarketSnapshot,
+        scanner_context: str,
+    ) -> TradeSignal:
+        """
+        Generate a knowledge_referred TradeSignal for candidates that pass
+        data-quality gates (high_atr / bear_market) but do not match any
+        predefined setup pattern.
+
+        strategy_name = 'knowledge_referred' ensures the signal reaches KDA
+        for knowledge-first evaluation.  The scanner_context label is embedded
+        in notes so KDA has full context when scoring evidence.
+
+        KDA remains the authority: KNOWLEDGE_WAIT → no execution.
+        CRE and RiskGuardian remain mandatory downstream veto layers.
+
+        Confidence: 5.0–6.5 (below pattern-matched range of 5.5–9.5).
+        Direction: BUY — scanner operates in long-only universe; KDA may WAIT.
+        RR: RR_DEFAULT (2.5) — ATR-based; KDA empirical levels override if VALIDATED.
+
+        DTA-SYSTEM-019: architectural replacement for (None, reason_code).
+        """
+        ltp        = stock["ltp"]
+        support    = stock["support"]
+        resistance = stock["resistance"]
+        vol_ratio  = stock.get("volume_ratio", 1.0)
+        rsi        = stock.get("rsi", 50)
+        adv_crore  = stock.get("adv_crore", 0.0)
+
+        atr       = _estimate_atr(ltp, support, resistance)
+        stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)
+
+        # Confidence: 5.0 base (below normal pattern-matched range of 5.5–9.5)
+        # Volume and RSI contribute modestly; KDA evidence is the real determinant.
+        vol_boost  = min(vol_ratio * 0.30, 0.80)
+        rsi_boost  = 0.40 if rsi > 60 else (0.20 if rsi >= 45 else 0.0)
+        confidence = round(min(5.0 + vol_boost + rsi_boost, 6.5), 2)
+
+        return TradeSignal(
+            symbol          = stock["symbol"],
+            direction       = SignalDirection.BUY,
+            signal_type     = SignalType.EQUITY,
+            strength        = SignalStrength.WEAK,
+            entry_price     = ltp,
+            stop_loss       = round(ltp - stop_dist, 2),
+            target_price    = round(ltp + RR_DEFAULT * stop_dist, 2),
+            quantity        = 1,    # placeholder — Risk Engine will overwrite
+            strategy_name   = "knowledge_referred",
+            confidence      = confidence,
+            source_agent    = "EquityScannerAI",
+            notes           = f"scanner_context:{scanner_context}",
+            atr             = atr,
+            adv_crore       = adv_crore,
+            entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
+            entry_zone_high = round(ltp + atr * 0.10, 2),
+        )
 
 
 # ── Fix 2: Pre-market S/R Level Validator ──────────────────────────────────
