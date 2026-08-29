@@ -1172,28 +1172,34 @@ class MasterOrchestrator:
                     if _r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL"):
                         _kda_authorized.add(_kda_sig.symbol)
 
-                    # DTA-SYSTEM-020 Fix B: For knowledge_referred signals KDA evidence
-                    # quality replaces scanner confidence as the authority gate.
-                    # Scanner confidence 5.0–6.5 would fail RiskManager (≥ 6.8) and
-                    # Phase 2 GAP-029 (≥ 7.5).  Apply an evidence-derived confidence
-                    # floor so only well-evidenced knowledge signals reach execution.
-                    # INSUFFICIENT / DEVELOPING evidence → floor = 0.0 → not executable.
+                    # DTA-SYSTEM-021 (replaces DTA-020 Fix B): For knowledge_referred
+                    # signals, replace scanner confidence with evidence-derived conviction
+                    # computed from actual KDA metrics (ESS + win rate).  The previous
+                    # approach used fixed floors (7.0/7.5) that were artificial numbers
+                    # chosen to clear legacy gates rather than genuine representations of
+                    # conviction.  Now the conviction IS derived from evidence quality:
+                    #   DECISION_ELIGIBLE (ESS≥100) base=8.0 + win-rate bonus → ~8.0–9.5
+                    #   VALIDATED         (ESS30–99) base=7.0 + win-rate bonus → ~7.0–8.5
+                    #   USEFUL/DEVELOPING/INSUFFICIENT → no conviction upgrade → not executable
                     if (getattr(_kda_sig, "strategy_name", "") == "knowledge_referred"
-                            and _r.get("kda_decision") == "KNOWLEDGE_BUY"):
-                        _kr_ev_b = _r.get("evidence_state", "")
-                        _kr_conf_floor = (
-                            7.5 if _kr_ev_b == "DECISION_ELIGIBLE" else
-                            7.0 if _kr_ev_b == "VALIDATED" else
-                            0.0   # USEFUL / DEVELOPING / INSUFFICIENT → no boost
-                        )
-                        if _kr_conf_floor > 0.0 and _kda_sig.confidence < _kr_conf_floor:
+                            and _r.get("kda_decision") == "KNOWLEDGE_BUY"
+                            and _r.get("evidence_state") in ("DECISION_ELIGIBLE", "VALIDATED")):
+                        _kr_ev_b   = _r.get("evidence_state", "")
+                        _kr_ess    = float(_r.get("effective_sample_size") or
+                                           _r.get("hbe_ess") or 0.0)
+                        _kr_thp    = _r.get("hbe_target_hit_prob")  # P(target hit) = win rate
+                        _kr_base   = 8.0 if _kr_ess >= 100.0 else 7.0
+                        _kr_wr     = (max(0.0, min(1.5, (_kr_thp - 0.55) * 7.5))
+                                      if _kr_thp is not None else 0.0)
+                        _kr_conv   = round(min(9.5, _kr_base + _kr_wr), 2)
+                        if _kr_conv > _kda_sig.confidence:
                             log.info(
-                                "[KDA-AUTHORITY] %s: knowledge_referred confidence "
-                                "%.1f → %.1f (evidence_state=%s — KDA authority gate)",
-                                _kda_sig.symbol, _kda_sig.confidence,
-                                _kr_conf_floor, _kr_ev_b,
+                                "[KDA-AUTHORITY] %s: knowledge_referred conviction "
+                                "%.1f → %.2f (ess=%.0f thp=%.0f%% evidence=%s)",
+                                _kda_sig.symbol, _kda_sig.confidence, _kr_conv,
+                                _kr_ess, (_kr_thp or 0) * 100, _kr_ev_b,
                             )
-                            _kda_sig.confidence = _kr_conf_floor
+                            _kda_sig.confidence = _kr_conv
 
                 # ── Build merged signal list (KDA union StrategyLab) ─────────
                 # Phase 1: annotate and keep StrategyLab-approved signals.

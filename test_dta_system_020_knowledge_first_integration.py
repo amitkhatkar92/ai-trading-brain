@@ -281,40 +281,45 @@ def _test_fix_a_via_module(sgen, RegimeLabel):
 
 def _simulate_kda_boost(signal: _FakeSignal, kda_result: dict) -> None:
     """
-    Reproduce the Fix B confidence-boost logic extracted from master_orchestrator.py.
-    This mirrors the code at lines ~1181-1196 so the test is authoritative without
-    importing the full orchestrator.
+    Reproduce the DTA-021 evidence-derived conviction logic from master_orchestrator.py.
+    Conviction is computed from ESS tier (base) + win-rate bonus, not fixed floors.
     """
     if (getattr(signal, "strategy_name", "") == "knowledge_referred"
-            and kda_result.get("kda_decision") == "KNOWLEDGE_BUY"):
-        ev = kda_result.get("evidence_state", "")
-        conf_floor = (
-            7.5 if ev == "DECISION_ELIGIBLE" else
-            7.0 if ev == "VALIDATED" else
-            0.0
-        )
-        if conf_floor > 0.0 and signal.confidence < conf_floor:
-            signal.confidence = conf_floor
+            and kda_result.get("kda_decision") == "KNOWLEDGE_BUY"
+            and kda_result.get("evidence_state") in ("DECISION_ELIGIBLE", "VALIDATED")):
+        ev    = kda_result.get("evidence_state", "")
+        ess   = float(kda_result.get("effective_sample_size") or
+                      kda_result.get("hbe_ess") or 0.0)
+        thp   = kda_result.get("hbe_target_hit_prob")
+        base  = 8.0 if ess >= 100.0 else 7.0
+        wr    = (max(0.0, min(1.5, (thp - 0.55) * 7.5))
+                 if thp is not None else 0.0)
+        conv  = round(min(9.5, base + wr), 2)
+        if conv > signal.confidence:
+            signal.confidence = conv
 
 
 def _test_fix_b():
     print("\n── Fix B: KDA confidence boost for knowledge_referred ────────────────")
 
-    # T006: DECISION_ELIGIBLE → 7.5
+    # T006: DECISION_ELIGIBLE + ESS=327 + thp=0.74 → evidence-derived conviction ≥ 8.0
     s = _FakeSignal(confidence=5.5)
-    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "DECISION_ELIGIBLE"})
-    _assert("T006", "DECISION_ELIGIBLE → confidence boosted to 7.5",
-            s.confidence == 7.5, f"got {s.confidence}")
+    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "DECISION_ELIGIBLE",
+                            "effective_sample_size": 327.0, "hbe_target_hit_prob": 0.74})
+    _assert("T006", "DECISION_ELIGIBLE + ess=327 + thp=74% → conviction ≥ 8.0",
+            s.confidence >= 8.0, f"got {s.confidence}")
 
-    # T007: VALIDATED → 7.0
+    # T007: VALIDATED + ESS=50 + thp=0.60 → evidence-derived conviction ≥ 7.0
     s = _FakeSignal(confidence=5.5)
-    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "VALIDATED"})
-    _assert("T007", "VALIDATED → confidence boosted to 7.0",
-            s.confidence == 7.0, f"got {s.confidence}")
+    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "VALIDATED",
+                            "effective_sample_size": 50.0, "hbe_target_hit_prob": 0.60})
+    _assert("T007", "VALIDATED + ess=50 + thp=60% → conviction ≥ 7.0",
+            s.confidence >= 7.0, f"got {s.confidence}")
 
-    # T008: USEFUL → no boost
+    # T008: USEFUL → no boost (not in DECISION_ELIGIBLE/VALIDATED)
     s = _FakeSignal(confidence=5.5)
-    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "USEFUL"})
+    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "USEFUL",
+                            "effective_sample_size": 15.0, "hbe_target_hit_prob": 0.52})
     _assert("T008", "USEFUL → confidence unchanged (no boost)",
             s.confidence == 5.5, f"got {s.confidence}")
 
@@ -467,9 +472,9 @@ def _test_source_inspection():
 
     _assert(
         "SRC-B1",
-        "Fix B confidence-boost block present in master_orchestrator.py",
-        "_kr_conf_floor" in mo_src,
-        "DTA-SYSTEM-020 Fix B not found (missing _kr_conf_floor)",
+        "DTA-021 evidence-derived conviction block present in master_orchestrator.py",
+        "_kr_conv" in mo_src,
+        "DTA-021 conviction block not found (missing _kr_conv)",
     )
     _assert(
         "SRC-C1",
@@ -506,11 +511,12 @@ def _test_flow_invariants():
     _assert("FLOW-1", "Flow: Fix A guard present → signal excluded from enriched_signals",
             fix_a_present, "Fix A guard missing")
 
-    # Step 3: KDA runs → KNOWLEDGE_BUY + VALIDATED → Fix B boosts confidence to 7.0
-    kda_result = {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "VALIDATED"}
+    # Step 3: KDA runs → KNOWLEDGE_BUY + VALIDATED → DTA-021 conviction ≥ 7.0
+    kda_result = {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "VALIDATED",
+                  "effective_sample_size": 50.0, "hbe_target_hit_prob": 0.60}
     _simulate_kda_boost(sig, kda_result)
-    _assert("FLOW-2", "Flow: Fix B boosts VALIDATED confidence to 7.0",
-            sig.confidence == 7.0, f"confidence is {sig.confidence}")
+    _assert("FLOW-2", "Flow: DTA-021 evidence conviction ≥ 7.0 for VALIDATED",
+            sig.confidence >= 7.0, f"confidence is {sig.confidence}")
 
     # Step 4: Phase 2 GAP-029 — exempt (VALIDATED) → allowed
     passed_gap029 = _simulate_gap029(sig, kda_result)

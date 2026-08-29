@@ -200,6 +200,19 @@ class MultiAgentDebate:
         regime = snapshot.regime.value
         strat  = sig.strategy_name
 
+        # KDA_AUTHORITY and knowledge_referred signals have already passed
+        # regime-aware evidence evaluation: HBE queries include regime as a
+        # parameter, so the KDA decision implicitly encodes regime compatibility.
+        # Applying the strategy matrix here would double-count regime analysis
+        # using the wrong proxy (strategy_name instead of evidence quality).
+        if strat in ("KDA_AUTHORITY", "knowledge_referred"):
+            ev_state = getattr(sig, "kda_evidence_state", "") or ""
+            return DebateVote(
+                agent_name="RegimeDebateAI", vote="approve", score=8.0,
+                reasoning=f"KDA authority ({ev_state}) — regime verified by HBE evidence",
+                suggested_position_modifier=1.0,
+            )
+
         # Confirm strategy is appropriate for regime
         regime_strategy_matrix = {
             RegimeLabel.BULL_TREND:   ["Breakout_Volume", "Momentum_Retest",
