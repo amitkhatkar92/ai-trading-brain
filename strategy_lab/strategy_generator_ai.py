@@ -169,6 +169,15 @@ class StrategyGeneratorAI:
             log.debug("[StrategyGeneratorAI] Rejected %s — bear market.", signal.symbol)
             return None
 
+        # DTA-SYSTEM-020: knowledge_referred signals are KDA-only.
+        # Returning None here preserves strategy_name = "knowledge_referred" on the
+        # signal object so the KDA loop and Phase 2 merge can identify and route them.
+        # They are intentionally excluded from enriched_signals (StrategyLab path).
+        if getattr(signal, "strategy_name", "") == "knowledge_referred":
+            log.debug("[StrategyGeneratorAI] %s strategy_name=knowledge_referred — "
+                      "routing to KDA-only path (StrategyLab skipped).", signal.symbol)
+            return None
+
         # ── Override strategy if already correctly named ──────────────
         if signal.strategy_name in STRATEGY_PARAMS:
             rr = signal.risk_reward_ratio

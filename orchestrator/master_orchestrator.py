@@ -1172,6 +1172,29 @@ class MasterOrchestrator:
                     if _r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL"):
                         _kda_authorized.add(_kda_sig.symbol)
 
+                    # DTA-SYSTEM-020 Fix B: For knowledge_referred signals KDA evidence
+                    # quality replaces scanner confidence as the authority gate.
+                    # Scanner confidence 5.0–6.5 would fail RiskManager (≥ 6.8) and
+                    # Phase 2 GAP-029 (≥ 7.5).  Apply an evidence-derived confidence
+                    # floor so only well-evidenced knowledge signals reach execution.
+                    # INSUFFICIENT / DEVELOPING evidence → floor = 0.0 → not executable.
+                    if (getattr(_kda_sig, "strategy_name", "") == "knowledge_referred"
+                            and _r.get("kda_decision") == "KNOWLEDGE_BUY"):
+                        _kr_ev_b = _r.get("evidence_state", "")
+                        _kr_conf_floor = (
+                            7.5 if _kr_ev_b == "DECISION_ELIGIBLE" else
+                            7.0 if _kr_ev_b == "VALIDATED" else
+                            0.0   # USEFUL / DEVELOPING / INSUFFICIENT → no boost
+                        )
+                        if _kr_conf_floor > 0.0 and _kda_sig.confidence < _kr_conf_floor:
+                            log.info(
+                                "[KDA-AUTHORITY] %s: knowledge_referred confidence "
+                                "%.1f → %.1f (evidence_state=%s — KDA authority gate)",
+                                _kda_sig.symbol, _kda_sig.confidence,
+                                _kr_conf_floor, _kr_ev_b,
+                            )
+                            _kda_sig.confidence = _kr_conf_floor
+
                 # ── Build merged signal list (KDA union StrategyLab) ─────────
                 # Phase 1: annotate and keep StrategyLab-approved signals.
                 # ARCH-005: KNOWLEDGE_HOLD = KDA found material conflict → StrategyLab cannot override.
@@ -1227,15 +1250,24 @@ class MasterOrchestrator:
                 for _orig_sig in signals:
                     if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
                         continue
-                    # GAP-029: enforce elevated confidence gate for KDA-only path
-                    if _orig_sig.confidence < _KDA_ONLY_MIN_CONFIDENCE:
+                    _r3 = _kda_results[_orig_sig.symbol]
+                    # GAP-029 + DTA-SYSTEM-020 Fix C: knowledge_referred signals with
+                    # VALIDATED or DECISION_ELIGIBLE KDA evidence are exempt from the
+                    # raw-confidence gate; their confidence was already boosted in the
+                    # KDA loop above to reflect evidence quality (Fix B).
+                    # All other KDA-only signals still require the elevated bar (7.5).
+                    _r3_ev = _r3.get("evidence_state", "")
+                    _kr_gap029_exempt = (
+                        getattr(_orig_sig, "strategy_name", "") == "knowledge_referred"
+                        and _r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
+                    )
+                    if _orig_sig.confidence < _KDA_ONLY_MIN_CONFIDENCE and not _kr_gap029_exempt:
                         log.info(
                             "[KDA-AUTHORITY] %s: KDA-only blocked — confidence %.1f < %.1f "
                             "(no backtest gate; elevated threshold enforced).",
                             _orig_sig.symbol, _orig_sig.confidence, _KDA_ONLY_MIN_CONFIDENCE,
                         )
                         continue
-                    _r3 = _kda_results[_orig_sig.symbol]
                     _kda_hor_src3 = _r3.get("horizon_source", "NONE")
                     _orig_sig.authorization_source = "KDA"
                     _orig_sig.kda_decision       = _r3.get("kda_decision")
