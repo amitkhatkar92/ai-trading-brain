@@ -23,12 +23,13 @@ class AngelOneBroker:
 
     def __init__(self, api_key: str, client_id: str,
                  password: str, totp_secret: str):
-        self.api_key     = api_key
-        self.client_id   = client_id
-        self.password    = password
-        self.totp_secret = totp_secret
-        self._smart      = None
-        self._connected  = False
+        self.api_key          = api_key
+        self.client_id        = client_id
+        self.password         = password
+        self.totp_secret      = totp_secret
+        self._smart           = None
+        self._connected       = False
+        self._last_failure_type = ""  # mirrors DhanBroker contract for OrderManager retry logic
         self._connect()
 
     def _connect(self):
@@ -84,7 +85,20 @@ class AngelOneBroker:
                 "quantity":         str(quantity),
             }
             response = self._smart.placeOrder(order_params)
+            if not isinstance(response, dict):
+                self._last_failure_type = "BROKER_RESPONSE_MALFORMED"
+                log.error(
+                    "[AngelOneBroker] BROKER_RESPONSE_MALFORMED %s: type=%s repr=%r",
+                    symbol, type(response).__name__, str(response)[:200],
+                )
+                return None
             order_id = response.get("data", {}).get("orderid")
+            if not order_id:
+                self._last_failure_type = "BROKER_REJECTED"
+                log.error("[AngelOneBroker] BROKER_REJECTED %s: no orderid in %r",
+                          symbol, str(response)[:200])
+                return None
+            self._last_failure_type = "BROKER_ACCEPTED"
             log.info("[AngelOneBroker] Order placed: %s", order_id)
             return str(order_id) if order_id else None
         except Exception as exc:

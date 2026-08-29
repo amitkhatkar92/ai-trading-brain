@@ -14,6 +14,17 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
+# ── Broker failure-type constants ─────────────────────────────────────────────
+# Set on self._last_failure_type after every place_order / place_sl_order call.
+# OrderManager._place_entry_with_retry() reads this to decide whether retrying
+# is safe (EXCEPTION/REJECTED) or ambiguous (MALFORMED/EMPTY — must not retry
+# blindly because Dhan may have already accepted the order).
+BROKER_ACCEPTED           = "BROKER_ACCEPTED"
+BROKER_REJECTED           = "BROKER_REJECTED"           # explicit API rejection
+BROKER_RESPONSE_MALFORMED = "BROKER_RESPONSE_MALFORMED"  # non-dict / wrong shape
+BROKER_RESPONSE_EMPTY     = "BROKER_RESPONSE_EMPTY"      # None or empty string
+BROKER_EXCEPTION          = "BROKER_EXCEPTION"           # Python exception in SDK call
+
 
 class DhanBroker:
     """
@@ -22,10 +33,11 @@ class DhanBroker:
     """
 
     def __init__(self, client_id: str, access_token: str):
-        self.client_id    = client_id
-        self.access_token = access_token
-        self._dhan        = None
-        self._connected   = False
+        self.client_id          = client_id
+        self.access_token       = access_token
+        self._dhan              = None
+        self._connected         = False
+        self._last_failure_type = ""   # set by every place_order / place_sl_order call
         self._connect()
 
     def _connect(self):
@@ -43,6 +55,96 @@ class DhanBroker:
             log.warning("[DhanBroker] dhanhq not installed — running in SIMULATION mode.")
         except Exception as exc:
             log.error("[DhanBroker] Connection failed: %s", exc)
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # SHARED RESPONSE VALIDATOR
+    # ─────────────────────────────────────────────────────────────────────────
+
+    def _validate_order_response(
+        self, response: Any, security_id: str, endpoint: str
+    ) -> Optional[str]:
+        """
+        Validate a Dhan order-placement response and extract the orderId.
+
+        Sets self._last_failure_type to one of the BROKER_* constants before
+        returning so callers can distinguish failure categories without parsing
+        log messages.
+
+        Returns the orderId string on success, None on any failure.  Never raises.
+
+        Failure classifications:
+          BROKER_RESPONSE_EMPTY    — response is None or an empty / whitespace string
+          BROKER_RESPONSE_MALFORMED — non-dict, or dict with wrong structure
+          BROKER_REJECTED          — dict carries an explicit Dhan error/rejection
+          BROKER_ACCEPTED          — valid orderId extracted
+        """
+        # ── Empty / None response ────────────────────────────────────────────
+        if response is None or response == "" or (
+            isinstance(response, str) and not response.strip()
+        ):
+            self._last_failure_type = BROKER_RESPONSE_EMPTY
+            log.error(
+                "[DhanBroker] %s %s: BROKER_RESPONSE_EMPTY — "
+                "received %r (type=%s); Dhan may have accepted the order — "
+                "check dashboard before retrying.",
+                endpoint, security_id, response, type(response).__name__,
+            )
+            return None
+
+        # ── Non-dict response (e.g. plain string, bytes, list) ───────────────
+        if not isinstance(response, dict):
+            self._last_failure_type = BROKER_RESPONSE_MALFORMED
+            log.error(
+                "[DhanBroker] %s %s: BROKER_RESPONSE_MALFORMED — "
+                "type=%s repr=%r; Dhan may have accepted the order — "
+                "check dashboard before retrying.",
+                endpoint, security_id,
+                type(response).__name__, str(response)[:200],
+            )
+            return None
+
+        # ── Explicit Dhan API rejection inside a dict ────────────────────────
+        _status = str(response.get("status", "")).lower()
+        _error_code = response.get("errorCode") or response.get("error_code")
+        if _status in ("failure", "error", "failed") or _error_code:
+            self._last_failure_type = BROKER_REJECTED
+            log.error(
+                "[DhanBroker] %s %s: BROKER_REJECTED — status=%s "
+                "errorCode=%s remarks=%s",
+                endpoint, security_id, _status, _error_code,
+                str(response.get("remarks", ""))[:200],
+            )
+            return None
+
+        # ── data field must be a dict ────────────────────────────────────────
+        _data = response.get("data")
+        if not isinstance(_data, dict):
+            self._last_failure_type = BROKER_RESPONSE_MALFORMED
+            log.error(
+                "[DhanBroker] %s %s: BROKER_RESPONSE_MALFORMED — "
+                "data field is %r (type=%s); full response=%r",
+                endpoint, security_id,
+                _data, type(_data).__name__, str(response)[:200],
+            )
+            return None
+
+        # ── orderId must be present and non-empty ────────────────────────────
+        _order_id = _data.get("orderId")
+        if not _order_id:
+            self._last_failure_type = BROKER_REJECTED
+            log.error(
+                "[DhanBroker] %s %s: BROKER_REJECTED — "
+                "orderId missing or empty in data; data=%r",
+                endpoint, security_id, str(_data)[:200],
+            )
+            return None
+
+        self._last_failure_type = BROKER_ACCEPTED
+        log.info(
+            "[DhanBroker] %s %s: BROKER_ACCEPTED order_id=%s",
+            endpoint, security_id, _order_id,
+        )
+        return str(_order_id)
 
     # ─────────────────────────────────────────────
     # ORDER PLACEMENT
@@ -73,12 +175,16 @@ class DhanBroker:
                 product_type      = product_type,
                 price             = price,
             )
-            order_id = response.get("data", {}).get("orderId")
-            log.info("[DhanBroker] Order placed: %s", order_id)
-            return str(order_id) if order_id else None
         except Exception as exc:
-            log.error("[DhanBroker] Order failed %s: %s", security_id, exc)
+            self._last_failure_type = BROKER_EXCEPTION
+            log.error(
+                "[DhanBroker] place_order BROKER_EXCEPTION %s "
+                "txn=%s qty=%d order_type=%s: %s",
+                security_id, transaction_type, quantity, order_type, exc,
+            )
             return None
+
+        return self._validate_order_response(response, security_id, "place_order")
 
     def place_sl_order(self, symbol: str, exchange: str, transaction_type: str,
                        quantity: int, trigger_price: float, price: float) -> Optional[str]:
@@ -108,6 +214,7 @@ class DhanBroker:
                 symbol,
             )
             return None
+
         try:
             response = self._dhan.place_order(
                 security_id      = _meta["security_id"],
@@ -119,13 +226,22 @@ class DhanBroker:
                 price            = price,
                 trigger_price    = trigger_price,
             )
-            order_id = response.get("data", {}).get("orderId")
-            log.info("[DhanBroker] SL order placed: %s  symbol=%s trigger=%.2f",
-                     order_id, symbol, trigger_price)
-            return str(order_id) if order_id else None
         except Exception as exc:
-            log.error("[DhanBroker] SL order failed for %s: %s", symbol, exc)
+            self._last_failure_type = BROKER_EXCEPTION
+            log.error(
+                "[DhanBroker] place_sl_order BROKER_EXCEPTION %s "
+                "txn=%s qty=%d trigger=%.2f: %s",
+                symbol, transaction_type, quantity, trigger_price, exc,
+            )
             return None
+
+        order_id = self._validate_order_response(
+            response, _meta["security_id"], "place_sl_order"
+        )
+        if order_id:
+            log.info("[DhanBroker] SL order BROKER_ACCEPTED order_id=%s  symbol=%s trigger=%.2f",
+                     order_id, symbol, trigger_price)
+        return order_id
 
     def cancel_order(self, order_id: str) -> bool:
         if not self._connected or self._dhan is None:

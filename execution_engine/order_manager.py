@@ -2253,6 +2253,12 @@ class OrderManager:
             not provided (e.g. legacy call-sites).
 
         Returns order_id on success, None if all attempts fail.
+
+        RETRY SAFETY (DTA-LIVE-RC-002):
+        MALFORMED and EMPTY responses are ambiguous — Dhan may have accepted
+        the order even though our client received a broken response.  These
+        must NOT be retried blindly because a retry could create a duplicate
+        live order.  Only EXCEPTION and REJECTED failures are safe to retry.
         """
         direction  = "BUY" if sig.direction == SignalDirection.BUY else "SELL"
         _lmt_price = zone_price if zone_price is not None else sig.entry_price
@@ -2265,9 +2271,35 @@ class OrderManager:
                         log.info("[OrderManager] ✅ Order placed on attempt %d/%d "
                                  "for %s.", attempt, MAX_ORDER_RETRIES, sig.symbol)
                     return order_id
+
+                # Check failure type to decide whether retrying is safe
+                _failure_type = getattr(self._broker, "_last_failure_type", "")
+                if _failure_type in ("BROKER_RESPONSE_MALFORMED", "BROKER_RESPONSE_EMPTY"):
+                    # Ambiguous: Dhan may have accepted the order — do NOT retry.
+                    log.error(
+                        "[OrderManager] [AmbiguousExecution] %s %s attempt=%d/%d "
+                        "failure_type=%s — cannot retry without reconciliation. "
+                        "Failing closed. Verify on Dhan dashboard before next signal.",
+                        sig.symbol, direction, attempt, MAX_ORDER_RETRIES, _failure_type,
+                    )
+                    try:
+                        from notifications.notifier_manager import get_notifier
+                        get_notifier().send_alert(
+                            f"⚠️ <b>[AmbiguousExecution]</b> "
+                            f"<b>{sig.symbol}</b> {direction} qty={qty} "
+                            f"attempt {attempt}/{MAX_ORDER_RETRIES} — Dhan returned "
+                            f"<code>{_failure_type}</code>. Cannot confirm whether order "
+                            f"was accepted. Execution halted without retry. "
+                            f"Check Dhan dashboard immediately."
+                        )
+                    except Exception:
+                        pass
+                    return None  # fail closed — no retry on ambiguous response
+
                 log.warning("[OrderManager] Attempt %d/%d: broker returned None "
-                            "for %s — retrying.",
-                            attempt, MAX_ORDER_RETRIES, sig.symbol)
+                            "(%s) for %s — retrying.",
+                            attempt, MAX_ORDER_RETRIES,
+                            _failure_type or "UNKNOWN", sig.symbol)
             except Exception as exc:
                 log.error("[OrderManager] Attempt %d/%d exception for %s: %s",
                           attempt, MAX_ORDER_RETRIES, sig.symbol, exc)
