@@ -570,7 +570,9 @@ def test_T029_opportunity_id_preserved_into_order_record():
         patch.object(om, "_reconcile_fill", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         record = om.execute(sig, dec)
 
     assert record is not None
@@ -616,7 +618,9 @@ def test_T030_opportunity_id_preserved_in_orders_dict():
         patch.object(om, "_reconcile_fill", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         om.execute(sig, dec)
 
     assert om._orders["ORD-OPP-002"].opportunity_id == "OPP-SBIN-2026-08-28-002"
@@ -677,7 +681,9 @@ def test_T031_malformed_response_does_not_blindly_retry():
         patch.object(om, "_append_live_journal", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     # MALFORMED response must halt immediately — broker is called exactly once
@@ -726,7 +732,9 @@ def test_T032_exception_failure_is_retried():
     with (
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     assert result is None
@@ -772,7 +780,9 @@ def test_T033_unresolved_response_fails_closed():
     with (
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     assert result is None
@@ -822,7 +832,9 @@ def test_T034_valid_broker_response_reaches_orders():
         patch.object(om, "_reconcile_fill", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     assert result is not None
@@ -859,7 +871,9 @@ def test_T035_invalid_broker_response_does_not_reach_orders():
     with (
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
     assert result is None
     assert len(om._orders) == 0
@@ -904,7 +918,9 @@ def test_T036_successful_order_has_broker_order_id():
         patch.object(om, "_reconcile_fill", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     assert result is not None
@@ -940,7 +956,9 @@ def test_T037_malformed_response_cannot_create_phantom_position():
     with (
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         om.execute(sig, dec)
     assert len(om._portfolio.positions) == 0
 
@@ -974,7 +992,9 @@ def test_T038_rejected_response_cannot_create_phantom_position():
     with (
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         om.execute(sig, dec)
     assert len(om._portfolio.positions) == 0
 
@@ -1028,7 +1048,9 @@ def test_T039_sl_failure_cannot_falsely_mark_sl_placed():
         patch.object(om, "_reconcile_fill", return_value=None),
         patch("notifications.notifier_manager.get_notifier", return_value=MagicMock()),
         patch("production_readiness.ph3_signal_freshness.is_signal_expired", return_value=False),
+        patch("execution_engine.order_manager.datetime") as _mock_dt,
     ):
+        _mock_dt.now.return_value = __import__("datetime").datetime(2026, 8, 29, 10, 30, 0)
         result = om.execute(sig, dec)
 
     # Entry should succeed; SL failed → sl_order_id must be empty
