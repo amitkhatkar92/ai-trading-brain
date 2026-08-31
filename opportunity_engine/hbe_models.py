@@ -228,6 +228,10 @@ class BehaviourMetrics:
     recent_hit_rate:  Optional[float]
     historical_hit_rate: Optional[float]
 
+    # ── Source provenance (informational only — does not affect ESS or conviction) ──
+    bootstrap_record_count: int = 0   # source_type == "HISTORICAL"
+    live_record_count:      int = 0   # source_type == "LIVE" or "PAPER"
+
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self)
 

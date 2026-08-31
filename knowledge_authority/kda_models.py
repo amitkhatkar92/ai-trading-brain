@@ -291,6 +291,11 @@ class KDADecisionRecord:
     orders:                    int = 0
     opportunity_id:            str = ""   # UUID4 from scanner; joins LOL/KLP/broker records
 
+    # ── Provenance metadata (informational only; does not affect conviction) ──
+    evidence_scope:            str = "GENERIC"   # SYMBOL_SPECIFIC | GENERIC
+    bootstrap_record_count:    int = 0
+    live_record_count:         int = 0
+
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["authority"]      = self.authority.value
@@ -384,6 +389,9 @@ class KDADecisionRecord:
             broker_calls=0,
             orders=0,
             opportunity_id=str(d.get("opportunity_id", "") or ""),
+            evidence_scope=str(d.get("evidence_scope", "GENERIC") or "GENERIC"),
+            bootstrap_record_count=int(d.get("bootstrap_record_count", 0) or 0),
+            live_record_count=int(d.get("live_record_count", 0) or 0),
         )
 
 

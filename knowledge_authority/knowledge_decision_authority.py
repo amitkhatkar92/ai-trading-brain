@@ -203,8 +203,13 @@ class KnowledgeDecisionAuthority:
             ess, stability, oos_status, contradiction_factor
         )
 
-        # 4. Evidence hierarchy level
+        # 4. Evidence hierarchy level + provenance scope
         evidence_level = self._determine_hierarchy_level(bm, symbol, direction, regime)
+        _symbol_specific = {
+            EvidenceHierarchyLevel.SYMBOL_DIR_REGIME_CTX,
+            EvidenceHierarchyLevel.SYMBOL_DIR,
+        }
+        evidence_scope = "SYMBOL_SPECIFIC" if evidence_level in _symbol_specific else "GENERIC"
 
         # 5. Authority components
         auth_components = self._compute_authority(
@@ -282,6 +287,9 @@ class KnowledgeDecisionAuthority:
             strategy_context=strat_ctx,
             kda_strategy_relationship=kda_strat_rel,
             risk_constraints=self._extract_risk_constraints(mc),
+            evidence_scope=evidence_scope,
+            bootstrap_record_count=int(getattr(bm, "bootstrap_record_count", 0) or 0) if bm is not None else 0,
+            live_record_count=int(getattr(bm, "live_record_count", 0) or 0) if bm is not None else 0,
             fallback_used=fallback,
             authority_components=auth_components,
             angle_analyses=angle_analyses,
@@ -484,12 +492,12 @@ class KnowledgeDecisionAuthority:
             return EvidenceHierarchyLevel.ATR_FALLBACK
         src = str(getattr(bm, "evidence_source", "") or "")
         mapping = {
-            "SYMBOL_DIRECTION_REGIME": EvidenceHierarchyLevel.SYMBOL_DIR_REGIME_CTX,
+            "SYMBOL_DIRECTION_REGIME_CONTEXT": EvidenceHierarchyLevel.SYMBOL_DIR_REGIME_CTX,
             "SYMBOL_DIRECTION":        EvidenceHierarchyLevel.SYMBOL_DIR,
             "SECTOR_DIRECTION_REGIME": EvidenceHierarchyLevel.SECTOR_DIR_REGIME,
             "SECTOR_DIRECTION":        EvidenceHierarchyLevel.SECTOR_DIR,
             "REGIME_DIRECTION":        EvidenceHierarchyLevel.REGIME_DIR,
-            "BROAD_DIRECTION":         EvidenceHierarchyLevel.BROAD_DIR,
+            "BROAD_MARKET_DIRECTION":  EvidenceHierarchyLevel.BROAD_DIR,
         }
         return mapping.get(src.upper(), EvidenceHierarchyLevel.ATR_FALLBACK)
 

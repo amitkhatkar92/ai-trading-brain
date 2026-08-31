@@ -764,8 +764,8 @@ class TestEvidenceHierarchy:
         assert rec.evidence_level == EvidenceHierarchyLevel.ATR_FALLBACK
 
     def test_t082_symbol_dir_regime_when_exact_match(self):
-        """T082: SYMBOL_DIR_REGIME_CTX level when evidence_source matches."""
-        bm = _bm(ess=50.0, evidence_src="SYMBOL_DIRECTION_REGIME")
+        """T082: SYMBOL_DIR_REGIME_CTX level when evidence_source matches HBE canonical _L1."""
+        bm = _bm(ess=50.0, evidence_src="SYMBOL_DIRECTION_REGIME_CONTEXT")
         rec = KDA.evaluate(_obs(), behaviour=bm)
         assert rec.evidence_level == EvidenceHierarchyLevel.SYMBOL_DIR_REGIME_CTX
 

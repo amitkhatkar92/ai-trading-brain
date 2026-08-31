@@ -388,6 +388,15 @@ def _compute_metrics(
     # ── Composite confidence ──────────────────────────────────────────────────
     confidence = _compute_confidence(tier, stability, ess)
 
+    # ── Source provenance counts (informational only) ─────────────────────────
+    bootstrap_count = 0
+    live_count = 0
+    for r in records:
+        if r.source_type == "HISTORICAL":
+            bootstrap_count += 1
+        elif r.source_type in ("LIVE", "PAPER"):
+            live_count += 1
+
     return BehaviourMetrics(
         observation_count=n,
         relevant_sample_size=n,
@@ -442,6 +451,8 @@ def _compute_metrics(
         stability_status=stability,
         recent_hit_rate=recent_hr,
         historical_hit_rate=hist_hr,
+        bootstrap_record_count=bootstrap_count,
+        live_record_count=live_count,
     )
 
 
