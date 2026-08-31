@@ -299,7 +299,12 @@ class YahooFeed(BaseFeed):
     ) -> List[PriceBar]:
         try:
             import yfinance as yf
-            period = f"{days}d" if days <= 60 else f"{days // 30}mo"
+            if days <= 60:
+                period = f"{days}d"
+            elif days <= 1825:       # up to 5 years — use month-based string
+                period = f"{days // 30}mo"
+            else:                    # > 5 years (e.g. 10-year replay) — fetch all available
+                period = "max"
             # multi_level_index=False → flat columns ['Close','High','Low','Open','Volume']
             # Avoids the yfinance 1.x MultiIndex that triggers float(Series) TypeError
             # when concurrent downloads race on shared yfinance internal state.
