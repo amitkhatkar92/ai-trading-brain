@@ -296,6 +296,9 @@ class KDADecisionRecord:
     bootstrap_record_count:    int = 0
     live_record_count:         int = 0
     historical_replay_record_count: int = 0    # DTA-031A: source_type=HISTORICAL_REPLAY
+    historical_replay_train_count:      int = 0   # DTA-033
+    historical_replay_validation_count: int = 0   # DTA-033
+    historical_replay_oos_count:        int = 0   # DTA-033: excluded from evidence computation
 
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -394,6 +397,9 @@ class KDADecisionRecord:
             bootstrap_record_count=int(d.get("bootstrap_record_count", 0) or 0),
             live_record_count=int(d.get("live_record_count", 0) or 0),
             historical_replay_record_count=int(d.get("historical_replay_record_count", 0) or 0),
+            historical_replay_train_count=int(d.get("historical_replay_train_count", 0) or 0),
+            historical_replay_validation_count=int(d.get("historical_replay_validation_count", 0) or 0),
+            historical_replay_oos_count=int(d.get("historical_replay_oos_count", 0) or 0),
         )
 
 

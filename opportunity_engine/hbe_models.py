@@ -229,9 +229,14 @@ class BehaviourMetrics:
     historical_hit_rate: Optional[float]
 
     # ── Source provenance (informational only — does not affect ESS or conviction) ──
-    bootstrap_record_count:         int = 0   # source_type == "HISTORICAL"
-    live_record_count:              int = 0   # source_type == "LIVE" or "PAPER"
-    historical_replay_record_count: int = 0   # source_type == "HISTORICAL_REPLAY"
+    bootstrap_record_count:              int = 0   # source_type == "HISTORICAL"
+    live_record_count:                   int = 0   # source_type == "LIVE" or "PAPER"
+    historical_replay_record_count:      int = 0   # source_type == "HISTORICAL_REPLAY" (all partitions)
+    historical_replay_train_count:       int = 0   # DTA-033: TRAIN partition
+    historical_replay_validation_count:  int = 0   # DTA-033: VALIDATION partition
+    historical_replay_oos_count:         int = 0   # DTA-033: OOS partition (excluded from evidence computation)
+    research_record_count:               int = 0   # DTA-033: bootstrap + replay (all non-live)
+    live_authority_record_count:         int = 0   # DTA-033: LIVE source_type only
 
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self)

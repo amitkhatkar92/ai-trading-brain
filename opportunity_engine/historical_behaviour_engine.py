@@ -389,9 +389,12 @@ def _compute_metrics(
     confidence = _compute_confidence(tier, stability, ess)
 
     # ── Source provenance counts (informational only) ─────────────────────────
-    bootstrap_count = 0
-    live_count = 0
-    replay_count = 0
+    bootstrap_count    = 0
+    live_count         = 0
+    replay_count       = 0
+    replay_train_count = 0
+    replay_val_count   = 0
+    replay_oos_count   = 0
     for r in records:
         if r.source_type == "HISTORICAL":
             bootstrap_count += 1
@@ -399,6 +402,13 @@ def _compute_metrics(
             live_count += 1
         elif r.source_type == "HISTORICAL_REPLAY":
             replay_count += 1
+            part = getattr(r, "validation_partition", "")
+            if part == "TRAIN":
+                replay_train_count += 1
+            elif part == "VALIDATION":
+                replay_val_count += 1
+            elif part == "OOS":
+                replay_oos_count += 1
 
     return BehaviourMetrics(
         observation_count=n,
@@ -457,6 +467,11 @@ def _compute_metrics(
         bootstrap_record_count=bootstrap_count,
         live_record_count=live_count,
         historical_replay_record_count=replay_count,
+        historical_replay_train_count=replay_train_count,
+        historical_replay_validation_count=replay_val_count,
+        historical_replay_oos_count=replay_oos_count,
+        research_record_count=bootstrap_count + replay_count,
+        live_authority_record_count=live_count,
     )
 
 
@@ -506,6 +521,11 @@ def _atr_fallback_metrics() -> BehaviourMetrics:
         stability_status="insufficient_data",
         recent_hit_rate=None, historical_hit_rate=None,
         historical_replay_record_count=0,
+        historical_replay_train_count=0,
+        historical_replay_validation_count=0,
+        historical_replay_oos_count=0,
+        research_record_count=0,
+        live_authority_record_count=0,
     )
 
 
@@ -947,6 +967,30 @@ class HistoricalBehaviourEngine:
 
     # ── Hierarchical evidence search ──────────────────────────────────────────
 
+    def _with_oos_counts(self, metrics: "BehaviourMetrics", direction: str) -> "BehaviourMetrics":
+        """
+        Patch provenance counts for OOS replay records into metrics.
+        OOS records are excluded from evidence computation but their counts
+        must remain visible in BehaviourMetrics for audit purposes.
+        """
+        oos_count = sum(
+            1 for r in self._outcomes
+            if r.source_type == "HISTORICAL_REPLAY"
+            and getattr(r, "validation_partition", "") == "OOS"
+            and r.direction == direction
+        )
+        if oos_count:
+            metrics.historical_replay_oos_count    = (
+                metrics.historical_replay_oos_count + oos_count
+            )
+            metrics.historical_replay_record_count = (
+                metrics.historical_replay_record_count + oos_count
+            )
+            metrics.research_record_count          = (
+                metrics.research_record_count + oos_count
+            )
+        return metrics
+
     def _find_best_evidence(
         self,
         symbol:      str,
@@ -963,8 +1007,18 @@ class HistoricalBehaviourEngine:
         if not self._outcomes:
             return _atr_fallback_metrics(), 7
 
+        # OOS replay records are excluded from evidence to prevent experimental
+        # hold-out data from silently contributing to live KDA authority.
+        evidence_pool = [
+            r for r in self._outcomes
+            if not (r.source_type == "HISTORICAL_REPLAY"
+                    and getattr(r, "validation_partition", "") == "OOS")
+        ]
+        if not evidence_pool:
+            return _atr_fallback_metrics(), 7
+
         # Pre-filter: only records with matching direction (all levels share this)
-        dir_records = [r for r in self._outcomes if r.direction == direction]
+        dir_records = [r for r in evidence_pool if r.direction == direction]
         if not dir_records:
             return _atr_fallback_metrics(), 7
 
@@ -974,34 +1028,47 @@ class HistoricalBehaviourEngine:
                   if r.symbol == symbol and r.regime == regime
                   and _context_similar(r, atr_pct, confidence)]
             if len(l1) >= self._LEVEL_MIN_OBS[1]:
-                return _compute_metrics(l1, 1, _L1, 1, self._reference_date), 1
+                return self._with_oos_counts(
+                    _compute_metrics(l1, 1, _L1, 1, self._reference_date), direction
+                ), 1
 
         # Level 2: symbol + direction
         l2 = [r for r in dir_records if r.symbol == symbol]
         if len(l2) >= self._LEVEL_MIN_OBS[2]:
-            return _compute_metrics(l2, 2, _L2, 2, self._reference_date), 2
+            return self._with_oos_counts(
+                _compute_metrics(l2, 2, _L2, 2, self._reference_date), direction
+            ), 2
 
         # Level 3: sector + direction + regime
         if regime and sector and sector != "UNKNOWN":
             l3 = [r for r in dir_records if r.sector == sector and r.regime == regime]
             if len(l3) >= self._LEVEL_MIN_OBS[3]:
-                return _compute_metrics(l3, 3, _L3, 3, self._reference_date), 3
+                return self._with_oos_counts(
+                    _compute_metrics(l3, 3, _L3, 3, self._reference_date), direction
+                ), 3
 
         # Level 4: regime + direction (broad, same regime)
         if regime:
             l4 = [r for r in dir_records if r.regime == regime]
             if len(l4) >= self._LEVEL_MIN_OBS[4]:
-                return _compute_metrics(l4, 4, _L4, 4, self._reference_date), 4
+                return self._with_oos_counts(
+                    _compute_metrics(l4, 4, _L4, 4, self._reference_date), direction
+                ), 4
 
         # Level 5: sector + direction
         if sector and sector != "UNKNOWN":
             l5 = [r for r in dir_records if r.sector == sector]
             if len(l5) >= self._LEVEL_MIN_OBS[5]:
-                return _compute_metrics(l5, 5, _L5, 5, self._reference_date), 5
+                return self._with_oos_counts(
+                    _compute_metrics(l5, 5, _L5, 5, self._reference_date), direction
+                ), 5
 
         # Level 6: broad market + direction
         if len(dir_records) >= self._LEVEL_MIN_OBS[6]:
-            return _compute_metrics(dir_records, 6, _L6, 6, self._reference_date), 6
+            return self._with_oos_counts(
+                _compute_metrics(dir_records, 6, _L6, 6, self._reference_date),
+                direction
+            ), 6
 
         # Level 7: ATR fallback
         return _atr_fallback_metrics(), 7
