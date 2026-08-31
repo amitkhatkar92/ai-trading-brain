@@ -2267,9 +2267,6 @@ def validate_and_refresh_sr_levels() -> dict:
 
         # Extract last close per symbol
         _ltps: dict = {}
-        if isinstance(_data.columns, _pd_MultiIndex if hasattr(_data.columns, "levels") else type(None)):
-            pass  # handled below
-
         try:
             import pandas as _pd
             if isinstance(_data.columns, _pd.MultiIndex):
