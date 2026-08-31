@@ -894,6 +894,10 @@ class HistoricalKnowledgeReplayEngine:
         insuf_data       = 0
 
         import bisect as _bisect
+        from datetime import timedelta as _td
+
+        # Context window before start_date needed for ATR(14) warm-up
+        _context_cutoff = (start_date - _td(days=_ATR_CONTEXT_DAYS * 3)).isoformat()
 
         for sym in syms:
             log.debug("HKR: Processing %s (fetch_days=%d)", sym, fetch_days)
@@ -906,6 +910,19 @@ class HistoricalKnowledgeReplayEngine:
 
             # Ensure ascending chronological order
             all_bars.sort(key=bar_date_str)
+
+            # Trim to replay window + ATR context + T+5 outcome window.
+            # Drops pre-context bars (e.g. 30-year history when only 10 needed)
+            # to keep inner loop O(n) tractable.
+            _outcome_fence = (end_date + _td(days=10)).isoformat()
+            all_bars = [
+                b for b in all_bars
+                if _context_cutoff <= bar_date_str(b) <= _outcome_fence
+            ]
+            if not all_bars:
+                log.debug("HKR: No bars in window for %s — skipping", sym)
+                insuf_data += total_days
+                continue
 
             # Pre-compute date strings once per symbol (O(n)) for O(log n) per-day splits
             _bar_keys = [bar_date_str(b) for b in all_bars]
