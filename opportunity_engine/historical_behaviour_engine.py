@@ -391,11 +391,14 @@ def _compute_metrics(
     # ── Source provenance counts (informational only) ─────────────────────────
     bootstrap_count = 0
     live_count = 0
+    replay_count = 0
     for r in records:
         if r.source_type == "HISTORICAL":
             bootstrap_count += 1
         elif r.source_type in ("LIVE", "PAPER"):
             live_count += 1
+        elif r.source_type == "HISTORICAL_REPLAY":
+            replay_count += 1
 
     return BehaviourMetrics(
         observation_count=n,
@@ -453,6 +456,7 @@ def _compute_metrics(
         historical_hit_rate=hist_hr,
         bootstrap_record_count=bootstrap_count,
         live_record_count=live_count,
+        historical_replay_record_count=replay_count,
     )
 
 
@@ -501,6 +505,7 @@ def _atr_fallback_metrics() -> BehaviourMetrics:
         target_confidence="INSUFFICIENT", stop_confidence="INSUFFICIENT",
         stability_status="insufficient_data",
         recent_hit_rate=None, historical_hit_rate=None,
+        historical_replay_record_count=0,
     )
 
 
@@ -806,6 +811,19 @@ class HistoricalBehaviourEngine:
                     if rec.obs_id not in seen_obs_ids:
                         all_records.append(rec)
                         seen_obs_ids.add(rec.obs_id)
+
+            # DTA-031: Historical replay outcomes (data/klp/replay/REPLAY_YYYY-MM-DD.jsonl)
+            replay_dir = base / "replay"
+            if replay_dir.exists():
+                for replay_file in sorted(replay_dir.glob("REPLAY_*.jsonl")):
+                    stem = replay_file.stem          # "REPLAY_2026-07-01"
+                    parts = stem.split("_", 1)
+                    r_date = parts[1] if len(parts) == 2 else stem
+                    obs_map, outcome_map = _load_klp_file(replay_file)
+                    for rec in _join_and_parse(obs_map, outcome_map, r_date):
+                        if rec.obs_id not in seen_obs_ids:
+                            all_records.append(rec)
+                            seen_obs_ids.add(rec.obs_id)
         except OSError:
             pass
 
