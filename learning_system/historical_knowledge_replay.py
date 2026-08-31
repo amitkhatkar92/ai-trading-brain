@@ -739,9 +739,10 @@ class HistoricalKnowledgeReplayEngine:
         }
         outcome_rec.update(outcome)
 
-        # Annotate obs with partition before writing
+        # Annotate obs with partition and EXPERIMENTAL validation status before writing
         obs_rec = dict(obs)
-        obs_rec["validation_partition"] = partition
+        obs_rec["validation_partition"]    = partition
+        obs_rec["replay_validation_status"] = "EXPERIMENTAL"
 
         try:
             with replay_file.open("a", encoding="utf-8") as fh:

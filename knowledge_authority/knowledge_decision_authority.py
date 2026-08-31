@@ -290,6 +290,7 @@ class KnowledgeDecisionAuthority:
             evidence_scope=evidence_scope,
             bootstrap_record_count=int(getattr(bm, "bootstrap_record_count", 0) or 0) if bm is not None else 0,
             live_record_count=int(getattr(bm, "live_record_count", 0) or 0) if bm is not None else 0,
+            historical_replay_record_count=int(getattr(bm, "historical_replay_record_count", 0) or 0) if bm is not None else 0,
             fallback_used=fallback,
             authority_components=auth_components,
             angle_analyses=angle_analyses,

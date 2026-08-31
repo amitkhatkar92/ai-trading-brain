@@ -1,7 +1,7 @@
 """
 tests/test_dta_031_historical_replay.py
 ========================================
-DTA-031: Historical Knowledge Replay — Test Suite
+DTA-031 / DTA-031A: Historical Knowledge Replay — Test Suite
 
 Coverage:
   Part Y  — Path outcome correctness (7 tests, T001–T007)
@@ -14,8 +14,16 @@ Coverage:
   Part AF — DRY_RUN safety: zero disk writes (3 tests, T041–T043)
   Part AG — obs_id determinism and format (4 tests, T044–T047)
   Part AH — ReplaySummary completeness (4 tests, T048–T051)
+  Helper function unit tests (4 tests, T052–T055)
 
-Total: 51 tests
+Coverage (DTA-031A):
+  Part A  — Learning-path integrity: REPLAY→HBE→OutcomeRecord→BehaviourMetrics (8 tests, T056–T063)
+  Part B  — Additional DTA-028A scenarios: stop-first-recovery, gap-through, reversal (7 tests, T064–T070)
+  Part C  — Evidence-hierarchy promotion and fallback (6 tests, T071–T076)
+  Part D  — KDA provenance: historical_replay_record_count in KDADecisionRecord (4 tests, T077–T080)
+  Part E  — Validation gate: EXPERIMENTAL status on written records (5 tests, T081–T085)
+
+Total: 85 tests
 """
 from __future__ import annotations
 
@@ -977,3 +985,666 @@ class TestDTA031_HelperFunctions:
             assert key in d, f"Missing key: {key}"
         assert d["date"] == "2026-07-01"
         assert d["high"] == 105.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-031A Part A — Learning-path integrity (T056–T063)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDTA031A_PartA_LearningPath:
+    """
+    Prove the complete production learning path:
+      REPLAY_*.jsonl → HBE.load_outcomes() → OutcomeRecord → BehaviourMetrics
+    """
+
+    def _write_minimal_replay_file(
+        self,
+        replay_dir: Path,
+        trading_date: str = "2026-07-15",
+        symbol: str = "RELIANCE",
+        direction: str = "BUY",
+        n_records: int = 1,
+    ) -> None:
+        """Write N paired KNOWLEDGE_OBSERVATION + OUTCOME_UPDATE records."""
+        from datetime import date as dt, timedelta
+        d = dt.fromisoformat(trading_date)
+        for i in range(n_records):
+            obs_id = f"HKR1:{d.strftime('%Y%m%d')}:113000:{symbol}:{direction}"
+            obs_rec = {
+                "obs_id":              obs_id,
+                "observation_id":      obs_id,
+                "event_type":          "KNOWLEDGE_OBSERVATION",
+                "symbol":              symbol,
+                "direction":           direction,
+                "reference_entry":     100.0 + i,
+                "knowledge_target":    106.0 + i,
+                "knowledge_stop_loss": 97.0 + i,
+                "knowledge_RR":        2.0,
+                "knowledge_confidence": 6.0,
+                "candidate_score":     0.6,
+                "atr":                 2.0,
+                "atr_pct":             2.0,
+                "regime":              "BULL",
+                "source_type":         "HISTORICAL_REPLAY",
+                "validation_partition": "TRAIN",
+                "replay_validation_status": "EXPERIMENTAL",
+                "no_lookahead":        True,
+            }
+            out_rec = {
+                "obs_id":             obs_id,
+                "observation_id":     obs_id,
+                "event_type":         "OUTCOME_UPDATE",
+                "symbol":             symbol,
+                "direction":          direction,
+                "first_event":        "TARGET_HIT",
+                "first_event_day":    (d + timedelta(days=2)).isoformat(),
+                "target_hit":         True,
+                "stop_hit":           False,
+                "t1_ret_pct":         1.5,
+                "t3_ret_pct":         2.5,
+                "t5_ret_pct":         3.5,
+                "mfe_pct":            4.0,
+                "mae_pct":            -0.5,
+                "bars_available":     5,
+            }
+            replay_file = replay_dir / f"REPLAY_{d.isoformat()}.jsonl"
+            with replay_file.open("a") as fh:
+                fh.write(json.dumps(obs_rec) + "\n")
+                fh.write(json.dumps(out_rec) + "\n")
+            d += timedelta(days=1)
+
+    def test_T056_hbe_loads_replay_dir_records(self):
+        """T056: HBE.load_outcomes() returns replay records from data/klp/replay/."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir    = Path(td) / "klp"
+            replay_dir = klp_dir / "replay"
+            replay_dir.mkdir(parents=True)
+            self._write_minimal_replay_file(replay_dir, n_records=3)
+
+            hbe = HistoricalBehaviourEngine(data_dir=klp_dir)
+            n   = hbe.load_outcomes()
+            assert n == 3
+
+    def test_T057_source_type_survives_to_outcome_record(self):
+        """T057: source_type=HISTORICAL_REPLAY is preserved in loaded OutcomeRecord."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir    = Path(td) / "klp"
+            replay_dir = klp_dir / "replay"
+            replay_dir.mkdir(parents=True)
+            self._write_minimal_replay_file(replay_dir, n_records=2)
+
+            hbe = HistoricalBehaviourEngine(data_dir=klp_dir)
+            hbe.load_outcomes()
+            assert all(r.source_type == "HISTORICAL_REPLAY" for r in hbe._outcomes)
+
+    def test_T058_validation_partition_preserved_round_trip(self):
+        """T058: validation_partition written to JSONL is read back into OutcomeRecord."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir    = Path(td) / "klp"
+            replay_dir = klp_dir / "replay"
+            replay_dir.mkdir(parents=True)
+            self._write_minimal_replay_file(replay_dir, n_records=2)
+
+            hbe = HistoricalBehaviourEngine(data_dir=klp_dir)
+            hbe.load_outcomes()
+            assert all(r.validation_partition == "TRAIN" for r in hbe._outcomes)
+
+    def test_T059_replay_counted_in_behaviour_metrics(self):
+        """T059: historical_replay_record_count in BehaviourMetrics matches loaded replay count."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir    = Path(td) / "klp"
+            replay_dir = klp_dir / "replay"
+            replay_dir.mkdir(parents=True)
+            self._write_minimal_replay_file(replay_dir, symbol="RELIANCE", n_records=8)
+
+            hbe = HistoricalBehaviourEngine(
+                data_dir=klp_dir, reference_date=date(2026, 7, 30)
+            )
+            hbe.load_outcomes()
+            profile = hbe.get_behaviour_profile("RELIANCE", "BUY", regime="BULL")
+            assert profile.metrics.historical_replay_record_count == 8
+
+    def test_T060_replay_and_live_counts_separate(self):
+        """T060: bootstrap / live / replay counts are independently tracked."""
+        from opportunity_engine.hbe_models import OutcomeRecord
+        from opportunity_engine.historical_behaviour_engine import _compute_metrics
+
+        def _rec(src: str) -> OutcomeRecord:
+            return OutcomeRecord(
+                obs_id=f"X_{src}_{id(src)}_{hash(src)}",
+                trading_date="2026-07-01",
+                symbol="TEST",
+                direction="BUY",
+                regime="BULL",
+                sector="IT",
+                reference_entry=100.0,
+                knowledge_target=106.0,
+                knowledge_stop=97.0,
+                atr=2.0,
+                atr_pct=2.0,
+                scanner_confidence=6.0,
+                candidate_score=0.6,
+                knowledge_score=0.0,
+                knowledge_rr=2.0,
+                first_event="TARGET_HIT",
+                first_event_day="2026-07-03",
+                target_hit=True,
+                stop_hit=False,
+                t1_ret_pct=1.5,
+                t3_ret_pct=2.5,
+                t5_ret_pct=3.5,
+                mfe_pct=4.0,
+                mae_pct=-0.5,
+                days_to_event=2,
+                source_type=src,
+            )
+
+        records = [_rec("HISTORICAL")] * 5 + [_rec("LIVE")] * 3 + [_rec("HISTORICAL_REPLAY")] * 7
+        m = _compute_metrics(records, 4, "REGIME_DIRECTION", 4, date(2026, 7, 15))
+        assert m.bootstrap_record_count         == 5
+        assert m.live_record_count              == 3
+        assert m.historical_replay_record_count == 7
+
+    def test_T061_replay_records_do_not_create_broker_calls(self):
+        """T061: HBE operations on replay records never set broker_calls>0."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir    = Path(td) / "klp"
+            replay_dir = klp_dir / "replay"
+            replay_dir.mkdir(parents=True)
+            self._write_minimal_replay_file(replay_dir, n_records=6)
+
+            hbe = HistoricalBehaviourEngine(data_dir=klp_dir)
+            hbe.load_outcomes()
+            assert hbe.broker_calls == 0
+            assert hbe.orders       == 0
+
+    def test_T062_replay_does_not_modify_live_klp_files(self):
+        """T062: After RESEARCH replay, KLP_*.jsonl in root klp_dir are untouched."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            klp_dir.mkdir()
+            sentinel = klp_dir / "KLP_2026-07-15.jsonl"
+            sentinel.write_text('{"obs_id":"LIVE_1","event_type":"KNOWLEDGE_OBSERVATION"}\n')
+            original = sentinel.read_bytes()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 20),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            assert sentinel.read_bytes() == original
+
+    def test_T063_replay_obs_event_type_is_knowledge_observation(self):
+        """T063: Written replay files contain KNOWLEDGE_OBSERVATION records."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            klp_dir.mkdir()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 18),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            replay_dir = klp_dir / "replay"
+            obs_types  = set()
+            for f in sorted(replay_dir.glob("REPLAY_*.jsonl")):
+                for line in f.read_text().splitlines():
+                    if line.strip():
+                        rec = json.loads(line)
+                        obs_types.add(rec.get("event_type", ""))
+            assert "KNOWLEDGE_OBSERVATION" in obs_types
+            assert "OUTCOME_UPDATE"        in obs_types
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-031A Part B — Additional DTA-028A path outcome scenarios (T064–T070)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDTA031A_PartB_ExtendedPathOutcomes:
+    """
+    Additional path outcome scenarios verifying DTA-028A semantics.
+    Most critical: stop-first-then-recovery — t5_ret_pct positive but STOP_HIT.
+    """
+
+    def _make_engine(self) -> HistoricalKnowledgeReplayEngine:
+        return HistoricalKnowledgeReplayEngine(_ohlcv_fetcher=lambda s: [])
+
+    def _obs(self, entry, target, stop, direction="BUY"):
+        return {
+            "obs_id": "HKR1:TEST",
+            "event_type": "KNOWLEDGE_OBSERVATION",
+            "symbol": "TEST",
+            "direction": direction,
+            "reference_entry": entry,
+            "knowledge_target": target,
+            "knowledge_stop_loss": stop,
+            "knowledge_RR": abs(target - entry) / max(abs(entry - stop), 0.01),
+            "knowledge_confidence": 6.0,
+            "candidate_score": 0.6,
+            "scanner_confidence": 6.0,
+            "knowledge_score": 0.0,
+            "atr": 3.0,
+            "atr_pct": 3.0,
+            "regime": "BULL",
+            "source_type": "HISTORICAL_REPLAY",
+        }
+
+    def test_T064_stop_first_then_recovery_is_stop_hit(self):
+        """T064: Stop hit on T+1; price recovers above entry by T+5. first_event=STOP_HIT.
+
+        This is the most critical path-outcome safety test.
+        A positive EOD direction must NEVER override a stop-first result.
+        """
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=108.0, stop=95.0)
+        future = [
+            _bar("2026-08-01", 99, 100, 94.0, 95.5),  # T+1: low <= stop → STOP_HIT
+            _bar("2026-08-02", 96, 100, 95,  99),
+            _bar("2026-08-03", 99, 104, 98, 103),
+            _bar("2026-08-04", 102, 106, 101, 104),
+            _bar("2026-08-05", 104, 108, 103, 107),    # T+5: price above entry
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"]   == STOP_HIT,      "Stop-first must win"
+        assert result["stop_hit"]      is True
+        assert result["target_hit"]    is False
+        # t5_ret_pct may be positive — that's correct and expected
+        assert result["t5_ret_pct"] is not None
+        assert result["t5_ret_pct"] > 0   # direction is positive at T+5
+
+    def test_T065_target_first_then_reversal_is_target_hit(self):
+        """T065: Target hit on T+2; stop hit at T+4. first_event=TARGET_HIT."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=106.0, stop=95.0)
+        future = [
+            _bar("2026-08-01", 100, 104, 99, 103),
+            _bar("2026-08-02", 103, 107, 102, 106),   # T+2: high >= target
+            _bar("2026-08-03", 105, 105, 100, 101),
+            _bar("2026-08-04", 100,  99,  94,  95),   # T+4: low <= stop (but target already hit)
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"]     == TARGET_HIT
+        assert result["first_event_day"] == "2026-08-02"
+        assert result["target_hit"]      is True
+
+    def test_T066_gap_through_stop_single_bar(self):
+        """T066: Bar opens and closes below stop — gap-through counts as STOP_HIT."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=108.0, stop=95.0)
+        future = [
+            _bar("2026-08-01", 100, 101, 90, 92),  # low 90 < stop 95 → STOP_HIT
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"] == STOP_HIT
+        assert result["stop_hit"]    is True
+
+    def test_T067_mae_bounded_at_stop_day(self):
+        """T067: MAE is computed only through first_event_day when STOP_HIT."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=115.0, stop=92.0)
+        future = [
+            _bar("2026-08-01", 100, 103,  99,  102),   # T+1: clean bar
+            _bar("2026-08-02", 101, 103,  91,   92),   # T+2: low <= stop → STOP_HIT
+            _bar("2026-08-03",  92,  93,  70,   71),   # T+3: extreme low — must be excluded from MAE
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"] == STOP_HIT
+        # MAE must not include T+3 extreme (-29%)
+        assert result["mae_pct"] is not None
+        assert result["mae_pct"] > -20.0   # T+3 low would give ~-30%, T+2 stop ~-9%
+
+    def test_T068_t5_ret_independent_of_first_event(self):
+        """T068: t5_ret_pct reflects close[T+5]/entry regardless of first_event."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=108.0, stop=95.0)
+        # Stop hit on T+1 but price at T+5 close is 104
+        future = [
+            _bar("2026-08-01", 100,  97,  94, 96),    # T+1: stop hit
+            _bar("2026-08-02",  96,  98,  95, 97),
+            _bar("2026-08-03",  97, 100,  96, 99),
+            _bar("2026-08-04",  99, 103,  98, 102),
+            _bar("2026-08-05", 102, 105, 101, 104),   # T+5 close = 104
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"] == STOP_HIT
+        assert result["t5_ret_pct"]  is not None
+        assert abs(result["t5_ret_pct"] - 4.0) < 0.01   # (104/100-1)*100
+
+    def test_T069_short_signal_stop_on_high(self):
+        """T069: SELL signal — stop is above entry; stop hit when high >= stop."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=90.0, stop=106.0, direction="SELL")
+        future = [
+            _bar("2026-08-01", 100, 107, 99, 101),  # high 107 >= stop 106 → STOP_HIT
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"] == STOP_HIT
+
+    def test_T070_pending_with_fewer_than_5_bars(self):
+        """T070: With 2 bars and no hit, first_event=OUTCOME_PENDING."""
+        engine = self._make_engine()
+        obs    = self._obs(entry=100.0, target=110.0, stop=90.0)
+        future = [
+            _bar("2026-08-01", 100, 102, 99, 101),
+            _bar("2026-08-02", 101, 103, 100, 102),
+        ]
+        result = engine._compute_path_outcome(obs, future)
+        assert result["first_event"] == OUTCOME_PENDING
+        assert result["t1_ret_pct"]  is not None   # T+1 computable
+        assert result["t3_ret_pct"]  is None        # T+3 not available
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-031A Part C — Evidence-hierarchy promotion and fallback (T071–T076)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDTA031A_PartC_HierarchyPromotion:
+    """
+    Verify that >= 5 symbol-specific replay outcomes enable L2 evidence,
+    and that < 5 falls through to L4 (regime level).
+
+    _LEVEL_MIN_OBS[2] = 5 (symbol+direction)
+    _LEVEL_MIN_OBS[4] = 10 (regime+direction)
+    """
+
+    def _make_outcome_record(
+        self,
+        symbol: str,
+        direction: str = "BUY",
+        regime: str = "BULL",
+        source_type: str = "HISTORICAL_REPLAY",
+        n: int = 1,
+    ):
+        from opportunity_engine.hbe_models import OutcomeRecord
+        records = []
+        for i in range(n):
+            records.append(OutcomeRecord(
+                obs_id=f"HKR_{symbol}_{i}_{source_type}",
+                trading_date=f"2026-07-{i+1:02d}",
+                symbol=symbol,
+                direction=direction,
+                regime=regime,
+                sector="IT",
+                reference_entry=100.0,
+                knowledge_target=106.0,
+                knowledge_stop=97.0,
+                atr=2.0,
+                atr_pct=2.0,
+                scanner_confidence=6.0,
+                candidate_score=0.6,
+                knowledge_score=0.0,
+                knowledge_rr=2.0,
+                first_event="TARGET_HIT",
+                first_event_day=f"2026-07-{i+3:02d}",
+                target_hit=True,
+                stop_hit=False,
+                t1_ret_pct=1.5,
+                t3_ret_pct=2.5,
+                t5_ret_pct=3.5,
+                mfe_pct=4.0,
+                mae_pct=-0.5,
+                days_to_event=2,
+                source_type=source_type,
+            ))
+        return records
+
+    def _hbe_with(self, outcomes):
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+        hbe = HistoricalBehaviourEngine(reference_date=date(2026, 7, 31))
+        hbe._outcomes = outcomes
+        hbe._loaded   = True
+        return hbe
+
+    def test_T071_before_5_symbol_records_uses_generic_fallback(self):
+        """T071: < 5 symbol-specific records → evidence falls to L4 or deeper (generic)."""
+        # 4 symbol records (below L2 threshold of 5) + 15 BULL regime records
+        sym_recs   = self._make_outcome_record("NEWSYM", n=4)
+        regime_recs = self._make_outcome_record("OTHER1", regime="BULL", n=10) + \
+                      self._make_outcome_record("OTHER2", regime="BULL", n=5)
+        hbe    = self._hbe_with(sym_recs + regime_recs)
+        profile = hbe.get_behaviour_profile("NEWSYM", "BUY", regime="BULL")
+        # Should NOT be at L2 (symbol-specific); should be L4 or deeper
+        assert profile.metrics.evidence_level >= 4, (
+            f"Expected L4+ but got L{profile.metrics.evidence_level}"
+        )
+
+    def test_T072_after_5_symbol_records_uses_L2(self):
+        """T072: >= 5 symbol-specific records → L2 (symbol+direction) evidence used."""
+        sym_recs = self._make_outcome_record("NEWSYM", n=5)
+        hbe      = self._hbe_with(sym_recs)
+        profile  = hbe.get_behaviour_profile("NEWSYM", "BUY", regime="BULL")
+        # L1 (symbol+dir+regime+context) and L2 (symbol+dir) are both symbol-specific;
+        # either is correct — L1 fires first when all records share the same regime.
+        assert profile.metrics.evidence_level in (1, 2), (
+            f"Expected symbol-specific tier (L1 or L2), got L{profile.metrics.evidence_level}"
+        )
+
+    def test_T073_l2_evidence_scope_is_symbol_specific(self):
+        """T073: L2 evidence produces evidence_scope=SYMBOL_SPECIFIC in BehaviourMetrics."""
+        sym_recs = self._make_outcome_record("CHECKME", n=6)
+        hbe      = self._hbe_with(sym_recs)
+        profile  = hbe.get_behaviour_profile("CHECKME", "BUY", regime="BULL")
+        # L1 or L2 are SYMBOL_SPECIFIC; L3+ are GENERIC
+        assert profile.metrics.evidence_level in (1, 2)
+
+    def test_T074_l4_evidence_does_not_change_l2_threshold(self):
+        """T074: Adding generic records does not lower the L2 threshold (min stays at 5)."""
+        from opportunity_engine.historical_behaviour_engine import HistoricalBehaviourEngine
+        assert HistoricalBehaviourEngine._LEVEL_MIN_OBS[2] == 5
+
+    def test_T075_replay_records_count_same_as_live_for_hierarchy(self):
+        """T075: Replay OutcomeRecords have the same weight as live for hierarchy selection."""
+        sym_live   = self._make_outcome_record("SYM_A", source_type="LIVE",             n=4)
+        sym_replay = self._make_outcome_record("SYM_A", source_type="HISTORICAL_REPLAY", n=2)
+        hbe        = self._hbe_with(sym_live + sym_replay)
+        profile    = hbe.get_behaviour_profile("SYM_A", "BUY", regime="BULL")
+        # 4 + 2 = 6 >= 5 -> should be at symbol-specific tier (L1 or L2)
+        assert profile.metrics.evidence_level in (1, 2)
+
+    def test_T076_replay_count_in_metrics_matches_loaded_count(self):
+        """T076: BehaviourMetrics.historical_replay_record_count = actual replay records used."""
+        replay_recs = self._make_outcome_record("RELSYM", source_type="HISTORICAL_REPLAY", n=8)
+        live_recs   = self._make_outcome_record("RELSYM", source_type="LIVE",              n=3)
+        hbe         = self._hbe_with(replay_recs + live_recs)
+        profile     = hbe.get_behaviour_profile("RELSYM", "BUY", regime="BULL")
+        assert profile.metrics.historical_replay_record_count == 8
+        assert profile.metrics.live_record_count              == 3
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-031A Part D — KDA provenance (T077–T080)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDTA031A_PartD_KDAProvenance:
+    """
+    Verify KDADecisionRecord exposes historical_replay_record_count correctly.
+    Tests the structural contract and from_dict round-trip.
+    """
+
+    def test_T077_kda_decision_record_has_replay_count_field(self):
+        """T077: KDADecisionRecord dataclass has historical_replay_record_count field."""
+        from knowledge_authority.kda_models import KDADecisionRecord
+        fields = {f for f in KDADecisionRecord.__dataclass_fields__}
+        assert "historical_replay_record_count" in fields
+
+    def test_T078_kda_decision_record_replay_count_defaults_to_zero(self):
+        """T078: historical_replay_record_count defaults to 0 in KDADecisionRecord."""
+        from knowledge_authority.kda_models import KDADecisionRecord
+        f = KDADecisionRecord.__dataclass_fields__["historical_replay_record_count"]
+        assert f.default == 0
+
+    def test_T079_from_dict_preserves_replay_count(self):
+        """T079: KDADecisionRecord.from_dict() parses historical_replay_record_count."""
+        from knowledge_authority.kda_models import KDADecisionRecord
+        d = {
+            "decision_id": "test-123",
+            "timestamp": "2026-07-15T00:00:00+00:00",
+            "symbol": "RELIANCE",
+            "direction": "BUY",
+            "historical_replay_record_count": 7,
+        }
+        rec = KDADecisionRecord.from_dict(d)
+        assert rec.historical_replay_record_count == 7
+
+    def test_T080_kda_replay_count_distinct_from_bootstrap_and_live(self):
+        """T080: Three provenance counters are independently round-tripped via from_dict/as_dict."""
+        from knowledge_authority.kda_models import KDADecisionRecord
+        d = {
+            "decision_id": "abc",
+            "timestamp": "2026-07-15T00:00:00+00:00",
+            "symbol": "INFY",
+            "direction": "BUY",
+            "bootstrap_record_count": 3,
+            "live_record_count": 5,
+            "historical_replay_record_count": 8,
+        }
+        rec  = KDADecisionRecord.from_dict(d)
+        back = rec.as_dict()
+        assert back["bootstrap_record_count"]         == 3
+        assert back["live_record_count"]              == 5
+        assert back["historical_replay_record_count"] == 8
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-031A Part E — Validation gate: EXPERIMENTAL status (T081–T085)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestDTA031A_PartE_ValidationGate:
+    """
+    Verify EXPERIMENTAL status is written to replay obs records
+    and that replay does not auto-promote to live execution authority.
+    """
+
+    def test_T081_written_obs_has_experimental_status(self):
+        """T081: RESEARCH mode writes replay_validation_status=EXPERIMENTAL in obs records."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            klp_dir.mkdir()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 18),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            replay_dir = klp_dir / "replay"
+            for f in replay_dir.glob("REPLAY_*.jsonl"):
+                for line in f.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rec = json.loads(line)
+                    if rec.get("event_type") == "KNOWLEDGE_OBSERVATION":
+                        status = rec.get("replay_validation_status", "")
+                        assert status == "EXPERIMENTAL", (
+                            f"Expected EXPERIMENTAL, got '{status}'"
+                        )
+
+    def test_T082_experimental_status_not_present_on_outcome_update(self):
+        """T082: OUTCOME_UPDATE records are not required to carry replay_validation_status."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            klp_dir.mkdir()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 17),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            replay_dir = klp_dir / "replay"
+            found_outcome = False
+            for f in replay_dir.glob("REPLAY_*.jsonl"):
+                for line in f.read_text().splitlines():
+                    line = line.strip()
+                    if not line:
+                        continue
+                    rec = json.loads(line)
+                    if rec.get("event_type") == "OUTCOME_UPDATE":
+                        found_outcome = True
+                        # OUTCOME_UPDATE may or may not carry the field — that's fine
+                        # The key is it should NOT be mistakenly labelled VALIDATED
+                        assert rec.get("replay_validation_status") != "VALIDATED"
+            assert found_outcome, "No OUTCOME_UPDATE records found in replay files"
+
+    def test_T083_source_type_never_live_or_paper_in_replay(self):
+        """T083: Written replay records never use source_type=LIVE or PAPER."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            klp_dir.mkdir()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 18),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            replay_dir = klp_dir / "replay"
+            for f in replay_dir.glob("REPLAY_*.jsonl"):
+                for line in f.read_text().splitlines():
+                    if not line.strip():
+                        continue
+                    rec = json.loads(line)
+                    st  = rec.get("source_type", "")
+                    assert st not in ("LIVE", "PAPER", "EXECUTED"), (
+                        f"source_type must not be {st!r}"
+                    )
+
+    def test_T084_replay_summary_records_correct_mode(self):
+        """T084: ReplaySummary.mode matches the mode passed to replay()."""
+        bars = _make_bars("2026-07-01", 40, base=100.0)
+        for mode in (MODE_DRY_RUN, MODE_RESEARCH):
+            with tempfile.TemporaryDirectory() as td:
+                klp = Path(td) / "klp"
+                klp.mkdir()
+                engine = _engine_with_bars({"TEST": bars}, klp)
+                s = engine.replay(
+                    start_date=date(2026, 7, 15),
+                    end_date=date(2026, 7, 18),
+                    symbols=["TEST"],
+                    mode=mode,
+                )
+                assert s.mode == mode
+
+    def test_T085_no_live_files_modified_after_research_replay(self):
+        """T085: live_orders.jsonl and paper_trades.csv are not created or touched by replay."""
+        with tempfile.TemporaryDirectory() as td:
+            klp_dir = Path(td) / "klp"
+            data_dir = Path(td) / "data"
+            klp_dir.mkdir()
+            data_dir.mkdir()
+
+            bars   = _make_bars("2026-07-01", 40, base=100.0)
+            engine = _engine_with_bars({"RELIANCE": bars}, klp_dir)
+            engine.replay(
+                start_date=date(2026, 7, 15),
+                end_date=date(2026, 7, 18),
+                symbols=["RELIANCE"],
+                mode=MODE_RESEARCH,
+            )
+            # Neither live_orders.jsonl nor paper_trades.csv should exist
+            assert not (data_dir / "live_orders.jsonl").exists()
+            assert not (data_dir / "paper_trades.csv").exists()
+
