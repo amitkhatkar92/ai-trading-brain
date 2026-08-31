@@ -806,9 +806,12 @@ class DataFeedManager:
         Priority: AngelOneFeed → DhanFeed → NSEFeed (indian) → YahooFeed.
         """
         bare = symbol.upper().replace(".NS", "").replace(".BO", "")
-        # Dhan: primary for NSE equities and indices
+        # Dhan: primary for NSE equities and indices (skip for long-period requests
+        # — Dhan supports ~1 year max; fall through to Yahoo for historical replay)
+        _MAX_DHAN_DAYS = 365
         from .dhan_feed import DHAN_SECURITY_MAP
-        if self.dhan.is_live and symbol.upper() in DHAN_SECURITY_MAP and bare not in self._GLOBAL_SYMBOLS:
+        if (self.dhan.is_live and symbol.upper() in DHAN_SECURITY_MAP
+                and bare not in self._GLOBAL_SYMBOLS and days <= _MAX_DHAN_DAYS):
             bars = self.dhan.get_history(symbol, days, interval)
             if bars:
                 return bars
