@@ -132,7 +132,8 @@ class TelemetryLogger:
         connection, deletes the file, and opens a fresh one.
         """
         if self._db_conn is None:
-            conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
+            conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=1)
+            conn.execute("PRAGMA busy_timeout = 800")  # max 0.8s lock wait per statement
             try:
                 conn.execute("PRAGMA integrity_check")
             except sqlite3.DatabaseError:
@@ -146,7 +147,8 @@ class TelemetryLogger:
                     _os.remove(DB_PATH)
                 except Exception:
                     pass
-                conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=30)
+                conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=1)
+                conn.execute("PRAGMA busy_timeout = 800")
                 log.warning("[TelemetryLogger] Corrupt DB detected — recreated fresh: %s", DB_PATH)
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("PRAGMA synchronous=NORMAL")

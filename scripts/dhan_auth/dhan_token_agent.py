@@ -601,19 +601,42 @@ class DhanTokenAgent:
                         "Re-whitelist the new IP on Dhan portal first."
                     )
 
-            # ── 5. TOTP — generated but NEVER stored
-            totp_code = self.generate_totp(creds["DHAN_TOTP_SECRET"])
-
-            # ── 6. Generate token
+            # ── 5 + 6. TOTP + Token generation
+            # Fresh TOTP is generated per attempt so a window boundary between
+            # the first and second attempt never leaves a stale 6-digit code.
+            # If Dhan rejects with "Invalid TOTP" we wait for the next 30-second
+            # window and try up to _TOTP_WINDOW_RETRIES more times.
+            _TOTP_WINDOW_RETRIES = 2   # try current window + 2 more
+            _last_totp_exc: Optional[Exception] = None
+            new_token: Optional[str] = None
             t_gen = time.monotonic()
-            new_token = self.call_generate_token(
-                client_id=client_id,
-                pin=creds["DHAN_PIN"],
-                totp=totp_code,
-                api_key=creds.get("DHAN_API_KEY", ""),
-            )
+            for _tw in range(_TOTP_WINDOW_RETRIES + 1):
+                if _tw > 0:
+                    # Wait until the next 30-second TOTP window boundary + small buffer
+                    _remaining = 30 - (int(time.time()) % 30)
+                    time.sleep(_remaining + 2)
+                totp_code = self.generate_totp(creds["DHAN_TOTP_SECRET"])
+                try:
+                    new_token = self.call_generate_token(
+                        client_id=client_id,
+                        pin=creds["DHAN_PIN"],
+                        totp=totp_code,
+                        api_key=creds.get("DHAN_API_KEY", ""),
+                    )
+                    del totp_code
+                    break
+                except TokenGenerationError as exc:
+                    del totp_code
+                    _last_totp_exc = exc
+                    _cat = getattr(exc, "error_category", "")
+                    _msg_lower = str(exc).lower()
+                    if _cat == "API_ERROR_IN_200" and "totp" in _msg_lower and _tw < _TOTP_WINDOW_RETRIES:
+                        # Retry with fresh TOTP from next window
+                        continue
+                    raise
+            if new_token is None:
+                raise _last_totp_exc or TokenGenerationError("Token generation failed after TOTP retries.", "TOTP_RETRY_EXHAUSTED")
             gen_ms = int((time.monotonic() - t_gen) * 1000)
-            del totp_code  # discard TOTP immediately after use
 
             # ── 7. Health check new token
             expiry_unix = _parse_jwt_expiry(new_token)
@@ -893,16 +916,42 @@ def main() -> int:
         print(f"[DTA-001] {type(exc).__name__}: {exc}", file=sys.stderr)
         if isinstance(exc, TokenGenerationError) and exc.dhan_detail:
             print(json.dumps(exc.dhan_detail, indent=2), file=sys.stderr)
+        _cat = getattr(exc, "error_category", "UNKNOWN")
+        _msg_lower = str(exc).lower()
+        _is_totp = _cat == "API_ERROR_IN_200" and "totp" in _msg_lower
         try:
             from scripts.dhan_auth.dhan_token_notifier import get_token_notifier
             _det = getattr(exc, "dhan_detail", {}) or {}
             get_token_notifier().notify_refresh_failure(
-                error_category=getattr(exc, "error_category", "UNKNOWN"),
+                error_category=_cat,
                 http_status=_det.get("http_status"),
                 retry=bool(_det.get("retry", False)),
             )
         except Exception:
             _notify(STATUS_TOKEN_REFRESH_FAILED, f"Error: {type(exc).__name__}", client_id)
+        if _is_totp:
+            # TOTP rejected after all window retries — this almost always means
+            # the authenticator secret must be re-linked at Dhan portal.
+            _remediation = (
+                "\u26a0\ufe0f TOTP INVALID \u2014 all window retries failed.\n"
+                "Action required:\n"
+                "1. Log into https://login.dhan.co\n"
+                "2. Profile \u2192 Security \u2192 TOTP Authenticator\n"
+                "3. Disable then re-enable TOTP\n"
+                "4. Scan the new QR code with your authenticator app\n"
+                "5. Update DHAN_TOTP_SECRET in VPS .env:\n"
+                "   docker exec ai-trading-brain env | grep DHAN_TOTP_SECRET\n"
+                "   (replace with the new base-32 secret)\n"
+                "6. Re-run: docker exec ai-trading-brain "
+                "python /app/scripts/dhan_auth/dhan_token_agent.py --refresh\n"
+                "Live trading is SUSPENDED until token is refreshed."
+            )
+            try:
+                from notifications.notifier_manager import get_notifier
+                get_notifier().send_alert(_remediation)
+            except Exception:
+                pass
+            print(_remediation, file=sys.stderr)
         return 1
     except Exception as exc:
         print(f"[DTA-001] UNEXPECTED_ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)

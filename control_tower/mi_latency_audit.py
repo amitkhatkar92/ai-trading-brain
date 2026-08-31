@@ -139,8 +139,28 @@ class MILatencyAudit:
     def _get_conn(self) -> sqlite3.Connection:
         if self._conn is None:
             os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
-            self._conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-            self._conn.row_factory = sqlite3.Row
+            try:
+                conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=1)
+                conn.execute("PRAGMA busy_timeout = 800")
+                conn.execute("PRAGMA integrity_check")  # fail fast on corrupt file
+                conn.row_factory = sqlite3.Row
+                self._conn = conn
+            except sqlite3.DatabaseError:
+                # Corrupt file — recreate fresh
+                try:
+                    if self._conn:
+                        self._conn.close()
+                except Exception:
+                    pass
+                try:
+                    os.remove(DB_PATH)
+                except Exception:
+                    pass
+                conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=1)
+                conn.execute("PRAGMA busy_timeout = 800")
+                conn.row_factory = sqlite3.Row
+                self._conn = conn
+                log.warning("[MILatencyAudit] Corrupt DB detected — recreated fresh.")
         return self._conn
 
     def _init_db(self) -> None:
@@ -229,18 +249,27 @@ class MILatencyAudit:
             bool(aborted), regime, vix, pcr,
         )
 
-        with self._db_lock:
-            c = self._get_conn()
-            c.execute(
-                """INSERT INTO mi_latency_records
-                   (date, cycle_time, mi_latency_ms, bucket, aborted,
-                    regime, vix, pcr, created_at)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
-                (date, cycle_time.isoformat(), mi_latency_ms, bucket,
-                 aborted, regime, vix, pcr, now),
-            )
-            self._upsert_daily(c, date)
-            c.commit()
+        try:
+            with self._db_lock:
+                c = self._get_conn()
+                c.execute(
+                    """INSERT INTO mi_latency_records
+                       (date, cycle_time, mi_latency_ms, bucket, aborted,
+                        regime, vix, pcr, created_at)
+                       VALUES (?,?,?,?,?,?,?,?,?)""",
+                    (date, cycle_time.isoformat(), mi_latency_ms, bucket,
+                     aborted, regime, vix, pcr, now),
+                )
+                self._upsert_daily(c, date)
+                c.commit()
+        except sqlite3.DatabaseError as exc:
+            log.warning("[MILatencyAudit] DB write error (non-fatal): %s — resetting connection", exc)
+            try:
+                if self._conn:
+                    self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
 
     def _upsert_daily(self, c: sqlite3.Connection, date: str) -> None:
         """Recompute and upsert the daily aggregate for `date`."""
