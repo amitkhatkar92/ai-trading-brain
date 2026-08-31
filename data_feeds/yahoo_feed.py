@@ -166,7 +166,14 @@ class YahooFeed(BaseFeed):
         days:     int  = 30,
         interval: str  = "1d",
     ) -> List[PriceBar]:
-        ticker = GLOBAL_SYMBOL_MAP.get(symbol, symbol)
+        # Map known aliases (indices, commodities, FX).
+        # For NSE equities not in the map, append .NS (required by yfinance).
+        if symbol in GLOBAL_SYMBOL_MAP:
+            ticker = GLOBAL_SYMBOL_MAP[symbol]
+        elif symbol.endswith(".NS") or symbol.endswith(".BO") or symbol.startswith("^"):
+            ticker = symbol
+        else:
+            ticker = f"{symbol}.NS"
         if self._available:
             return self._live_history(ticker, symbol, days, interval)
         return self._sim_history(symbol, days)
