@@ -685,19 +685,35 @@ class HistoricalKnowledgeReplayEngine:
 
         return self._compute_outcome(entry, target, stop, direction, bar_dicts)
 
-    # ── Bars filtering ────────────────────────────────────────────────────────
+    # ── Bars filtering (optimized with binary search) ─────────────────────────
 
     @staticmethod
     def _bars_up_to(bars: list, trading_date: date) -> list:
-        """Return bars where date <= trading_date (no lookahead)."""
+        """Return bars where date <= trading_date (no lookahead).
+        Assumes bars is sorted ascending by date; uses bisect for O(log n) split.
+        """
+        if not bars:
+            return []
         cutoff = trading_date.isoformat()
-        return [b for b in bars if bar_date_str(b) <= cutoff]
+        # Fast path: bisect on the pre-sorted list using bar_date_str.
+        # Build a key list the FIRST time per symbol loop (caller caches all_bars sorted).
+        import bisect
+        keys = [bar_date_str(b) for b in bars]
+        idx  = bisect.bisect_right(keys, cutoff)
+        return bars[:idx]
 
     @staticmethod
     def _bars_after(bars: list, trading_date: date) -> list:
-        """Return bars strictly after trading_date (T+1 onwards)."""
+        """Return bars strictly after trading_date (T+1 onwards).
+        Assumes bars is sorted ascending; uses bisect for O(log n) split.
+        """
+        if not bars:
+            return []
         cutoff = trading_date.isoformat()
-        return [b for b in bars if bar_date_str(b) > cutoff]
+        import bisect
+        keys = [bar_date_str(b) for b in bars]
+        idx  = bisect.bisect_right(keys, cutoff)
+        return bars[idx:]
 
     # ── Disk write ────────────────────────────────────────────────────────────
 
@@ -877,6 +893,8 @@ class HistoricalKnowledgeReplayEngine:
         dedup_skipped    = 0
         insuf_data       = 0
 
+        import bisect as _bisect
+
         for sym in syms:
             log.debug("HKR: Processing %s (fetch_days=%d)", sym, fetch_days)
             all_bars = self._fetch_bars(sym, days=fetch_days)
@@ -889,6 +907,9 @@ class HistoricalKnowledgeReplayEngine:
             # Ensure ascending chronological order
             all_bars.sort(key=bar_date_str)
 
+            # Pre-compute date strings once per symbol (O(n)) for O(log n) per-day splits
+            _bar_keys = [bar_date_str(b) for b in all_bars]
+
             # Pre-load disk-existing obs_ids for idempotency (RESEARCH mode only)
             written_ids: Set[str] = set()
             if mode == MODE_RESEARCH:
@@ -899,7 +920,10 @@ class HistoricalKnowledgeReplayEngine:
             for day_idx, trading_date in enumerate(trading_days):
                 partition = assign_partition(day_idx, total_days)
 
-                bars_up = self._bars_up_to(all_bars, trading_date)
+                # O(log n) binary search instead of O(n) scan
+                cutoff  = trading_date.isoformat()
+                split   = _bisect.bisect_right(_bar_keys, cutoff)
+                bars_up = all_bars[:split]
                 if len(bars_up) < _MIN_BARS_FOR_SIGNAL:
                     insuf_data += 1
                     continue
@@ -916,7 +940,7 @@ class HistoricalKnowledgeReplayEngine:
                     dedup_skipped += 1
                     continue
 
-                bars_after = self._bars_after(all_bars, trading_date)
+                bars_after = all_bars[split:]   # use pre-computed split (O(1))
                 outcome    = self._compute_path_outcome(obs, bars_after)
 
                 rec = ReplayRecord(
