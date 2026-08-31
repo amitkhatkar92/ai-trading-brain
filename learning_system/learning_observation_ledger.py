@@ -782,30 +782,36 @@ def _compute_outcome(
             bar_mfe = (hi - entry) / entry * 100.0
             bar_mae = (entry - lo) / entry * 100.0
             if not stop_hit and not target_hit:
-                if lo <= stop < hi:
-                    stop_hit   = True
-                    first_event = "STOP_HIT"
-                if hi >= target > lo:
-                    target_hit  = True
-                    first_event = "TARGET_HIT"
+                # Fix D: accumulate MFE/MAE only while no terminal event resolved
+                mfe = max(mfe, bar_mfe)
+                mae = max(mae, bar_mae)
+                # Fix E: use lo <= stop (not lo <= stop < hi) to catch gap-down breaches
                 if lo <= stop and hi >= target:
                     first_event = "OUTCOME_AMBIGUOUS"
                     stop_hit = target_hit = True
+                elif lo <= stop:
+                    stop_hit    = True
+                    first_event = "STOP_HIT"
+                elif hi >= target:
+                    target_hit  = True
+                    first_event = "TARGET_HIT"
         else:
             bar_mfe = (entry - lo) / entry * 100.0
             bar_mae = (hi - entry) / entry * 100.0
             if not stop_hit and not target_hit:
-                if hi >= stop > lo:
-                    stop_hit   = True
-                    first_event = "STOP_HIT"
-                if lo <= target < hi:
-                    target_hit  = True
-                    first_event = "TARGET_HIT"
+                # Fix D: accumulate MFE/MAE only while no terminal event resolved
+                mfe = max(mfe, bar_mfe)
+                mae = max(mae, bar_mae)
+                # Fix E: use hi >= stop (not hi >= stop > lo) to catch gap-up breaches
                 if hi >= stop and lo <= target:
                     first_event = "OUTCOME_AMBIGUOUS"
                     stop_hit = target_hit = True
-        mfe = max(mfe, bar_mfe)
-        mae = max(mae, bar_mae)
+                elif hi >= stop:
+                    stop_hit    = True
+                    first_event = "STOP_HIT"
+                elif lo <= target:
+                    target_hit  = True
+                    first_event = "TARGET_HIT"
 
     # Classify outcome class
     oc = _classify_outcome(
@@ -865,6 +871,16 @@ def _classify_outcome(
 
     # Rejected / blocked outcomes
     if decision_state in (REJECTED, BLOCKED):
+        # Fix C: path-simulation result takes priority over directional t5_ret.
+        # STOP_HIT = trade would have been stopped out; rejection was correct.
+        # TARGET_HIT = trade would have succeeded; rejection was wrong.
+        if first_event == "STOP_HIT":
+            return BLOCKED_CORRECT if decision_state == BLOCKED else REJECTED_CORRECT
+        if first_event == "TARGET_HIT":
+            return BLOCKED_INCORRECT if decision_state == BLOCKED else REJECTED_INCORRECT
+        # OUTCOME_AMBIGUOUS: intrabar order unknown — fall through to directional logic.
+
+        # Fallback: directional return (no terminal event or ambiguous same-bar)
         moved_in_predicted  = (is_buy and move_positive) or (not is_buy and move_negative)
         moved_against        = (is_buy and move_negative) or (not is_buy and move_positive)
         is_correct_rejection = moved_against and is_significant

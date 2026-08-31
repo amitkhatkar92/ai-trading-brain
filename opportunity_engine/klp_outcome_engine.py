@@ -514,17 +514,6 @@ def _compute_outcome_from_bars(
         out["ge2"] = abs(t1) >= 2.0 and fav
         out["ge3"] = abs(t1) >= 3.0 and fav
 
-    # ── MFE / MAE ─────────────────────────────────────────────────────────
-    highs = [float(b["high"]) for b in bars]
-    lows  = [float(b["low"])  for b in bars]
-
-    if is_long:
-        out["mfe_pct"] = round(max((h / entry - 1.0) * 100.0 for h in highs), 4)
-        out["mae_pct"] = round(min((l / entry - 1.0) * 100.0 for l in lows),  4)
-    else:
-        out["mfe_pct"] = round(max((entry / l - 1.0) * 100.0 for l in lows  if l > 0), 4) if lows  else None
-        out["mae_pct"] = round(min((entry / h - 1.0) * 100.0 for h in highs if h > 0), 4) if highs else None
-
     # ── Target / stop hit detection ────────────────────────────────────────
     target_hit_day: Optional[str] = None
     stop_hit_day:   Optional[str] = None
@@ -547,9 +536,6 @@ def _compute_outcome_from_bars(
                 stop_hit_day = bar_date
 
     # ── First-event resolution ─────────────────────────────────────────────
-    rr = float(out.get("knowledge_RR") or 0.0) if "knowledge_RR" in out else 0.0
-    # Note: theoretical_R computed below after resolving first_event
-
     if target_hit_day is not None and stop_hit_day is not None:
         if target_hit_day < stop_hit_day:
             out["first_event"]     = TARGET_HIT
@@ -560,7 +546,7 @@ def _compute_outcome_from_bars(
             out["first_event_day"] = stop_hit_day
             out["stop_hit"]        = True
         else:
-            # Same bar — ambiguous
+            # Same bar — ambiguous (daily data cannot resolve intrabar order)
             out["first_event"]     = OUTCOME_AMBIGUOUS
             out["first_event_day"] = target_hit_day
             out["target_hit"]      = True
@@ -578,6 +564,31 @@ def _compute_outcome_from_bars(
         out["first_event"] = OUTCOME_EXPIRED
     else:
         out["first_event"] = OUTCOME_PENDING
+
+    # ── Path-bounded MFE / MAE (Fix D: stops accumulating after first event) ─
+    # Cutoff = first_event_day when a terminal event occurred; None = full horizon.
+    _mfe_cutoff = out.get("first_event_day")  # None when EXPIRED/PENDING/NO_DATA
+
+    if is_long:
+        _ph = [float(b["high"]) for b in bars
+               if _mfe_cutoff is None or b.get("date", "") <= _mfe_cutoff]
+        _pl = [float(b["low"])  for b in bars
+               if _mfe_cutoff is None or b.get("date", "") <= _mfe_cutoff]
+        if _ph:
+            out["mfe_pct"] = round(max((h / entry - 1.0) * 100.0 for h in _ph), 4)
+        if _pl:
+            out["mae_pct"] = round(min((l / entry - 1.0) * 100.0 for l in _pl), 4)
+    else:
+        _ph = [float(b["high"]) for b in bars
+               if _mfe_cutoff is None or b.get("date", "") <= _mfe_cutoff]
+        _pl = [float(b["low"])  for b in bars
+               if _mfe_cutoff is None or b.get("date", "") <= _mfe_cutoff]
+        _valid_l = [l for l in _pl if l > 0]
+        _valid_h = [h for h in _ph if h > 0]
+        if _valid_l:
+            out["mfe_pct"] = round(max((entry / l - 1.0) * 100.0 for l in _valid_l), 4)
+        if _valid_h:
+            out["mae_pct"] = round(min((entry / h - 1.0) * 100.0 for h in _valid_h), 4)
 
     # ── Theoretical R (risk multiple) ──────────────────────────────────────
     if out["target_hit"] and not out["stop_hit"]:

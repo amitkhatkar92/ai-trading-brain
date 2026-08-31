@@ -372,11 +372,22 @@ def _build_evidence_record(
     mfe = rec.get("mfe_pct")
     mae = rec.get("mae_pct")
 
-    # ge1/ge2/ge3: ≥1%, ≥2%, ≥3% absolute T+5 return in predicted direction
+    # actual_return_pct preserved as directional T+5 return (not modified)
     actual = rec.get("actual_return_pct")  # same as t5, positive = good for direction
-    ge1 = (actual >= 1.0)  if actual is not None else None
-    ge2 = (actual >= 2.0)  if actual is not None else None
-    ge3 = (actual >= 3.0)  if actual is not None else None
+
+    # Fix F: ge1/ge2/ge3 reflect path-trade outcome, not merely directional recovery.
+    # STOP_HIT = trade would have failed; no ge credit even if t5 later recovered.
+    # OUTCOME_AMBIGUOUS = intrabar order unknown; ge indeterminate.
+    # TARGET_HIT / no-terminal-event = directional return as before.
+    _path_event = rec.get("outcome_first_event") or ""
+    if _path_event == "STOP_HIT":
+        ge1 = ge2 = ge3 = False
+    elif _path_event == "OUTCOME_AMBIGUOUS":
+        ge1 = ge2 = ge3 = None
+    else:
+        ge1 = (actual >= 1.0) if actual is not None else None
+        ge2 = (actual >= 2.0) if actual is not None else None
+        ge3 = (actual >= 3.0) if actual is not None else None
 
     # Knowledge provenance (decision-time info)
     prov = rec.get("knowledge_provenance") or {}
