@@ -478,13 +478,23 @@ def _compute_metrics(
 def _compute_confidence(tier: int, stability: str, ess: float) -> float:
     """
     Composite confidence [0–1].
-    tier_score:      0.5 × (tier / 6)
-    stability_bonus: 0.3 × (1.0 for stable, 0.5 for developing, 0.0 otherwise)
+    tier_score:      0.5 × (ess_tier / 6)  — ESS-based tier prevents stale bulk from inflating authority
+    stability_bonus: 0.3 × stability × min(ess/3, 1)  — gated by ESS: zero contribution when ESS≈0
     ess_score:       0.2 × min(ess / 100, 1.0)
+
+    NOTE: tier arg (raw count) is kept for signature compatibility.
+    We derive ess_tier from ESS so that 1000 stale records do not confer
+    TIER_6 confidence when the recency-weighted quality (ESS) is only ~6.
+    The ESS gate on stability ensures that consistent-but-stale bulk (ESS≈0)
+    does not manufacture a false 0.30 stability bonus.
     """
-    tier_score = 0.5 * (tier / 6.0)
+    from opportunity_engine.hbe_models import evidence_tier as _et
+    ess_tier   = _et(round(ess))          # authority tier is ESS-weighted, not raw-count
+    tier_score = 0.5 * (ess_tier / 6.0)
     stab_map   = {"stable": 1.0, "developing": 0.5, "unstable": 0.0, "insufficient_data": 0.0}
-    stab_score = 0.3 * stab_map.get(stability, 0.0)
+    # ESS gate: stability counts only when there are some effective observations
+    ess_factor = min(ess / 3.0, 1.0)
+    stab_score = 0.3 * stab_map.get(stability, 0.0) * ess_factor
     ess_score  = 0.2 * min(ess / 100.0, 1.0)
     return round(tier_score + stab_score + ess_score, 4)
 
@@ -711,9 +721,12 @@ def _compute_v2_preview(
         20%  empirical expected move (p50 magnitude)
         10%  regime × sector historical alignment (positive_move_probability)
 
-    Fallback: if evidence_level >= 6 or confidence < 0.05, return v1 score.
+    Fallback: if evidence_level >= 6 or fewer than 5 raw observations, return v1 score.
+    Uses raw observation_count (data availability), not ESS (quality), so that
+    real observations are always used even if recency-weighted quality is low.
     """
-    using_fallback = metrics.evidence_level >= 6 or metrics.confidence < 0.05
+    using_fallback = (metrics.evidence_level >= 6
+                      or metrics.observation_count < 5)
 
     scanner_component = v1_score  # already normalised 0–1 by V1 formula
 
