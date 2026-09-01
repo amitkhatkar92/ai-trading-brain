@@ -88,7 +88,7 @@ def _bm(ess=50.0, target_prob=0.6, stop_prob=0.3, target_src="EMPIRICAL", **kwar
     bm.expected_days_p25           = kwargs.get("days_p25", 2.0)
     bm.expected_days_p50           = kwargs.get("days_p50", 4.0)
     bm.expected_days_p75           = kwargs.get("days_p75", 8.0)
-    bm.evidence_source             = kwargs.get("evidence_src", "SYMBOL_DIRECTION_REGIME")
+    bm.evidence_source             = kwargs.get("evidence_src", "SYMBOL_DIRECTION")
     return bm
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -80,6 +80,15 @@ _CONTRADICT_THRESHOLD = 0.30  # confidence ≤ this AND metric direction opposin
 _ATR_TARGET_MULT = 2.0   # target = entry ± 2×ATR
 _ATR_STOP_MULT   = 1.0   # stop   = entry ∓ 1×ATR
 
+# Evidence levels that permit empirical SL/TP override.
+# Broad population levels (REGIME_DIR, SECTOR_DIR_REGIME, etc.) provide valid
+# directional authority but are too coarse to replace symbol-specific ATR risk
+# parameters.  Override requires symbol-specific evidence (L1 or L2 only).
+_EMPIRICAL_OVERRIDE_ALLOWED_LEVELS = frozenset({
+    EvidenceHierarchyLevel.SYMBOL_DIR_REGIME_CTX,   # L1
+    EvidenceHierarchyLevel.SYMBOL_DIR,               # L2
+})
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Evidence hierarchy order (most → least specific)
@@ -224,8 +233,8 @@ class KnowledgeDecisionAuthority:
         )
 
         # 7. Target / stop / horizon
-        target, stop_loss, target_src, stop_src, fallback = self._derive_target_stop(
-            bm, entry, atr, direction
+        target, stop_loss, target_src, stop_src, fallback, empirical_override_decision = (
+            self._derive_target_stop(bm, entry, atr, direction, evidence_level)
         )
         em_p25, em_p50, em_p75 = self._extract_expected_move(bm)
         days_p25, days_p50, days_p75, horizon_src = self._derive_horizon(bm)
@@ -295,6 +304,7 @@ class KnowledgeDecisionAuthority:
             historical_replay_validation_count=int(getattr(bm, "historical_replay_validation_count", 0) or 0) if bm is not None else 0,
             historical_replay_oos_count=int(getattr(bm, "historical_replay_oos_count", 0) or 0) if bm is not None else 0,
             fallback_used=fallback,
+            empirical_override_decision=empirical_override_decision,
             authority_components=auth_components,
             angle_analyses=angle_analyses,
             information_contributions=contributions,
@@ -606,38 +616,56 @@ class KnowledgeDecisionAuthority:
 
     def _derive_target_stop(
         self,
-        bm:        Optional[Any],
-        entry:     float,
-        atr:       float,
-        direction: str,
-    ) -> Tuple[Optional[float], Optional[float], str, str, bool]:
+        bm:             Optional[Any],
+        entry:          float,
+        atr:            float,
+        direction:      str,
+        evidence_level: "EvidenceHierarchyLevel" = EvidenceHierarchyLevel.ATR_FALLBACK,
+    ) -> Tuple[Optional[float], Optional[float], str, str, bool, str]:
         """
-        Returns (target, stop_loss, target_source, stop_source, fallback_used).
-        Uses empirical offsets from BehaviourMetrics when available;
-        falls back to ATR multiples otherwise.
+        Returns (target, stop_loss, target_source, stop_source, fallback_used,
+                 empirical_override_decision).
+
+        Empirical SL/TP offsets are applied ONLY when evidence is symbol-specific
+        (L1=SYMBOL_DIR_REGIME_CTX or L2=SYMBOL_DIR).  Broad population evidence
+        (L3=SECTOR_DIR_REGIME, L4=REGIME_DIR, L5+) retains ATR-based parameters
+        to prevent population-level medians from overriding symbol-specific risk.
+
+        empirical_override_decision values:
+          EMPIRICAL_OVERRIDE_ALLOWED_SYMBOL_SPECIFIC  — L1/L2 evidence, empirical applied
+          EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE   — L3+ evidence, ATR retained
+          EMPIRICAL_OVERRIDE_NOT_APPLICABLE           — no empirical data available
         """
         is_long = direction.upper() in ("BUY", "LONG")
+        mul = 1 if is_long else -1
 
         if bm is not None:
             tgt_offset = getattr(bm, "knowledge_target_offset_p50", None)
             stp_offset = getattr(bm, "knowledge_stop_offset_p50", None)
             tgt_src    = str(getattr(bm, "target_source", "ATR_FALLBACK"))
-            stp_src    = str(getattr(bm, "stop_source",   "ATR_FALLBACK"))
 
             if tgt_offset is not None and stp_offset is not None and tgt_src == "EMPIRICAL":
-                if entry > 0:
-                    mul = 1 if is_long else -1
-                    target   = round(entry * (1 + mul * tgt_offset / 100.0), 2)
-                    stop_loss = round(entry * (1 - mul * abs(stp_offset) / 100.0), 2)
-                    return target, stop_loss, "EMPIRICAL", "EMPIRICAL", False
+                if evidence_level in _EMPIRICAL_OVERRIDE_ALLOWED_LEVELS:
+                    if entry > 0:
+                        target    = round(entry * (1 + mul * tgt_offset / 100.0), 2)
+                        stop_loss = round(entry * (1 - mul * abs(stp_offset) / 100.0), 2)
+                        return (target, stop_loss, "EMPIRICAL", "EMPIRICAL", False,
+                                "EMPIRICAL_OVERRIDE_ALLOWED_SYMBOL_SPECIFIC")
+                else:
+                    # Empirical data present but evidence too broad; retain ATR.
+                    if entry > 0 and atr > 0:
+                        target    = round(entry + mul * _ATR_TARGET_MULT * atr, 2)
+                        stop_loss = round(entry - mul * _ATR_STOP_MULT  * atr, 2)
+                        return (target, stop_loss, "ATR_FALLBACK", "ATR_FALLBACK", True,
+                                "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE")
 
         if entry > 0 and atr > 0:
             mul = 1 if is_long else -1
             target    = round(entry + mul * _ATR_TARGET_MULT * atr, 2)
             stop_loss = round(entry - mul * _ATR_STOP_MULT  * atr, 2)
-            return target, stop_loss, "ATR_FALLBACK", "ATR_FALLBACK", True
+            return target, stop_loss, "ATR_FALLBACK", "ATR_FALLBACK", True, "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
 
-        return None, None, "NONE", "NONE", True
+        return None, None, "NONE", "NONE", True, "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
 
     def _extract_expected_move(
         self, bm: Optional[Any]

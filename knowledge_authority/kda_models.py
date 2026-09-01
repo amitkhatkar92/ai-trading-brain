@@ -300,6 +300,12 @@ class KDADecisionRecord:
     historical_replay_validation_count: int = 0   # DTA-033
     historical_replay_oos_count:        int = 0   # DTA-033: excluded from evidence computation
 
+    # Audit trail: why empirical SL/TP was or was not applied (DTA-040-C)
+    # EMPIRICAL_OVERRIDE_ALLOWED_SYMBOL_SPECIFIC — L1/L2, empirical applied
+    # EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE  — L3+ (REGIME/SECTOR), ATR retained
+    # EMPIRICAL_OVERRIDE_NOT_APPLICABLE          — no empirical data available
+    empirical_override_decision: str = "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
+
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["authority"]      = self.authority.value
@@ -400,6 +406,10 @@ class KDADecisionRecord:
             historical_replay_train_count=int(d.get("historical_replay_train_count", 0) or 0),
             historical_replay_validation_count=int(d.get("historical_replay_validation_count", 0) or 0),
             historical_replay_oos_count=int(d.get("historical_replay_oos_count", 0) or 0),
+            empirical_override_decision=str(
+                d.get("empirical_override_decision", "EMPIRICAL_OVERRIDE_NOT_APPLICABLE") or
+                "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
+            ),
         )
 
 

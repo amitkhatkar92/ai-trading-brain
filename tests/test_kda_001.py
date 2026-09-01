@@ -87,7 +87,7 @@ def _bm(ess=50.0, target_prob=0.6, stop_prob=0.3, target_src="EMPIRICAL", **kwar
     bm.expected_days_p25           = kwargs.get("days_p25", 2.0)
     bm.expected_days_p50           = kwargs.get("days_p50", 4.0)
     bm.expected_days_p75           = kwargs.get("days_p75", 8.0)
-    bm.evidence_source             = kwargs.get("evidence_src", "SYMBOL_DIRECTION_REGIME")
+    bm.evidence_source             = kwargs.get("evidence_src", "SYMBOL_DIRECTION")
     return bm
 
 
@@ -923,6 +923,89 @@ class TestExitAndOutcome:
             "fallback_used", "authority_components", "angle_analyses",
             "information_contributions", "counterfactual_results",
             "exit_conditions", "mode", "no_lookahead", "broker_calls", "orders",
+            "empirical_override_decision",
         ]
         for field_name in required:
             assert hasattr(rec, field_name), f"Missing field: {field_name}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T101-T106: DTA-040-C — Empirical SL/TP override authority (Option C)
+# Proves that broad evidence (L3+) retains ATR and symbol-specific (L1/L2)
+# allows empirical override.  Both paths must propagate the audit-trail field.
+# ─────────────────────────────────────────────────────────────────────────────
+
+class TestEmpiricalOverrideAuthority:
+    """DTA-040-C: Empirical SL/TP is gated on symbol-specific evidence (L1/L2 only)."""
+
+    def _bm_empirical(self, evidence_src: str):
+        """BehaviourMetrics with empirical offsets for a given evidence source."""
+        bm = _bm(ess=100.0, target_src="EMPIRICAL", target_offset=6.10, stop_offset=3.23,
+                 evidence_src=evidence_src)
+        return bm
+
+    def test_t101_regime_dir_retains_atr(self):
+        """T101: REGIME_DIR evidence (L4) — empirical override BLOCKED, ATR retained."""
+        bm = self._bm_empirical("REGIME_DIRECTION")
+        rec = KDA.evaluate(_obs(entry_price=430.85, atr=23.79), behaviour=bm)
+        assert rec.target_source == "ATR_FALLBACK", "L4 must not apply empirical target"
+        assert rec.stop_source  == "ATR_FALLBACK", "L4 must not apply empirical stop"
+        assert rec.fallback_used is True
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE"
+        # ATR-based R:R: target=entry+2×ATR, stop=entry−1×ATR  → R:R=2.0
+        assert rec.target    == pytest.approx(430.85 + 2.0 * 23.79, abs=0.02)
+        assert rec.stop_loss == pytest.approx(430.85 - 1.0 * 23.79, abs=0.02)
+
+    def test_t102_sector_dir_regime_retains_atr(self):
+        """T102: SECTOR_DIR_REGIME evidence (L3) — empirical override BLOCKED, ATR retained."""
+        bm = self._bm_empirical("SECTOR_DIRECTION_REGIME")
+        rec = KDA.evaluate(_obs(entry_price=500.0, atr=10.0), behaviour=bm)
+        assert rec.target_source == "ATR_FALLBACK"
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE"
+
+    def test_t103_symbol_dir_allows_empirical(self):
+        """T103: SYMBOL_DIR evidence (L2) — empirical override ALLOWED."""
+        bm = self._bm_empirical("SYMBOL_DIRECTION")
+        rec = KDA.evaluate(_obs(entry_price=2800.0, atr=28.0), behaviour=bm)
+        assert rec.target_source == "EMPIRICAL"
+        assert rec.stop_source   == "EMPIRICAL"
+        assert rec.fallback_used is False
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_ALLOWED_SYMBOL_SPECIFIC"
+        # Empirical target: entry * (1 + 6.10/100) = 2800 * 1.061 = 2970.8
+        assert rec.target    == pytest.approx(2800.0 * 1.0610, abs=0.02)
+        assert rec.stop_loss == pytest.approx(2800.0 * (1 - 0.0323), abs=0.02)
+
+    def test_t104_symbol_dir_regime_ctx_allows_empirical(self):
+        """T104: SYMBOL_DIR_REGIME_CTX evidence (L1) — empirical override ALLOWED."""
+        bm = self._bm_empirical("SYMBOL_DIRECTION_REGIME_CONTEXT")
+        rec = KDA.evaluate(_obs(entry_price=1000.0, atr=10.0), behaviour=bm)
+        assert rec.target_source == "EMPIRICAL"
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_ALLOWED_SYMBOL_SPECIFIC"
+
+    def test_t105_no_bm_is_not_applicable(self):
+        """T105: No BehaviourMetrics — override decision is NOT_APPLICABLE."""
+        rec = KDA.evaluate(_obs(entry_price=2800.0, atr=28.0), behaviour=None)
+        assert rec.target_source == "ATR_FALLBACK"
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
+
+    def test_t106_override_decision_in_as_dict(self):
+        """T106: empirical_override_decision is serialised by as_dict()."""
+        bm = self._bm_empirical("REGIME_DIRECTION")
+        rec = KDA.evaluate(_obs(entry_price=430.85, atr=23.79), behaviour=bm)
+        d = rec.as_dict()
+        assert "empirical_override_decision" in d
+        assert d["empirical_override_decision"] == "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE"
+
+    def test_t107_broad_dir_retains_atr(self):
+        """T107: BROAD_MARKET_DIRECTION evidence (L6) — empirical override BLOCKED."""
+        bm = self._bm_empirical("BROAD_MARKET_DIRECTION")
+        rec = KDA.evaluate(_obs(entry_price=500.0, atr=10.0), behaviour=bm)
+        assert rec.target_source == "ATR_FALLBACK"
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE"
+
+    def test_t108_sector_dir_retains_atr(self):
+        """T108: SECTOR_DIRECTION evidence (L5) — empirical override BLOCKED."""
+        bm = self._bm_empirical("SECTOR_DIRECTION")
+        rec = KDA.evaluate(_obs(entry_price=500.0, atr=10.0), behaviour=bm)
+        assert rec.target_source == "ATR_FALLBACK"
+        assert rec.empirical_override_decision == "EMPIRICAL_OVERRIDE_BLOCKED_BROAD_EVIDENCE"
