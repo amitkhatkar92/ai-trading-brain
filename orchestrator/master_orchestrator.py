@@ -28,7 +28,7 @@ import os
 import sched
 import time
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
@@ -1046,6 +1046,18 @@ class MasterOrchestrator:
 
         # ── STEP 2: Opportunity Scan (ODM-guided) ─────────────────────
         _diag = TradeDiagnosticEngine()  # observability only — no pipeline effect
+        # ── DTA-038: record cycle start ───────────────────────────────
+        _dta038_cycle_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M")
+        try:
+            from audit.dta038_manager import get_dta038_manager as _get_dta038
+            _get_dta038().on_cycle_start(
+                cycle_id=_dta038_cycle_id,
+                regime=str(getattr(snapshot.regime, "value", str(getattr(snapshot, "regime", ""))) or ""),
+                vix=float(getattr(snapshot, "vix", 0.0) or 0.0),
+            )
+        except Exception as _dta_exc:
+            log.debug("[DTA038] cycle_start hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
         odm_directive = self.odm.get_directive(snapshot)
         if odm_directive.tier != "NORMAL":
             log.info("[ODM] %s", odm_directive.message)
@@ -1056,6 +1068,13 @@ class MasterOrchestrator:
             _diag.record_stage("OpportunityEngine", 0, 0, "NO_ENTRY_CONDITIONS_MET")
             _diag.set_totals(0, 0)
             _diag.generate()
+            # ── DTA-038: Zero-signals early exit ──────────────────────
+            try:
+                from audit.dta038_manager import get_dta038_manager as _get_dta038
+                _get_dta038().on_cycle_end(signals_generated=0)
+            except Exception as _dta_exc:
+                log.debug("[DTA038] zero_signals cycle_end error: %s", _dta_exc)
+            # ──────────────────────────────────────────────────────────
             self.odm.record_cycle(signals_generated=0, approved_trades=0)
             self.system_monitor.finalize_cycle()
             return
@@ -1107,6 +1126,13 @@ class MasterOrchestrator:
         _sl_reasons = getattr(self, '_last_sl_reject_summary', {})
         _sl_top = max(_sl_reasons, key=_sl_reasons.get, default="UNKNOWN") if _sl_reasons else "OK"
         _diag.record_stage("StrategyLab", len(signals), len(enriched_signals), _sl_top)
+        # ── DTA-038: Strategy stage trace ────────────────────────────────
+        try:
+            from audit.dta038_trace import get_trace_manager as _dta038_tm
+            _dta038_tm().record_strategy_outcomes(signals, enriched_signals)
+        except Exception as _dta_exc:
+            log.debug("[DTA038] strategy_outcomes hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # ── KDA: Knowledge Intelligence Authority + signal merge ─────────────
         # KDA is the intelligence authority. It runs on ALL original scanner signals.
@@ -1378,6 +1404,13 @@ class MasterOrchestrator:
                 enriched_signals, snapshot, portfolio
             )
         _diag.record_stage("CapitalRiskEngine", len(enriched_signals), len(cre_signals))
+        # ── DTA-038: CRE stage trace ──────────────────────────────────────
+        try:
+            from audit.dta038_trace import get_trace_manager as _dta038_tm
+            _dta038_tm().record_cre_outcomes(enriched_signals, cre_signals)
+        except Exception as _dta_exc:
+            log.debug("[DTA038] cre_outcomes hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # ── LOL: Record CRE-blocked signals (QTY_ZERO etc.) ──────────────────
         # Signals that passed StrategyLab but were blocked by CapitalRiskEngine
@@ -1578,6 +1611,13 @@ class MasterOrchestrator:
             f"OTHER×{_rc_s.get('other', 0)}"
         ) if any(_rc_s.get(k, 0) for k in ('rr', 'heat', 'other')) else "OK"
         _diag.record_stage("RiskControl", len(cre_signals), _rc_out_total, _rc_blocker)
+        # ── DTA-038: RiskControl stage trace ──────────────────────────────
+        try:
+            from audit.dta038_trace import get_trace_manager as _dta038_tm
+            _dta038_tm().record_risk_outcomes(cre_signals, approved_signals)
+        except Exception as _dta_exc:
+            log.debug("[DTA038] risk_outcomes hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # ── STEP 4b: Options Fast-Path ────────────────────────────────
         # Options/spread signals must NOT pass through the equity-oriented
@@ -1679,6 +1719,25 @@ class MasterOrchestrator:
             _diag.set_totals(len(signals), 0, _n_opts_signals,
                              getattr(self, '_last_options_placed', 0))
             _diag.generate()
+            # ── DTA-038: Guardian blocked — record and close cycle ─────
+            try:
+                from audit.dta038_trace import get_trace_manager as _dta038_tm
+                _dta038_tm().record_guardian_outcome(
+                    list(getattr(guardian_decision, "rejected_signals", []) or []),
+                    passed=False,
+                    reason=guardian_decision.reason or "GUARDIAN_BLOCKED",
+                )
+                from audit.dta038_manager import get_dta038_manager as _get_dta038
+                _get_dta038().on_cycle_end(
+                    signals_generated=len(signals),
+                    strategy_passed=len(enriched_signals),
+                    cre_passed=len(cre_signals),
+                    risk_passed=_rc_out_total,
+                    guardian_passed=0,
+                )
+            except Exception as _dta_exc:
+                log.debug("[DTA038] guardian_blocked hook error: %s", _dta_exc)
+            # ──────────────────────────────────────────────────────────
             self.system_monitor.finalize_cycle()
             return
 
@@ -1806,6 +1865,13 @@ class MasterOrchestrator:
                         executed.append(row)
         _diag.record_stage("DebateAndDecision", len(signals_for_debate), len(executed),
                            "CONFIDENCE_BELOW_THRESHOLD_6.5")
+        # ── DTA-038: Debate stage trace ───────────────────────────────────
+        try:
+            from audit.dta038_trace import get_trace_manager as _dta038_tm
+            _dta038_tm().record_debate_outcome(signals_for_debate, executed)
+        except Exception as _dta_exc:
+            log.debug("[DTA038] debate_outcome hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # ── SIGNAL LIFECYCLE FUNNEL SUMMARY ───────────────────────────
         # Counts each signal as it passes through each filter stage.
@@ -1873,6 +1939,21 @@ class MasterOrchestrator:
             options_fast_path_passed=getattr(self, '_last_options_placed', 0),
         )
         _diag.generate()
+        # ── DTA-038: Cycle end trace ──────────────────────────────────────
+        try:
+            from audit.dta038_manager import get_dta038_manager as _get_dta038
+            _get_dta038().on_cycle_end(
+                signals_generated=_n_generated,
+                strategy_passed=_n_strategy,
+                cre_passed=len(cre_signals),
+                risk_passed=_n_risk,
+                guardian_passed=_n_guardian,
+                debate_input=_n_debate,
+                executed=_n_executed,
+            )
+        except Exception as _dta_exc:
+            log.debug("[DTA038] cycle_end hook error: %s", _dta_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # ── Forensic telemetry: execution stage (observational only) ─────────────
         try:
@@ -5052,6 +5133,13 @@ class MasterOrchestrator:
                 _pe,
             )
         log.info("── Layer 10: EOD Learning ──")
+        # ── DTA-038: Generate EOD self-audit report ───────────────────
+        try:
+            from audit.dta038_manager import get_dta038_manager as _get_dta038
+            _get_dta038().generate_eod_report(date_str=_today)
+        except Exception as _dta_eod_exc:
+            log.debug("[DTA038] eod_report hook error: %s", _dta_eod_exc)
+        # ─────────────────────────────────────────────────────────────
         # K-003: take a snapshot of today's signals then reset for next session
         _eod_todays_signals = list(getattr(self, "_todays_signals", []))
         self._todays_signals = []
@@ -6971,6 +7059,17 @@ class MasterOrchestrator:
         log.info("  🌅 PRE-MARKET INITIALIZATION — %s",
                  datetime.now().strftime("%Y-%m-%d %H:%M"))
         log.info("═" * 60)
+
+        # ── DTA-038: Morning readiness check ─────────────────────────
+        try:
+            from audit.dta038_manager import get_dta038_manager as _get_dta038
+            _dta038_morn = _get_dta038().run_morning_check()
+            if _dta038_morn.get("status") == "NEEDS_REVIEW":
+                log.warning("[DTA038] Morning check NEEDS_REVIEW: %s",
+                            "; ".join(_dta038_morn.get("warnings", [])))
+        except Exception as _dta_morn_exc:
+            log.debug("[DTA038] morning_check hook error: %s", _dta_morn_exc)
+        # ─────────────────────────────────────────────────────────────
 
         # Force-refresh global intelligence cache so it's hot for 09:05
         try:

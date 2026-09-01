@@ -202,8 +202,16 @@ Returns `GuardianDecision(approved, rule_triggered, reason, approved_signals, re
 | Sentiment | 0.15 |
 | Regime | 0.10 |
 
-`DecisionEngine` aggregates votes → weighted score → threshold check (`MIN_CONFIDENCE_SCORE = 6.5`).  
-Signals scoring < 6.5 are rejected before any order is placed.
+`DecisionEngine` aggregates votes → weighted score → **VIX-adaptive threshold check**:
+
+| VIX Level | Effective Threshold |
+|---|---|
+| < 16 | 6.5 |
+| 16–20 | 6.6 |
+| 20–30 | 6.7 |
+| > 30 | 6.9 |
+
+Base config: `MIN_CONFIDENCE_SCORE = 6.5`. High-asymmetry setups (fat-tail R:R) receive up to −1.0 pt reduction. Partial-size approval for scores within 0.2 of threshold.
 
 ---
 
@@ -376,7 +384,7 @@ data/
 | `TOTAL_CAPITAL` | ₹1,000,000 | Base capital (from env `TOTAL_CAPITAL`) |
 | `MAX_RISK_PER_TRADE_PCT` | 1% | Per-trade risk cap |
 | `MAX_PORTFOLIO_RISK_PCT` | 5% | Total portfolio exposure cap |
-| `MIN_CONFIDENCE_SCORE` | 6.5 | Debate score floor for execution |
+| `MIN_CONFIDENCE_SCORE` | 6.5 | Base debate score floor; VIX-adaptive at runtime (6.5–6.9) |
 | `CONTINUOUS_SCAN_INTERVAL` | 30s | MarketMonitor tick rate |
 | `ACTIVE_BROKER` | `zerodha` | From env `ACTIVE_BROKER` |
 | `USE_LIVE_DATA` | True | Enables yfinance / Dhan live data |

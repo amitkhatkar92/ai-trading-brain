@@ -1485,6 +1485,12 @@ class EquityScannerAI:
                     record_signal_observation(sig, stock)
                 except Exception:
                     pass
+                # ── DTA-038: Record scanner stage trace (never raises) ────────
+                try:
+                    from audit.dta038_trace import get_trace_manager as _get_dta038_tm
+                    _get_dta038_tm().record_scanner_stage(sig, stock)
+                except Exception:
+                    pass
                 # ─────────────────────────────────────────────────────────────
             _r[reason] = _r.get(reason, 0) + 1
             log.debug(
