@@ -1133,6 +1133,13 @@ class MasterOrchestrator:
         except Exception as _dta_exc:
             log.debug("[DTA038] strategy_outcomes hook error: %s", _dta_exc)
         # ─────────────────────────────────────────────────────────────
+        try:
+            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+                signals, {signal.symbol for signal in enriched_signals}, "STRATEGYLAB", "STRATEGY_REJECTED",
+            )
+        except Exception:
+            pass
 
         # ── KDA: Knowledge Intelligence Authority + signal merge ─────────────
         # KDA is the intelligence authority. It runs on ALL original scanner signals.
@@ -1327,6 +1334,12 @@ class MasterOrchestrator:
 
                 enriched_signals = _merged
 
+                try:
+                    from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+                    get_pit_discovery_evidence_recorder().record_kda_results(signals, _kda_results)
+                except Exception:
+                    pass
+
                 # ── Persist KDA vs StrategyLab comparison ────────────────────
                 try:
                     import json as _kda_json
@@ -1411,6 +1424,13 @@ class MasterOrchestrator:
         except Exception as _dta_exc:
             log.debug("[DTA038] cre_outcomes hook error: %s", _dta_exc)
         # ─────────────────────────────────────────────────────────────
+        try:
+            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+                enriched_signals, {signal.symbol for signal in cre_signals}, "CRE", "CRE_QTY_ZERO",
+            )
+        except Exception:
+            pass
 
         # ── LOL: Record CRE-blocked signals (QTY_ZERO etc.) ──────────────────
         # Signals that passed StrategyLab but were blocked by CapitalRiskEngine
@@ -1618,6 +1638,13 @@ class MasterOrchestrator:
         except Exception as _dta_exc:
             log.debug("[DTA038] risk_outcomes hook error: %s", _dta_exc)
         # ─────────────────────────────────────────────────────────────
+        try:
+            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+                cre_signals, {signal.symbol for signal in approved_signals}, "RISKCONTROL", "RISK_REJECTED",
+            )
+        except Exception:
+            pass
 
         # ── STEP 4b: Options Fast-Path ────────────────────────────────
         # Options/spread signals must NOT pass through the equity-oriented
@@ -1684,6 +1711,16 @@ class MasterOrchestrator:
                 "decision": "APPROVED" if guardian_decision.approved else "BLOCKED",
             },
         ))
+        try:
+            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+                sim_result.approved_trades,
+                {signal.symbol for signal in guardian_decision.approved_signals},
+                "RISK_GUARDIAN",
+                guardian_decision.reason or "GUARDIAN_BLOCKED",
+            )
+        except Exception:
+            pass
         if not guardian_decision.approved:
             log.warning("[RiskGuardian] BLOCKED: %s", guardian_decision.reason)
             # D11-013: persist RiskGuardian-blocked signals so false-rejection rate is learnable
@@ -1872,6 +1909,16 @@ class MasterOrchestrator:
         except Exception as _dta_exc:
             log.debug("[DTA038] debate_outcome hook error: %s", _dta_exc)
         # ─────────────────────────────────────────────────────────────
+        try:
+            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+                signals_for_debate,
+                {str(row.get("symbol", "")) for row in executed if row},
+                "DEBATE_EXECUTION",
+                "CONFIDENCE_BELOW_THRESHOLD",
+            )
+        except Exception:
+            pass
 
         # ── SIGNAL LIFECYCLE FUNNEL SUMMARY ───────────────────────────
         # Counts each signal as it passes through each filter stage.

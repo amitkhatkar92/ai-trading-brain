@@ -1410,10 +1410,30 @@ class EquityScannerAI:
         _r: dict = {}
         # Patch 2/3: per-symbol signal result; populated for prepared candidates only
         _per_sym_result: Dict[str, Any] = {}
+        _prepared_rank_by_symbol = {
+            row["symbol"]: rank for rank, row in enumerate(prepared, 1)
+        }
         for stock in watchlist:
+            _pit_recorder = None
+            try:
+                from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+                _pit_recorder = get_pit_discovery_evidence_recorder()
+                _pit_lineage = _pit_recorder.record_evaluation(
+                    stock, snapshot, universe_size=len(watchlist), prepared_count=len(prepared),
+                    prepared_rank=_prepared_rank_by_symbol.get(stock["symbol"]),
+                )
+            except Exception:
+                _pit_lineage = ""
             sig, reason = self._identify_setup(stock, snapshot,
                                                vol_ratio_min=vol_ratio_min,
                                                extra_strategies=extra_strats)
+            try:
+                if _pit_recorder is not None:
+                    _pit_recorder.record_scanner_result(
+                    _pit_lineage, sig, reason,
+                    )
+            except Exception:
+                pass
             # Patch 2/3: record per-symbol result for enrichment persistence
             if stock.get("_prepared"):
                 _per_sym_result[stock["symbol"]] = {"sig": sig, "reason": reason}
@@ -1882,8 +1902,16 @@ class EquityScannerAI:
                     if _EXPLORE_FAIL_COUNTS.get(_sym, 0) >= _EXPLORE_SKIP_THRESHOLD:
                         continue
                     try:
+                        from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
+                        _pit_lineage = get_pit_discovery_evidence_recorder().record_evaluation(
+                            stock, snapshot, universe_size=len(static_only),
+                            prepared_count=len(prepared), evaluation_source="EXPLORATORY",
+                        )
                         # Fix: _identify_setup returns (signal, reason) tuple
                         sig, _reason = self._identify_setup(stock, snapshot)
+                        get_pit_discovery_evidence_recorder().record_scanner_result(
+                            _pit_lineage, sig, _reason,
+                        )
                     except Exception:
                         continue
                     # Section 4 — increment evaluated counter
