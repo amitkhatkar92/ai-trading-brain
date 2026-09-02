@@ -10,6 +10,7 @@ CONTRACT: all public methods never raise.
 """
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import List, Optional
 
 from audit.dta038_trace import TraceManager, get_trace_manager, _today_str, _now_utc
@@ -82,9 +83,14 @@ class DTA038Manager:
             cycle  = next((c for c in cycles if c.cycle_id == cid), None)
             if cycle is None:
                 return
+            # Preserve raw stage events; reports use the final outcome per trace.
+            report_cycle = replace(
+                cycle,
+                stage_drop_map=self._tm.get_terminal_stage_drop_map(cid),
+            )
 
             # Anomaly detection
-            anomalies = self._anom.detect(cycle)
+            anomalies = self._anom.detect(report_cycle)
             if anomalies:
                 log.info("[DTA038] %d anomaly(-ies) detected in cycle %s", len(anomalies), cid)
                 for a in anomalies:
@@ -95,7 +101,7 @@ class DTA038Manager:
                         log.info("[DTA038][Hypothesis] Raised: %s [%s]", hyp.title[:60], hyp.hyp_id)
 
             # Self-questioning
-            sq = self._sq.generate_cycle_report(cycle, effective_threshold)
+            sq = self._sq.generate_cycle_report(report_cycle, effective_threshold)
             log.info("[DTA038][SelfQ] Cycle=%s | %s", cid, sq.top_finding)
             for q in sq.questions:
                 if q.severity in ("WARN", "ALERT"):

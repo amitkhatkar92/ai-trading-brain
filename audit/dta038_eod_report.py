@@ -19,7 +19,7 @@ from audit.dta038_models import (
     AnomalyRecord, CycleAudit, Hypothesis, SelfQuestioningReport,
 )
 import audit.dta038_trace as _trace_mod
-from audit.dta038_trace import _now_utc, _today_str
+from audit.dta038_trace import _now_utc, _today_str, get_trace_manager
 
 
 class EODReportGenerator:
@@ -63,10 +63,12 @@ class EODReportGenerator:
             for t in []   # placeholder — would need trace manager
         })
 
-        # Aggregate drop per stage across all cycles
+        # Aggregate each trace's final rejection, not every historical rejection.
         stage_drops: dict = {}
+        trace_manager = get_trace_manager()
         for c in cycles:
-            for stage, drop in c.stage_drop_map.items():
+            terminal_drops = trace_manager.get_terminal_stage_drop_map(c.cycle_id)
+            for stage, drop in (terminal_drops or c.stage_drop_map).items():
                 stage_drops[stage] = stage_drops.get(stage, 0) + drop
 
         # Top anomalies

@@ -262,6 +262,21 @@ class TestTraceManager:
         assert c.executed == 2
         assert c.stage_drop_map["STRATEGY"] == 2  # 10-8
 
+    def test_T017a_terminal_drop_map_uses_latest_rejection(self):
+        """T017a — later KDA-path rejection supersedes StrategyLab in reports."""
+        from audit.dta038_trace import get_trace_manager
+        tm = get_trace_manager()
+        tm.set_cycle_id("20260901_1050")
+        sig = _sig("BHEL")
+        tm.record_scanner_stage(sig, {})
+        tm.record_strategy_outcomes([sig], [])
+        tm.record_cre_outcomes([sig], [sig])
+        tm.record_risk_outcomes([sig], [])
+        trace = next(t for t in tm.get_today_traces() if t.symbol == "BHEL")
+        assert trace.stage_status("STRATEGY").value == "REJECTED"
+        assert trace.final_outcome == "REJECTED_AT_RISKCONTROL"
+        assert tm.get_terminal_stage_drop_map("20260901_1050") == {"RISK": 1}
+
     def test_T018_trace_file_written_before_cycle_end(self, tmp_data_dir):
         """T018 — JSONL trace file is created and has content after scanner recording."""
         from audit.dta038_trace import get_trace_manager
@@ -603,6 +618,36 @@ class TestEODAndIntegration:
         assert txt_file.exists()
         txt_content = txt_file.read_text()
         assert "DTA-038 END-OF-DAY" in txt_content
+
+    def test_T039a_eod_uses_terminal_rejection_after_kda_continuation(self, tmp_data_dir):
+        """T039a — EOD drops use RiskControl after a superseded StrategyLab rejection."""
+        import datetime as _dt
+        from audit.dta038_eod_report import EODReportGenerator
+        from audit.dta038_models import CycleAudit
+        from audit.dta038_trace import get_trace_manager
+
+        tm = get_trace_manager()
+        cycle_id = "20260901_1105"
+        tm.set_cycle_id(cycle_id)
+        sig = _sig("BHEL")
+        tm.record_scanner_stage(sig, {})
+        tm.record_strategy_outcomes([sig], [])
+        tm.record_cre_outcomes([sig], [sig])
+        tm.record_risk_outcomes([sig], [])
+
+        date_str = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d")
+        report = EODReportGenerator().generate(
+            date_str=date_str,
+            cycles=[CycleAudit(
+                cycle_id=cycle_id,
+                trading_date=date_str,
+                start_ts="",
+                signals_generated=1,
+                stage_drop_map={"STRATEGY": 1},
+            )],
+        )
+
+        assert report["stage_drop_summary"] == {"RISK": 1}
 
     def test_T040_full_pipeline_trace_no_trading_state_modified(self, tmp_data_dir):
         """T040 — Full pipeline trace leaves all trading sentinel values unchanged."""

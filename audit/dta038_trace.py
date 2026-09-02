@@ -600,6 +600,30 @@ class TraceManager:
         except Exception:
             return []
 
+    def get_terminal_stage_drop_map(self, cycle_id: str) -> Dict[str, int]:
+        """Count only each trace's latest terminal rejection for reporting."""
+        try:
+            stage_names = {
+                "RISKCONTROL": "RISK",
+                "GUARDIAN": "GUARDIAN",
+                "DEBATE": "DEBATE",
+                "CRE": "CRE",
+                "STRATEGY": "STRATEGY",
+            }
+            drops: Dict[str, int] = {}
+            with self._lock:
+                traces = [t for t in self._traces.values() if t.cycle_id == cycle_id]
+                for trace in traces:
+                    outcome = trace.final_outcome or ""
+                    if not outcome.startswith("REJECTED_AT_"):
+                        continue
+                    stage = stage_names.get(outcome.removeprefix("REJECTED_AT_"))
+                    if stage:
+                        drops[stage] = drops.get(stage, 0) + 1
+            return drops
+        except Exception:
+            return {}
+
     def get_anomalies(self) -> List[AnomalyRecord]:
         with self._lock:
             return list(self._anomalies)
