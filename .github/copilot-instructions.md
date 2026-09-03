@@ -130,7 +130,9 @@ Full cycle:          172ms  ✅  HEALTHY
 | `orchestrator/master_orchestrator.py` | `_do_monitor`: index symbols (NIFTY/BANKNIFTY) exempt from `.NS` suffix — use bare names so `GLOBAL_SYMBOL_MAP` routes to `^NSEI`/`^NSEBANK`; `_do_eod_learning`: recovers CSV-closed trades from today to handle post-restart zero-count; strategy attribute lookup fixed (`strategy` over `strategy_name`) | No |
 | `autonomous_research/rc_models.py` | NEW — Pure data models for ResearchCoordinator: `ResearchStage`, `ResearchRun`, `ResearchTelemetry`, `ResearchSummary`, `RCStatus`, `ResearchHealth`, `ResearchStageState`, stage constants | N/A |
 | `autonomous_research/rc_config.py` | NEW — `RCConfig` dataclass with per-stage toggles and `dry_run` | N/A |
-| `autonomous_research/research_coordinator.py` | NEW — `ResearchCoordinator`: 8-stage pipeline orchestrator (study_plan → replay → validation → evidence → knowledge → synthesis → repository → report) | N/A |
+| `control_tower/telemetry_logger.py` | **DTA-BLOCKERS-001**: SQLite `timeout=30→1` + `PRAGMA busy_timeout=800` on BOTH `sqlite3.connect()` calls in `_connect()`. Prevents 30s×2=60s block per cycle when dashboard reader holds WAL lock on `control_tower.db`. | No |
+| `control_tower/mi_latency_audit.py` | **DTA-BLOCKERS-001**: Added `timeout=1`, `PRAGMA busy_timeout=800`, `PRAGMA integrity_check` (corrupt→auto-recreate) in `_get_conn()`. Wrapped `_write_record()` in `try/except sqlite3.DatabaseError` with `self._conn=None` reset. | No |
+| `scripts/dhan_auth/dhan_token_agent.py` | **DTA-BLOCKERS-001**: TOTP generated fresh per retry window instead of once; on `Invalid TOTP` (API_ERROR_IN_200) waits for next 30s TOTP window and retries up to 2×. On exhaustion: sends Telegram alert with step-by-step TOTP re-registration instructions pointing to Dhan portal. | No |
 | `autonomous_research/__init__.py` | Added RC exports: `ResearchCoordinator`, `RCConfig`, all RC models and constants | No |
 | `test_rc.py` | NEW — 190/190 tests (T001–T190) | N/A |
 | `models/trade_signal.py` | MOP-RC-001: added `expected_move_pct`, `_obs_candidate_score`, `_obs_regime` (all `Optional`, default `None`) | No |
@@ -141,6 +143,10 @@ Full cycle:          172ms  ✅  HEALTHY
 | `scripts/safe_pull.sh` | NEW — backs up all runtime data, runs git pull, restores files. Use instead of bare `git pull` in deployment commands | N/A |
 | `build_manifest.json` | Regenerated; deploy command now includes `generate_build_manifest.py` to prevent DeploymentDrift | No |
 | `orchestrator/master_orchestrator.py` | Universe rebuild: Monday-only guard removed, schedule moved from 08:30 to 16:15 IST, runs daily post-market | No |
+| `audit/dta041_pit_discovery_evidence.py` | DTA-041 Phase 2: `record_outcome` for immutable PIT_OUTCOME appends | No |
+| `opportunity_engine/klp_outcome_engine.py` | DTA-041 Phase 2: `fill_pending_pit_outcomes` to resolve matured PIT outcomes from OHLCV bars | No |
+| `opportunity_engine/historical_behaviour_engine.py` | DTA-041 Phase 2: `_load_pit_discovery_file` + maturity-enforced ingestion into HBE evidence pool | No |
+| `tests/test_dta041_phase2_delayed_outcome.py` | DTA-041 Phase 2: 4 new tests proving maturity enforcement, lineage preservation, HBE ingestion, and empirical profile updates | N/A |
 
 ---
 

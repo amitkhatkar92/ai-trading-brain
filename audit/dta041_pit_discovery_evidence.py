@@ -181,8 +181,54 @@ class PITDiscoveryEvidenceRecorder:
             "details": _json_value(details),
         })
 
+    def record_outcome(
+        self,
+        lineage_id: str,
+        outcome_data: Dict[str, Any],
+        maturity_timestamp: str,
+        outcome_type: str = "COUNTERFACTUAL_RESEARCH",
+        *,
+        trading_date: Optional[str] = None,
+        decision_timestamp: Optional[str] = None,
+        symbol: Optional[str] = None,
+    ) -> None:
+        """Append an immutable PIT_OUTCOME record for an existing lineage."""
+        if not lineage_id:
+            return
+        date_str = trading_date
+        if not date_str:
+            parts = lineage_id.split(":")
+            if len(parts) >= 2 and len(parts[1]) == 8:
+                d = parts[1]
+                date_str = f"{d[:4]}-{d[4:6]}-{d[6:]}"
+            else:
+                date_str = datetime.now(timezone.utc).date().isoformat()
+
+        sym = symbol or (lineage_id.split(":")[-1] if ":" in lineage_id else "UNKNOWN")
+
+        record = {
+            "record_type": "PIT_OUTCOME",
+            "schema_version": _SCHEMA_VERSION,
+            "lineage_id": lineage_id,
+            "symbol": sym,
+            "trading_date": date_str,
+            "decision_timestamp": decision_timestamp,
+            "outcome_timestamp": _now_utc(),
+            "maturity_timestamp": maturity_timestamp,
+            "outcome_type": outcome_type,
+            "details": _json_value(outcome_data),
+        }
+        for k, v in outcome_data.items():
+            if k not in record:
+                record[k] = _json_value(v)
+
+        self._append_to_file(record, date_str)
+
     def _append(self, record: Dict[str, Any]) -> None:
-        path = self._data_dir / f"PIT_DISCOVERY_{datetime.now(timezone.utc).date().isoformat()}.jsonl"
+        self._append_to_file(record, datetime.now(timezone.utc).date().isoformat())
+
+    def _append_to_file(self, record: Dict[str, Any], date_str: str) -> None:
+        path = self._data_dir / f"PIT_DISCOVERY_{date_str}.jsonl"
         with self._lock:
             path.parent.mkdir(parents=True, exist_ok=True)
             with path.open("a", encoding="utf-8") as handle:

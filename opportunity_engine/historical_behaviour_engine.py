@@ -409,6 +409,8 @@ def _compute_metrics(
                 replay_val_count += 1
             elif part == "OOS":
                 replay_oos_count += 1
+        elif r.source_type in ("COUNTERFACTUAL_RESEARCH", "COUNTERFACTUAL"):
+            replay_count += 1
 
     return BehaviourMetrics(
         observation_count=n,
@@ -640,6 +642,132 @@ def _join_and_parse(
     return records
 
 
+def _load_pit_discovery_file(path: Path) -> Tuple[Dict[str, Dict], Dict[str, Dict]]:
+    """
+    Parse one PIT_DISCOVERY_YYYY-MM-DD.jsonl file.
+    Returns (obs_map: lineage_id->obs, outcome_map: lineage_id->outcome).
+    """
+    obs_map: Dict[str, Dict] = {}
+    outcome_map: Dict[str, Dict] = {}
+    try:
+        with path.open("r", encoding="utf-8") as fh:
+            for line in fh:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                rt = rec.get("record_type")
+                lid = rec.get("lineage_id", "")
+                if not lid:
+                    continue
+                if rt == "PIT_OBSERVATION":
+                    obs_map[lid] = rec
+                elif rt == "PIT_OUTCOME":
+                    outcome_map[lid] = rec
+    except OSError:
+        pass
+    return obs_map, outcome_map
+
+
+def _join_and_parse_pit(
+    obs_map: Dict[str, Dict],
+    outcome_map: Dict[str, Dict],
+    trading_date: str,
+    as_of: Optional[Any] = None,
+) -> List[OutcomeRecord]:
+    """
+    Join PIT observations with matured PIT outcomes.
+    Only records where maturity_timestamp <= as_of (default now) and
+    first_event in COMPLETED_OUTCOMES are returned.
+    """
+    now_utc = datetime.now(timezone.utc)
+    if as_of is not None:
+        if isinstance(as_of, str):
+            as_of_dt = datetime.fromisoformat(as_of.replace("Z", "+00:00"))
+            if as_of_dt.tzinfo is None:
+                as_of_dt = as_of_dt.replace(tzinfo=timezone.utc)
+        elif isinstance(as_of, datetime):
+            as_of_dt = as_of if as_of.tzinfo is not None else as_of.replace(tzinfo=timezone.utc)
+        elif isinstance(as_of, date):
+            as_of_dt = datetime.combine(as_of, datetime.min.time(), tzinfo=timezone.utc)
+        else:
+            as_of_dt = now_utc
+    else:
+        as_of_dt = now_utc
+
+    records: List[OutcomeRecord] = []
+    for lid, obs in obs_map.items():
+        outcome = outcome_map.get(lid)
+        if not outcome:
+            continue
+
+        # Maturity enforcement: never consume before maturity_timestamp
+        mat_ts = outcome.get("maturity_timestamp")
+        if not mat_ts:
+            continue
+        try:
+            mat_dt = datetime.fromisoformat(mat_ts.replace("Z", "+00:00"))
+            if mat_dt.tzinfo is None:
+                mat_dt = mat_dt.replace(tzinfo=timezone.utc)
+            if mat_dt > as_of_dt:
+                # Immature outcome: not yet available at as_of time
+                continue
+        except Exception:
+            continue
+
+        first_event = outcome.get("first_event", "")
+        if first_event not in COMPLETED_OUTCOMES:
+            continue
+
+        symbol = (obs.get("symbol") or "").strip().upper()
+        direction = (outcome.get("direction") or "BUY").upper()
+        regime = (obs.get("market_properties", {}).get("regime") or "").upper()
+        entry = float(outcome.get("reference_entry") or obs.get("market_properties", {}).get("price") or 0.0)
+        target = float(outcome.get("target") or 0.0)
+        stop = float(outcome.get("stop") or 0.0)
+        atr = float(obs.get("market_properties", {}).get("atr") or 0.0)
+        atr_pct = float(round(atr / entry * 100, 4) if atr > 0 and entry > 0 else 0.0)
+
+        days_to_event = _trading_days_between(
+            obs.get("trading_date", trading_date), outcome.get("first_event_day")
+        )
+
+        records.append(OutcomeRecord(
+            obs_id=lid,
+            trading_date=obs.get("trading_date", trading_date),
+            symbol=symbol,
+            direction=direction,
+            regime=regime,
+            sector=_get_sector(symbol),
+            reference_entry=entry,
+            knowledge_target=target,
+            knowledge_stop=stop,
+            atr=atr,
+            atr_pct=atr_pct,
+            scanner_confidence=float(obs.get("scanner_confidence") or 0.0),
+            candidate_score=float(obs.get("prepared_universe", {}).get("score") or 0.0),
+            knowledge_score=float(obs.get("knowledge_score") or 0.0),
+            knowledge_rr=float(outcome.get("theoretical_R") or (abs(target - entry) / abs(entry - stop) if entry and entry != stop else 2.5)),
+            first_event=first_event,
+            first_event_day=outcome.get("first_event_day"),
+            target_hit=bool(outcome.get("target_hit", False)),
+            stop_hit=bool(outcome.get("stop_hit", False)),
+            t1_ret_pct=_float_or_none(outcome.get("t1_ret_pct")),
+            t3_ret_pct=_float_or_none(outcome.get("t3_ret_pct")),
+            t5_ret_pct=_float_or_none(outcome.get("t5_ret_pct")),
+            mfe_pct=_float_or_none(outcome.get("mfe_pct")),
+            mae_pct=_float_or_none(outcome.get("mae_pct")),
+            days_to_event=days_to_event,
+            no_lookahead=True,
+            source_type=str(outcome.get("outcome_type") or "COUNTERFACTUAL_RESEARCH"),
+            validation_partition="",
+        ))
+    return records
+
+
 def _float_or_none(v: Any) -> Optional[float]:
     if v is None:
         return None
@@ -817,9 +945,15 @@ class HistoricalBehaviourEngine:
 
     # ── Loading ───────────────────────────────────────────────────────────────
 
-    def load_outcomes(self, klp_dir: Optional[Path] = None) -> int:
+    def load_outcomes(
+        self,
+        klp_dir: Optional[Path] = None,
+        pit_dir: Optional[Path] = None,
+        as_of: Optional[Any] = None,
+    ) -> int:
         """
-        Scan KLP_*.jsonl (live/paper) and BOOTSTRAP_*.jsonl (historical) files.
+        Scan KLP_*.jsonl (live/paper), BOOTSTRAP_*.jsonl (historical),
+        REPLAY_*.jsonl (replay), and PIT_DISCOVERY_*.jsonl (DTA-041 matured counterfactuals).
         Returns total completed outcomes loaded.
         """
         base = klp_dir or self._data_dir
@@ -854,6 +988,19 @@ class HistoricalBehaviourEngine:
                     r_date = parts[1] if len(parts) == 2 else stem
                     obs_map, outcome_map = _load_klp_file(replay_file)
                     for rec in _join_and_parse(obs_map, outcome_map, r_date):
+                        if rec.obs_id not in seen_obs_ids:
+                            all_records.append(rec)
+                            seen_obs_ids.add(rec.obs_id)
+
+            # DTA-041 Phase 2: Load matured PIT discovery outcomes
+            pit_base = Path(pit_dir) if pit_dir else (self._data_dir.parent / "audit" / "dta041")
+            if pit_base.exists():
+                for pit_file in sorted(pit_base.glob("PIT_DISCOVERY_*.jsonl")):
+                    stem = pit_file.stem          # "PIT_DISCOVERY_2026-09-03"
+                    parts = stem.split("_", 2)
+                    p_date = parts[2] if len(parts) >= 3 else stem
+                    obs_map, outcome_map = _load_pit_discovery_file(pit_file)
+                    for rec in _join_and_parse_pit(obs_map, outcome_map, p_date, as_of=as_of):
                         if rec.obs_id not in seen_obs_ids:
                             all_records.append(rec)
                             seen_obs_ids.add(rec.obs_id)

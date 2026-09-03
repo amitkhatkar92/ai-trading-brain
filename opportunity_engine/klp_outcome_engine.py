@@ -87,10 +87,14 @@ class KLPOutcomeEngine:
     def __init__(
         self,
         data_dir: Optional[Path] = None,
+        pit_dir: Optional[Path] = None,
         _ohlcv_fetcher=None,
+        _today: Optional[date] = None,
     ) -> None:
         self._data_dir     = Path(data_dir) if data_dir else _DEFAULT_DATA_DIR
+        self._pit_dir      = Path(pit_dir) if pit_dir else (self._data_dir.parent / "audit" / "dta041")
         self._ohlcv_fetcher = _ohlcv_fetcher or _fetch_ohlcv_yfinance
+        self._today        = _today
         self._outcomes_written: Set[str] = set()   # instance-level dedup
 
     # ─────────────────────────────────────────────────────────────────────────
@@ -109,6 +113,20 @@ class KLPOutcomeEngine:
             return self._fill_impl(dates)
         except Exception as exc:
             return {"processed": 0, "error": str(exc)}
+
+    def fill_pending_pit_outcomes(
+        self,
+        dates: Optional[List[str]] = None,
+        pit_dir: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        """
+        Process pending DTA-041 PIT discovery observations and append PIT_OUTCOME records.
+        Never raises.
+        """
+        try:
+            return self._fill_pit_impl(dates, pit_dir)
+        except Exception as exc:
+            return {"processed": 0, "error": str(exc), "skipped_pending": 0, "skipped_no_data": 0, "skipped_dedup": 0}
 
     def get_pending_count(
         self,
@@ -131,9 +149,9 @@ class KLPOutcomeEngine:
     # ─────────────────────────────────────────────────────────────────────────
 
     def _fill_impl(self, dates: Optional[List[str]]) -> Dict[str, Any]:
+        current_today = self._today or date.today()
         if dates is None:
-            today = date.today()
-            dates = [str(today - timedelta(days=i)) for i in range(1, 8)]
+            dates = [str(current_today - timedelta(days=i)) for i in range(1, 8)]
 
         summary = {
             "processed":         0,
@@ -189,6 +207,189 @@ class KLPOutcomeEngine:
                 with _DEDUP_LOCK:
                     _OUTCOMES_WRITTEN_THIS_SESSION.add(obs_id)
                 self._outcomes_written.add(obs_id)
+                summary["processed"] += 1
+
+            # DTA-041 Phase 2: Also fill pending PIT discovery outcomes
+            pit_summary = self.fill_pending_pit_outcomes(dates=[date_str])
+            summary["processed"] += pit_summary.get("processed", 0)
+            summary["skipped_pending"] += pit_summary.get("skipped_pending", 0)
+            summary["skipped_no_data"] += pit_summary.get("skipped_no_data", 0)
+            summary["skipped_dedup"] += pit_summary.get("skipped_dedup", 0)
+
+        return summary
+
+    def _fill_pit_impl(
+        self,
+        dates: Optional[List[str]],
+        pit_dir: Optional[Path] = None,
+    ) -> Dict[str, Any]:
+        p_dir = Path(pit_dir) if pit_dir else self._pit_dir
+        if not p_dir.exists():
+            return {"processed": 0, "skipped_pending": 0, "skipped_no_data": 0, "skipped_dedup": 0}
+
+        if dates is None:
+            today = date.today()
+            dates = [str(today - timedelta(days=i)) for i in range(1, 8)]
+
+        summary = {
+            "processed":       0,
+            "skipped_pending": 0,
+            "skipped_no_data": 0,
+            "skipped_dedup":   0,
+            "error":           None,
+        }
+
+        for date_str in dates:
+            pit_file = p_dir / f"PIT_DISCOVERY_{date_str}.jsonl"
+            if not pit_file.exists():
+                continue
+
+            obs_map: Dict[str, Dict[str, Any]] = {}
+            outcome_map: Dict[str, Dict[str, Any]] = {}
+            events_by_lineage: Dict[str, List[Dict[str, Any]]] = {}
+
+            with pit_file.open("r", encoding="utf-8") as fh:
+                for line in fh:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    rt = rec.get("record_type")
+                    lid = rec.get("lineage_id")
+                    if not lid:
+                        continue
+                    if rt == "PIT_OBSERVATION":
+                        obs_map[lid] = rec
+                    elif rt == "PIT_OUTCOME":
+                        outcome_map[lid] = rec
+                    elif rt == "PIT_PIPELINE_EVENT":
+                        events_by_lineage.setdefault(lid, []).append(rec)
+
+            for lid, obs in obs_map.items():
+                if lid in outcome_map or lid in self._outcomes_written:
+                    summary["skipped_dedup"] += 1
+                    continue
+
+                symbol = (obs.get("symbol") or "").strip()
+                trading_date = obs.get("trading_date", date_str)
+                mprops = obs.get("market_properties", {})
+                entry = float(mprops.get("price") or 0.0)
+
+                events = events_by_lineage.get(lid, [])
+                scanner_evt = next((e for e in events if e.get("stage") == "SCANNER"), None)
+                kda_evt = next((e for e in events if e.get("stage") == "KDA"), None)
+                debate_evt = next((e for e in events if e.get("stage") == "DEBATE_EXECUTION"), None)
+
+                s_details = scanner_evt.get("details", {}) if scanner_evt else {}
+                k_details = kda_evt.get("details", {}) if kda_evt else {}
+
+                direction = (s_details.get("direction") or "BUY").upper()
+                if entry <= 0 and s_details.get("entry"):
+                    entry = float(s_details.get("entry") or 0.0)
+
+                target = k_details.get("target")
+                stop = k_details.get("stop")
+                atr = float(mprops.get("atr") or 0.0)
+
+                target_f = float(target) if target else None
+                stop_f = float(stop) if stop else None
+
+                if target_f is None and entry > 0:
+                    offset = 2.5 * atr if atr > 0 else entry * 0.03
+                    target_f = round(entry + offset if direction == "BUY" else entry - offset, 4)
+
+                if stop_f is None and entry > 0:
+                    offset = 1.0 * atr if atr > 0 else entry * 0.015
+                    stop_f = round(entry - offset if direction == "BUY" else entry + offset, 4)
+
+                # Check if T+1 is available
+                current_today = self._today or date.today()
+                try:
+                    td = date.fromisoformat(trading_date)
+                    if td >= current_today:
+                        summary["skipped_pending"] += 1
+                        continue
+                except Exception:
+                    summary["skipped_no_data"] += 1
+                    continue
+
+                try:
+                    bars = self._ohlcv_fetcher(symbol, trading_date)
+                except Exception:
+                    summary["skipped_no_data"] += 1
+                    continue
+
+                if not bars:
+                    summary["skipped_no_data"] += 1
+                    continue
+
+                bars = bars[:_OUTCOME_HORIZON_DAYS]
+
+                result = _compute_outcome_from_bars(
+                    entry=entry,
+                    target=target_f,
+                    stop=stop_f,
+                    direction=direction,
+                    bars=bars,
+                )
+
+                if result["first_event"] == OUTCOME_PENDING:
+                    summary["skipped_pending"] += 1
+                    continue
+                if result["first_event"] == OUTCOME_NO_DATA:
+                    summary["skipped_no_data"] += 1
+                    continue
+
+                # Determine maturity date/time
+                first_event_day = result.get("first_event_day")
+                if first_event_day:
+                    maturity_ts = f"{first_event_day}T15:30:00+00:00"
+                else:
+                    last_bar_date = bars[-1].get("date", trading_date)
+                    maturity_ts = f"{last_bar_date}T15:30:00+00:00"
+
+                is_executed = bool(debate_evt and debate_evt.get("status") == "PASSED")
+                outcome_type = "EXECUTED" if is_executed else "COUNTERFACTUAL_RESEARCH"
+
+                outcome_rec = {
+                    "record_type": "PIT_OUTCOME",
+                    "schema_version": "1.0",
+                    "lineage_id": lid,
+                    "symbol": symbol,
+                    "trading_date": trading_date,
+                    "decision_timestamp": obs.get("decision_timestamp"),
+                    "outcome_timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    "maturity_timestamp": maturity_ts,
+                    "outcome_type": outcome_type,
+                    "direction": direction,
+                    "reference_entry": entry,
+                    "target": target_f,
+                    "stop": stop_f,
+                    "first_event": result.get("first_event"),
+                    "first_event_day": result.get("first_event_day"),
+                    "target_hit": result.get("target_hit"),
+                    "stop_hit": result.get("stop_hit"),
+                    "theoretical_R": result.get("theoretical_R"),
+                    "t1_ret_pct": result.get("t1_ret_pct"),
+                    "t3_ret_pct": result.get("t3_ret_pct"),
+                    "t5_ret_pct": result.get("t5_ret_pct"),
+                    "mfe_pct": result.get("mfe_pct"),
+                    "mae_pct": result.get("mae_pct"),
+                    "direction_correct": result.get("direction_correct"),
+                    "bars_available": result.get("bars_available", 0),
+                    "horizon_days": _OUTCOME_HORIZON_DAYS,
+                    "no_lookahead": True,
+                    "details": result,
+                }
+
+                with _DEDUP_LOCK:
+                    with pit_file.open("a", encoding="utf-8") as fh:
+                        fh.write(json.dumps(outcome_rec, sort_keys=True) + "\n")
+                    _OUTCOMES_WRITTEN_THIS_SESSION.add(lid)
+                self._outcomes_written.add(lid)
                 summary["processed"] += 1
 
         return summary
@@ -247,9 +448,10 @@ class KLPOutcomeEngine:
         stop_f   = float(stop)   if stop   else None
 
         # Check if T+1 is available (trading_date must be in the past)
+        current_today = self._today or date.today()
         try:
             td = date.fromisoformat(trading_date)
-            if td >= date.today():
+            if td >= current_today:
                 return {"first_event": OUTCOME_PENDING}
         except Exception:
             return {"first_event": OUTCOME_NO_DATA}
@@ -357,13 +559,13 @@ class KLPOutcomeEngine:
         if not trading_date or not symbol:
             return {"outcome_status": OUTCOME_NO_DATA}
 
-        today = date.today()
+        current_today = self._today or date.today()
         try:
             t1 = date.fromisoformat(trading_date) + timedelta(days=1)
         except Exception:
             return {"outcome_status": OUTCOME_NO_DATA}
 
-        if t1 > today:
+        if t1 > current_today:
             return {"outcome_status": OUTCOME_PENDING}
 
         try:
