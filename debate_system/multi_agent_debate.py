@@ -35,6 +35,14 @@ AGENT_WEIGHTS = {
     "RegimeDebateAI":     0.10,
 }
 
+# ── TechnicalAnalyst structural-validator governance constants (DTA-DEBATE-AUTHORITY-002C) ──
+# Deliberately wide sanity envelope — NOT an empirically optimized trading
+# parameter. Catches gross stop-distance errors relative to the stock's own
+# ATR; expresses no opinion on ideal stop placement. Revisit only after Debate
+# telemetry repair produces enough real outcome evidence to calibrate empirically.
+TA_ATR_RATIO_MIN = 0.5
+TA_ATR_RATIO_MAX = 4.0
+
 
 class MultiAgentDebate:
     """
@@ -64,27 +72,70 @@ class MultiAgentDebate:
 
     def _technical_vote(self, sig: TradeSignal,
                         snapshot: MarketSnapshot) -> DebateVote:
-        """Technical Analyst evaluates chart structure and momentum."""
-        score      = sig.confidence * 0.9
-        rr         = sig.risk_reward_ratio
-        vote_label = "approve"
-        reasoning  = f"Entry valid, R:R={rr:.1f}"
-        size_mod   = 1.0
+        """
+        Technical Analyst validates STRUCTURAL COHERENCE of the proposed trade —
+        it is not a second conviction/intelligence score (DTA-DEBATE-AUTHORITY-002C).
+        Checks: (1) directional geometry — stop/target on the correct side of
+        entry, (2) ATR-vs-stop-distance sanity when ATR is available, (3)
+        KDA_EMPIRICAL vs ATR_FALLBACK provenance as a secondary, non-invalidating
+        indicator. Contains zero references to confidence, kda_conviction (for
+        scoring), the assigned label field, upstream approval labels, or
+        scanner_score.
+        """
+        entry, stop, target = sig.entry_price, sig.stop_loss, sig.target_price
 
-        if rr < 1.5:
-            vote_label = "reduce_size"
-            score      = max(score * 0.7, 3.0)
-            reasoning  = f"R:R={rr:.1f} below ideal — halve size"
-            size_mod   = 0.5
-        elif rr >= 3.0:
-            score = min(score * 1.1, 9.5)
-            reasoning = f"Excellent R:R={rr:.1f}"
+        # 1) Directional geometry — malformed/inverted trades are structurally invalid
+        if sig.direction == SignalDirection.BUY:
+            geometry_valid = stop < entry < target
+        elif sig.direction in (SignalDirection.SELL, SignalDirection.SHORT):
+            geometry_valid = target < entry < stop
+        else:
+            geometry_valid = True   # HEDGE/EXIT — directional geometry not applicable
+
+        if not geometry_valid:
+            return DebateVote(
+                agent_name="TechnicalAnalystAI",
+                vote="reject", score=3.0,
+                reasoning=(f"Structurally invalid geometry: entry={entry:.2f} "
+                           f"stop={stop:.2f} target={target:.2f} dir={sig.direction.value}"),
+                suggested_position_modifier=0.0,
+            )
+
+        # 2) ATR-vs-stop-distance sanity — only judged when ATR is available;
+        # missing ATR is neutral, never a penalty.
+        weak_reasons = []
+        atr = getattr(sig, "atr", 0.0) or 0.0
+        if atr > 0:
+            atr_ratio = abs(entry - stop) / atr
+            if atr_ratio < TA_ATR_RATIO_MIN or atr_ratio > TA_ATR_RATIO_MAX:
+                weak_reasons.append(
+                    f"ATR ratio {atr_ratio:.2f}x outside sane "
+                    f"[{TA_ATR_RATIO_MIN}-{TA_ATR_RATIO_MAX}]x envelope"
+                )
+
+        # 3) Provenance — secondary indicator only, never invalidates by itself
+        if getattr(sig, "target_source", None) == "ATR_FALLBACK" or \
+           getattr(sig, "stop_source", None) == "ATR_FALLBACK":
+            weak_reasons.append("target/stop derived from ATR_FALLBACK, not KDA_EMPIRICAL")
+
+        # KDA conviction is context for the reasoning trail only — never scored.
+        _kda_conv = getattr(sig, "kda_conviction", None)
+        kda_note  = f" | KDA context: kda_conviction={_kda_conv:.1f} (not used for scoring)" \
+                    if _kda_conv is not None else ""
+
+        if weak_reasons:
+            return DebateVote(
+                agent_name="TechnicalAnalystAI",
+                vote="reduce_size", score=5.0,
+                reasoning="Structurally weak: " + "; ".join(weak_reasons) + kda_note,
+                suggested_position_modifier=0.7,
+            )
 
         return DebateVote(
             agent_name="TechnicalAnalystAI",
-            vote=vote_label, score=round(score, 2),
-            reasoning=reasoning,
-            suggested_position_modifier=size_mod,
+            vote="approve", score=8.0,
+            reasoning=f"Structurally sound. R:R={sig.risk_reward_ratio:.1f}" + kda_note,
+            suggested_position_modifier=1.0,
         )
 
     def _macro_vote(self, sig: TradeSignal,
