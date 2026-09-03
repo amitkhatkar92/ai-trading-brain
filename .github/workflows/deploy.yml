@@ -40,12 +40,15 @@ jobs:
 
       - name: Deploy to VPS
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GH_REPO_TOKEN: ${{ github.token }}
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           command_timeout: 10m
+          envs: GH_REPO_TOKEN
           script: |
             # pipefail: treat pipe failures (e.g. failed docker build piped to
             # tail) as errors.  Without this, "docker compose build | tail -5"
@@ -64,7 +67,18 @@ jobs:
             # Solution: delete the ref so git fetch creates it fresh (no CAS
             # check), then reset to FETCH_HEAD to avoid using the tracking ref.
             git update-ref -d refs/remotes/origin/main 2>/dev/null || true
-            git fetch origin main
+            fetch_ok=0
+            for attempt in 1 2 3; do
+              if AUTH_HEADER=$(printf 'x-access-token:%s' "${GH_REPO_TOKEN}" | base64 | tr -d '\n') \
+                 && git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic ${AUTH_HEADER}" \
+                        fetch --depth=1 origin main; then
+                fetch_ok=1
+                break
+              fi
+              echo "[ git    ] ⚠️ fetch failed (attempt ${attempt}/3), retrying..."
+              sleep 2
+            done
+            [ "$fetch_ok" -eq 1 ] || { echo "❌ git fetch failed after 3 attempts"; exit 1; }
             git reset --hard FETCH_HEAD
             echo "[ git    ] ✅ HEAD=$(git rev-parse --short HEAD)"
 
@@ -131,4 +145,3 @@ jobs:
             docker image prune -af 2>/dev/null || true
             DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
             echo "[ disk   ] ✅ disk free after deploy: ${DISK_FREE}"
-
