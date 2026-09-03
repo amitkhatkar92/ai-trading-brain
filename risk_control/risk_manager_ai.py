@@ -253,7 +253,17 @@ class RiskManagerAI:
         """Return None if signal passes, otherwise return rejection reason."""
 
         # 1) Confidence floor
-        if sig.confidence < MIN_CONFIDENCE_SCORE:
+        # DTA-RISK-AUTHORITY-001: KDA-authoritative candidates have already
+        # been vetted for opportunity quality upstream (GAP-029 and the KDA
+        # authority gate) — RiskManager's job is risk/safety, not a second
+        # opportunity-quality score. The confidence floor is skipped only
+        # for this population; all other signals are unaffected.
+        _kda_authoritative = (
+            getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+            and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
+            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+        )
+        if not _kda_authoritative and sig.confidence < MIN_CONFIDENCE_SCORE:
             return f"Confidence {sig.confidence:.1f} < {MIN_CONFIDENCE_SCORE}"
 
         # 2) R:R ratio — asymmetric payoff gate
