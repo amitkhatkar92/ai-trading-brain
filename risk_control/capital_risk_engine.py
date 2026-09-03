@@ -668,27 +668,41 @@ class CapitalRiskEngine:
 
     def _size_position(self, sig: TradeSignal, budget: float) -> int:
         """
-        Knowledge-driven position sizing:
+        Risk/Safety feasibility check:
             qty = Risk Amount / Stop Distance
 
         Risk Amount = budget * MAX_RISK_PER_TRADE_PCT * knowledge_multiplier
         knowledge_multiplier = 0.5 + (confidence / 10) * 2.5   → range [0.5×, 3.0×]
+          (non-KDA-authoritative signals only)
         Stop Distance = |entry - stop_loss|
 
-        Higher-confidence signals (per KDA/KLP) receive proportionally more risk budget.
+        DTA-SIZING-AUTHORITY-004: for KDA-authoritative signals, knowledge_multiplier
+        is fixed at 1.0 — this is a feasibility gate, not a second intelligence
+        engine. The VIX/drawdown/regime throttle already lives in `budget`
+        (deployable capital); no confidence- or conviction-weighted multiplier is
+        needed here. PortfolioAllocationAI remains the sole quantity authority.
+
         Result is also capped so the notional cost <= strategy budget.
         """
         sl_distance = abs(sig.entry_price - sig.stop_loss)
         if sl_distance < 0.001 or sig.entry_price <= 0:
             return 0
 
-        # Knowledge-driven risk scaling — confidence 0→10 maps to 0.5×→3.0× base
-        _conf     = max(0.0, min(10.0, float(getattr(sig, "confidence", 5.0) or 5.0)))
-        _k_mult   = 0.5 + (_conf / 10.0) * 2.5
+        _kda_authoritative = (
+            getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+            and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
+            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+        )
+        if _kda_authoritative:
+            _k_mult = 1.0
+        else:
+            # Knowledge-driven risk scaling — confidence 0→10 maps to 0.5×→3.0× base
+            _conf   = max(0.0, min(10.0, float(getattr(sig, "confidence", 5.0) or 5.0)))
+            _k_mult = 0.5 + (_conf / 10.0) * 2.5
         risk_amount = budget * MAX_RISK_PER_TRADE_PCT * _k_mult
         log.debug(
-            "[KnowledgeSizing] %s conf=%.1f k_mult=%.2f risk_amt=%.2f sl_dist=%.2f",
-            sig.symbol, _conf, _k_mult, risk_amount, sl_distance,
+            "[KnowledgeSizing] %s kda_authoritative=%s k_mult=%.2f risk_amt=%.2f sl_dist=%.2f",
+            sig.symbol, _kda_authoritative, _k_mult, risk_amount, sl_distance,
         )
         qty_by_risk   = int(risk_amount / sl_distance)
 
