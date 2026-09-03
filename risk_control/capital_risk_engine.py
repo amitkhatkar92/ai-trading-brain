@@ -178,6 +178,19 @@ class CapitalRiskEngine:
     # PUBLIC
     # ─────────────────────────────────────────────
 
+    @staticmethod
+    def _opportunity_profile_metadata(sig: TradeSignal) -> dict:
+        """Return observational scanner/KDA fields for CRE diagnostics."""
+        return {
+            "scanner_score": getattr(sig, "scanner_score", 0.0),
+            "kda_conviction": getattr(sig, "kda_conviction", None),
+            "knowledge_authority_score": getattr(sig, "knowledge_authority_score", None),
+            "kda_evidence_state": getattr(sig, "kda_evidence_state", None),
+            "kda_target": getattr(sig, "kda_target", None),
+            "kda_stop": getattr(sig, "kda_stop", None),
+            "kda_horizon_p50": getattr(sig, "kda_horizon_p50", None),
+        }
+
     def allocate(
         self,
         signals: List[TradeSignal],
@@ -247,7 +260,22 @@ class CapitalRiskEngine:
         # Formula mirrors SmartExecution._combined_score (conf×0.55 + RR_norm×0.45).
         # conf is on 0–10 scale here; normalise to 0–1 before weighting.
         def _cre_quality_score(s: TradeSignal) -> float:
-            _c = float(getattr(s, "confidence", 0.0)) / 10.0
+            _kda_directional = (
+                getattr(s, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+                and getattr(s, "authorization_source", None) in ("KDA", "BOTH")
+            )
+            _kda_conviction = getattr(s, "kda_conviction", None)
+            if _kda_directional and _kda_conviction is not None:
+                _c = float(_kda_conviction) / 10.0
+            elif _kda_directional:
+                _c = 0.0
+                log.debug(
+                    "[CREQualitySort] KDA conviction unavailable for %s; "
+                    "using neutral intelligence score.",
+                    getattr(s, "symbol", "UNKNOWN"),
+                )
+            else:
+                _c = float(getattr(s, "confidence", 0.0)) / 10.0
             _r = float(getattr(s, "risk_reward_ratio", 0.0))
             return _c * 0.55 + min(_r / 5.0, 1.0) * 0.45
 
@@ -286,6 +314,7 @@ class CapitalRiskEngine:
                     "symbol":                  sig.symbol,
                     "strategy":                sig.strategy_name,
                     "score":                   _sc,
+                    "legacy_confidence":       _sc,
                     "conviction":              _cv,
                     "sector":                  _se,
                     "regime":                  _rg,
@@ -298,6 +327,7 @@ class CapitalRiskEngine:
                     "would_pass_simulation":   (_sc >= 6.0 and _rr >= 1.5),
                     "would_pass_debate":       (_sc >= 6.5),
                     "rejection_reason":        reason,
+                    **self._opportunity_profile_metadata(sig),
                 }
             except Exception:
                 return {"symbol": getattr(sig, "symbol", "?"), "rejection_reason": reason,
@@ -466,6 +496,7 @@ class CapitalRiskEngine:
                         "would_pass_simulation":   _ec_pass_sim,
                         "would_pass_debate":       _ec_pass_deb,
                         "rejection_reason":        "EXPOSURE_CAP_EXCEEDED",
+                        **self._opportunity_profile_metadata(sig),
                     })
                     _EXPOSURE_REJECTIONS_LAST_CYCLE.append(_EXPOSURE_REJECTIONS_TODAY[-1])
                 except Exception as _ec_err:
