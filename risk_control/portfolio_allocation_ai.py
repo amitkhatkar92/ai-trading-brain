@@ -72,10 +72,22 @@ class PortfolioAllocationAI:
 
         # ── Risk Engine canonical formula ────────────────────────────────────────
         # qty = (account_equity * RISK_PER_TRADE) / abs(entry_price - stop_price)
-        # Scaled by confidence: stronger signals trade slightly larger, weaker
-        # signals trade slightly smaller.  confidence is on a 0–10 scale;
-        # normalised to 0–1 then mapped to [0.6×, 1.4×] of MAX_RISK_PER_TRADE_PCT.
-        _conf_norm = max(0.0, min(sig.confidence / 10.0, 1.0)) if sig.confidence > 0 else 0.7
+        # Scaled by intelligence: stronger signals trade slightly larger, weaker
+        # signals trade slightly smaller. Mapped to [0.6×, 1.4×] of MAX_RISK_PER_TRADE_PCT.
+        # DTA-SIZING-AUTHORITY-001: for KDA-authoritative signals (same population
+        # as CRE ranking / RiskManager / GAP-029), kda_conviction is the
+        # intelligence input rather than legacy scanner confidence — no fallback
+        # to confidence if kda_conviction is missing (neutral 0.0 instead).
+        _kda_authoritative = (
+            getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+            and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
+            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+        )
+        if _kda_authoritative:
+            _kda_conviction = getattr(sig, "kda_conviction", None)
+            _conf_norm = max(0.0, min(_kda_conviction / 10.0, 1.0)) if _kda_conviction is not None else 0.0
+        else:
+            _conf_norm = max(0.0, min(sig.confidence / 10.0, 1.0)) if sig.confidence > 0 else 0.7
         _risk_pct  = MAX_RISK_PER_TRADE_PCT * (0.6 + _conf_norm * 0.8)
         qty = risk_per_trade(
             capital  = TOTAL_CAPITAL,
