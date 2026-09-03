@@ -399,7 +399,22 @@ class CapitalRiskEngine:
                     log.debug("[CREPositionCountAudit] final skipped: %s", _pca2_exc)
                 break
 
-            budget = self._strategy_budget(sig.strategy_name, deployable)
+            # DTA-CRE-KDA-SURVIVAL-001: KDA_AUTHORITY is a pooled authority
+            # label, not a trading style — the per-strategy diversification
+            # share doesn't meaningfully apply to it (see audit). Existing
+            # MAX_POSITIONS and exposure-cap checks below already protect
+            # the portfolio independent of strategy_name, so KDA-authoritative
+            # candidates are feasibility-checked against the full deployable
+            # pool instead of an arbitrary strategy-family budget share.
+            _kda_authoritative = (
+                getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+                and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
+                and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+            )
+            if _kda_authoritative:
+                budget = deployable
+            else:
+                budget = self._strategy_budget(sig.strategy_name, deployable)
             qty    = self._size_position(sig, budget)
 
             if qty <= 0:
