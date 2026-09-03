@@ -63,6 +63,7 @@ class TradeSignal:
 
     # ── MOP-RC-001: Observational fields — research only, never used in any decision ──
     expected_move_pct:    Optional[float] = None  # (atr/entry_price) × rr × 100 — research proxy
+    scanner_score:        float           = 0.0   # scanner-owned discovery score (distinct from generic confidence)
     _obs_candidate_score: Optional[float] = None  # scanner score at signal time
     _obs_regime:          Optional[str]   = None  # regime label at signal time
     # Stamped at scanner output for rejection audit + LOL context
@@ -72,6 +73,8 @@ class TradeSignal:
     # ── KDA authority fields — set by orchestrator after KDA runs ──
     authorization_source: Optional[str]  = None  # "KDA" | "STRATEGY_LAB" | "BOTH"
     kda_decision:         Optional[str]  = None  # e.g. "KNOWLEDGE_BUY"
+    kda_conviction:       Optional[float] = None # KDA-owned standardized conviction score (0.0 – 10.0)
+    knowledge_authority_score: Optional[float] = None # KDA-owned multi-angle composite authority score (0.0 – 1.0)
     kda_evidence_state:   Optional[str]  = None  # e.g. "DECISION_ELIGIBLE"
     kda_target:           Optional[float] = None  # KDA empirical target (may differ from target_price)
     kda_stop:             Optional[float] = None  # KDA empirical stop   (may differ from stop_loss)

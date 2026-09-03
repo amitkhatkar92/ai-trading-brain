@@ -1427,6 +1427,8 @@ class EquityScannerAI:
             sig, reason = self._identify_setup(stock, snapshot,
                                                vol_ratio_min=vol_ratio_min,
                                                extra_strategies=extra_strats)
+            if sig:
+                sig.scanner_score = float(sig.confidence)
             try:
                 if _pit_recorder is not None:
                     _pit_recorder.record_scanner_result(

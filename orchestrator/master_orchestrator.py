@@ -1205,18 +1205,18 @@ class MasterOrchestrator:
                     if _r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL"):
                         _kda_authorized.add(_kda_sig.symbol)
 
-                    # DTA-SYSTEM-021 (replaces DTA-020 Fix B): For knowledge_referred
-                    # signals, replace scanner confidence with evidence-derived conviction
-                    # computed from actual KDA metrics (ESS + win rate).  The previous
-                    # approach used fixed floors (7.0/7.5) that were artificial numbers
-                    # chosen to clear legacy gates rather than genuine representations of
-                    # conviction.  Now the conviction IS derived from evidence quality:
-                    #   DECISION_ELIGIBLE (ESS≥100) base=8.0 + win-rate bonus → ~8.0–9.5
-                    #   VALIDATED         (ESS30–99) base=7.0 + win-rate bonus → ~7.0–8.5
-                    #   USEFUL/DEVELOPING/INSUFFICIENT → no conviction upgrade → not executable
-                    if (getattr(_kda_sig, "strategy_name", "") == "knowledge_referred"
-                            and _r.get("kda_decision") == "KNOWLEDGE_BUY"
-                            and _r.get("evidence_state") in ("DECISION_ELIGIBLE", "VALIDATED")):
+                    # Attach first-class KDA authority score
+                    _kda_sig.knowledge_authority_score = (
+                        float(_r.get("knowledge_authority_score"))
+                        if _r.get("knowledge_authority_score") is not None else None
+                    )
+
+                    # KDA Conviction Calculation: compute standardized conviction for ALL KDA-authorized
+                    # opportunities with eligible or validated evidence, independent of strategy_name.
+                    if (
+                        _r.get("kda_decision") in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+                        and _r.get("evidence_state") in ("DECISION_ELIGIBLE", "VALIDATED")
+                    ):
                         _kr_ev_b   = _r.get("evidence_state", "")
                         _kr_ess    = float(_r.get("effective_sample_size") or
                                            _r.get("hbe_ess") or 0.0)
@@ -1225,14 +1225,22 @@ class MasterOrchestrator:
                         _kr_wr     = (max(0.0, min(1.5, (_kr_thp - 0.55) * 7.5))
                                       if _kr_thp is not None else 0.0)
                         _kr_conv   = round(min(9.5, _kr_base + _kr_wr), 2)
-                        if _kr_conv > _kda_sig.confidence:
-                            log.info(
-                                "[KDA-AUTHORITY] %s: knowledge_referred conviction "
-                                "%.1f → %.2f (ess=%.0f thp=%.0f%% evidence=%s)",
-                                _kda_sig.symbol, _kda_sig.confidence, _kr_conv,
-                                _kr_ess, (_kr_thp or 0) * 100, _kr_ev_b,
-                            )
-                            _kda_sig.confidence = _kr_conv
+                        _kda_sig.kda_conviction = _kr_conv
+
+                        # DTA-SYSTEM-021 legacy behavior: only knowledge_referred historically
+                        # overwrote confidence in-place. We keep confidence untouched for non-KR
+                        # signals to preserve backward compatibility while populating kda_conviction.
+                        if getattr(_kda_sig, "strategy_name", "") == "knowledge_referred":
+                            if _kr_conv > _kda_sig.confidence:
+                                log.info(
+                                    "[KDA-AUTHORITY] %s: knowledge_referred conviction "
+                                    "%.1f → %.2f (ess=%.0f thp=%.0f%% evidence=%s)",
+                                    _kda_sig.symbol, _kda_sig.confidence, _kr_conv,
+                                    _kr_ess, (_kr_thp or 0) * 100, _kr_ev_b,
+                                )
+                                _kda_sig.confidence = _kr_conv
+                    else:
+                        _kda_sig.kda_conviction = None
 
                 # ── Build merged signal list (KDA union StrategyLab) ─────────
                 # Phase 1: annotate and keep StrategyLab-approved signals.
@@ -1257,6 +1265,10 @@ class MasterOrchestrator:
                     )
                     _sig.kda_decision       = _kda_dec2
                     _sig.kda_evidence_state = _r2.get("evidence_state")
+                    _sig.knowledge_authority_score = (
+                        float(_r2.get("knowledge_authority_score"))
+                        if _r2.get("knowledge_authority_score") is not None else None
+                    )
                     _kda_tgt = _r2.get("knowledge_target")
                     _kda_stp = _r2.get("knowledge_stop")
                     _kda_hor = _r2.get("expected_days_p50")
@@ -1311,6 +1323,10 @@ class MasterOrchestrator:
                     _orig_sig.authorization_source = "KDA"
                     _orig_sig.kda_decision       = _r3.get("kda_decision")
                     _orig_sig.kda_evidence_state = _r3.get("evidence_state")
+                    _orig_sig.knowledge_authority_score = (
+                        float(_r3.get("knowledge_authority_score"))
+                        if _r3.get("knowledge_authority_score") is not None else None
+                    )
                     _kda_tgt3 = _r3.get("knowledge_target")
                     _kda_stp3 = _r3.get("knowledge_stop")
                     _kda_hor3 = _r3.get("expected_days_p50")
