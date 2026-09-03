@@ -74,3 +74,39 @@ def test_pit_pipeline_events_keep_one_lineage(tmp_path, monkeypatch):
     ]
     assert {event["lineage_id"] for event in events} == {lineage_id}
     assert all(event["record_type"] != "PIT_OUTCOME" for event in records)
+
+
+def test_kda_authority_gate_records_granted_and_denied(tmp_path, monkeypatch):
+    import audit.dta041_pit_discovery_evidence as pit
+
+    recorder = pit.PITDiscoveryEvidenceRecorder(data_dir=tmp_path)
+    monkeypatch.setattr(pit, "get_trace_manager", lambda: SimpleNamespace(get_cycle_id=lambda: "20260903_0830"))
+    granted_signal = SimpleNamespace(symbol="RBLBANK")
+    denied_signal = SimpleNamespace(symbol="NAVINFLUOR")
+    recorder.record_evaluation({"symbol": "RBLBANK"}, SimpleNamespace(), universe_size=39, prepared_count=39)
+    recorder.record_evaluation({"symbol": "NAVINFLUOR"}, SimpleNamespace(), universe_size=39, prepared_count=39)
+
+    recorder.record_kda_authority_gate(
+        granted_signal, granted=True, evidence_state="VALIDATED", kda_conviction=8.0,
+        strategylab_rejection_reason="STRATEGY_REJECTED", confidence=8.0,
+    )
+    recorder.record_kda_authority_gate(
+        denied_signal, granted=False, evidence_state="USEFUL", kda_conviction=None,
+        strategylab_rejection_reason="STRATEGY_DISABLED", confidence=6.14,
+    )
+
+    records = [json.loads(line) for line in next(tmp_path.glob("*.jsonl")).read_text().splitlines()]
+    events = {
+        record["lineage_id"]: record
+        for record in records
+        if record["record_type"] == "PIT_PIPELINE_EVENT" and record["stage"] == "KDA_AUTHORITY_GATE"
+    }
+    granted_event = next(e for lid, e in events.items() if "RBLBANK" in lid)
+    denied_event = next(e for lid, e in events.items() if "NAVINFLUOR" in lid)
+    assert granted_event["status"] == "GRANTED"
+    assert granted_event["details"]["evidence_state"] == "VALIDATED"
+    assert granted_event["details"]["kda_conviction"] == 8.0
+    assert denied_event["status"] == "DENIED"
+    assert denied_event["details"]["evidence_state"] == "USEFUL"
+    assert denied_event["details"]["kda_conviction"] is None
+    assert denied_event["details"]["strategylab_rejection_reason"] == "STRATEGY_DISABLED"

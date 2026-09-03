@@ -237,6 +237,34 @@ class TestTraceManager:
         assert trace.stage_status("DEBATE") == StageStatus.PASSED
         assert trace.final_outcome == "EXECUTED"
 
+    def test_T015b_record_kda_authority_gate_granted(self):
+        """T015b — record_kda_authority_gate(granted=True) marks PASSED, no final_outcome."""
+        from audit.dta038_trace import get_trace_manager
+        from audit.dta038_models import StageStatus
+        tm = get_trace_manager()
+        tm.set_cycle_id("20260903_0830")
+        sig = _sig("RBLBANK")
+        tm.record_scanner_stage(sig, {})
+        tm.record_kda_authority_gate(sig, granted=True)
+        trace = next(t for t in tm.get_today_traces() if t.symbol == "RBLBANK")
+        assert trace.stage_status("KDA_AUTHORITY_GATE") == StageStatus.PASSED
+        assert trace.final_outcome is None
+
+    def test_T015c_record_kda_authority_gate_denied(self):
+        """T015c — record_kda_authority_gate(granted=False) marks REJECTED with a
+        distinct final_outcome (not conflated with STRATEGY or DEBATE outcomes)."""
+        from audit.dta038_trace import get_trace_manager
+        from audit.dta038_models import StageStatus
+        tm = get_trace_manager()
+        tm.set_cycle_id("20260903_0830")
+        sig = _sig("NAVINFLUOR")
+        tm.record_scanner_stage(sig, {})
+        tm.record_strategy_outcomes([sig], [])  # StrategyLab rejects
+        tm.record_kda_authority_gate(sig, granted=False)
+        trace = next(t for t in tm.get_today_traces() if t.symbol == "NAVINFLUOR")
+        assert trace.stage_status("KDA_AUTHORITY_GATE") == StageStatus.REJECTED
+        assert trace.final_outcome == "REJECTED_AT_KDA_AUTHORITY_GATE"
+
     def test_T016_record_cycle_start_creates_cycle(self):
         """T016 — record_cycle_start() creates a CycleAudit record."""
         from audit.dta038_trace import get_trace_manager

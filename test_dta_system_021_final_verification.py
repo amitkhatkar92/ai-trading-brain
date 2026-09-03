@@ -184,9 +184,12 @@ class _FakeSnap:
 def _kda_conviction(ess: float, thp: Optional[float],
                     evidence_state: str, kda_decision: str,
                     strategy_name: str) -> float:
-    """Reproduce master_orchestrator.py DTA-SYSTEM-021 conviction computation."""
-    if (strategy_name != "knowledge_referred"
-            or kda_decision != "KNOWLEDGE_BUY"
+    """Reproduce master_orchestrator.py conviction computation.
+    DTA-KDA-AUTHORITY-001: gated on evidence quality only, independent of
+    strategy_name (the `strategy_name` parameter is kept for call-site
+    compatibility but no longer participates in the gate).
+    """
+    if (kda_decision != "KNOWLEDGE_BUY"
             or evidence_state not in ("DECISION_ELIGIBLE", "VALIDATED")):
         return 0.0  # no boost
     base = 8.0 if ess >= 100.0 else 7.0
@@ -275,10 +278,11 @@ def _test_conviction():
     _assert("T011", "Monotone: DECISION_ELIGIBLE > VALIDATED > USEFUL",
             c_de > c_va > c_us, f"DE={c_de} VA={c_va} US={c_us}")
 
-    # T012: Non-knowledge_referred → not boosted
+    # T012: Named-pattern (non-knowledge_referred) → NOW boosted too
+    # (DTA-KDA-AUTHORITY-001: evidence quality is the gate, not the label)
     c = _kda_conviction(327.0, 0.74, "DECISION_ELIGIBLE", "KNOWLEDGE_BUY", "Equity_Breakout")
-    _assert("T012", "Non-knowledge_referred not boosted",
-            c == 0.0, f"got {c}")
+    _assert("T012", "Named-pattern signal boosted by evidence quality (label-independent)",
+            8.0 <= c <= 9.5, f"got {c}")
 
     # T013: KNOWLEDGE_WAIT → not boosted even with good evidence
     c = _kda_conviction(327.0, 0.74, "DECISION_ELIGIBLE", "KNOWLEDGE_WAIT", "knowledge_referred")
@@ -403,11 +407,10 @@ def _test_kda_authority():
     conv = _kda_conviction(15.0, 0.55, "USEFUL", "KNOWLEDGE_BUY", "knowledge_referred")
     if conv > s.confidence:
         s.confidence = conv
-    # Phase 2 GAP-029 check
+    # Phase 2 GAP-029 check (DTA-KDA-AUTHORITY-001: evidence-only, label-independent)
     GAP029_THRESHOLD = 7.5
     r3_ev = "USEFUL"
-    kr_exempt = (s.strategy_name == "knowledge_referred" and
-                 r3_ev in ("DECISION_ELIGIBLE", "VALIDATED"))
+    kr_exempt = r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
     blocked = (s.confidence < GAP029_THRESHOLD and not kr_exempt)
     _assert("T035", "KDA BUY + USEFUL evidence still blocked by GAP-029",
             blocked, f"conf={s.confidence}, exempt={kr_exempt}")
@@ -426,17 +429,18 @@ def _apply_all_gates(kda_result: dict, strategy_name: str = "knowledge_referred"
                      initial_conf: float = 5.5) -> dict:
     """
     Simulate the full post-KDA conviction + gate chain:
-      1. Evidence-derived conviction (if knowledge_referred + BUY + VALIDATED/DECISION_ELIGIBLE)
-      2. Phase 2 GAP-029 check
+      1. Evidence-derived conviction (BUY + VALIDATED/DECISION_ELIGIBLE, label-independent)
+      2. Phase 2 GAP-029 check (evidence-only exemption, DTA-KDA-AUTHORITY-001)
       3. RiskManager confidence gate
+    `strategy_name` is retained for call-site compatibility only; it no longer
+    participates in either gate.
     Returns dict with keys: conviction, passes_gap029, passes_riskmanager
     """
     sig = _FakeSig(strategy_name=strategy_name, confidence=initial_conf)
     _apply_conviction(sig, kda_result)
 
     r3_ev    = kda_result.get("evidence_state", "")
-    kr_ex    = (strategy_name == "knowledge_referred"
-                and r3_ev in ("DECISION_ELIGIBLE", "VALIDATED"))
+    kr_ex    = r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
     pass_g29 = not (sig.confidence < 7.5 and not kr_ex)
     pass_rm  = (sig.confidence >= 6.8)
 
@@ -488,6 +492,30 @@ def _test_knowledge_states():
         auth.add("SYM")
     _assert("T045", "KNOWLEDGE_WAIT → not in kda_authorized → no execution",
             "SYM" not in auth, f"auth={auth}")
+
+    # T045b: NAVINFLUOR-shape reproduction — named-pattern strategy (not
+    # knowledge_referred) + VALIDATED evidence + sub-7.5 raw confidence now
+    # passes both gates (DTA-KDA-AUTHORITY-001). Confirms the string-label
+    # dependency has been removed end-to-end through the full gate chain.
+    r = _apply_all_gates(
+        {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "VALIDATED",
+         "effective_sample_size": 608.63, "hbe_target_hit_prob": None},
+        strategy_name="Mean_Reversion", initial_conf=6.14,
+    )
+    _assert("T045b", "Named-pattern + VALIDATED (NAVINFLUOR-shape) → passes GAP-029 and RiskManager",
+            r["passes_gap029"] and r["passes_riskmanager"],
+            f"gap029={r['passes_gap029']} rm={r['passes_riskmanager']} conv={r['conviction']}")
+
+    # T045c: Named-pattern + USEFUL (weaker evidence) → still fails both — proves
+    # the widening is evidence-gated, not a blanket bypass.
+    r = _apply_all_gates(
+        {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "USEFUL",
+         "effective_sample_size": 15.0, "hbe_target_hit_prob": 0.60},
+        strategy_name="Mean_Reversion", initial_conf=6.14,
+    )
+    _assert("T045c", "Named-pattern + USEFUL → still fails GAP-029 and RiskManager",
+            not r["passes_gap029"] and not r["passes_riskmanager"],
+            f"gap029={r['passes_gap029']} rm={r['passes_riskmanager']} conv={r['conviction']}")
 
     # T046: KNOWLEDGE_HOLD: source check that Phase 1 merge blocks HOLD
     src = open(os.path.join(ROOT, "orchestrator", "master_orchestrator.py"),

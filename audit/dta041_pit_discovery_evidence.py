@@ -163,6 +163,32 @@ class PITDiscoveryEvidenceRecorder:
             except Exception:
                 pass
 
+    def record_kda_authority_gate(
+        self,
+        signal: Any,
+        *,
+        granted: bool,
+        evidence_state: Optional[str],
+        kda_conviction: Optional[float],
+        strategylab_rejection_reason: str,
+        confidence: float,
+    ) -> None:
+        """Record whether a StrategyLab-rejected, KDA-authorized candidate was
+        let through to CRE (granted) or still blocked (denied) by the
+        confidence-based safety floor. Makes the DTA-KDA-AUTHORITY-001
+        migration queryable — never gates or influences the decision itself.
+        """
+        try:
+            self._event(self._lineage_for(signal), "KDA_AUTHORITY_GATE",
+                        "GRANTED" if granted else "DENIED", {
+                "evidence_state": evidence_state,
+                "kda_conviction": kda_conviction,
+                "strategylab_rejection_reason": strategylab_rejection_reason,
+                "confidence": confidence,
+            })
+        except Exception:
+            pass
+
     def _lineage_for(self, signal: Any) -> str:
         symbol = str(getattr(signal, "symbol", "UNKNOWN") or "UNKNOWN").strip()
         cycle_id = get_trace_manager().get_cycle_id()

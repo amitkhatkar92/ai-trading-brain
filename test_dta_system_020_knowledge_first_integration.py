@@ -39,7 +39,9 @@ Test inventory (T001–T020):
   T009  knowledge_referred + DEVELOPING        → confidence unchanged (no boost)
   T010  knowledge_referred + INSUFFICIENT      → confidence unchanged (no boost)
   T011  knowledge_referred + KNOWLEDGE_WAIT    → NOT added to kda_authorized; no boost
-  T012  Non-knowledge_referred + DECISION_ELIGIBLE → NOT boosted (boost is KR-only)
+  T012  Named-pattern signal + DECISION_ELIGIBLE → boosted too (DTA-KDA-AUTHORITY-001:
+                                                    evidence quality is the gate, not the label)
+  T012b Named-pattern signal + USEFUL           → still NOT boosted (evidence gate unchanged)
   T013  Confidence already above floor → not lowered (floor is a minimum, not ceiling)
 
   Phase 2 GAP-029 exemption (Fix C)
@@ -47,7 +49,9 @@ Test inventory (T001–T020):
   T015  knowledge_referred + DECISION_ELIGIBLE + conf 7.5 → passes GAP-029 directly
   T016  knowledge_referred + USEFUL + conf 6.5       → NOT exempt → blocked at GAP-029
   T017  knowledge_referred + DEVELOPING + conf 5.5   → NOT exempt → blocked at GAP-029
-  T018  Non-KR signal + conf 6.0                     → blocked at GAP-029 (unchanged)
+  T018  Named-pattern (non-KR) signal + DECISION_ELIGIBLE + conf 6.0 → exempt too
+                                                          (DTA-KDA-AUTHORITY-001)
+  T018b Named-pattern (non-KR) signal + USEFUL + conf 6.0 → still blocked at GAP-029
 
   RiskManager confidence gate (Gap 3 resolved by Fix B)
   T019  knowledge_referred + VALIDATED conf 7.0 ≥ 6.8 → passes RiskManager check
@@ -281,11 +285,11 @@ def _test_fix_a_via_module(sgen, RegimeLabel):
 
 def _simulate_kda_boost(signal: _FakeSignal, kda_result: dict) -> None:
     """
-    Reproduce the DTA-021 evidence-derived conviction logic from master_orchestrator.py.
-    Conviction is computed from ESS tier (base) + win-rate bonus, not fixed floors.
+    Reproduce the DTA-KDA-AUTHORITY-001 evidence-derived conviction logic from
+    master_orchestrator.py. Conviction is computed from ESS tier (base) + win-rate
+    bonus, not fixed floors, and applies regardless of strategy_name label.
     """
-    if (getattr(signal, "strategy_name", "") == "knowledge_referred"
-            and kda_result.get("kda_decision") == "KNOWLEDGE_BUY"
+    if (kda_result.get("kda_decision") == "KNOWLEDGE_BUY"
             and kda_result.get("evidence_state") in ("DECISION_ELIGIBLE", "VALIDATED")):
         ev    = kda_result.get("evidence_state", "")
         ess   = float(kda_result.get("effective_sample_size") or
@@ -346,10 +350,18 @@ def _test_fix_b():
             "TESTSTOCK" not in authorized and s.confidence == 5.5,
             f"authorized={authorized}, conf={s.confidence}")
 
-    # T012: Non-knowledge_referred signal → NOT boosted
+    # T012: Named-pattern (non-knowledge_referred) signal → NOW boosted too
+    # (DTA-KDA-AUTHORITY-001: evidence quality is the gate, not the label)
+    # ess defaults to 0.0 (not provided) → base=7.0 (ess < 100 tier)
     s = _FakeSignal(strategy_name="Equity_Breakout", confidence=5.5)
     _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "DECISION_ELIGIBLE"})
-    _assert("T012", "Non-knowledge_referred signal NOT boosted by Fix B",
+    _assert("T012", "Named-pattern signal boosted by evidence quality (label-independent)",
+            s.confidence == 7.0, f"got {s.confidence}")
+
+    # T012b: Named-pattern signal + USEFUL → still NOT boosted (evidence gate unchanged)
+    s = _FakeSignal(strategy_name="Equity_Breakout", confidence=5.5)
+    _simulate_kda_boost(s, {"kda_decision": "KNOWLEDGE_BUY", "evidence_state": "USEFUL"})
+    _assert("T012b", "Named-pattern signal + USEFUL → confidence unchanged (no boost)",
             s.confidence == 5.5, f"got {s.confidence}")
 
     # T013: Confidence already above floor → not lowered
@@ -365,14 +377,12 @@ def _test_fix_b():
 
 def _simulate_gap029(signal: _FakeSignal, kda_result: dict, kda_only_min: float = 7.5) -> bool:
     """
-    Reproduce the Fix C GAP-029 check from master_orchestrator.py Phase 2 loop.
+    Reproduce the DTA-KDA-AUTHORITY-001 GAP-029 check from master_orchestrator.py
+    Phase 2 loop. Exemption is evidence-quality-only, independent of strategy_name.
     Returns True if the signal passes (not blocked), False if blocked.
     """
     ev = kda_result.get("evidence_state", "")
-    kr_exempt = (
-        getattr(signal, "strategy_name", "") == "knowledge_referred"
-        and ev in ("DECISION_ELIGIBLE", "VALIDATED")
-    )
+    kr_exempt = ev in ("DECISION_ELIGIBLE", "VALIDATED")
     if signal.confidence < kda_only_min and not kr_exempt:
         return False
     return True
@@ -405,11 +415,19 @@ def _test_fix_c():
     _assert("T017", "knowledge_referred + DEVELOPING + conf 5.5 → NOT exempt → blocked",
             not passed, "signal should have been blocked but was allowed through")
 
-    # T018: Non-KR signal + conf 6.0 → blocked (unchanged behaviour)
+    # T018: Named-pattern (non-KR) signal + DECISION_ELIGIBLE + conf 6.0 →
+    # NOW exempt too (DTA-KDA-AUTHORITY-001: NAVINFLUOR-shape reproduction)
     s = _FakeSignal(strategy_name="Mean_Reversion", confidence=6.0)
     passed = _simulate_gap029(s, {"evidence_state": "DECISION_ELIGIBLE"})
-    _assert("T018", "Non-KR signal + conf 6.0 → blocked at GAP-029 (unchanged)",
-            not passed, "non-KR signal should still be blocked")
+    _assert("T018", "Named-pattern signal + DECISION_ELIGIBLE → GAP-029 exempt → allowed",
+            passed, "signal was blocked unexpectedly")
+
+    # T018b: Named-pattern (non-KR) signal + USEFUL + conf 6.0 → still blocked
+    # (proves the widening is evidence-gated, not a blanket bypass)
+    s = _FakeSignal(strategy_name="Mean_Reversion", confidence=6.0)
+    passed = _simulate_gap029(s, {"evidence_state": "USEFUL"})
+    _assert("T018b", "Named-pattern signal + USEFUL → still blocked at GAP-029",
+            not passed, "non-qualifying-evidence signal should still be blocked")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

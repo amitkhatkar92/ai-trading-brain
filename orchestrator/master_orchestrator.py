@@ -1227,18 +1227,19 @@ class MasterOrchestrator:
                         _kr_conv   = round(min(9.5, _kr_base + _kr_wr), 2)
                         _kda_sig.kda_conviction = _kr_conv
 
-                        # DTA-SYSTEM-021 legacy behavior: only knowledge_referred historically
-                        # overwrote confidence in-place. We keep confidence untouched for non-KR
-                        # signals to preserve backward compatibility while populating kda_conviction.
-                        if getattr(_kda_sig, "strategy_name", "") == "knowledge_referred":
-                            if _kr_conv > _kda_sig.confidence:
-                                log.info(
-                                    "[KDA-AUTHORITY] %s: knowledge_referred conviction "
-                                    "%.1f → %.2f (ess=%.0f thp=%.0f%% evidence=%s)",
-                                    _kda_sig.symbol, _kda_sig.confidence, _kr_conv,
-                                    _kr_ess, (_kr_thp or 0) * 100, _kr_ev_b,
-                                )
-                                _kda_sig.confidence = _kr_conv
+                        # DTA-KDA-AUTHORITY-001: confidence floor now applies to ANY
+                        # KDA-authorized VALIDATED/DECISION_ELIGIBLE signal, not only ones
+                        # labeled knowledge_referred — evidence quality is the gate, not the
+                        # scanner/StrategyLab strategy label attached to the signal.
+                        if _kr_conv > _kda_sig.confidence:
+                            log.info(
+                                "[KDA-AUTHORITY] %s: KDA conviction "
+                                "%.1f → %.2f (ess=%.0f thp=%.0f%% evidence=%s strategy=%s)",
+                                _kda_sig.symbol, _kda_sig.confidence, _kr_conv,
+                                _kr_ess, (_kr_thp or 0) * 100, _kr_ev_b,
+                                getattr(_kda_sig, "strategy_name", ""),
+                            )
+                            _kda_sig.confidence = _kr_conv
                     else:
                         _kda_sig.kda_conviction = None
 
@@ -1302,22 +1303,34 @@ class MasterOrchestrator:
                     if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
                         continue
                     _r3 = _kda_results[_orig_sig.symbol]
-                    # GAP-029 + DTA-SYSTEM-020 Fix C: knowledge_referred signals with
-                    # VALIDATED or DECISION_ELIGIBLE KDA evidence are exempt from the
-                    # raw-confidence gate; their confidence was already boosted in the
-                    # KDA loop above to reflect evidence quality (Fix B).
+                    # DTA-KDA-AUTHORITY-001: KDA-authorized signals with VALIDATED or
+                    # DECISION_ELIGIBLE evidence are exempt from the raw-confidence gate
+                    # regardless of scanner/StrategyLab strategy label; their confidence
+                    # was already boosted in the KDA loop above to reflect evidence quality.
                     # All other KDA-only signals still require the elevated bar (7.5).
                     _r3_ev = _r3.get("evidence_state", "")
-                    _kr_gap029_exempt = (
-                        getattr(_orig_sig, "strategy_name", "") == "knowledge_referred"
-                        and _r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
-                    )
+                    _kr_gap029_exempt = _r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
                     if _orig_sig.confidence < _KDA_ONLY_MIN_CONFIDENCE and not _kr_gap029_exempt:
                         log.info(
                             "[KDA-AUTHORITY] %s: KDA-only blocked — confidence %.1f < %.1f "
                             "(no backtest gate; elevated threshold enforced).",
                             _orig_sig.symbol, _orig_sig.confidence, _KDA_ONLY_MIN_CONFIDENCE,
                         )
+                        try:
+                            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder as _gpd1
+                            _gpd1().record_kda_authority_gate(
+                                _orig_sig, granted=False, evidence_state=_r3_ev,
+                                kda_conviction=getattr(_orig_sig, "kda_conviction", None),
+                                strategylab_rejection_reason=_sl_reasons.get(_orig_sig.symbol, "STRATEGY_REJECTED"),
+                                confidence=_orig_sig.confidence,
+                            )
+                        except Exception:
+                            pass
+                        try:
+                            from audit.dta038_trace import get_trace_manager as _dta038_tm1
+                            _dta038_tm1().record_kda_authority_gate(_orig_sig, granted=False)
+                        except Exception:
+                            pass
                         continue
                     _kda_hor_src3 = _r3.get("horizon_source", "NONE")
                     _orig_sig.authorization_source = "KDA"
@@ -1344,6 +1357,21 @@ class MasterOrchestrator:
                         _orig_sig.stop_source   = "ATR_FALLBACK"
                     # D13-005: attribute KDA-only trades to KDA, not the scanner strategy
                     _orig_sig.strategy_name = "KDA_AUTHORITY"
+                    try:
+                        from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder as _gpd2
+                        _gpd2().record_kda_authority_gate(
+                            _orig_sig, granted=True, evidence_state=_r3_ev,
+                            kda_conviction=getattr(_orig_sig, "kda_conviction", None),
+                            strategylab_rejection_reason=_sl_reasons.get(_orig_sig.symbol, "STRATEGY_REJECTED"),
+                            confidence=_orig_sig.confidence,
+                        )
+                    except Exception:
+                        pass
+                    try:
+                        from audit.dta038_trace import get_trace_manager as _dta038_tm2
+                        _dta038_tm2().record_kda_authority_gate(_orig_sig, granted=True)
+                    except Exception:
+                        pass
                     _merged.append(_orig_sig)
                     _seen.add(_orig_sig.symbol)
                     _kda_only_added += 1

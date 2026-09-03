@@ -372,6 +372,23 @@ class TraceManager:
         except Exception:
             pass
 
+    def record_kda_authority_gate(self, sig: Any, *, granted: bool) -> None:
+        """Record whether a StrategyLab-rejected, KDA-authorized candidate was
+        let through to CRE (granted) or still blocked (denied). Observability
+        only — never gates or influences the decision itself.
+        """
+        try:
+            date_str = _today_str()
+            cycle_id = self.get_cycle_id()
+            self._record_one_stage(
+                date_str, cycle_id, sig, "KDA_AUTHORITY_GATE",
+                StageStatus.PASSED if granted else StageStatus.REJECTED,
+                rejection_reason=None if granted else "CONFIDENCE_BELOW_THRESHOLD",
+                final_outcome=None if granted else "REJECTED_AT_KDA_AUTHORITY_GATE",
+            )
+        except Exception:
+            pass
+
     def record_debate_outcome(
         self, signals_for_debate: List[Any], executed: List[dict]
     ) -> None:
