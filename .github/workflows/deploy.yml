@@ -52,7 +52,7 @@ jobs:
             'data/paper_trades*.csv' 'data/paper_trade_log.csv'
             'data/live/*.jsonl'
           )
-          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/')
+          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/' || true)
           if [ -n "$FOUND" ]; then
             echo "❌ Runtime/state files are tracked in this commit — refusing to deploy:"
             echo "$FOUND"
@@ -152,4 +152,3 @@ jobs:
             docker image prune -af 2>/dev/null || true
             DISK_FREE=$(df -h / | awk 'NR==2{print $4}')
             echo "[ disk   ] ✅ disk free after deploy: ${DISK_FREE}"
-
