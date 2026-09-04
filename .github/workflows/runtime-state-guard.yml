@@ -1,0 +1,44 @@
+name: Runtime State Guard
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check-no-tracked-runtime-state:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Fail if runtime/state files are tracked
+        run: |
+          # DTA-DEPLOY-SYNC-001 (2026-09-04): data/control_tower.db and
+          # 19 other actively-written runtime files were tracked in git
+          # for months, undetected, until a deploy's git operation
+          # silently reverted/deleted them in production. This check
+          # makes that mistake impossible to reintroduce silently.
+          PATTERNS=(
+            'data/*.db' 'data/*.db-wal' 'data/*.db-shm' 'data/*.db-journal'
+            'data/mls/*.db' 'data/ikn/*.db'
+            'data/paper_trades*.csv' 'data/paper_trade_log.csv'
+            'data/live/*.jsonl'
+          )
+          # data/frz/backups/... contains deliberate, static historical
+          # snapshot copies (point-in-time archives) that are intentionally
+          # tracked — excluded here. git ls-files pathspec globs are NOT
+          # anchored to the repo root the way .gitignore patterns are, so
+          # without this exclusion the patterns below would also match
+          # those nested backup copies and false-positive.
+          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/')
+          if [ -n "$FOUND" ]; then
+            echo "❌ Runtime/state files must never be committed:"
+            echo "$FOUND"
+            echo ""
+            echo "These paths are gitignored for a reason — see"
+            echo "/memories/repo/incident_control_tower_db_git_tracked.md"
+            echo "Persistence across deploys comes from the Docker bind"
+            echo "mount (./data:/app/data), not git tracking."
+            exit 1
+          fi
+          echo "✅ No tracked runtime/state files"
