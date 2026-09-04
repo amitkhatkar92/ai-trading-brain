@@ -130,8 +130,17 @@ class SmartExecutionEngine:
             # Without this fraction, position_size = capital × 0.9 = 9M which always exceeds
             # max_exposure = 8M when capital = ₹1 Crore, blocking every signal.
 
-            # Confidence factor: clamp to [0.3, 0.9]
-            confidence_factor = max(0.3, min(confidence, 0.9))
+            # DTA-SMARTEXEC-001: this position_size is internal feasibility/
+            # exposure bookkeeping only (never the real executed quantity —
+            # PortfolioAllocationAI owns that). For KDA-authoritative signals,
+            # confidence_factor is a fixed neutral 1.0 — SmartExecution must
+            # not become a second intelligence-weighting engine. Non-KDA
+            # signals keep the existing confidence-based formula unchanged.
+            if trade.get("_kda_authoritative", False):
+                confidence_factor = 1.0
+            else:
+                # Confidence factor: clamp to [0.3, 0.9]
+                confidence_factor = max(0.3, min(confidence, 0.9))
 
             # VIX factor: lower VIX → larger positions; higher VIX → smaller
             # At VIX=15 (normal) → factor=1.0

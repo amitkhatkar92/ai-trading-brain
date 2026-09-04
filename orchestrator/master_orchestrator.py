@@ -1890,20 +1890,43 @@ class MasterOrchestrator:
             portfolio = self.order_manager.get_portfolio()
             current_capital = portfolio.total_capital if hasattr(portfolio, 'total_capital') else snapshot.portfolio_value if hasattr(snapshot, 'portfolio_value') else TOTAL_CAPITAL
             
+            # DTA-SMARTEXEC-001: Rule 4 ranking input uses the same canonical
+            # KDA-authoritative substitution already established for CRE /
+            # PortfolioAllocation / CorrelationEngine — kda_conviction/10 for
+            # KDA-authoritative signals (neutral 0.0 if missing, never a
+            # legacy fallback), legacy confidence/10 unchanged for everyone
+            # else. "_kda_authoritative" flag lets Rule 5 neutralise its own
+            # feasibility multiplier (see filter_trades()) without SmartExecution
+            # owning a second intelligence-weighting mechanism.
+            _se_trades = []
+            for s in decorrelated_signals:
+                _se_kda_authoritative = (
+                    getattr(s, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+                    and getattr(s, "authorization_source", None) in ("KDA", "BOTH")
+                    and getattr(s, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+                )
+                if _se_kda_authoritative:
+                    _se_kda_conv = getattr(s, "kda_conviction", None)
+                    _se_conf = (
+                        max(0.0, min(_se_kda_conv / 10.0, 1.0))
+                        if _se_kda_conv is not None else 0.0
+                    )
+                else:
+                    _se_conf = max(0.0, min(s.confidence / 10.0, 1.0))
+                _se_trades.append({
+                    "symbol": s.symbol,
+                    "sector": getattr(s, "sector", "OTHER"),
+                    "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
+                    "confidence": _se_conf,
+                    "_kda_authoritative": _se_kda_authoritative,
+                    "entry_price": s.entry_price,
+                    "stop_loss": s.stop_loss,
+                    "target": s.target_price,           # TradeSignal uses target_price, not target
+                    "original_signal": s,
+                })
+
             final_signals = self.smart_execution.filter_trades(
-                trades=[
-                    {
-                        "symbol": s.symbol,
-                        "sector": getattr(s, "sector", "OTHER"),
-                        "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
-                        "confidence": s.confidence / 10.0,  # TradeSignal.confidence is 0–10; normalise to 0–1
-                        "entry_price": s.entry_price,
-                        "stop_loss": s.stop_loss,
-                        "target": s.target_price,           # TradeSignal uses target_price, not target
-                        "original_signal": s,
-                    }
-                    for s in decorrelated_signals
-                ],
+                trades=_se_trades,
                 vix=snapshot.vix,
                 drawdown_factor=1.0,  # Could be adjusted based on portfolio drawdown
             )
