@@ -1,13 +1,22 @@
 """
-Smart Execution Engine — Intelligent Trade Selection & Position Sizing
-========================================================================
+Smart Execution Engine — Feasibility & Selection Layer Over Already-Sized Signals
+===================================================================================
 
-Implements the 5-Rule Professional System:
-  1. Capital Exposure Control (max 80% total)
-  2. Sector-Based Filtering (max 2 per sector)
-  3. Directional Risk Control (max 70% per direction)
-  4. Confidence-Based Trade Selection (rank + execute top trades)
-  5. Dynamic Position Sizing (confidence × VIX × drawdown factor)
+DTA-SMARTEXEC-002: implements a 3-Rule feasibility/selection system over
+signals whose quantity was ALREADY set upstream by CapitalRiskEngine +
+PortfolioAllocationAI. SmartExecution never sizes a position itself:
+  1. Capital Exposure Control (max 80% total, using REAL notional)
+  3. Directional Risk Control (max 70% per direction, using REAL notional)
+  4. Confidence + R:R Trade Selection (rank, then accept/reject in order)
+
+Ownership boundary:
+  - Sector decorrelation is owned exclusively by CorrelationEngine
+    (runs upstream). SmartExecution does not duplicate a sector cap.
+  - Capital availability (regime/VIX/drawdown) is owned exclusively by
+    CapitalRiskEngine. SmartExecution reads each signal's REAL quantity
+    and checks that CUMULATIVE already-approved notional stays within a
+    flat 80%/70% ceiling — a sanity/feasibility check, not a second
+    capital-risk engine.
 
 Does NOT impose hard trade limits. Instead:
   • Filters by confidence and correlation
@@ -28,48 +37,41 @@ log = logging.getLogger(__name__)
 
 class SmartExecutionEngine:
     """
-    Intelligent trade execution filter with multi-rule risk control.
+    Trade feasibility/selection filter over already-sized signals.
     
     Attributes:
         capital (float)               : Total available capital
         max_exposure (float)          : 80% of capital (exposure ceiling)
-        max_sector_trades (int)       : Max trades per sector (default 2)
         max_direction_exposure (float): 70% of capital per direction
     """
     
     def __init__(self, capital: float = 50_000):
         self.capital = capital
         self.max_exposure = 0.80 * capital
-        self.max_sector_trades = 2
         self.max_direction_exposure = 0.70 * capital
     
     def filter_trades(
         self,
         trades: List[Dict[str, Any]],
-        vix: float = 15.0,
-        drawdown_factor: float = 1.0,
     ) -> List[Dict[str, Any]]:
         """
         Filter and size trades according to 5-rule system.
         
         Args:
             trades            : List of trade dicts with keys:
-                                  symbol, sector, direction, confidence
-                                  (required); entry_price, stop_loss, target
-                                  (optional)
-            vix               : Current VIX level (used for VIX-adjusted sizing)
-            drawdown_factor   : Drawdown-based position size multiplier
-                                (1.0 = normal, 0.5 = after losses)
+                                  symbol, sector, direction, confidence,
+                                  quantity (required for sizing); entry_price,
+                                  stop_loss, target (optional)
         
         Returns:
-            List of accepted trades with added "position_size" field.
+            List of accepted trades with added "position_size" field
+            (== quantity * entry_price, the REAL already-sized notional).
             Rejected trades retain "rejection_reason" field.
         
         Pseudocode:
-        1. Sort trades by confidence (high → low)
+        1. Sort trades by combined score (confidence 55% + R:R 45%)
         2. For each trade:
-           - Check sector limit (≤2 per sector)
-           - Calculate position size (confidence × VIX × drawdown)
+           - Read real notional (quantity × entry_price)
            - Check capital limit (≤80%)
            - Check direction limit (≤70% per direction)
            - If all pass → accept, else → reject + log reason
@@ -79,7 +81,6 @@ class SmartExecutionEngine:
         selected = []
         rejected = []
         total_exposure = 0.0
-        sector_count: Dict[str, int] = {}
         bullish_exposure = 0.0
         bearish_exposure = 0.0
         
@@ -102,9 +103,8 @@ class SmartExecutionEngine:
         
         log.info(
             "[SmartExecution] Filtering %d trades | "
-            "Capital: $%.0f | Max Exposure: $%.0f (80%%) | "
-            "VIX: %.2f | Drawdown Factor: %.2f",
-            len(sorted_trades), self.capital, self.max_exposure, vix, drawdown_factor
+            "Capital: $%.0f | Max Exposure: $%.0f (80%%)",
+            len(sorted_trades), self.capital, self.max_exposure
         )
         
         for trade in sorted_trades:
@@ -113,50 +113,14 @@ class SmartExecutionEngine:
             direction = trade.get("direction", "BUY")
             confidence = trade.get("confidence", 0.5)
             
-            # ── RULE 2: Sector Limit (max 2 per sector) ──
-            sector_trades_so_far = sector_count.get(sector, 0)
-            if sector_trades_so_far >= self.max_sector_trades:
-                trade["rejection_reason"] = "sector_limit"
-                rejected.append(trade)
-                log.debug(
-                    "  ✗ %s (%s) — REJECTED: sector '%s' already has %d trades",
-                    symbol, direction, sector, sector_trades_so_far
-                )
-                continue
-            
-            # ── RULE 5: Dynamic Position Sizing ──
-            # position_size = capital × per_trade_fraction × confidence_factor × vix_factor × drawdown_factor
-            # per_trade_fraction = 0.15 matches PortfolioAllocationAI._MAX_SINGLE_TRADE_FRACTION
-            # Without this fraction, position_size = capital × 0.9 = 9M which always exceeds
-            # max_exposure = 8M when capital = ₹1 Crore, blocking every signal.
-
-            # DTA-SMARTEXEC-001: this position_size is internal feasibility/
-            # exposure bookkeeping only (never the real executed quantity —
-            # PortfolioAllocationAI owns that). For KDA-authoritative signals,
-            # confidence_factor is a fixed neutral 1.0 — SmartExecution must
-            # not become a second intelligence-weighting engine. Non-KDA
-            # signals keep the existing confidence-based formula unchanged.
-            if trade.get("_kda_authoritative", False):
-                confidence_factor = 1.0
-            else:
-                # Confidence factor: clamp to [0.3, 0.9]
-                confidence_factor = max(0.3, min(confidence, 0.9))
-
-            # VIX factor: lower VIX → larger positions; higher VIX → smaller
-            # At VIX=15 (normal) → factor=1.0
-            # At VIX=25 (elevated) → factor=0.4 (half size)
-            # Range: [0.4, 1.0] (no position grows above normal despite low VIX)
-            vix_normal = 15.0
-            vix_factor = max(0.4, min(1.0, 1.0 - (vix - vix_normal) / 20.0))
-
-            _MAX_PER_TRADE_FRACTION = 0.15  # per-trade cap, sync with PortfolioAllocationAI
-            position_size = (
-                self.capital
-                * _MAX_PER_TRADE_FRACTION
-                * confidence_factor
-                * vix_factor
-                * drawdown_factor
-            )
+            # ── RULE 1 input: real, already-sized notional ──
+            # DTA-SMARTEXEC-002: CapitalRiskEngine + PortfolioAllocationAI
+            # already decided quantity; SmartExecution only checks that the
+            # CUMULATIVE already-approved notional stays within a flat
+            # 80%/70% ceiling. It never re-derives sizing from confidence,
+            # VIX, or drawdown — those are CapitalRiskEngine's exclusive
+            # ownership (see module docstring).
+            position_size = trade.get("quantity", 0) * trade.get("entry_price", 0.0)
             
             # ── RULE 1: Capital Exposure Control (max 80% total) ──
             if total_exposure + position_size > self.max_exposure:
@@ -204,7 +168,6 @@ class SmartExecutionEngine:
             selected.append(trade)
             
             total_exposure += position_size
-            sector_count[sector] = sector_trades_so_far + 1
             
             log.info(
                 "  ✓ %s (%s) — ACCEPTED | Size: $%.0f | Confidence: %.2f | "

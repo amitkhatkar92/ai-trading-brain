@@ -1887,17 +1887,14 @@ class MasterOrchestrator:
         
         # Step 2: Apply smart execution filtering
         with self.system_monitor.time_layer("SmartExecutionEngine"):
-            portfolio = self.order_manager.get_portfolio()
-            current_capital = portfolio.total_capital if hasattr(portfolio, 'total_capital') else snapshot.portfolio_value if hasattr(snapshot, 'portfolio_value') else TOTAL_CAPITAL
-            
-            # DTA-SMARTEXEC-001: Rule 4 ranking input uses the same canonical
+            # DTA-SMARTEXEC-002: Rule 4 ranking input uses the same canonical
             # KDA-authoritative substitution already established for CRE /
             # PortfolioAllocation / CorrelationEngine — kda_conviction/10 for
             # KDA-authoritative signals (neutral 0.0 if missing, never a
             # legacy fallback), legacy confidence/10 unchanged for everyone
-            # else. "_kda_authoritative" flag lets Rule 5 neutralise its own
-            # feasibility multiplier (see filter_trades()) without SmartExecution
-            # owning a second intelligence-weighting mechanism.
+            # else. Rule 1/3 no longer need a KDA flag — they operate on the
+            # real quantity*entry_price notional, not a confidence-weighted
+            # estimate (see filter_trades()).
             _se_trades = []
             for s in decorrelated_signals:
                 _se_kda_authoritative = (
@@ -1918,18 +1915,14 @@ class MasterOrchestrator:
                     "sector": getattr(s, "sector", "OTHER"),
                     "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
                     "confidence": _se_conf,
-                    "_kda_authoritative": _se_kda_authoritative,
+                    "quantity": getattr(s, "quantity", 0),
                     "entry_price": s.entry_price,
                     "stop_loss": s.stop_loss,
                     "target": s.target_price,           # TradeSignal uses target_price, not target
                     "original_signal": s,
                 })
 
-            final_signals = self.smart_execution.filter_trades(
-                trades=_se_trades,
-                vix=snapshot.vix,
-                drawdown_factor=1.0,  # Could be adjusted based on portfolio drawdown
-            )
+            final_signals = self.smart_execution.filter_trades(trades=_se_trades)
             
             # Separate accepted and rejected
             accepted_trade_dicts = [t for t in final_signals if "position_size" in t]

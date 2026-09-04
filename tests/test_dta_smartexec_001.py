@@ -1,8 +1,17 @@
 """
-DTA-SMARTEXEC-001 — SmartExecutionEngine KDA-authoritative ownership fix.
+DTA-SMARTEXEC-002 — SmartExecutionEngine ownership consolidation.
 
-Tests the real SmartExecutionEngine.filter_trades() (production code) using
-the exact dict-construction logic now used at the call site in
+Supersedes the Rule 5 (VIX/drawdown position-sizing formula) and Rule 2
+(sector cap) coverage from DTA-SMARTEXEC-001, both retired here because
+the underlying code was removed:
+  - Rule 2 (sector cap) is now owned exclusively by CorrelationEngine.
+  - Rule 5 (confidence x VIX x drawdown sizing formula) is retired —
+    SmartExecution now reads the REAL, already-sized quantity from
+    CapitalRiskEngine/PortfolioAllocationAI and computes
+    position_size = quantity * entry_price.
+
+Tests the real SmartExecutionEngine.filter_trades() (production code)
+using the exact dict-construction logic now used at the call site in
 orchestrator/master_orchestrator.py (reproduced here as a helper mirroring
 production precisely) to verify:
 
@@ -11,13 +20,16 @@ production precisely) to verify:
   3. Missing KDA conviction -> 0.0, never legacy fallback.
   4. Non-KDA ranking remains unchanged.
   5. R:R weighting remains unchanged (45%).
-  6. KDA-authoritative Rule 5 uses neutral confidence_factor=1.0.
-  7. Changing KDA conviction does not change KDA Rule 5 feasibility calc.
-  8. Non-KDA Rule 5 retains existing confidence behaviour.
-  9. 80% capital limit unchanged.
- 10. 70% directional limit unchanged.
- 11. VIX/drawdown factors unchanged.
- 12. Sector cap unchanged.
+  6. position_size == quantity * entry_price for BOTH KDA-authoritative
+     and non-KDA signals (Rule 5 formula fully retired).
+  7. 80% capital limit unchanged, now driven by real notional.
+  8. 70% directional limit unchanged, now driven by real notional.
+  9. filter_trades() no longer accepts vix/drawdown_factor kwargs.
+ 10. SmartExecutionEngine has no max_sector_trades attribute.
+ 11. Sector cap removed — multiple same-sector trades all accepted
+     (CorrelationEngine is the sole sector-cap owner upstream).
+ 12. Zero-quantity trades contribute zero exposure, never rejected on a
+     phantom capital/direction basis.
  13. position_size remains internal, never copied to actual quantity.
  14. KDA-only, BOTH, weak-KDA, non-KDA populations behave per contract.
 """
@@ -38,6 +50,7 @@ class _Sig:
     entry_price: float = 100.0
     stop_loss: float = 95.0
     target_price: float = 110.0
+    quantity: float = 10.0
     kda_decision: Optional[str] = None
     authorization_source: Optional[str] = None
     kda_evidence_state: Optional[str] = None
@@ -45,7 +58,7 @@ class _Sig:
 
 
 def _build_se_trades(signals):
-    """Reproduces the exact DTA-SMARTEXEC-001 dict-construction logic from
+    """Reproduces the exact DTA-SMARTEXEC-002 dict-construction logic from
     orchestrator/master_orchestrator.py's SmartExecutionEngine call site."""
     out = []
     for s in signals:
@@ -66,7 +79,7 @@ def _build_se_trades(signals):
             "sector": s.sector,
             "direction": s.direction,
             "confidence": _conf,
-            "_kda_authoritative": _kda_authoritative,
+            "quantity": s.quantity,
             "entry_price": s.entry_price,
             "stop_loss": s.stop_loss,
             "target": s.target_price,
@@ -114,7 +127,6 @@ def test_non_kda_ranking_unchanged():
     sig = _Sig(symbol="LEGACY", confidence=7.5)
     d = _build_se_trades([sig])[0]
     assert d["confidence"] == 0.75
-    assert d["_kda_authoritative"] is False
 
 
 def test_rr_weighting_unchanged_at_45_percent():
@@ -129,106 +141,110 @@ def test_rr_weighting_unchanged_at_45_percent():
              kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
              kda_evidence_state="VALIDATED", kda_conviction=8.0),
     ]
-    result = engine.filter_trades(_build_se_trades(signals), vix=15.0, drawdown_factor=1.0)
+    result = engine.filter_trades(_build_se_trades(signals))
     accepted = {t["symbol"]: t for t in result if "position_size" in t}
-    # Both accepted (different sectors, ample capital); HIGHRR must have
-    # a larger position_size due to R:R contribution to confidence_factor?
-    # No — confidence_factor is neutral(1.0) for both (KDA-authoritative),
-    # so position sizes are IDENTICAL; R:R only affects ranking ORDER, not
-    # size. Verify via rejection-order test instead (see next test).
     assert "LOWRR" in accepted and "HIGHRR" in accepted
 
 
-def test_kda_authoritative_rule5_uses_neutral_confidence_factor():
+def test_position_size_equals_quantity_times_entry_price():
+    """DTA-SMARTEXEC-002: Rule 5 formula fully retired. position_size is
+    now exactly quantity * entry_price for BOTH KDA-authoritative and
+    non-KDA signals — no confidence/VIX/drawdown weighting applies here
+    at all (that distinction only matters to Rule 4 ranking now)."""
     engine = _engine()
-    sig = _Sig(symbol="KDASIZE", sector="A", confidence=1.0,  # deliberately low legacy value
-               kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
-               kda_evidence_state="VALIDATED", kda_conviction=9.0)
-    result = engine.filter_trades(_build_se_trades([sig]), vix=15.0, drawdown_factor=1.0)
+    sig_kda = _Sig(symbol="KDASIZE", sector="A", quantity=25, entry_price=180.0,
+                    kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
+                    kda_evidence_state="VALIDATED", kda_conviction=9.0)
+    sig_non_kda = _Sig(symbol="NONKDASIZE", sector="B", quantity=40, entry_price=62.5,
+                        confidence=3.0)
+    result = engine.filter_trades(_build_se_trades([sig_kda, sig_non_kda]))
+    accepted = {t["symbol"]: t for t in result if "position_size" in t}
+    assert accepted["KDASIZE"]["position_size"] == 25 * 180.0
+    assert accepted["NONKDASIZE"]["position_size"] == 40 * 62.5
+
+
+def test_zero_quantity_trade_contributes_zero_exposure():
+    """A signal CRE sized to 0 (e.g. tight stop, zero budget) must never
+    consume capital/direction budget or be rejected on a phantom basis —
+    an edge case the old confidence*vix*drawdown formula could never
+    produce exactly (it was always > 0 for any positive confidence)."""
+    engine = _engine(capital=100_000)
+    sig = _Sig(symbol="ZEROQTY", sector="A", quantity=0, entry_price=500.0, confidence=9.0)
+    result = engine.filter_trades(_build_se_trades([sig]))
     accepted = [t for t in result if "position_size" in t]
     assert len(accepted) == 1
-    expected_size = engine.capital * 0.15 * 1.0 * 1.0 * 1.0  # vix=15 -> vix_factor=1.0
-    assert accepted[0]["position_size"] == expected_size
+    assert accepted[0]["position_size"] == 0.0
 
 
-def test_kda_conviction_does_not_change_rule5_feasibility_calc():
-    common = dict(sector="A", kda_decision="KNOWLEDGE_BUY",
-                  authorization_source="KDA", kda_evidence_state="VALIDATED")
-    sig_low  = _Sig(symbol="SZLOW",  kda_conviction=1.0, **common)
-    sig_high = _Sig(symbol="SZHIGH", kda_conviction=9.9, **common)
-    engine_low  = _engine()
-    engine_high = _engine()
-    r_low  = engine_low.filter_trades(_build_se_trades([sig_low]),  vix=15.0, drawdown_factor=1.0)
-    r_high = engine_high.filter_trades(_build_se_trades([sig_high]), vix=15.0, drawdown_factor=1.0)
-    size_low  = next(t["position_size"] for t in r_low  if "position_size" in t)
-    size_high = next(t["position_size"] for t in r_high if "position_size" in t)
-    assert size_low == size_high
+def test_filter_trades_no_longer_accepts_vix_or_drawdown_kwargs():
+    """DTA-SMARTEXEC-002: the vix/drawdown_factor surface is fully
+    removed, not just unused — proves the old interface is truly gone."""
+    engine = _engine()
+    sig = _Sig(symbol="SIGNATURE", sector="A")
+    trades = _build_se_trades([sig])
+    try:
+        engine.filter_trades(trades, vix=15.0, drawdown_factor=1.0)  # type: ignore[call-arg]
+        raised = False
+    except TypeError:
+        raised = True
+    assert raised, "filter_trades() must reject vix/drawdown_factor kwargs"
 
 
-def test_non_kda_rule5_retains_existing_confidence_behavior():
-    engine_weak = _engine()
-    engine_strong = _engine()
-    sig_weak   = _Sig(symbol="WEAK",   confidence=1.0)
-    sig_strong = _Sig(symbol="STRONG", confidence=9.5)
-    r_weak   = engine_weak.filter_trades(_build_se_trades([sig_weak]),   vix=15.0, drawdown_factor=1.0)
-    r_strong = engine_strong.filter_trades(_build_se_trades([sig_strong]), vix=15.0, drawdown_factor=1.0)
-    size_weak   = next(t["position_size"] for t in r_weak   if "position_size" in t)
-    size_strong = next(t["position_size"] for t in r_strong if "position_size" in t)
-    assert size_weak != size_strong
-    # confidence=0.1 -> clamp(0.3): size = capital*0.15*0.3*1.0*1.0
-    assert size_weak == engine_weak.capital * 0.15 * 0.3 * 1.0 * 1.0
-    # confidence=0.95 -> clamp(0.9): size = capital*0.15*0.9*1.0*1.0
-    assert size_strong == engine_strong.capital * 0.15 * 0.9 * 1.0 * 1.0
+def test_no_max_sector_trades_attribute():
+    """DTA-SMARTEXEC-002: sector-cap state removed entirely from the class."""
+    engine = _engine()
+    assert not hasattr(engine, "max_sector_trades")
 
 
-def test_80_percent_capital_limit_unchanged():
+def test_80_percent_capital_limit_uses_real_notional():
     engine = SmartExecutionEngine(capital=100_000)
+    # Alternate BUY/SELL so the 70% per-direction cap (Rule 3) never binds
+    # before the 80% total cap (Rule 1) — isolates Rule 1 specifically.
     signals = [
-        _Sig(symbol=f"SYM{i}", sector=f"S{i}", confidence=9.0)
+        _Sig(symbol=f"SYM{i}", sector=f"S{i}", confidence=9.0, quantity=100,
+             entry_price=100.0, direction="BUY" if i % 2 == 0 else "SELL")
         for i in range(10)
     ]
-    result = engine.filter_trades(_build_se_trades(signals), vix=15.0, drawdown_factor=1.0)
+    result = engine.filter_trades(_build_se_trades(signals))
     accepted = [t for t in result if "position_size" in t]
     total = sum(t["position_size"] for t in accepted)
     assert total <= engine.max_exposure + 1e-6
+    # Real notional per trade = 100 * 100.0 = 10,000; 80% of 100,000 = 80,000
+    # -> at most 8 of the 10 identical-size trades can be accepted.
+    assert len(accepted) == 8
 
 
-def test_70_percent_directional_limit_unchanged():
+def test_70_percent_directional_limit_uses_real_notional():
     engine = SmartExecutionEngine(capital=100_000)
     signals = [
-        _Sig(symbol=f"BUY{i}", sector=f"S{i}", direction="BUY", confidence=9.0)
+        _Sig(symbol=f"BUY{i}", sector=f"S{i}", direction="BUY", confidence=9.0,
+             quantity=100, entry_price=100.0)
         for i in range(10)
     ]
-    result = engine.filter_trades(_build_se_trades(signals), vix=15.0, drawdown_factor=1.0)
+    result = engine.filter_trades(_build_se_trades(signals))
     accepted = [t for t in result if "position_size" in t]
     total_bullish = sum(t["position_size"] for t in accepted if t["direction"].upper() == "BUY")
     assert total_bullish <= engine.max_direction_exposure + 1e-6
 
 
-def test_vix_and_drawdown_factors_unchanged():
-    sig = _Sig(symbol="VIXTEST", sector="A", confidence=9.0)
-    engine_calm  = SmartExecutionEngine(capital=1_000_000)
-    engine_crash = SmartExecutionEngine(capital=1_000_000)
-    r_calm  = engine_calm.filter_trades(_build_se_trades([sig]),  vix=15.0, drawdown_factor=1.0)
-    r_crash = engine_crash.filter_trades(_build_se_trades([sig]), vix=35.0, drawdown_factor=0.5)
-    size_calm  = next(t["position_size"] for t in r_calm  if "position_size" in t)
-    size_crash = next((t["position_size"] for t in r_crash if "position_size" in t), 0.0)
-    assert size_crash < size_calm
-
-
-def test_sector_cap_unchanged():
+def test_sector_cap_removed_multiple_same_sector_all_accepted():
+    """DTA-SMARTEXEC-002: CorrelationEngine is now the sole sector-cap
+    owner. SmartExecution must accept all same-sector trades (ample
+    capital) — the inverse of the retired test_sector_cap_unchanged."""
     engine = SmartExecutionEngine(capital=10_000_000)
-    signals = [_Sig(symbol=f"SEC{i}", sector="BANK", confidence=5.0 + i) for i in range(5)]
-    result = engine.filter_trades(_build_se_trades(signals), vix=15.0, drawdown_factor=1.0)
+    signals = [
+        _Sig(symbol=f"SEC{i}", sector="BANK", confidence=5.0 + i, quantity=10, entry_price=50.0)
+        for i in range(5)
+    ]
+    result = engine.filter_trades(_build_se_trades(signals))
     accepted = [t for t in result if "position_size" in t]
-    assert len(accepted) == 2
+    assert len(accepted) == 5
 
 
 def test_position_size_remains_internal_not_copied_to_quantity():
-    sig = _Sig(symbol="QTYCHECK", sector="A", confidence=8.0)
-    sig.quantity = 0  # simulate TradeSignal default before PortfolioAllocation runs
+    sig = _Sig(symbol="QTYCHECK", sector="A", confidence=8.0, quantity=0, entry_price=100.0)
     engine = _engine()
-    result = engine.filter_trades(_build_se_trades([sig]), vix=15.0, drawdown_factor=1.0)
+    result = engine.filter_trades(_build_se_trades([sig]))
     accepted = [t for t in result if "position_size" in t]
     assert len(accepted) == 1
     original_signal = accepted[0]["original_signal"]
@@ -236,7 +252,6 @@ def test_position_size_remains_internal_not_copied_to_quantity():
 
 
 def test_kda_only_both_weak_kda_non_kda_populations():
-    engine = _engine()
     sig_kda_only = _Sig(symbol="KDAONLY", sector="A",
                          kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
                          kda_evidence_state="DECISION_ELIGIBLE", kda_conviction=8.0)
@@ -251,14 +266,7 @@ def test_kda_only_both_weak_kda_non_kda_populations():
     dicts = _build_se_trades([sig_kda_only, sig_both, sig_weak_kda, sig_non_kda])
     by_symbol = {d["symbol"]: d for d in dicts}
 
-    assert by_symbol["KDAONLY"]["_kda_authoritative"] is True
     assert by_symbol["KDAONLY"]["confidence"] == 0.8
-
-    assert by_symbol["BOTHSIG"]["_kda_authoritative"] is True
     assert by_symbol["BOTHSIG"]["confidence"] == 0.7  # kda_conviction, not confidence=6.0
-
-    assert by_symbol["WEAKKDA"]["_kda_authoritative"] is False  # USEFUL not VALIDATED/DECISION_ELIGIBLE
-    assert by_symbol["WEAKKDA"]["confidence"] == 0.65  # falls back to legacy confidence
-
-    assert by_symbol["NONKDA"]["_kda_authoritative"] is False
+    assert by_symbol["WEAKKDA"]["confidence"] == 0.65  # USEFUL not VALIDATED/DECISION_ELIGIBLE -> legacy fallback
     assert by_symbol["NONKDA"]["confidence"] == 0.65
