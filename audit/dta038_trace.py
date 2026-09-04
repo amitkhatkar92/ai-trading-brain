@@ -390,15 +390,26 @@ class TraceManager:
             pass
 
     def record_debate_outcome(
-        self, signals_for_debate: List[Any], executed: List[dict]
+        self, signals_for_debate: List[Any], executed: List[dict],
+        approved_symbols: Optional[Set[str]] = None,
+        scores: Optional[Dict[str, float]] = None,
     ) -> None:
-        """Record DEBATE stage outcome per signal."""
+        """Record DEBATE stage outcome per signal.
+
+        DTA-DEBATE-AUTHORITY-004: `approved_symbols` (Debate/Decision
+        approved, independent of execution outcome) and `scores` (the real
+        DecisionEngine.confidence_score per symbol) are the authoritative
+        source when supplied. Falls back to the legacy `executed`-only proxy
+        only when the caller doesn't pass them (backward compatible).
+        """
         try:
             date_str  = _today_str()
             cycle_id  = self.get_cycle_id()
             exec_syms: Set[str] = {
                 str(r.get("symbol", "")) for r in executed if r
             }
+            _approved = approved_symbols if approved_symbols is not None else exec_syms
+            _scores   = scores or {}
             for sig in signals_for_debate:
                 symbol    = str(getattr(sig, "symbol", "") or "").strip()
                 direction = str(
@@ -406,14 +417,24 @@ class TraceManager:
                     or getattr(sig, "direction", "BUY")
                     or "BUY"
                 )
-                passed    = symbol in exec_syms
-                score     = float(getattr(sig, "confidence_score", 0.0) or 0.0)
-                status    = StageStatus.PASSED if passed else StageStatus.REJECTED
-                outcome   = "EXECUTED" if passed else "REJECTED_AT_DEBATE"
+                debate_approved = symbol in _approved
+                executed_ok     = symbol in exec_syms
+                score = float(_scores.get(symbol, 0.0) or 0.0)
+                if not debate_approved:
+                    status, outcome, reason = (
+                        StageStatus.REJECTED, "REJECTED_AT_DEBATE",
+                        "CONFIDENCE_BELOW_THRESHOLD",
+                    )
+                elif executed_ok:
+                    status, outcome, reason = StageStatus.PASSED, "EXECUTED", None
+                else:
+                    # Debate/Decision approved — execution failed downstream.
+                    # This is NOT a Debate rejection.
+                    status, outcome, reason = StageStatus.PASSED, "EXECUTION_FAILED", None
                 self._record_one_stage(
                     date_str, cycle_id, sig, "DEBATE", status,
                     details={"confidence_score": score},
-                    rejection_reason=(None if passed else "CONFIDENCE_BELOW_THRESHOLD"),
+                    rejection_reason=reason,
                     final_outcome=outcome,
                 )
         except Exception:

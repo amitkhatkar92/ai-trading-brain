@@ -29,7 +29,7 @@ import sched
 import time
 import threading
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Set, Dict
 
 from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
 from models import MarketSnapshot, TradeSignal, Portfolio
@@ -1925,6 +1925,19 @@ class MasterOrchestrator:
         # ── STEP 6: Debate + Decision ──────────────────────────────────
         # GAP-013: run debates concurrently (one thread per signal)
         executed: List[dict] = []
+        # DTA-DEBATE-AUTHORITY-004: signals Debate/Decision approved but
+        # OrderManager could not place — distinct from genuine rejection.
+        execution_failed_syms: Set[str] = set()
+        debate_scores: Dict[str, float] = {}
+
+        def _handle_debate_row(sig, row):
+            if isinstance(row, dict):
+                executed.append(row)
+                debate_scores[sig.symbol] = row.get("score", 0.0)
+            elif isinstance(row, tuple) and row and row[0] == "EXECUTION_FAILED":
+                execution_failed_syms.add(sig.symbol)
+                debate_scores[sig.symbol] = row[1]
+
         with self.system_monitor.time_layer("DebateAndDecision"):
             if len(signals_for_debate) > 1:
                 from concurrent.futures import ThreadPoolExecutor, as_completed as _as_completed
@@ -1933,33 +1946,46 @@ class MasterOrchestrator:
                     _futs = {_pool.submit(self._run_debate_and_decide, sig, snapshot): sig
                              for sig in signals_for_debate}
                     for _fut in _as_completed(_futs):
+                        _sig = _futs[_fut]
                         try:
                             row = _fut.result()
-                            if row:
-                                executed.append(row)
+                            _handle_debate_row(_sig, row)
                         except Exception as _de_exc:
                             log.warning("[DebateAndDecision] parallel debate error: %s", _de_exc)
             else:
                 for signal in signals_for_debate:
                     row = self._run_debate_and_decide(signal, snapshot)
-                    if row:
-                        executed.append(row)
+                    _handle_debate_row(signal, row)
+        # DEBATE_APPROVED = executed (order placed) OR execution_failed
+        # (approved but OrderManager produced no order) — NEVER derived
+        # from execution success alone.
+        approved_symbols: Set[str] = (
+            {str(r.get("symbol", "")) for r in executed if r} | execution_failed_syms
+        )
         _diag.record_stage("DebateAndDecision", len(signals_for_debate), len(executed),
                            "CONFIDENCE_BELOW_THRESHOLD_6.5")
         # ── DTA-038: Debate stage trace ───────────────────────────────────
         try:
             from audit.dta038_trace import get_trace_manager as _dta038_tm
-            _dta038_tm().record_debate_outcome(signals_for_debate, executed)
+            _dta038_tm().record_debate_outcome(
+                signals_for_debate, executed, approved_symbols, debate_scores,
+            )
         except Exception as _dta_exc:
             log.debug("[DTA038] debate_outcome hook error: %s", _dta_exc)
         # ─────────────────────────────────────────────────────────────
         try:
             from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder
-            get_pit_discovery_evidence_recorder().record_stage_outcomes(
+            _pit_rec = get_pit_discovery_evidence_recorder()
+            # DTA-DEBATE-AUTHORITY-004: DEBATE and EXECUTION are now two
+            # independently attributable stages, not one conflated stage.
+            _pit_rec.record_stage_outcomes(
+                signals_for_debate, approved_symbols,
+                "DEBATE", "CONFIDENCE_BELOW_THRESHOLD",
+            )
+            _pit_rec.record_stage_outcomes(
                 signals_for_debate,
                 {str(row.get("symbol", "")) for row in executed if row},
-                "DEBATE_EXECUTION",
-                "CONFIDENCE_BELOW_THRESHOLD",
+                "EXECUTION", "EXECUTION_FAILED",
             )
         except Exception:
             pass
@@ -3607,8 +3633,11 @@ class MasterOrchestrator:
             break
 
     def _run_debate_and_decide(self, signal: TradeSignal,
-                                snapshot: MarketSnapshot) -> dict | None:
-        """Run debate + decision for one signal.  Returns a summary row if trade executed."""
+                                snapshot: MarketSnapshot) -> dict | tuple | None:
+        """Run debate + decision for one signal.  Returns a summary row if
+        trade executed; ("EXECUTION_FAILED", score) if Debate approved but
+        OrderManager produced no order (DTA-DEBATE-AUTHORITY-004); None if
+        Debate/Decision rejected the signal."""
         log.info("── Layer 6–7: Debate & Decision for %s ──", signal.symbol)
         votes    = self.debate_system.run(signal, snapshot)
 
@@ -3798,6 +3827,22 @@ class MasterOrchestrator:
                     "modifier": decision.position_size_modifier,
                     "qty":      getattr(order, "quantity", 0),
                 }
+            # DTA-DEBATE-AUTHORITY-004: Debate/Decision approved this signal,
+            # but OrderManager produced no order (freshness/window/broker-
+            # mapping/etc) — this is an execution failure, NOT a Debate
+            # rejection. Publish a distinct event and a distinct marker so
+            # the caller never has to infer this from list membership.
+            self.bus.publish(ExecutionEvent(
+                event_type=EventType.EXECUTION_FAILED,
+                source_agent="OrderManager",
+                payload={
+                    "symbol":    signal.symbol,
+                    "strategy":  signal.strategy_name or "",
+                    "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
+                    "score":     decision.confidence_score,
+                },
+            ))
+            return ("EXECUTION_FAILED", decision.confidence_score)
         else:
             log.info("  ❌ %s", decision.summary())
             self.bus.publish(DecisionEvent(

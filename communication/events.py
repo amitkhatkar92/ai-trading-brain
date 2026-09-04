@@ -69,6 +69,10 @@ class EventType(str, Enum):
     ORDER_PLACED             = "execution.order.placed"
     ORDER_FILLED             = "execution.order.filled"
     ORDER_REJECTED           = "execution.order.rejected"
+    # DTA-DEBATE-AUTHORITY-004: Debate/Decision approved, but OrderManager
+    # produced no order (freshness/window/broker-mapping/etc) — distinct
+    # from ORDER_REJECTED, which implies an order existed before rejection.
+    EXECUTION_FAILED         = "execution.order.not_placed"
     STOP_LOSS_HIT            = "execution.sl.hit"
     TARGET_HIT               = "execution.target.hit"
 
