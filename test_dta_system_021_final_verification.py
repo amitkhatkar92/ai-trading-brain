@@ -51,13 +51,12 @@ Test inventory (T001–T060 + SRC + FLOW):
   T013  KNOWLEDGE_WAIT + DECISION_ELIGIBLE → NOT boosted (decision gate)
 
   DEF-021-002: RegimeDebateAI KDA authority recognition
-  T020  KDA_AUTHORITY → RegimeDebateAI score=8.0, modifier=1.0
-  T021  knowledge_referred → RegimeDebateAI score=8.0, modifier=1.0
+  T020-SRC/T021-SRC/T024-SRC  Canonical _kda_authoritative gate present,
+                              score=8.0/vote=approve preserved (source inspection;
+                              full behavioral coverage moved to
+                              tests/test_dta_debate_authority_003.py — DTA-DEBATE-AUTHORITY-003)
   T022  Non-KDA strategy (Equity_Breakout) in allowed list → score=8.0 (unchanged)
   T023  Non-KDA strategy (Equity_Breakout) NOT in allowed → score=5.0, modifier=0.7
-  T024  KDA_AUTHORITY → vote is "approve" (not "reduce_size")
-  T025  kda_evidence_state is included in reasoning
-  T026  RegimeDebateAI does NOT emit a hard "reject" vote for KDA_AUTHORITY
 
   Phase 4 — KDA Authority invariants
   T030  KNOWLEDGE_WAIT → not added to kda_authorized (cannot execute)
@@ -95,7 +94,7 @@ Test inventory (T001–T060 + SRC + FLOW):
 
   Source / Regression
   SRC-001  _kr_conv in master_orchestrator.py (evidence-derived conviction)
-  SRC-002  KDA_AUTHORITY exemption in debate_system/multi_agent_debate.py
+  SRC-002  Canonical KDA-authoritative gate in debate_system/multi_agent_debate.py
   SRC-003  Fix A guard still in strategy_generator_ai.py
   SRC-004  Fix C GAP-029 exemption still in master_orchestrator.py
 """
@@ -295,7 +294,10 @@ def _test_conviction():
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 def _test_debate_regime():
-    """Test via source inspection + direct _regime_vote simulation."""
+    """Source inspection of the canonical KDA gate + regime-matrix fallback
+    simulation. KDA-exemption behavior itself (DTA-DEBATE-AUTHORITY-003) is
+    covered by real production-path tests in
+    tests/test_dta_debate_authority_003.py, not simulated here."""
     print("\n── DEF-021-002: RegimeDebateAI KDA authority recognition ────────────")
 
     src_path = os.path.join(ROOT, "debate_system", "multi_agent_debate.py")
@@ -303,9 +305,9 @@ def _test_debate_regime():
         src = fh.read()
 
     # SRC checks
-    _assert("T020-SRC", "KDA_AUTHORITY exemption present in _regime_vote",
-            'strat in ("KDA_AUTHORITY", "knowledge_referred")' in src,
-            "KDA_AUTHORITY exemption not found in multi_agent_debate.py")
+    _assert("T020-SRC", "Canonical KDA-authoritative gate present in _regime_vote",
+            "_kda_authoritative" in src,
+            "_kda_authoritative gate not found in multi_agent_debate.py")
     _assert("T021-SRC", "KDA exempt returns score=8.0",
             "score=8.0" in src,
             "score=8.0 not found in the KDA exemption block")
@@ -313,13 +315,8 @@ def _test_debate_regime():
             "vote=\"approve\"" in src or "vote='approve'" in src,
             "approve vote not found in exemption block")
 
-    # Simulate _regime_vote() logic directly
-    def _regime_vote_sim(strategy_name: str, regime: str,
-                          kda_evidence_state: str = "") -> dict:
-        """Reproduce _regime_vote() logic."""
-        if strategy_name in ("KDA_AUTHORITY", "knowledge_referred"):
-            return {"vote": "approve", "score": 8.0,
-                    "modifier": 1.0, "ev_state": kda_evidence_state}
+    # Regime-matrix fallback simulation (unchanged by DTA-DEBATE-AUTHORITY-003)
+    def _regime_vote_sim(strategy_name: str, regime: str) -> dict:
         regime_strategy_matrix = {
             "BULL_TREND":   ["Breakout_Volume", "Momentum_Retest", "Bull_Call_Spread"],
             "RANGE_MARKET": ["Mean_Reversion", "Iron_Condor_Range", "Momentum_Retest"],
@@ -331,14 +328,6 @@ def _test_debate_regime():
             return {"vote": "approve", "score": 8.0, "modifier": 1.0}
         return {"vote": "reduce_size", "score": 5.0, "modifier": 0.7}
 
-    v = _regime_vote_sim("KDA_AUTHORITY", "BULL_MARKET", "VALIDATED")
-    _assert("T020", "KDA_AUTHORITY → RegimeDebateAI score=8.0, modifier=1.0",
-            v["score"] == 8.0 and v["modifier"] == 1.0, f"got {v}")
-
-    v = _regime_vote_sim("knowledge_referred", "BULL_MARKET", "DECISION_ELIGIBLE")
-    _assert("T021", "knowledge_referred → RegimeDebateAI score=8.0, modifier=1.0",
-            v["score"] == 8.0 and v["modifier"] == 1.0, f"got {v}")
-
     # Note: "Equity_Breakout" is NOT in BULL_TREND matrix (it's "Breakout_Volume").
     # Score=8.0 comes from the strategy actually being listed, e.g. Momentum_Retest.
     v = _regime_vote_sim("Momentum_Retest", "BULL_TREND")
@@ -348,17 +337,6 @@ def _test_debate_regime():
     v = _regime_vote_sim("Equity_Breakout", "RANGE_MARKET")
     _assert("T023", "Equity_Breakout NOT in RANGE_MARKET matrix → score=5.0, reduce_size",
             v["score"] == 5.0 and v["vote"] == "reduce_size", f"got {v}")
-
-    v = _regime_vote_sim("KDA_AUTHORITY", "BEAR_MARKET")
-    _assert("T024", "KDA_AUTHORITY → vote=approve",
-            v["vote"] == "approve", f"got {v}")
-
-    v = _regime_vote_sim("KDA_AUTHORITY", "BULL_MARKET", "DECISION_ELIGIBLE")
-    _assert("T025", "ev_state propagated in KDA exempt path",
-            v.get("ev_state") == "DECISION_ELIGIBLE", f"got {v}")
-
-    _assert("T026", "KDA_AUTHORITY → score=8.0, NOT a hard reject (score > 5)",
-            v["score"] > 5.0, f"score={v['score']}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -604,7 +582,7 @@ def _test_evidence_and_equivalents():
     outside_regime    = debate_src[:regime_vote_start] + debate_src[regime_vote_end:]
     strategy_outside  = outside_regime.count("strat")
     _assert("T059", "strategy_name only used inside _regime_vote in debate system",
-            strategy_outside == 0 and 'strat in ("KDA_AUTHORITY"' in debate_src,
+            strategy_outside == 0 and "_kda_authoritative" in debate_src,
             f"strategy_name references outside _regime_vote: {strategy_outside}")
 
 
@@ -632,9 +610,9 @@ def _test_source():
 
     debate_src = open(os.path.join(ROOT, "debate_system", "multi_agent_debate.py"),
                       encoding="utf-8").read()
-    _assert("SRC-002", "KDA_AUTHORITY exemption in multi_agent_debate.py",
-            'strat in ("KDA_AUTHORITY", "knowledge_referred")' in debate_src,
-            "KDA_AUTHORITY exemption not found in debate_system")
+    _assert("SRC-002", "Canonical KDA-authoritative gate in multi_agent_debate.py",
+            "_kda_authoritative" in debate_src,
+            "_kda_authoritative gate not found in debate_system")
 
     sg_src = open(os.path.join(ROOT, "strategy_lab", "strategy_generator_ai.py"),
                   encoding="utf-8").read()

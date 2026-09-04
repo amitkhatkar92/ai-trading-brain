@@ -251,12 +251,22 @@ class MultiAgentDebate:
         regime = snapshot.regime.value
         strat  = sig.strategy_name
 
-        # KDA_AUTHORITY and knowledge_referred signals have already passed
-        # regime-aware evidence evaluation: HBE queries include regime as a
-        # parameter, so the KDA decision implicitly encodes regime compatibility.
-        # Applying the strategy matrix here would double-count regime analysis
-        # using the wrong proxy (strategy_name instead of evidence quality).
-        if strat in ("KDA_AUTHORITY", "knowledge_referred"):
+        # DTA-DEBATE-AUTHORITY-003: canonical KDA-authoritative population,
+        # identical to CapitalRiskEngine/RiskManagerAI/PortfolioAllocationAI —
+        # not a label proxy. Covers KDA-only signals AND StrategyLab+KDA
+        # ("BOTH") signals that retain their original scanner label.
+        _kda_authoritative = (
+            getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+            and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
+            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+        )
+
+        # KDA-authoritative signals have already passed regime-aware evidence
+        # evaluation: HBE queries include regime as a parameter, so the KDA
+        # decision implicitly encodes regime compatibility. Applying the
+        # strategy matrix here would double-count regime analysis using the
+        # wrong proxy (label instead of evidence quality).
+        if _kda_authoritative:
             ev_state = getattr(sig, "kda_evidence_state", "") or ""
             return DebateVote(
                 agent_name="RegimeDebateAI", vote="approve", score=8.0,
