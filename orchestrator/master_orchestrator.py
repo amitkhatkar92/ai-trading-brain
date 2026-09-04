@@ -3854,6 +3854,7 @@ class MasterOrchestrator:
                     "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
                     "score":     decision.confidence_score,
                     "reason":    decision.summary(),
+                    "votes":     {v.agent_name: v.score for v in votes},
                 },
             ))
         return None
