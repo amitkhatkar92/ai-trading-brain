@@ -52,7 +52,7 @@ jobs:
             'data/paper_trades*.csv' 'data/paper_trade_log.csv'
             'data/live/*.jsonl'
           )
-          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/')
+          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/' || true)
           if [ -n "$FOUND" ]; then
             echo "❌ Runtime/state files are tracked in this commit — refusing to deploy:"
             echo "$FOUND"

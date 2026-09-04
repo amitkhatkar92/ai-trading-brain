@@ -30,7 +30,7 @@ jobs:
           # anchored to the repo root the way .gitignore patterns are, so
           # without this exclusion the patterns below would also match
           # those nested backup copies and false-positive.
-          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/')
+          FOUND=$(git ls-files "${PATTERNS[@]}" | grep -v '^data/frz/backups/' || true)
           if [ -n "$FOUND" ]; then
             echo "❌ Runtime/state files must never be committed:"
             echo "$FOUND"
