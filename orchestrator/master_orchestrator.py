@@ -1828,16 +1828,35 @@ class MasterOrchestrator:
         
         # Step 1: Decorrelate by sector
         # Convert TradeSignal objects to dicts for correlation engine
-        signals_as_dicts_for_corr = [
-            {
+        # DTA-CORRELATION-001: the previous "confidence_score" attribute does
+        # not exist on TradeSignal (always silently defaulted to 0.7), making
+        # the "keep best per sector" ranking a no-op. Fixed to use the same
+        # canonical KDA-authoritative substitution already established for
+        # CRE ranking / PortfolioAllocation sizing — kda_conviction for
+        # KDA-authoritative signals (neutral 0.0 if missing, never a legacy
+        # fallback), legacy confidence unchanged for everyone else.
+        signals_as_dicts_for_corr = []
+        for s in guardian_decision.approved_signals:
+            _corr_kda_authoritative = (
+                getattr(s, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+                and getattr(s, "authorization_source", None) in ("KDA", "BOTH")
+                and getattr(s, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
+            )
+            if _corr_kda_authoritative:
+                _corr_kda_conv = getattr(s, "kda_conviction", None)
+                _corr_conf = (
+                    max(0.0, min(_corr_kda_conv / 10.0, 1.0))
+                    if _corr_kda_conv is not None else 0.0
+                )
+            else:
+                _corr_conf = max(0.0, min(s.confidence / 10.0, 1.0))
+            signals_as_dicts_for_corr.append({
                 "symbol": s.symbol,
                 "sector": getattr(s, "sector", "OTHER"),
                 "direction": s.direction.value if hasattr(s.direction, "value") else str(s.direction),
-                "confidence": getattr(s, "confidence_score", 0.7),
+                "confidence": _corr_conf,
                 "_original_signal": s,  # Keep reference
-            }
-            for s in guardian_decision.approved_signals
-        ]
+            })
         
         with self.system_monitor.time_layer("CorrelationEngine"):
             decorrelated_dicts = self.correlation_engine.reduce_correlation(signals_as_dicts_for_corr)
