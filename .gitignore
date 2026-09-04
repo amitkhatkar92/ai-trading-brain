@@ -69,14 +69,32 @@ logs/
 *.log.*
 
 # ── IIOS Runtime data ─────────────────────────────────────────────────────────
-# data/ is intentionally NOT gitignored — iios.db and paper_trades.csv
-# must persist across deploys. Only derived/temporary files are excluded.
+# data/ contains a mix of static reference data (tracked) and live runtime
+# state (must NOT be tracked). Persistence across deploys/restarts comes
+# from the Docker bind mount (./data:/app/data in docker-compose.yml) —
+# NOT from git tracking. Tracking live runtime files is actively DANGEROUS:
+# any future `git pull` on the VPS silently reverts them to whatever was
+# last committed, discarding all live data with no warning. This caused a
+# real production incident on 2026-09-04 (control_tower.db reverted to a
+# months-old commit mid-deploy, wiping out same-day repairs) — see
+# /memories/repo/incident_control_tower_db_git_tracked.md for the full
+# post-mortem. The rule going forward: runtime databases/logs/CSVs are
+# ALWAYS gitignored; only static config/reference JSON is ever tracked.
 data/reports/
 data/backups/
 data/*.bak
 data/.bootstrap_probe
 data/.hc_probe
 data/replay.db
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/mls/*.db
+data/ikn/*.db
+data/paper_trades*.csv
+data/paper_trade_log.csv
+data/live/*.jsonl
 
 # ── Large runtime-grown knowledge stores (written by momentum_knowledge_builder)
 # These grow to 30-100MB on VPS and must NOT be overwritten by git pull.
