@@ -105,8 +105,18 @@ class PortfolioAllocationAI:
         # ── Strategy performance weighting ────────────────────────────────────
         # Tilt capital toward high-expectancy strategies; scale back weak ones.
         # Weight is bounded [0.5×, 2.0×] so no single strategy can dominate.
-        perf_weight   = get_performance_tracker().get_performance_weight(
-                            sig.strategy_name)
+        # DTA-PERFWEIGHT-001: this is a pooled, strategy-name-keyed historical
+        # track record — a different kind of signal than kda_conviction
+        # (per-opportunity intelligence). For KDA-authoritative signals (same
+        # population as the sizing gate above), StrategyPerformanceTracker must
+        # never tilt quantity — whether keyed to "KDA_AUTHORITY" itself or to an
+        # original StrategyLab label retained by a "BOTH"-authorized signal.
+        # Non-KDA signals are completely unaffected.
+        if _kda_authoritative:
+            perf_weight = 1.0
+        else:
+            perf_weight = get_performance_tracker().get_performance_weight(
+                              sig.strategy_name)
         if perf_weight != 1.0:
             log.debug("[PortfolioAllocationAI] %s perf_weight=%.2f× (%s)",
                       sig.symbol, perf_weight, sig.strategy_name)
