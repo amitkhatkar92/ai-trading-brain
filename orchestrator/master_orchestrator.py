@@ -6652,9 +6652,28 @@ class MasterOrchestrator:
         except Exception as _mlc_eod_exc:
             log.warning("[MLC] EOD pipeline failed (non-critical): %s", _mlc_eod_exc)
 
+        # ── FINAL_TRADING_ARCHITECTURE_SHADOW_001 — daily shadow-day generator ──
+        # Produces the 20+20 → C2 top-5+5 record that feeds KSL-001 below.
+        # Fully DB-driven (ohlcv_daily), idempotent (skips already-processed
+        # dates), read-only observation. Zero CandidateStore/broker/order calls.
+        try:
+            from scripts.final_trading_architecture_shadow_001 import run_shadow_day as _run_shadow_day
+            _sd_t0 = time.monotonic()
+            _sd_result = _run_shadow_day()
+            _sd_ms = round((time.monotonic() - _sd_t0) * 1000, 1)
+            log.info(
+                "[V3ShadowDay] success=%s skipped=%s trade_date=%s duration_ms=%.1f",
+                _sd_result.get("success"),
+                _sd_result.get("skipped", False),
+                _sd_result.get("trade_date", ""),
+                _sd_ms,
+            )
+        except Exception as _sd_exc:
+            log.warning("[V3ShadowDay] Shadow-day generation failed (non-critical): %s", _sd_exc)
+
         # ── KSL-001: Knowledge System Learning feedback loop ──────────────────
         # Runs every EOD after all learning stages complete.
-        # Guards on shadow file existence so the VPS skips silently (local-only data).
+        # Guards on shadow file existence — now populated daily by V3ShadowDay above.
         # Never modifies trading engine, orders, risk control, or positions.
         try:
             from pathlib import Path as _ksl_chk
