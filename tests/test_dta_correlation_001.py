@@ -45,10 +45,10 @@ def _build_corr_dicts(signals):
     from orchestrator/master_orchestrator.py's call site."""
     out = []
     for s in signals:
+        # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority.
         _kda_authoritative = (
             s.kda_decision in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and s.authorization_source in ("KDA", "BOTH")
-            and s.kda_evidence_state in ("VALIDATED", "DECISION_ELIGIBLE")
         )
         if _kda_authoritative:
             _conf = (
@@ -139,6 +139,21 @@ def test_dict_shape_unaffected():
     sig = _Sig(symbol="SHAPE", confidence=6.0, sector="IT")
     d = _build_corr_dicts([sig])[0]
     assert set(d.keys()) == {"symbol", "sector", "direction", "confidence", "_original_signal"}
+
+
+def test_kda_useful_and_developing_evidence_now_exempted_identical_ranking():
+    """DTA-KDA-AUTHORITY-WIDEN-001: USEFUL/DEVELOPING evidence is now
+    KDA-authoritative, same as VALIDATED/DECISION_ELIGIBLE -- legacy
+    confidence still has no authority for this population."""
+    for ev_state in ("USEFUL", "DEVELOPING"):
+        common = dict(sector="BANK", kda_decision="KNOWLEDGE_BUY",
+                      authorization_source="KDA", kda_evidence_state=ev_state,
+                      kda_conviction=8.0)
+        sig_low  = _Sig(symbol="LOW",  confidence=0.0,  **common)
+        sig_high = _Sig(symbol="HIGH", confidence=10.0, **common)
+        dicts_low  = _build_corr_dicts([sig_low])
+        dicts_high = _build_corr_dicts([sig_high])
+        assert dicts_low[0]["confidence"] == dicts_high[0]["confidence"]
 
 
 def test_kda_authoritative_legacy_confidence_2_to_10_identical_ranking():

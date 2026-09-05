@@ -78,10 +78,11 @@ class PortfolioAllocationAI:
         # as CRE ranking / RiskManager / GAP-029), kda_conviction is the
         # intelligence input rather than legacy scanner confidence — no fallback
         # to confidence if kda_conviction is missing (neutral 0.0 instead).
+        # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority —
+        # it only shapes KDA's own BUY/SELL decision, not what happens after.
         _kda_authoritative = (
             getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
-            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
         )
         if _kda_authoritative:
             _kda_conviction = getattr(sig, "kda_conviction", None)

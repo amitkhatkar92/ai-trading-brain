@@ -1296,42 +1296,17 @@ class MasterOrchestrator:
                     _seen.add(_sig.symbol)
 
                 # Phase 2: add KDA-only authorized signals (StrategyLab rejected)
-                # GAP-029: require minimum confidence for KDA-only signals (no backtest validation)
-                _KDA_ONLY_MIN_CONFIDENCE = 7.5  # higher bar since no backtest gate
+                # DTA-KDA-AUTHORITY-WIDEN-001: GAP-029's confidence floor removed — it
+                # used StrategyLab/scanner-mutable confidence to gate an already-
+                # authorized KDA decision. Independent risk/safety gates downstream
+                # (RiskManagerAI R:R/stop/heat/duplicate, RiskGuardian, CRE exposure
+                # caps) remain fully intact and unaffected by this removal.
                 _kda_only_added = 0
                 for _orig_sig in signals:
                     if _orig_sig.symbol in _seen or _orig_sig.symbol not in _kda_authorized:
                         continue
                     _r3 = _kda_results[_orig_sig.symbol]
-                    # DTA-KDA-AUTHORITY-001: KDA-authorized signals with VALIDATED or
-                    # DECISION_ELIGIBLE evidence are exempt from the raw-confidence gate
-                    # regardless of scanner/StrategyLab strategy label; their confidence
-                    # was already boosted in the KDA loop above to reflect evidence quality.
-                    # All other KDA-only signals still require the elevated bar (7.5).
                     _r3_ev = _r3.get("evidence_state", "")
-                    _kr_gap029_exempt = _r3_ev in ("DECISION_ELIGIBLE", "VALIDATED")
-                    if _orig_sig.confidence < _KDA_ONLY_MIN_CONFIDENCE and not _kr_gap029_exempt:
-                        log.info(
-                            "[KDA-AUTHORITY] %s: KDA-only blocked — confidence %.1f < %.1f "
-                            "(no backtest gate; elevated threshold enforced).",
-                            _orig_sig.symbol, _orig_sig.confidence, _KDA_ONLY_MIN_CONFIDENCE,
-                        )
-                        try:
-                            from audit.dta041_pit_discovery_evidence import get_pit_discovery_evidence_recorder as _gpd1
-                            _gpd1().record_kda_authority_gate(
-                                _orig_sig, granted=False, evidence_state=_r3_ev,
-                                kda_conviction=getattr(_orig_sig, "kda_conviction", None),
-                                strategylab_rejection_reason=_sl_reasons.get(_orig_sig.symbol, "STRATEGY_REJECTED"),
-                                confidence=_orig_sig.confidence,
-                            )
-                        except Exception:
-                            pass
-                        try:
-                            from audit.dta038_trace import get_trace_manager as _dta038_tm1
-                            _dta038_tm1().record_kda_authority_gate(_orig_sig, granted=False)
-                        except Exception:
-                            pass
-                        continue
                     _kda_hor_src3 = _r3.get("horizon_source", "NONE")
                     _orig_sig.authorization_source = "KDA"
                     _orig_sig.kda_decision       = _r3.get("kda_decision")
@@ -1840,7 +1815,6 @@ class MasterOrchestrator:
             _corr_kda_authoritative = (
                 getattr(s, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
                 and getattr(s, "authorization_source", None) in ("KDA", "BOTH")
-                and getattr(s, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
             )
             if _corr_kda_authoritative:
                 _corr_kda_conv = getattr(s, "kda_conviction", None)
@@ -1900,7 +1874,6 @@ class MasterOrchestrator:
                 _se_kda_authoritative = (
                     getattr(s, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
                     and getattr(s, "authorization_source", None) in ("KDA", "BOTH")
-                    and getattr(s, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
                 )
                 if _se_kda_authoritative:
                     _se_kda_conv = getattr(s, "kda_conviction", None)

@@ -4,9 +4,9 @@ DTA-DEBATE-AUTHORITY-003 — RegimeDebateAI canonical KDA-authority gate tests.
 Calls the real MultiAgentDebate().run() (via the real _regime_vote()) directly
 (production code, not a simulation) to verify:
 
-  1. Weak-evidence "KDA_AUTHORITY"-labeled signal (confidence>=7.5 GAP-029
-     path, evidence_state=USEFUL) is NOT exempted -> falls through to the
-     regime_strategy_matrix -> score=5.0/reduce_size (false positive fixed).
+  1. DTA-KDA-AUTHORITY-WIDEN-001: weak-evidence (USEFUL) KDA-authorized
+     signal IS now exempted -> score=8.0/approve/modifier=1.0, same as
+     VALIDATED/DECISION_ELIGIBLE -- evidence_state no longer gates authority.
   2. "BOTH"-authorized, VALIDATED evidence, original StrategyLab strategy_name
      retained -> IS exempted -> score=8.0/approve/modifier=1.0 regardless of
      regime (false negative fixed).
@@ -56,15 +56,16 @@ def _regime_vote_of(sig: TradeSignal, regime=RegimeLabel.RANGE_MARKET):
     return next(v for v in votes if v.agent_name == "RegimeDebateAI")
 
 
-def test_weak_evidence_kda_authority_label_not_exempted():
-    # confidence>=7.5 GAP-029 path with USEFUL evidence — strategy_name is
-    # "KDA_AUTHORITY" but the canonical gate must reject it.
+def test_weak_evidence_kda_authority_label_now_exempted():
+    """DTA-KDA-AUTHORITY-WIDEN-001: USEFUL evidence + KNOWLEDGE_BUY +
+    authorization_source KDA is now exempted, same as VALIDATED/
+    DECISION_ELIGIBLE."""
     sig = _sig(strategy_name="KDA_AUTHORITY", confidence=8.0,
                kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
                kda_evidence_state="USEFUL")
     v = _regime_vote_of(sig, regime=RegimeLabel.RANGE_MARKET)
-    assert v.vote == "reduce_size"
-    assert v.score == 5.0
+    assert v.vote == "approve"
+    assert v.score == 8.0
 
 
 def test_both_authorized_validated_original_strategy_name_is_exempted():

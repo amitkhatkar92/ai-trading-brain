@@ -258,10 +258,11 @@ class RiskManagerAI:
         # authority gate) — RiskManager's job is risk/safety, not a second
         # opportunity-quality score. The confidence floor is skipped only
         # for this population; all other signals are unaffected.
+        # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority —
+        # it only shapes KDA's own BUY/SELL decision, not what happens after.
         _kda_authoritative = (
             getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
-            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
         )
         if not _kda_authoritative and sig.confidence < MIN_CONFIDENCE_SCORE:
             return f"Confidence {sig.confidence:.1f} < {MIN_CONFIDENCE_SCORE}"

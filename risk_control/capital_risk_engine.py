@@ -406,10 +406,11 @@ class CapitalRiskEngine:
             # the portfolio independent of strategy_name, so KDA-authoritative
             # candidates are feasibility-checked against the full deployable
             # pool instead of an arbitrary strategy-family budget share.
+            # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority —
+            # it only shapes KDA's own BUY/SELL decision, not what happens after.
             _kda_authoritative = (
                 getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
                 and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
-                and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
             )
             if _kda_authoritative:
                 budget = deployable
@@ -688,10 +689,11 @@ class CapitalRiskEngine:
         if sl_distance < 0.001 or sig.entry_price <= 0:
             return 0
 
+        # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority —
+        # it only shapes KDA's own BUY/SELL decision, not what happens after.
         _kda_authoritative = (
             getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
-            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
         )
         if _kda_authoritative:
             _k_mult = 1.0

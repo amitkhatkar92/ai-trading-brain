@@ -62,10 +62,10 @@ def _build_se_trades(signals):
     orchestrator/master_orchestrator.py's SmartExecutionEngine call site."""
     out = []
     for s in signals:
+        # DTA-KDA-AUTHORITY-WIDEN-001: evidence_state no longer gates authority.
         _kda_authoritative = (
             s.kda_decision in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and s.authorization_source in ("KDA", "BOTH")
-            and s.kda_evidence_state in ("VALIDATED", "DECISION_ELIGIBLE")
         )
         if _kda_authoritative:
             _conf = (
@@ -268,5 +268,7 @@ def test_kda_only_both_weak_kda_non_kda_populations():
 
     assert by_symbol["KDAONLY"]["confidence"] == 0.8
     assert by_symbol["BOTHSIG"]["confidence"] == 0.7  # kda_conviction, not confidence=6.0
-    assert by_symbol["WEAKKDA"]["confidence"] == 0.65  # USEFUL not VALIDATED/DECISION_ELIGIBLE -> legacy fallback
+    # DTA-KDA-AUTHORITY-WIDEN-001: USEFUL evidence is now KDA-authoritative
+    # too -- missing kda_conviction means neutral 0.0, never a legacy fallback.
+    assert by_symbol["WEAKKDA"]["confidence"] == 0.0
     assert by_symbol["NONKDA"]["confidence"] == 0.65

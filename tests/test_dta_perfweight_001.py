@@ -10,7 +10,8 @@ monkeypatch, to verify:
   3. BOTH + strong StrategyLab history -> quantity unchanged (closes the
      StrategyLab-identity leak).
   4. KDA-only ("KDA_AUTHORITY" label) -> quantity unchanged.
-  5. Weak/partial KDA -> existing perf_weight STILL applies (regression).
+  5. DTA-KDA-AUTHORITY-WIDEN-001: USEFUL evidence now bypasses perf_weight
+     too (tracker never called) -- evidence_state no longer gates authority.
   6. Non-KDA -> existing perf_weight STILL applies (regression).
   7. Strategy name cannot alter KDA-authoritative sizing: same signal, two
      different strategy_name values with different hypothetical weights
@@ -121,22 +122,24 @@ def test_kda_only_label_quantity_unchanged(monkeypatch):
     assert baseline.quantity == weighted.quantity
 
 
-def test_weak_partial_kda_still_uses_existing_perf_weight(monkeypatch):
-    """Regression: NOT KDA-authoritative (evidence_state=USEFUL) -> perf_weight
-    still applies exactly as before."""
+def test_kda_useful_evidence_now_bypasses_perf_weight(monkeypatch):
+    """DTA-KDA-AUTHORITY-WIDEN-001: USEFUL evidence (kda_decision BUY,
+    authorization_source KDA) is now KDA-authoritative too -- perf_weight
+    is bypassed exactly like VALIDATED/DECISION_ELIGIBLE, and the tracker
+    is never called."""
     pa = PortfolioAllocationAI()
     sig_common = dict(
         strategy_name="KDA_AUTHORITY", confidence=6.5,
         kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
         kda_evidence_state="USEFUL", kda_conviction=None,
     )
-    _patch_tracker(monkeypatch, weight=1.0)
+    fake = _patch_tracker(monkeypatch, weight=1.0)
     baseline = pa._size(_sig(**sig_common), _snapshot())
-    _patch_tracker(monkeypatch, weight=2.0)
+    fake2 = _patch_tracker(monkeypatch, weight=2.0)
     weighted = pa._size(_sig(**sig_common), _snapshot())
     assert baseline is not None and weighted is not None
-    assert weighted.quantity != baseline.quantity
-    assert weighted.quantity == max(1, int(baseline.quantity * 2.0))
+    assert weighted.quantity == baseline.quantity
+    assert fake.calls == [] and fake2.calls == []
 
 
 def test_non_kda_still_uses_existing_perf_weight(monkeypatch):

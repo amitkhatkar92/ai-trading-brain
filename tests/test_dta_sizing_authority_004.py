@@ -13,8 +13,11 @@ Calls the real CapitalRiskEngine.allocate() / _size_position() directly
   3. CRAFTSMAN-shape candidate (wide stop distance) still rejected.
   4. Named-strategy candidate: confidence-based knowledge_multiplier
      formula unchanged.
-  5. KDA USEFUL/DEVELOPING evidence not exempted -- still confidence-based.
-  6. Partial KDA-authoritative matches do not get the fixed multiplier.
+  5. DTA-KDA-AUTHORITY-WIDEN-001: KDA USEFUL/DEVELOPING evidence IS now
+     exempted, same as VALIDATED/DECISION_ELIGIBLE -- fixed multiplier=1.0
+     applies regardless of evidence_state.
+  6. Partial KDA-authoritative matches (authorization_source not KDA/BOTH)
+     do not get the fixed multiplier.
   7. Deployable-capital sensitivity (VIX/drawdown/regime) still throttles
      KDA-authoritative quantity proportionally, end to end.
   8. MAX_POSITIONS and exposure cap unaffected.
@@ -137,10 +140,10 @@ def test_named_strategy_knowledge_multiplier_unchanged():
     assert result[0].quantity == expected_qty
 
 
-def test_kda_useful_evidence_not_exempted_confidence_based():
-    """T5: KDA USEFUL evidence (not VALIDATED/DECISION_ELIGIBLE) is NOT
-    KDA-authoritative -- still uses the confidence-based multiplier, so
-    confidence value DOES matter for this population."""
+def test_kda_useful_evidence_now_exempted_identical_sizing():
+    """T5: DTA-KDA-AUTHORITY-WIDEN-001 — KDA USEFUL evidence IS now
+    KDA-authoritative -- fixed multiplier=1.0 applies, so confidence value
+    no longer matters for this population (identical sizing regardless)."""
     cre = _cre()
     sig_low  = _sig(symbol="LOW",  strategy_name="KDA_AUTHORITY", confidence=1.0,
                      stop_loss=98.0, target_price=104.0,
@@ -153,7 +156,7 @@ def test_kda_useful_evidence_not_exempted_confidence_based():
     result_low  = _cre().allocate([sig_low],  _snapshot(), portfolio=None)
     result_high = _cre().allocate([sig_high], _snapshot(), portfolio=None)
     assert len(result_low) == 1 and len(result_high) == 1
-    assert result_low[0].quantity != result_high[0].quantity
+    assert result_low[0].quantity == result_high[0].quantity
 
 
 def test_partial_kda_authoritative_matches_use_confidence_based():

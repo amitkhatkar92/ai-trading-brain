@@ -10,10 +10,11 @@ code, not a simulation) to verify:
      falls back to legacy confidence.
   3. Non-KDA-authoritative signals are completely unchanged (both the
      normal confidence path and the confidence<=0 fallback-to-0.7 path).
-  4. KDA USEFUL/DEVELOPING evidence (not VALIDATED/DECISION_ELIGIBLE) is
-     NOT exempted -- still uses legacy confidence.
-  5. Partial KDA-authoritative matches (missing one of the three required
-     conditions) do not trigger the KDA path.
+  4. DTA-KDA-AUTHORITY-WIDEN-001: KDA USEFUL/DEVELOPING evidence (not just
+     VALIDATED/DECISION_ELIGIBLE) IS now exempted -- evidence_state only
+     shapes KDA's own decision, not what happens after it authorizes.
+  5. Partial KDA-authoritative matches (missing kda_decision BUY/SELL or
+     authorization_source KDA/BOTH) do not trigger the KDA path.
   6. bucket_capital / caps / perf_weight machinery is untouched --
      downstream caps still apply identically regardless of which
      intelligence input was used.
@@ -108,8 +109,10 @@ def test_non_kda_zero_confidence_fallback_unchanged():
     assert out.quantity == _expected_qty(0.7)
 
 
-def test_kda_useful_evidence_not_exempted_uses_confidence():
-    """T4: KDA USEFUL evidence (not VALIDATED/DECISION_ELIGIBLE) still uses confidence."""
+def test_kda_useful_evidence_now_exempted_uses_kda_conviction():
+    """T4: DTA-KDA-AUTHORITY-WIDEN-001 — KDA USEFUL evidence (not VALIDATED/
+    DECISION_ELIGIBLE) is now exempted, same as VALIDATED, and uses
+    kda_conviction/10 rather than legacy confidence."""
     pa = _pa()
     sig = _sig(
         confidence=6.0,
@@ -118,11 +121,12 @@ def test_kda_useful_evidence_not_exempted_uses_confidence():
     )
     out = pa._size(sig, _snapshot())
     assert out is not None
-    assert out.quantity == _expected_qty(0.6)   # confidence-based, kda_conviction ignored
+    assert out.quantity == _expected_qty(0.9)   # kda_conviction-based now
 
 
-def test_kda_developing_evidence_not_exempted_uses_confidence():
-    """T4b: KDA DEVELOPING evidence -> still uses confidence."""
+def test_kda_developing_evidence_now_exempted_uses_kda_conviction():
+    """T4b: DTA-KDA-AUTHORITY-WIDEN-001 — KDA DEVELOPING evidence is now
+    exempted, same as VALIDATED/USEFUL, and uses kda_conviction/10."""
     pa = _pa()
     sig = _sig(
         confidence=6.0,
@@ -131,7 +135,7 @@ def test_kda_developing_evidence_not_exempted_uses_confidence():
     )
     out = pa._size(sig, _snapshot())
     assert out is not None
-    assert out.quantity == _expected_qty(0.6)
+    assert out.quantity == _expected_qty(0.9)
 
 
 def test_kda_authoritative_requires_full_combination_partial_matches_use_confidence():

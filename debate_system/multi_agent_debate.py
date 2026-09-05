@@ -258,7 +258,6 @@ class MultiAgentDebate:
         _kda_authoritative = (
             getattr(sig, "kda_decision", None) in ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
             and getattr(sig, "authorization_source", None) in ("KDA", "BOTH")
-            and getattr(sig, "kda_evidence_state", None) in ("VALIDATED", "DECISION_ELIGIBLE")
         )
 
         # KDA-authoritative signals have already passed regime-aware evidence

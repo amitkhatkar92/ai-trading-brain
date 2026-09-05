@@ -142,13 +142,25 @@ Also auto-includes any evolved variants from `data/evolved_strategies.json` that
 
 `BacktestingAI` enforces three gates before a signal is forwarded: **WalkForward ≥ 80%**, **OverfitScore < 3.0**, **CrossMarket ≥ 50%**.
 
+StrategyLab's approval is not final. A **Knowledge Decision Authority (KDA)**
+layer (`knowledge_authority/`) evaluates every scanner signal independently
+and can (a) authorize BUY/SELL for signals StrategyLab rejected, or (b) block
+signals StrategyLab approved via `KNOWLEDGE_HOLD`. Once KDA authorizes
+BUY/SELL, StrategyLab has no further influence on sizing, budget, confidence
+floor, ranking, or regime veto for that trade — StrategyLab is research/
+learning/strategy-generation infrastructure, not an authority over an
+already-authorized KDA decision (see Layer 6/7/10 notes below).
+
 ---
 
 ### Layer 6 — CapitalRiskEngine
 **File:** `risk_control/capital_risk_engine.py`  
 **Class:** `CapitalRiskEngine`
 
-Sizes each signal based on strategy budget allocation. Capital = ₹1,000,000 (configurable). Deployable = 50%.
+Sizes each signal based on strategy budget allocation — **except KDA-authorized
+signals** (`kda_decision ∈ {KNOWLEDGE_BUY, KNOWLEDGE_SELL}`), which receive the
+full deployable capital pool and a fixed 1.0× risk multiplier, independent of
+strategy identity (see Layer 5). Capital = ₹1,000,000 (configurable). Deployable = 50%.
 
 ---
 
@@ -157,6 +169,9 @@ Sizes each signal based on strategy budget allocation. Capital = ₹1,000,000 (c
 **Classes:** `RiskManagerAI`, `PortfolioAllocationAI`, `StressTestAI`
 
 Per-signal risk checks: max 1% capital per trade, 5% total portfolio risk. Stress-tests 4 scenarios.
+The confidence floor is skipped for KDA-authorized signals — RiskManagerAI
+defers opportunity-quality judgment to KDA and checks only risk/safety gates
+(R:R, stop distance, portfolio heat, duplicate symbol) for this population.
 
 ---
 
@@ -192,7 +207,8 @@ Returns `GuardianDecision(approved, rule_triggered, reason, approved_signals, re
 **Files:** `debate_system/`, `decision_ai/`  
 **Classes:** `MultiAgentDebate`, `DecisionEngine`
 
-5 debater agents score every signal independently:
+5 debater agents score every signal independently, plus a 6th
+(InstitutionalDNAAI) that casts an additive vote only when PIG has evidence:
 
 | Agent | Weight |
 |---|---|
@@ -201,14 +217,19 @@ Returns `GuardianDecision(approved, rule_triggered, reason, approved_signals, re
 | Macro | 0.20 |
 | Sentiment | 0.15 |
 | Regime | 0.10 |
+| InstitutionalDNAAI | 0.08 (additive, only when PIG has evidence) |
+
+RegimeDebateAI's strategy-regime compatibility matrix is skipped for
+KDA-authorized signals — HBE evidence already encodes regime compatibility
+for that population.
 
 `DecisionEngine` aggregates votes → weighted score → **VIX-adaptive threshold check**:
 
 | VIX Level | Effective Threshold |
 |---|---|
-| < 16 | 6.5 |
-| 16–20 | 6.6 |
-| 20–30 | 6.7 |
+| < 20 | 6.5 |
+| 20–25 | 6.6 |
+| 25–30 | 6.7 |
 | > 30 | 6.9 |
 
 Base config: `MIN_CONFIDENCE_SCORE = 6.5`. High-asymmetry setups (fat-tail R:R) receive up to −1.0 pt reduction. Partial-size approval for scores within 0.2 of threshold.

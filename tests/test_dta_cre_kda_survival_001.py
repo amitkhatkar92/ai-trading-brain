@@ -142,9 +142,10 @@ def test_named_strategy_still_uses_strategy_budget():
     assert _cre_budget_of(result[0]) == int(_DEPLOYABLE * 0.22)  # Mean_Reversion share
 
 
-def test_kda_useful_evidence_not_exempted_uses_strategy_budget():
-    """T4b: KDA USEFUL evidence (not VALIDATED/DECISION_ELIGIBLE) is NOT
-    KDA-authoritative -- still uses the strategy-share budget."""
+def test_kda_useful_evidence_now_exempted_uses_full_deployable():
+    """T4b: DTA-KDA-AUTHORITY-WIDEN-001 — KDA USEFUL evidence IS now
+    KDA-authoritative, same as VALIDATED/DECISION_ELIGIBLE -- uses the full
+    deployable pool, not the strategy-share budget."""
     cre = _cre()
     sig = _sig(
         strategy_name="KDA_AUTHORITY", confidence=7.0,
@@ -153,7 +154,7 @@ def test_kda_useful_evidence_not_exempted_uses_strategy_budget():
     )
     result = cre.allocate([sig], _snapshot(), portfolio=None)
     assert len(result) == 1
-    assert _cre_budget_of(result[0]) == int(_DEPLOYABLE * 0.10)  # _DEFAULT_SHARE, unchanged
+    assert _cre_budget_of(result[0]) == int(_DEPLOYABLE)
 
 
 def test_max_positions_cap_unaffected():

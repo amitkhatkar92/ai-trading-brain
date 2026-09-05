@@ -77,8 +77,10 @@ def test_non_kda_low_confidence_still_rejected():
     assert "Confidence" in reason and "6.0" in reason
 
 
-def test_kda_useful_evidence_low_confidence_still_rejected():
-    """T4: KDA USEFUL evidence + confidence 6.0 → existing confidence gate remains."""
+def test_kda_useful_evidence_low_confidence_exempted():
+    """T4: DTA-KDA-AUTHORITY-WIDEN-001 — KDA USEFUL evidence + confidence 6.0
+    is now exempt from the confidence floor; evidence_state only shapes KDA's
+    own decision, not what happens after it authorizes BUY/SELL."""
     rm = _rm()
     sig = _sig(
         confidence=6.0,
@@ -87,12 +89,12 @@ def test_kda_useful_evidence_low_confidence_still_rejected():
         kda_evidence_state="USEFUL",
     )
     reason = rm._check(sig, seen=set())
-    assert reason is not None
-    assert "Confidence" in reason
+    assert reason is None, f"expected pass, got rejection: {reason}"
 
 
-def test_kda_developing_evidence_low_confidence_still_rejected():
-    """T4b: KDA DEVELOPING evidence + confidence 6.0 → existing confidence gate remains."""
+def test_kda_developing_evidence_low_confidence_exempted():
+    """T4b: DTA-KDA-AUTHORITY-WIDEN-001 — KDA DEVELOPING evidence + confidence
+    6.0 is now exempt from the confidence floor, same as VALIDATED/USEFUL."""
     rm = _rm()
     sig = _sig(
         confidence=6.0,
@@ -101,24 +103,21 @@ def test_kda_developing_evidence_low_confidence_still_rejected():
         kda_evidence_state="DEVELOPING",
     )
     reason = rm._check(sig, seen=set())
-    assert reason is not None
-    assert "Confidence" in reason
+    assert reason is None, f"expected pass, got rejection: {reason}"
 
 
 def test_kda_authoritative_requires_full_combination_partial_matches_do_not_exempt():
-    """T5: partial KDA-authoritative matches (missing one of the three
-    required conditions) do NOT exempt the confidence floor."""
+    """T5: partial KDA-authoritative matches (missing one of the two required
+    conditions: kda_decision BUY/SELL, authorization_source KDA/BOTH) do NOT
+    exempt the confidence floor. DTA-KDA-AUTHORITY-WIDEN-001: evidence_state
+    is no longer one of the required conditions — a missing/None evidence_state
+    alone no longer disqualifies the exemption (covered by a separate test)."""
     rm = _rm()
 
     # Missing authorization_source
     sig_a = _sig(confidence=6.0, kda_decision="KNOWLEDGE_BUY",
                  authorization_source=None, kda_evidence_state="VALIDATED")
     assert rm._check(sig_a, seen=set()) is not None
-
-    # Missing kda_evidence_state (None)
-    sig_b = _sig(confidence=6.0, kda_decision="KNOWLEDGE_BUY",
-                 authorization_source="KDA", kda_evidence_state=None)
-    assert rm._check(sig_b, seen=set()) is not None
 
     # kda_decision is KNOWLEDGE_WAIT, not BUY/SELL
     sig_c = _sig(confidence=6.0, kda_decision="KNOWLEDGE_WAIT",
@@ -129,6 +128,16 @@ def test_kda_authoritative_requires_full_combination_partial_matches_do_not_exem
     sig_d = _sig(confidence=6.0, kda_decision="KNOWLEDGE_BUY",
                  authorization_source="STRATEGY_LAB", kda_evidence_state="VALIDATED")
     assert rm._check(sig_d, seen=set()) is not None
+
+
+def test_kda_authoritative_missing_evidence_state_still_exempt():
+    """T5b: DTA-KDA-AUTHORITY-WIDEN-001 — a KDA-authorized signal with no
+    evidence_state recorded (None) is still exempt from the confidence floor;
+    evidence_state is no longer part of the exemption condition at all."""
+    rm = _rm()
+    sig = _sig(confidence=6.0, kda_decision="KNOWLEDGE_BUY",
+               authorization_source="KDA", kda_evidence_state=None)
+    assert rm._check(sig, seen=set()) is None
 
 
 def test_rr_gate_unchanged_for_kda_authoritative():

@@ -763,7 +763,11 @@ class KnowledgeDecisionPipeline:
             "entry_price": entry,
             "atr": atr,
             "atr_pct": round(atr / entry * 100, 4) if entry > 0 else 0.0,
-            "scanner_confidence": float(getattr(signal, "confidence", 0.0) or 0.0),
+            # DTA-KDA-AUTHORITY-WIDEN-001: use the pre-mutation scanner_score (set
+            # once at scan time, before PIG/StrategyLab confidence mutation) so HBE's
+            # Level-1 evidence tolerance match is never StrategyLab-influenced.
+            # Falls back to confidence for signal types that don't set scanner_score.
+            "scanner_confidence": float(getattr(signal, "scanner_score", 0.0) or getattr(signal, "confidence", 0.0) or 0.0),
             "candidate_score": float(getattr(signal, "candidate_score", 0.0) or 0.0),
             "v1_score": float(getattr(signal, "candidate_score", 0.0) or 0.0),
             "scanner_target": float(getattr(signal, "target_price", 0.0) or 0.0),
