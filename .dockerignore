@@ -67,6 +67,5 @@ AUTOSTART-SETUP.md
 ARCHITECTURE.md
 readiness_suite.py
 system_validation.py
-system_readiness_test.py
 calibrate.py
 run_live.py
