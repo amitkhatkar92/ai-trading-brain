@@ -157,6 +157,7 @@ def main():
         import runpy
         readiness_path = os.path.join(os.path.dirname(__file__),
                                       "system_readiness_test.py")
+        sys.argv = [readiness_path]   # strip --readiness; script has its own argparse
         runpy.run_path(readiness_path, run_name="__main__")
         return
 
