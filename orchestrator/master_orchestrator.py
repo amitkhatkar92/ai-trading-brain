@@ -5230,53 +5230,82 @@ class MasterOrchestrator:
 
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
-        # D-017 + D8-003 SOB: guard survives container restart via disk persistence.
-        # In-memory _last_eod_date resets to None on restart, so load from disk first.
+        # DTA-EOD-RETRY-001: guard tracks STARTED vs COMPLETED (not just a date)
+        # so a freeze/crash mid-pipeline leaves the day retryable instead of
+        # permanently marked done. D-017 + D8-003 SOB: guard survives container
+        # restart via disk persistence — in-memory state resets on restart, so
+        # always consult disk first.
         from pathlib import Path as _EodPath
         import json as _eod_json
         _EOD_STATUS_FILE = _EodPath("data/eod_status.json")
         _today = datetime.now().strftime("%Y-%m-%d")
-        if getattr(self, "_last_eod_date", None) is None:
+
+        def _write_eod_status(_status: str) -> None:
+            """D9-010: atomic fsync write — survives process kill between write
+            and flush. started_at is preserved from the STARTED write when completing;
+            completed_at is only ever set on the COMPLETED write (never carried
+            over stale from a prior day)."""
+            try:
+                import os as _eod_os
+                import tempfile as _eod_tmp
+                _EOD_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
+                _prev = getattr(self, "_eod_status_cache", {}) or {}
+                _same_day_prev = _prev if _prev.get("last_eod_date") == _today else {}
+                _payload = {
+                    "last_eod_date": _today,
+                    "status": _status,
+                    "started_at": _same_day_prev.get("started_at") or datetime.now().isoformat(),
+                    "completed_at": datetime.now().isoformat() if _status == "COMPLETED" else None,
+                }
+                _content = _eod_json.dumps(_payload, indent=2)
+                _fd, _tmp = _eod_tmp.mkstemp(
+                    dir=str(_EOD_STATUS_FILE.parent), prefix=".eod_status_", suffix=".tmp"
+                )
+                try:
+                    with _eod_os.fdopen(_fd, "w", encoding="utf-8") as _fh:
+                        _fh.write(_content)
+                        _fh.flush()
+                        _eod_os.fsync(_fh.fileno())
+                    _eod_os.replace(_tmp, str(_EOD_STATUS_FILE))
+                except Exception:
+                    try:
+                        _eod_os.unlink(_tmp)
+                    except OSError:
+                        pass
+                    raise
+                self._eod_status_cache = _payload
+                self._last_eod_date = _today
+            except Exception as _pe:
+                log.error(
+                    "[EOD] Could not persist EOD status (%s) to disk: %s  "
+                    "— in-memory guard active for current process only.",
+                    _status, _pe,
+                )
+
+        if getattr(self, "_eod_status_cache", None) is None:
             try:
                 if _EOD_STATUS_FILE.exists():
-                    self._last_eod_date = _eod_json.loads(
+                    self._eod_status_cache = _eod_json.loads(
                         _EOD_STATUS_FILE.read_text(encoding="utf-8")
-                    ).get("last_eod_date", "")
+                    )
+                else:
+                    self._eod_status_cache = {}
             except Exception as _le:
                 log.warning("[EOD] Could not load EOD status file: %s", _le)
-        if getattr(self, "_last_eod_date", None) == _today:
-            log.info("[EOD] Duplicate guard: already ran EOD learning for %s — skipping.", _today)
-            return
-        self._last_eod_date = _today
-        # Persist so restart cannot trigger a second run for the same day
-        try:
-            import os as _eod_os
-            import tempfile as _eod_tmp
-            _EOD_STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            _content = _eod_json.dumps({"last_eod_date": _today}, indent=2)
-            # D9-010: atomic fsync write — survive process kill between write and flush
-            _fd, _tmp = _eod_tmp.mkstemp(
-                dir=str(_EOD_STATUS_FILE.parent), prefix=".eod_status_", suffix=".tmp"
+                self._eod_status_cache = {}
+
+        _cached = self._eod_status_cache or {}
+        if _cached.get("last_eod_date") == _today:
+            if _cached.get("status") == "COMPLETED":
+                log.info("[EOD] Duplicate guard: already completed EOD learning for %s — skipping.", _today)
+                return
+            log.warning(
+                "[EOD] Previous attempt for %s did not complete (status=%s, started_at=%s) — "
+                "retrying full pipeline now.",
+                _today, _cached.get("status", "UNKNOWN"), _cached.get("started_at", "?"),
             )
-            try:
-                with _eod_os.fdopen(_fd, "w", encoding="utf-8") as _fh:
-                    _fh.write(_content)
-                    _fh.flush()
-                    _eod_os.fsync(_fh.fileno())
-                _eod_os.replace(_tmp, str(_EOD_STATUS_FILE))
-            except Exception:
-                try:
-                    _eod_os.unlink(_tmp)
-                except OSError:
-                    pass
-                raise
-        except Exception as _pe:
-            log.error(
-                "[EOD] Could not persist EOD status to disk: %s  "
-                "— EOD may re-run on next container restart. "
-                "In-memory guard active for current process.",
-                _pe,
-            )
+
+        _write_eod_status("STARTED")
         log.info("── Layer 10: EOD Learning ──")
         # ── DTA-038: Generate EOD self-audit report ───────────────────
         try:
@@ -6873,6 +6902,14 @@ class MasterOrchestrator:
             )
         except Exception as _klp_ksl_exc:
             log.warning("[KLP-KSL] Knowledge bridge failed (non-critical): %s", _klp_ksl_exc)
+
+        # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
+        # above has been reached. If the process freezes/crashes anywhere
+        # before this point, the guard stays at STARTED and the next
+        # invocation for the same day will retry the full pipeline instead
+        # of silently skipping it.
+        _write_eod_status("COMPLETED")
+        log.info("[EOD] Learning pipeline marked COMPLETED for %s.", _today)
 
     def _run_prepared_universe_audit(self, trades: list) -> None:
         """

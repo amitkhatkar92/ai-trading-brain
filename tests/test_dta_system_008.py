@@ -678,8 +678,11 @@ class TestD017PersistentEodGuard:
         import inspect
         from orchestrator.master_orchestrator import MasterOrchestrator
         src = inspect.getsource(MasterOrchestrator._do_eod_learning)
+        # DTA-EOD-RETRY-001: guard now checks STARTED vs COMPLETED status
+        # (not just a bare date match) — disk load must still precede it.
         load_pos  = src.find("_EOD_STATUS_FILE.exists()")
-        guard_pos = src.find("if getattr(self, \"_last_eod_date\", None) == _today")
+        guard_pos = src.find('_cached.get("last_eod_date") == _today')
+        assert load_pos != -1 and guard_pos != -1
         assert load_pos < guard_pos, "Disk load must come before the guard check"
 
     def test_T054_eod_status_file_path_is_data_dir(self):
@@ -693,6 +696,90 @@ class TestD017PersistentEodGuard:
         from orchestrator.master_orchestrator import MasterOrchestrator
         src = inspect.getsource(MasterOrchestrator._do_eod_learning)
         assert "last_eod_date" in src
+
+    # ── DTA-EOD-RETRY-001: STARTED-but-not-COMPLETED must retry, not skip ──
+    def _minimal_orchestrator(self):
+        """_do_eod_learning() touches dozens of self.* attributes across its
+        ~1600 lines (self.bus, self.mlc, self.notifier, ...). Rather than
+        enumerating every one, unset attributes lazily resolve to a fresh
+        MagicMock so the guard/retry logic under test can run to completion
+        without being blocked by unrelated AttributeErrors."""
+        from orchestrator.master_orchestrator import MasterOrchestrator
+
+        class _FallbackMO(MasterOrchestrator):
+            def __getattr__(self, name):
+                m = MagicMock()
+                object.__setattr__(self, name, m)
+                return m
+
+        mo = _FallbackMO.__new__(_FallbackMO)
+        # Must be real None (not the __getattr__ fallback) so _do_eod_learning's
+        # own guard-state checks (getattr(..., None) is None) behave correctly.
+        mo._eod_status_cache = None
+        mo._last_eod_date = None
+        mo.trade_monitor = MagicMock()
+        mo.trade_monitor.get_closed_trades.return_value = []
+        mo._todays_signals = []
+        mo.order_manager = MagicMock()
+        mo.order_manager._orders = {}
+        mo.notifier = None
+        mo.knowledge_pipeline = None
+        mo.mlc = None
+        mo.learning_engine = MagicMock()
+        mo.learning_engine.learn.return_value = None
+        return mo
+
+    def test_T056_completed_status_skips_rerun(self, tmp_path, monkeypatch):
+        """A day already marked COMPLETED must be skipped (no retry)."""
+        monkeypatch.chdir(tmp_path)
+        today = date.today().strftime("%Y-%m-%d")
+        status_path = tmp_path / "data" / "eod_status.json"
+        status_path.parent.mkdir(parents=True)
+        status_path.write_text(json.dumps({
+            "last_eod_date": today, "status": "COMPLETED",
+            "started_at": "2020-01-01T00:00:00", "completed_at": "2020-01-01T00:05:00",
+        }))
+        mo = self._minimal_orchestrator()
+        with patch("logging.Logger.info") as mock_log:
+            mo._do_eod_learning()
+        skip_logged = any(
+            "Duplicate guard" in str(c.args[0]) for c in mock_log.call_args_list if c.args
+        )
+        assert skip_logged, "COMPLETED status must be skipped with a duplicate-guard log"
+        # File on disk must be unchanged (still the old completed_at) — proves no rerun happened
+        content = json.loads(status_path.read_text())
+        assert content["completed_at"] == "2020-01-01T00:05:00"
+
+    def test_T057_started_but_not_completed_retries_and_completes(self, tmp_path, monkeypatch):
+        """DTA-EOD-RETRY-001: a STARTED-but-not-COMPLETED day (simulating a
+        freeze/crash mid-pipeline) must retry the full pipeline and end up
+        COMPLETED — this is the core behavior change fix (A) introduces."""
+        monkeypatch.chdir(tmp_path)
+        today = date.today().strftime("%Y-%m-%d")
+        status_path = tmp_path / "data" / "eod_status.json"
+        status_path.parent.mkdir(parents=True)
+        status_path.write_text(json.dumps({
+            "last_eod_date": today, "status": "STARTED",
+            "started_at": "2020-01-01T00:00:00", "completed_at": None,
+        }))
+        mo = self._minimal_orchestrator()
+        mo._do_eod_learning()
+        content = json.loads(status_path.read_text())
+        assert content["status"] == "COMPLETED", (
+            "A previously-STARTED (crashed) day must retry to completion, not stay stuck"
+        )
+        assert content["completed_at"] is not None
+
+    def test_T058_fresh_day_writes_started_then_completed(self, tmp_path, monkeypatch):
+        """A fresh day (no prior status file) must go STARTED -> COMPLETED."""
+        monkeypatch.chdir(tmp_path)
+        mo = self._minimal_orchestrator()
+        mo._do_eod_learning()
+        status_path = tmp_path / "data" / "eod_status.json"
+        content = json.loads(status_path.read_text())
+        assert content["status"] == "COMPLETED"
+        assert content["started_at"] is not None
+        assert content["completed_at"] is not None
 
 
 # ─────────────────────────────────────────────────────────────────────────────
