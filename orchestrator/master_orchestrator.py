@@ -6903,6 +6903,29 @@ class MasterOrchestrator:
         except Exception as _klp_ksl_exc:
             log.warning("[KLP-KSL] Knowledge bridge failed (non-critical): %s", _klp_ksl_exc)
 
+        # ── DTA-PHASE2E-EOD-001: Selection-intelligence fingerprint tracker ──
+        # READ-ONLY observation/learning layer. Runs after all evidence-
+        # producing stages above (KSL-001, LOL-EOD, LOL-BRIDGE, KLP->KSL) so
+        # it sees the latest resolved evidence. Extends the fingerprint
+        # snapshot history in data/fingerprint_tracking_history.jsonl only —
+        # zero reads/writes on V3 scoring, C2 ranking, StrategyLab, KDA,
+        # DecisionEngine, Risk, or Execution, and never influences any live
+        # trading decision. Idempotent per as-of-date (append_snapshot dedup).
+        # A failure here is logged and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.fingerprint_tracker_001 import (
+                run_tracking_silent as _run_fp_tracking,
+            )
+            _fp_results = _run_fp_tracking()
+            for _fp_r in _fp_results:
+                log.info(
+                    "[Phase2E-Tracker] fingerprint=%s as_of=%s new_snapshot=%s confidence=%s",
+                    _fp_r.get("fingerprint_name"), _fp_r.get("as_of_date"),
+                    _fp_r.get("wrote_new"), _fp_r.get("confidence"),
+                )
+        except Exception as _fp_exc:
+            log.warning("[Phase2E-Tracker] fingerprint tracking failed (non-critical): %s", _fp_exc)
+
         # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
         # above has been reached. If the process freezes/crashes anywhere
         # before this point, the guard stays at STARTED and the next
