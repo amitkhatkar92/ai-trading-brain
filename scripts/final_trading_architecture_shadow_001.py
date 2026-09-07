@@ -849,6 +849,17 @@ def run_shadow_day(
                         "v3_up_score" if direction == "UP" else "v3_down_score", 0) or 0), 6),
                     "v3_rank":              pool_rank,
                     "v3_model_version":     "V3_FINAL",
+                    # Phase 1 (KSL-001 feedback completeness) — raw V3 features,
+                    # preserved as-computed by mover_discovery_v3.compute_v3_features().
+                    # Additive only: does not affect v3_score, C2 ranking, or selection.
+                    "atr_pct":              cand.get("atr_pct"),
+                    "mom_5d":               cand.get("mom_5d"),
+                    "mom_accel":            cand.get("mom_accel"),
+                    "vol_ratio":            cand.get("vol_ratio"),
+                    "rs_pct_5d":            cand.get("rs_pct_5d"),
+                    "rsi_14":               cand.get("rsi_14"),
+                    "hv_20":                cand.get("hv_20"),
+                    "vol_expansion":        cand.get("vol_expansion"),
                     # Pool
                     "pool_size":            len(pool),
                     "pool_rank":            pool_rank,

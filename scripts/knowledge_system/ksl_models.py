@@ -20,6 +20,7 @@ from typing import Any, Dict, List, Optional
 
 class Classification(str, Enum):
     CORRECT_SELECT    = "CORRECT_SELECT"    # Selected by C2 Top-5
+    SELECTED_BUT_FAILED = "SELECTED_BUT_FAILED"  # Selected by C2 Top-5; outcome moved wrong direction
     RANKING_MISS      = "RANKING_MISS"      # Not selected; would have been a ≥2% mover
     CORRECT_REJECT    = "CORRECT_REJECT"    # Strategy-rejected; outcome was bad
     FALSE_REJECT      = "FALSE_REJECT"      # Strategy-rejected; outcome was good
@@ -124,6 +125,16 @@ class EvidenceRecord:
     miss_reason:            MissReason
     regime:                 Optional[str]
     processed_at:           str
+    # Phase 1 (KSL-001 feedback completeness) — raw V3 features, additive only.
+    # Optional/defaulted so existing keyword-constructed records are unaffected.
+    atr_pct:                Optional[float] = None
+    mom_5d:                 Optional[float] = None
+    mom_accel:              Optional[float] = None
+    vol_ratio:              Optional[float] = None
+    rs_pct_5d:              Optional[float] = None
+    rsi_14:                 Optional[float] = None
+    hv_20:                  Optional[float] = None
+    vol_expansion:          Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         d = self.__dict__.copy()

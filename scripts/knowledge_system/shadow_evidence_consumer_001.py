@@ -113,7 +113,11 @@ def _classify(rec: Dict) -> Tuple[Classification, MissReason]:
 
     # Selected by C2 Top-5
     if selected:
-        return Classification.CORRECT_SELECT, MissReason.NOT_APPLICABLE
+        if t1 is None:
+            return Classification.UNRESOLVED, MissReason.NO_DATA
+        if _is_direction_correct(direction, t1):
+            return Classification.CORRECT_SELECT, MissReason.NOT_APPLICABLE
+        return Classification.SELECTED_BUT_FAILED, MissReason.NOT_APPLICABLE
 
     # Outcome not yet available
     if t1 is None:
@@ -197,8 +201,8 @@ def _build_evidence_record(raw: Dict) -> EvidenceRecord:
         strategy_rejected=bool(raw.get("strategy_rejected", False)),
         knowledge_strategy_disagreement=ksd,
         t1_ret_pct=t1,
-        t3_ret_pct=None,   # not in shadow JSONL
-        t5_ret_pct=None,   # not in shadow JSONL
+        t3_ret_pct=raw.get("t3_ret_pct"),
+        t5_ret_pct=raw.get("t5_ret_pct"),
         mfe_pct=raw.get("mfe_pct"),
         mae_pct=raw.get("mae_pct"),
         ge1=ge1,
@@ -208,6 +212,14 @@ def _build_evidence_record(raw: Dict) -> EvidenceRecord:
         miss_reason=miss_reason,
         regime=raw.get("strategy_regime"),
         processed_at=datetime.now(timezone.utc).isoformat(),
+        atr_pct=raw.get("atr_pct"),
+        mom_5d=raw.get("mom_5d"),
+        mom_accel=raw.get("mom_accel"),
+        vol_ratio=raw.get("vol_ratio"),
+        rs_pct_5d=raw.get("rs_pct_5d"),
+        rsi_14=raw.get("rsi_14"),
+        hv_20=raw.get("hv_20"),
+        vol_expansion=raw.get("vol_expansion"),
     )
 
 
