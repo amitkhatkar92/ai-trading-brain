@@ -61,6 +61,20 @@ HISTORY_PATH = ROOT / "data" / "fingerprint_tracking_history.jsonl"
 FINGERPRINT_REGISTRY: List[Dict[str, Any]] = [FINGERPRINT_UP_LOW_RSI_HIGH_ACCEL]
 
 
+def get_full_registry(discovered_path: Optional[Path] = None) -> List[Dict[str, Any]]:
+    """FINGERPRINT_REGISTRY (unchanged, static) plus any fingerprints
+    Phase 7's discovery module (fingerprint_discovery_001.py) has
+    automatically promoted (data/discovered_fingerprints.json). Local
+    import avoids a module-load-time circular import — discovery.py has
+    no top-level dependency on this module, so importing it here, lazily,
+    inside this function body only, is always safe. `discovered_path` is
+    test-only (overrides the default persisted-store path)."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import load_discovered_fingerprints
+    if discovered_path is not None:
+        return FINGERPRINT_REGISTRY + load_discovered_fingerprints(discovered_path)
+    return FINGERPRINT_REGISTRY + load_discovered_fingerprints()
+
+
 def _latest_trade_date(records: List[Dict[str, Any]], direction: str) -> Optional[str]:
     dates = [r["trade_date"] for r in records if r.get("direction") == direction and r.get("trade_date")]
     return max(dates) if dates else None
@@ -254,7 +268,7 @@ def run_tracking_silent(ledger_path=None) -> List[Dict[str, Any]]:
     records = load_records(ledger_path or LEDGER_PATH)
 
     results: List[Dict[str, Any]] = []
-    for fingerprint in FINGERPRINT_REGISTRY:
+    for fingerprint in get_full_registry():
         snapshot = compute_snapshot(records, fingerprint)
         if snapshot is None:
             results.append({
@@ -285,7 +299,7 @@ def run_tracking(ledger_path=None) -> List[Dict[str, Any]]:
     run_tracking_silent(), plus prints each fingerprint's human-readable
     candidate-improvement report. Returns the same summary list."""
     results = run_tracking_silent(ledger_path)
-    for fingerprint, result in zip(FINGERPRINT_REGISTRY, results):
+    for fingerprint, result in zip(get_full_registry(), results):
         if result["as_of_date"] is None:
             print(f"[{fingerprint['name']}] no data available — skipped")
             continue

@@ -59,10 +59,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from scripts.knowledge_system.fingerprint_tracker_001 import (
-    FINGERPRINT_REGISTRY,
     HISTORY_PATH,
     _latest_trade_date,
     compute_trend,
+    get_full_registry,
     load_history,
 )
 from scripts.knowledge_system.selection_characteristic_analyzer_001 import (
@@ -179,7 +179,7 @@ def run_daily_scoring_silent(ledger_path=None) -> Dict[str, Any]:
     total_missed = 0
     total_new = 0
 
-    for fingerprint in FINGERPRINT_REGISTRY:
+    for fingerprint in get_full_registry():
         direction = fingerprint["direction"]
         as_of_date = _latest_trade_date(records, direction)
         if as_of_date is None:
@@ -248,7 +248,7 @@ def run_daily_scoring(ledger_path=None) -> Dict[str, Any]:
     summary = run_daily_scoring_silent(ledger_path)
     for fp_summary in summary["per_fingerprint"]:
         fingerprint = next(
-            f for f in FINGERPRINT_REGISTRY if f["name"] == fp_summary["fingerprint_name"]
+            f for f in get_full_registry() if f["name"] == fp_summary["fingerprint_name"]
         )
         if fp_summary["as_of_date"] is None:
             print(f"[{fingerprint['name']}] no data available — skipped")

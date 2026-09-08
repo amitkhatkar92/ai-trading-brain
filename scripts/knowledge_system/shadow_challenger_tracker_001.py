@@ -64,7 +64,7 @@ from scripts.knowledge_system.champion_challenger_001 import (
     STATUS_CHALLENGER_ELIGIBLE,
     run_promotion_check,
 )
-from scripts.knowledge_system.fingerprint_tracker_001 import FINGERPRINT_REGISTRY, _latest_trade_date
+from scripts.knowledge_system.fingerprint_tracker_001 import _latest_trade_date, get_full_registry
 from scripts.knowledge_system.fingerprint_validation_001 import (
     _build_band_thresholds,
     _metrics,
@@ -182,7 +182,7 @@ def run_shadow_tracking_silent(ledger_path=None) -> List[Dict[str, Any]]:
     eligibility = {(e["fingerprint_name"], e["direction"]): e["status"] for e in promotion_entries}
 
     results = []
-    for fingerprint in FINGERPRINT_REGISTRY:
+    for fingerprint in get_full_registry():
         direction = fingerprint["direction"]
         status = eligibility.get((fingerprint["name"], direction))
 

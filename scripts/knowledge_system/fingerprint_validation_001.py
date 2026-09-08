@@ -97,7 +97,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from scripts.knowledge_system.fingerprint_tracker_001 import FINGERPRINT_REGISTRY
+from scripts.knowledge_system.fingerprint_tracker_001 import get_full_registry
 from scripts.knowledge_system.selection_characteristic_analyzer_001 import (
     FEATURES,
     GE2_THRESHOLD,
@@ -377,7 +377,7 @@ def run_validation(ledger_path=None) -> List[Dict[str, Any]]:
     records = load_records(ledger_path or LEDGER_PATH)
 
     reports = []
-    for fingerprint in FINGERPRINT_REGISTRY:
+    for fingerprint in get_full_registry():
         report = validate_fingerprint(records, fingerprint)
         append_validation_report(report)
         print(format_validation_report(report))

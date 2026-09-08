@@ -66,9 +66,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from scripts.knowledge_system.fingerprint_tracker_001 import (
-    FINGERPRINT_REGISTRY,
     HISTORY_PATH,
     compute_trend,
+    get_full_registry,
     load_history,
 )
 from scripts.knowledge_system.fingerprint_validation_001 import validate_fingerprint
@@ -176,7 +176,7 @@ def run_promotion_check(ledger_path=None) -> List[Dict[str, Any]]:
     records = load_records(ledger_path or LEDGER_PATH)
 
     results = []
-    for fingerprint in FINGERPRINT_REGISTRY:
+    for fingerprint in get_full_registry():
         direction = fingerprint["direction"]
         validation_report = validate_fingerprint(records, fingerprint)
 

@@ -6903,6 +6903,31 @@ class MasterOrchestrator:
         except Exception as _klp_ksl_exc:
             log.warning("[KLP-KSL] Knowledge bridge failed (non-critical): %s", _klp_ksl_exc)
 
+        # ── DTA-PHASE7-DISCOVERY-001: automatic fingerprint discovery + promotion ──
+        # READ-ONLY, OBSERVATIONAL. Runs BEFORE Phase 2E so any fingerprint newly
+        # promoted today is immediately trackable/scorable/validatable in this same
+        # EOD cycle. Re-evaluates the 5 pre-specified, hypothesis-driven feature
+        # combinations x both directions against an explicit, pre-specified bar
+        # (overall_lift/rejected_only_lift >= 0.02, n>=15) — NOT a blind search.
+        # Promotion writes only to data/discovered_fingerprints.json and
+        # data/fingerprint_discovery_daily.jsonl. Zero reads/writes on V3 scoring,
+        # C2 ranking, StrategyLab, KDA, DecisionEngine, Risk, or Execution, and
+        # never influences any live trading decision. A failure here is logged
+        # and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.fingerprint_discovery_001 import (
+                run_discovery_silent as _run_fp_discovery,
+            )
+            _disc_results = _run_fp_discovery()
+            for _disc_r in _disc_results:
+                if _disc_r.get("newly_promoted_today"):
+                    log.info(
+                        "[Phase7-Discovery] NEW research candidate promoted: %s (%s)",
+                        _disc_r.get("name"), _disc_r.get("direction"),
+                    )
+        except Exception as _disc_exc:
+            log.warning("[Phase7-Discovery] fingerprint discovery failed (non-critical): %s", _disc_exc)
+
         # ── DTA-PHASE2E-EOD-001: Selection-intelligence fingerprint tracker ──
         # READ-ONLY observation/learning layer. Runs after all evidence-
         # producing stages above (KSL-001, LOL-EOD, LOL-BRIDGE, KLP->KSL) so

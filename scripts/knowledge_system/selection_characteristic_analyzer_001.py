@@ -325,26 +325,31 @@ COMBINATIONS = [
     {
         "name": "high_momentum_and_high_rs",
         "label": "high momentum (mom_5d) + high relative strength (rs_pct_5d)",
+        "conditions": [("mom_5d", "high"), ("rs_pct_5d", "high")],
         "rule": lambda bands: bands["mom_5d"] == "high" and bands["rs_pct_5d"] == "high",
     },
     {
         "name": "high_mom_accel_and_moderate_rsi",
         "label": "high momentum acceleration (mom_accel) + moderate RSI",
+        "conditions": [("mom_accel", "high"), ("rsi_14", "moderate")],
         "rule": lambda bands: bands["mom_accel"] == "high" and bands["rsi_14"] == "moderate",
     },
     {
         "name": "strong_rs_and_increasing_volume",
         "label": "strong relative strength (rs_pct_5d) + volume expansion",
+        "conditions": [("rs_pct_5d", "high"), ("vol_expansion", "high")],
         "rule": lambda bands: bands["rs_pct_5d"] == "high" and bands["vol_expansion"] == "high",
     },
     {
         "name": "low_rsi_and_high_mom_accel",
         "label": "low RSI + high momentum acceleration",
+        "conditions": [("rsi_14", "low"), ("mom_accel", "high")],
         "rule": lambda bands: bands["rsi_14"] == "low" and bands["mom_accel"] == "high",
     },
     {
         "name": "high_volatility_and_strong_momentum",
         "label": "high volatility (hv_20) + strong momentum (mom_5d)",
+        "conditions": [("hv_20", "high"), ("mom_5d", "high")],
         "rule": lambda bands: bands["hv_20"] == "high" and bands["mom_5d"] == "high",
     },
 ]
