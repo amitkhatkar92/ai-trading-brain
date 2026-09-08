@@ -7009,6 +7009,31 @@ class MasterOrchestrator:
         except Exception as _sc_exc:
             log.warning("[Phase6-ShadowChallenger] tracking failed (non-critical): %s", _sc_exc)
 
+        # ── DTA-PHASE8-LIVE-CANDIDATE-001: controlled live-candidate check ──
+        # READ-ONLY, OBSERVATIONAL, DORMANT MECHANISM. Runs after Phase 6 so it
+        # sees that day's freshest shadow history. For every fingerprint at
+        # PASS (Phase 7), additionally checks a stricter live-entry safety bar
+        # (>=10 shadow days, >=60% cumulative win-rate, zero FAIL/RETIRED ever)
+        # and refreshes data/controlled_live_candidates.json — recomputed fresh
+        # every run, so any regression immediately withdraws a candidate.
+        # NOTHING reads this file: mover_discovery_v3.py, final_c2_selector.py,
+        # KDA, DecisionEngine, Risk, and Execution are untouched, and
+        # config.ENABLE_CONTROLLED_LIVE_CANDIDATES defaults False. A failure
+        # here is logged and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.controlled_live_candidates_001 import (
+                run_live_candidate_check_silent as _run_live_candidate_check,
+            )
+            _lc_results = _run_live_candidate_check()
+            for _lc_r in _lc_results:
+                if _lc_r.get("controlled_live_candidate"):
+                    log.info(
+                        "[Phase8-LiveCandidate] %s (%s) is now a CONTROLLED_LIVE_CANDIDATE: %s",
+                        _lc_r.get("name"), _lc_r.get("direction"), _lc_r.get("live_entry_reason"),
+                    )
+        except Exception as _lc_exc:
+            log.warning("[Phase8-LiveCandidate] live-candidate check failed (non-critical): %s", _lc_exc)
+
         # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
         # above has been reached. If the process freezes/crashes anywhere
         # before this point, the guard stays at STARTED and the next

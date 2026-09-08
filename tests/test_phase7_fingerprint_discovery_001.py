@@ -226,6 +226,54 @@ def test_statically_registered_combo_never_promoted(tmp_path):
     )
 
 
+# ── DTA-PHASE7-BUGFIX: combo-name vs fingerprint-name identity space ──
+
+def test_static_fingerprint_name_resolution():
+    """The static fingerprint's combo name ("low_rsi_and_high_mom_accel")
+    must resolve to its actual, persisted fingerprint name
+    ("UP_low_rsi_high_accel") so lifecycle lookups hit real Phase 5/6
+    history instead of silently finding nothing."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import _resolve_fingerprint_name
+
+    assert _resolve_fingerprint_name("low_rsi_and_high_mom_accel") == "UP_low_rsi_high_accel"
+    # discovered-fingerprint combo names are identity-mapped (unaffected)
+    assert _resolve_fingerprint_name("high_mom_accel_and_moderate_rsi") == "high_mom_accel_and_moderate_rsi"
+
+
+def test_run_discovery_silent_uses_real_fingerprint_name_for_lifecycle(tmp_path):
+    """Regression test for the name-space bug: run_discovery_silent() must
+    look up the static fingerprint's Phase 5 history under its real
+    fingerprint name, not its combo name, so a real VALIDATED_TRACKING/
+    OBSERVE_ONLY/etc. status is reflected instead of always falling back
+    to 'no Phase 5 validation check has run yet'."""
+    from scripts.knowledge_system import fingerprint_discovery_001 as fd
+
+    ledger = tmp_path / "ledger.jsonl"
+    ledger.write_text("", encoding="utf-8")
+
+    fake_registry_history = [{
+        "status": "VALIDATED_TRACKING", "reason": "1/3 streak",
+        "consecutive_validated_pass": 1,
+    }]
+
+    def _fake_load_registry_history(name, direction, *a, **kw):
+        # Only the REAL fingerprint name should ever be queried for this
+        # candidate — the combo name must never reach this call.
+        assert name != "low_rsi_and_high_mom_accel"
+        if name == "UP_low_rsi_high_accel" and direction == "UP":
+            return fake_registry_history
+        return []
+
+    with patch(
+        "scripts.knowledge_system.champion_challenger_001.load_registry_history",
+        side_effect=_fake_load_registry_history,
+    ):
+        results = fd.run_discovery_silent(ledger_path=ledger)
+
+    original = next(r for r in results if r["name"] == "low_rsi_and_high_mom_accel" and r["direction"] == "UP")
+    assert original["lifecycle_status"] == "VALIDATED_TRACKING"
+
+
 # ── append_discovery_log() idempotency ────────────────────────────────
 
 def test_append_discovery_log_idempotent(tmp_path):

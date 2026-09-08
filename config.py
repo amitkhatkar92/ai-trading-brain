@@ -333,6 +333,21 @@ PAPER_TRADING  = os.getenv("PAPER_TRADING", "true").lower() == "true"
 USE_LIVE_DATA  = os.getenv("USE_LIVE_DATA",  "true").lower() == "true"
 
 # ─────────────────────────────────────────────
+# SELECTION INTELLIGENCE — CONTROLLED LIVE CANDIDATES (Phase 8)
+# ─────────────────────────────────────────────
+# Mechanism-only flag. Phase 8's controlled_live_candidates_001.py writes
+# data/controlled_live_candidates.json (fingerprints that have earned
+# automatic, criteria-based eligibility for controlled live consideration)
+# regardless of this flag. NOTHING currently reads that file — V3
+# discovery (mover_discovery_v3.py) and C2 selection (final_c2_selector.py)
+# are NOT wired to consume it. This flag exists so a SEPARATE, future,
+# explicit change can gate consumption without needing to revisit Phase 8's
+# code. Default False. Do not flip this without a dedicated review — it is
+# the one setting in this project that is one step removed from actually
+# changing which stocks get selected for real/paper trades.
+ENABLE_CONTROLLED_LIVE_CANDIDATES = os.getenv("ENABLE_CONTROLLED_LIVE_CANDIDATES", "false").lower() == "true"
+
+# ─────────────────────────────────────────────
 # PILOT MODE  (₹10k–₹20k beginner capital)
 # ─────────────────────────────────────────────
 PILOT_CAPITAL        = float(os.getenv("PILOT_CAPITAL",         20_000))

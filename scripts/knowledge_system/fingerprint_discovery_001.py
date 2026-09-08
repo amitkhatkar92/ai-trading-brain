@@ -130,7 +130,20 @@ DISCOVERED_FINGERPRINTS_PATH = ROOT / "data" / "discovered_fingerprints.json"
 
 # The one combination already manually promoted in Phase 2D — permanently
 # excluded here to avoid a duplicate registry entry (see module docstring).
-STATICALLY_REGISTERED = {("low_rsi_and_high_mom_accel", "UP")}
+# NOTE: its combo name in COMBINATIONS ("low_rsi_and_high_mom_accel") is
+# NOT the same string as its actual, persisted fingerprint name
+# ("UP_low_rsi_high_accel", used throughout Phase 2E/3/5/6's history
+# files) — COMBO_TO_FINGERPRINT_NAME bridges the two identity spaces for
+# this one exception. Every Phase-7-discovered fingerprint uses its combo
+# name AS its fingerprint name directly (build_fingerprint_from_conditions),
+# so no mapping is needed for them (identity resolution, unaffected).
+COMBO_TO_FINGERPRINT_NAME = {"low_rsi_and_high_mom_accel": "UP_low_rsi_high_accel"}
+STATICALLY_REGISTERED = {("UP_low_rsi_high_accel", "UP")}  # fingerprint-name-keyed
+
+
+def _resolve_fingerprint_name(combo_name: str) -> str:
+    return COMBO_TO_FINGERPRINT_NAME.get(combo_name, combo_name)
+
 
 PROMOTION_LIFT_THRESHOLD = EXPECTED_GE2_DELTA  # 0.02, reused for consistency
 PROMOTION_MIN_SAMPLE = MIN_SAMPLE_FOR_STATS      # 15
@@ -371,20 +384,21 @@ def run_discovery_silent(ledger_path=None) -> List[Dict[str, Any]]:
     for direction in ("UP", "DOWN"):
         as_of_date = _latest_date_for_direction(records, direction)
         for combo in COMBINATIONS:
-            key = (combo["name"], direction)
+            fp_name = _resolve_fingerprint_name(combo["name"])
+            key = (fp_name, direction)
             statically_excluded = key in STATICALLY_REGISTERED
             evaluation = evaluate_candidate(records, combo, direction)
-            already = statically_excluded or _already_discovered(combo["name"], direction)
+            already = statically_excluded or _already_discovered(fp_name, direction)
             newly_promoted = False
 
             if not statically_excluded and evaluation["meets_promotion_bar"] and not already:
                 conditions = combo.get("conditions")
                 if conditions is not None:
-                    _persist_new_discovery(combo["name"], combo["label"], direction, conditions)
+                    _persist_new_discovery(fp_name, combo["label"], direction, conditions)
                     newly_promoted = True
                     already = True
 
-            lifecycle = compute_lifecycle_status(combo["name"], direction)
+            lifecycle = compute_lifecycle_status(fp_name, direction)
 
             entry = {
                 "as_of_date": as_of_date,
