@@ -40,17 +40,30 @@ recovery count, and false-positive cost (fingerprint-matched adds that
 did NOT work).
 
 PRELIMINARY vs VALIDATED (explicit, never blurred):
-Given only ~30 usable trading days exist right now, results are almost
-certainly PRELIMINARY, not a fully-powered VALIDATED verdict. This module
-computes an honest confidence-scoped verdict rather than overclaiming:
+MIN_DAYS_FOR_VALIDATED=10 — deliberately low so the system does not sit
+idle waiting for some future "perfect" amount of data; it makes the
+research decision itself, automatically, the moment the pre-specified
+evidence threshold is reached. BUT a 10-day sample has materially less
+statistical power than a 60+-day one, so every VALIDATED_* verdict
+is explicitly labeled with its actual day-count and a reduced-
+statistical-power caveat when n_days < ROBUST_DAYS_THRESHOLD (60) —
+it is presented as "provisional/continue monitoring", never as
+permanently proven. This module computes an honest confidence-scoped
+verdict rather than overclaiming:
   INSUFFICIENT_DATA — fewer than MIN_SAMPLE_FOR_VERDICT total OOS-period
                        candidates in a group
   PRELIMINARY_PASS / PRELIMINARY_FAIL — passes/fails the pass criteria,
-                       but on too little data / too short a period to
-                       call VALIDATED
-  VALIDATED_PASS / VALIDATED_FAIL — only reachable once enough history
-                       (MIN_DAYS_FOR_VALIDATED trading days) has
-                       accumulated via the now-live Phase 2E/3 pipeline
+                       but fewer than MIN_DAYS_FOR_VALIDATED trading days
+                       of history exist
+  VALIDATED_PASS / VALIDATED_FAIL — reachable once MIN_DAYS_FOR_VALIDATED
+                       (10) trading days have accumulated via the now-live
+                       Phase 2E/3 pipeline. Automatically computed, rule-
+                       based, no manual sign-off required to reach this
+                       verdict — but see validation_note in the report for
+                       the statistical-power caveat at low day-counts, and
+                       Phase 5's champion_challenger_001.py registry keeps
+                       monitoring/re-checking it on every subsequent run
+                       (a regression on a later run demotes it again).
 
 PASS CRITERIA (pre-specified, not tuned after seeing results):
   - Challenger's OOS ge2_rate must exceed Champion's by >= EXPECTED_GE2_DELTA
@@ -104,8 +117,17 @@ GE3_THRESHOLD = 3.0
 EXPECTED_GE2_DELTA = 0.02       # reused from research_proposal_builder_001.py
 MAX_DIR_ACC_REGRESSION = 0.01   # reused from research_proposal_builder_001.py
 MIN_SAMPLE_FOR_VERDICT = MIN_SAMPLE_FOR_STATS  # 15 — below this: INSUFFICIENT_DATA
-MIN_DAYS_FOR_VALIDATED = 60     # trading days of history required to call
-                                 # anything VALIDATED rather than PRELIMINARY
+MIN_DAYS_FOR_VALIDATED = 10      # trading days of history required to call
+                                 # anything VALIDATED rather than PRELIMINARY.
+                                 # Deliberately low (not 60) so the system
+                                 # decides automatically once evidence exists,
+                                 # rather than waiting indefinitely — but see
+                                 # ROBUST_DAYS_THRESHOLD below for the
+                                 # statistical-power caveat this implies.
+ROBUST_DAYS_THRESHOLD = 60       # below this day-count, a VALIDATED verdict
+                                 # is still real but explicitly labeled as
+                                 # reduced statistical power / provisional —
+                                 # never presented as permanently proven.
 
 
 def _metrics(records: List[Dict[str, Any]], direction: str) -> Dict[str, Any]:
@@ -161,6 +183,25 @@ def _classify_verdict(pass_criteria_met: bool, n_oos: int, n_days: int) -> str:
     if pass_criteria_met:
         return "VALIDATED_PASS" if validated else "PRELIMINARY_PASS"
     return "VALIDATED_FAIL" if validated else "PRELIMINARY_FAIL"
+
+
+def _validation_note(verdict: str, n_days: int) -> Optional[str]:
+    """Explicit statistical-power caveat attached to every VALIDATED_*
+    verdict — never let a low day-count verdict read as permanently
+    proven. Only applies to VALIDATED_PASS/VALIDATED_FAIL."""
+    if not verdict.startswith("VALIDATED_"):
+        return None
+    if n_days >= ROBUST_DAYS_THRESHOLD:
+        return f"{n_days}-day validation (robust sample size)"
+    return (
+        f"{n_days}-DAY VALIDATION — reduced statistical power vs a "
+        f"{ROBUST_DAYS_THRESHOLD}+-day sample. This clears the automatic "
+        f"VALIDATED gate (>= {MIN_DAYS_FOR_VALIDATED} days) but should be "
+        "treated as provisional, not permanently proven — continue "
+        "monitoring on every subsequent check (see Phase 5's "
+        "champion_challenger_001.py registry, which re-evaluates and can "
+        "demote this on any later run)."
+    )
 
 
 def validate_fingerprint(records: List[Dict[str, Any]], fingerprint: Dict[str, Any]) -> Dict[str, Any]:
@@ -254,11 +295,13 @@ def validate_fingerprint(records: List[Dict[str, Any]], fingerprint: Dict[str, A
         },
         "regimes": regimes,
         "verdict": verdict,
+        "validation_note": _validation_note(verdict, n_days),
         "recommendation": (
             "TEST FURTHER — do not apply to V3/C2/KDA/DecisionEngine"
             if verdict in ("PRELIMINARY_PASS", "PRELIMINARY_FAIL", "INSUFFICIENT_DATA")
             else "ELIGIBLE FOR CHAMPION/CHALLENGER CANDIDACY — still requires "
-                 "separate deployment approval before any live use"
+                 "separate deployment approval before any live use, and "
+                 "continued monitoring given the validation_note caveat above"
             if verdict == "VALIDATED_PASS"
             else "REJECT HYPOTHESIS — record and continue learning"
         ),
@@ -314,8 +357,10 @@ def format_validation_report(report: Dict[str, Any]) -> str:
     lines += [
         "",
         f"6/7. VERDICT: {report['verdict']}",
-        f"     Recommendation: {report['recommendation']}",
     ]
+    if report.get("validation_note"):
+        lines.append(f"     NOTE: {report['validation_note']}")
+    lines.append(f"     Recommendation: {report['recommendation']}")
     return "\n".join(lines)
 
 

@@ -168,6 +168,40 @@ def test_classify_verdict_fail_cases():
         == "VALIDATED_FAIL"
 
 
+# ── _validation_note() — reduced-statistical-power labeling ─────────────
+
+def test_validation_note_none_for_non_validated_verdicts():
+    from scripts.knowledge_system.fingerprint_validation_001 import _validation_note
+    assert _validation_note("PRELIMINARY_PASS", 5) is None
+    assert _validation_note("INSUFFICIENT_DATA", 2) is None
+
+
+def test_validation_note_flags_reduced_power_below_robust_threshold():
+    from scripts.knowledge_system.fingerprint_validation_001 import (
+        _validation_note, MIN_DAYS_FOR_VALIDATED, ROBUST_DAYS_THRESHOLD,
+    )
+    note = _validation_note("VALIDATED_PASS", MIN_DAYS_FOR_VALIDATED)
+    assert note is not None
+    assert "reduced statistical power" in note
+    assert "provisional" in note
+    assert str(MIN_DAYS_FOR_VALIDATED) in note
+
+
+def test_validation_note_says_robust_at_or_above_threshold():
+    from scripts.knowledge_system.fingerprint_validation_001 import (
+        _validation_note, ROBUST_DAYS_THRESHOLD,
+    )
+    note = _validation_note("VALIDATED_PASS", ROBUST_DAYS_THRESHOLD)
+    assert note is not None
+    assert "robust sample size" in note
+
+
+def test_min_days_for_validated_is_ten():
+    """Explicit regression guard for the user's directive: 60 -> 10."""
+    from scripts.knowledge_system.fingerprint_validation_001 import MIN_DAYS_FOR_VALIDATED
+    assert MIN_DAYS_FOR_VALIDATED == 10
+
+
 # ── report never auto-applies / no orchestrator wiring ───────────────
 
 def test_module_not_imported_by_orchestrator():

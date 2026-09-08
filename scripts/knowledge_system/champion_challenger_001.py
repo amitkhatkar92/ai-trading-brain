@@ -191,6 +191,7 @@ def run_promotion_check(ledger_path=None) -> List[Dict[str, Any]]:
             "checked_at": datetime.now(timezone.utc).isoformat(),
             "validation_verdict": validation_report.get("verdict"),
             "n_days": validation_report.get("n_days"),
+            "validation_note": validation_report.get("validation_note"),
             "phase2e_confidence": phase2e_confidence,
             "consecutive_validated_pass": streak,
             "status": status,
@@ -210,6 +211,8 @@ def format_registry_report(entries: List[Dict[str, Any]]) -> str:
             f"phase2e_confidence={e['phase2e_confidence']}  "
             f"consecutive_validated_pass={e['consecutive_validated_pass']}"
         )
+        if e.get("validation_note"):
+            lines.append(f"    validation_note: {e['validation_note']}")
         lines.append(f"    reason: {e['reason']}")
     return "\n".join(lines)
 
