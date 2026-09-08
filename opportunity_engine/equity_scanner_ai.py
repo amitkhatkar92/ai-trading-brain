@@ -54,7 +54,41 @@ _oe_io_counters: Dict[str, int] = {
 # Updated in sync with _PRICE_CACHE by _do_fetch_prices().
 # symbol → "DHAN" | "YAHOO" | "CACHE" | "SIM" | "" (unknown)
 # Protected by _PRICE_CACHE_LOCK (written together with _PRICE_CACHE).
-_FEED_SOURCE_CACHE: Dict[str, str] = {}
+_FEED_SOURCE_CACHE: Dict[str, str] = {}# ── Phase 9 (Selection Intelligence Layer): fingerprint evidence lookup ─────
+# {symbol}_{direction} → eligibility entry. Rebuilt once per TTL window from
+# data/live_selection_eligibility.json (written by the EOD
+# live_selection_eligibility_001.py pipeline) — never recomputed live,
+# never a new feature engine. Empty cache = zero effect on signal generation.
+_FP_EVIDENCE_CACHE: Dict[str, Dict[str, Any]] = {}
+_FP_EVIDENCE_CACHE_TS: float = 0.0
+_FP_EVIDENCE_CACHE_TTL: float = 300.0   # reload at most every 5 minutes
+
+
+def _load_fingerprint_evidence_cache() -> Dict[str, Dict[str, Any]]:
+    global _FP_EVIDENCE_CACHE, _FP_EVIDENCE_CACHE_TS
+    now = time.monotonic()
+    if _FP_EVIDENCE_CACHE and (now - _FP_EVIDENCE_CACHE_TS < _FP_EVIDENCE_CACHE_TTL):
+        return _FP_EVIDENCE_CACHE
+    try:
+        from scripts.knowledge_system.live_selection_eligibility_001 import load_eligibility
+        entries = load_eligibility()
+        _FP_EVIDENCE_CACHE = {f"{e['symbol']}_{e['direction']}": e for e in entries}
+    except Exception:
+        _FP_EVIDENCE_CACHE = {}
+    _FP_EVIDENCE_CACHE_TS = now
+    return _FP_EVIDENCE_CACHE
+
+
+def _match_fingerprint_evidence(symbol: str, direction) -> Optional[Dict[str, Any]]:
+    """Returns the eligibility entry for this (symbol, direction) if a
+    CONTROLLED_LIVE_CANDIDATE fingerprint's prior-close evidence currently
+    matches it, else None. Never raises."""
+    fp_direction = {"BUY": "UP", "SHORT": "DOWN"}.get(getattr(direction, "value", str(direction)))
+    if fp_direction is None:
+        return None
+    cache = _load_fingerprint_evidence_cache()
+    return cache.get(f"{symbol}_{fp_direction}")
+
 
 # ── Scan-attrition: per-cycle record of evaluated symbols ────────────────────
 # symbol → {"ltp": float, "in_range": bool, "signal_generated": bool}
@@ -1452,6 +1486,25 @@ class EquityScannerAI:
                     # Stamp regime label and VIX onto signal for rejection audit context
                     sig.scanner_regime_label = sig._obs_regime
                     sig._vix = float(snapshot.vix or 0.0)
+                except Exception:
+                    pass
+                # ── Phase 9: bounded, additive research-evidence nudge ─────────
+                # A fingerprint that earned CONTROLLED_LIVE_CANDIDATE status
+                # (scripts/knowledge_system/live_selection_eligibility_001.py)
+                # may nudge .confidence by a small, fixed amount if this
+                # signal's (symbol, direction) matches its prior-close
+                # evidence. Data-driven gate: an empty/missing eligibility
+                # file means zero effect. Never overrides or vetoes —
+                # debate/decision/risk/execution logic is unaffected.
+                try:
+                    from config import ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER
+                    if ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER:
+                        _fp_match = _match_fingerprint_evidence(stock["symbol"], sig.direction)
+                        if _fp_match is not None:
+                            from config import FINGERPRINT_EVIDENCE_BOOST_AMOUNT
+                            sig.confidence = round(sig.confidence + FINGERPRINT_EVIDENCE_BOOST_AMOUNT, 4)
+                            sig._fingerprint_evidence_boost = FINGERPRINT_EVIDENCE_BOOST_AMOUNT
+                            sig._fingerprint_evidence_match = _fp_match
                 except Exception:
                     pass
                 # ── Universal opportunity lineage ID — generated ONCE here ─────────

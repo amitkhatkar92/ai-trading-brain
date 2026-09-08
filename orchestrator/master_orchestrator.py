@@ -7034,6 +7034,38 @@ class MasterOrchestrator:
         except Exception as _lc_exc:
             log.warning("[Phase8-LiveCandidate] live-candidate check failed (non-critical): %s", _lc_exc)
 
+        # ── DTA-PHASE9-SELECTION-ELIGIBILITY-001: PASS -> SELECTION_ELIGIBLE ──
+        # THE FIRST STAGE IN THIS PIPELINE THAT ACTUALLY TOUCHES THE LIVE PATH.
+        # Runs after Phase 8 so it sees the freshest CONTROLLED_LIVE_CANDIDATE
+        # fingerprint list. For each such fingerprint, finds which symbols'
+        # MOST RECENT (prior-close) evidence matches its pattern, and rebuilds
+        # data/live_selection_eligibility.json fresh (rollback: a fingerprint
+        # or symbol that stops matching disappears from the next day's file,
+        # no manual withdrawal step). Also appends permanent ELIGIBLE/WITHDRAWN
+        # entries to data/live_selection_eligibility_audit.jsonl.
+        # opportunity_engine/equity_scanner_ai.py (the REAL live scanner) reads
+        # this file once per scan() and, for any matching (symbol, direction),
+        # attaches a small, bounded, configurable confidence nudge
+        # (config.FINGERPRINT_EVIDENCE_BOOST_AMOUNT) plus a full audit
+        # annotation on the TradeSignal itself — NEVER an override; the normal
+        # debate/decision/risk/execution chain remains fully in control of the
+        # final outcome. Gated by config.ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER
+        # (default True — data-driven gate, not a manual-permission gate).
+        # A failure here is logged and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.live_selection_eligibility_001 import (
+                run_eligibility_check_silent as _run_selection_eligibility,
+            )
+            _se_result = _run_selection_eligibility()
+            log.info(
+                "[Phase9-SelectionEligibility] eligible_fingerprints=%d matching_symbols=%d "
+                "withdrawn=%d new_audit_entries=%d",
+                _se_result.get("n_eligible_fingerprints", 0), _se_result.get("n_matching_symbols", 0),
+                _se_result.get("n_withdrawn", 0), _se_result.get("new_audit_entries_written", 0),
+            )
+        except Exception as _se_exc:
+            log.warning("[Phase9-SelectionEligibility] eligibility check failed (non-critical): %s", _se_exc)
+
         # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
         # above has been reached. If the process freezes/crashes anywhere
         # before this point, the guard stays at STARTED and the next

@@ -348,6 +348,25 @@ USE_LIVE_DATA  = os.getenv("USE_LIVE_DATA",  "true").lower() == "true"
 ENABLE_CONTROLLED_LIVE_CANDIDATES = os.getenv("ENABLE_CONTROLLED_LIVE_CANDIDATES", "false").lower() == "true"
 
 # ─────────────────────────────────────────────
+# SELECTION INTELLIGENCE — LIVE ELIGIBILITY (Phase 9)
+# ─────────────────────────────────────────────
+# Bridges Phase 8's CONTROLLED_LIVE_CANDIDATE fingerprints into the live
+# scanner (opportunity_engine/equity_scanner_ai.py) as ONE bounded,
+# additive confidence input on matching signals — never an override,
+# never a buy/sell command. Gating is DATA-DRIVEN: an empty eligibility
+# file (data/live_selection_eligibility.json, written only by
+# scripts/knowledge_system/live_selection_eligibility_001.py) means zero
+# effect. This flag exists only as an emergency kill-switch, not a
+# "waiting for permission" gate — per explicit instruction, no manual
+# step should be required once a fingerprint earns CONTROLLED_LIVE_
+# CANDIDATE status. Default True; set False via env var to disable.
+ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER = os.getenv("ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER", "true").lower() == "true"
+# Bounded confidence nudge (0-10 scale, same scale as TradeSignal.confidence).
+# Small relative to a full setup pattern's base confidence (5.0-9.5) so it
+# can meaningfully tip a borderline candidate but never dominate the decision.
+FINGERPRINT_EVIDENCE_BOOST_AMOUNT = float(os.getenv("FINGERPRINT_EVIDENCE_BOOST_AMOUNT", "0.3"))
+
+# ─────────────────────────────────────────────
 # PILOT MODE  (₹10k–₹20k beginner capital)
 # ─────────────────────────────────────────────
 PILOT_CAPITAL        = float(os.getenv("PILOT_CAPITAL",         20_000))

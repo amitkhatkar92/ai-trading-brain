@@ -70,6 +70,15 @@ class TradeSignal:
     scanner_regime_label: Optional[str]   = None  # copy of _obs_regime for direct access
     _vix:                 Optional[float] = None  # India VIX at signal time
 
+    # ── Phase 9 (Selection Intelligence Layer): bounded, additive research
+    # evidence input — a fingerprint that reached CONTROLLED_LIVE_CANDIDATE
+    # (see scripts/knowledge_system/live_selection_eligibility_001.py)
+    # nudges .confidence by a small, fixed amount when this signal's symbol
+    # matches. NEVER an override — normal debate/decision/risk/execution
+    # logic remains fully in control of the final outcome.
+    _fingerprint_evidence_boost: Optional[float] = None  # amount added to .confidence, if any
+    _fingerprint_evidence_match: Optional[dict]  = None  # {fingerprint_name, as_of_date, reason}
+
     # ── KDA authority fields — set by orchestrator after KDA runs ──
     authorization_source: Optional[str]  = None  # "KDA" | "STRATEGY_LAB" | "BOTH"
     kda_decision:         Optional[str]  = None  # e.g. "KNOWLEDGE_BUY"
