@@ -6926,6 +6926,32 @@ class MasterOrchestrator:
         except Exception as _fp_exc:
             log.warning("[Phase2E-Tracker] fingerprint tracking failed (non-critical): %s", _fp_exc)
 
+        # ── DTA-PHASE3-SELECTION-INTEL-001: daily missed-winner candidate scoring ──
+        # READ-ONLY, OBSERVATIONAL. Runs after the Phase 2E fingerprint tracker
+        # (same evidence, same idempotency-per-as-of-date pattern). Classifies
+        # every candidate the shadow system already recorded into CONFIRMED_MATCH
+        # / SELECTED_NO_MATCH / MISSED_WINNER_CANDIDATE / REJECTED_NO_MATCH and
+        # writes to data/selection_intelligence_daily.jsonl only. Does NOT feed
+        # KDA, DecisionEngine, StrategyLab, ExecutionEngine, or OrderManager —
+        # this fingerprint has not cleared research/OOS validation, so per
+        # standing policy it must not influence any live/paper trading path.
+        # A failure here is logged and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.selection_intelligence_001 import (
+                run_daily_scoring_silent as _run_selection_intel,
+            )
+            _si_summary = _run_selection_intel()
+            for _si_fp in _si_summary.get("per_fingerprint", []):
+                log.info(
+                    "[Phase3-SelectionIntel] fingerprint=%s as_of=%s n_candidates=%s "
+                    "missed_winner_candidates=%s new_records=%s confidence=%s",
+                    _si_fp.get("fingerprint_name"), _si_fp.get("as_of_date"),
+                    _si_fp.get("n_candidates"), _si_fp.get("missed_winner_candidates"),
+                    _si_fp.get("new_records_written"), _si_fp.get("confidence"),
+                )
+        except Exception as _si_exc:
+            log.warning("[Phase3-SelectionIntel] scoring failed (non-critical): %s", _si_exc)
+
         # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
         # above has been reached. If the process freezes/crashes anywhere
         # before this point, the guard stays at STARTED and the next

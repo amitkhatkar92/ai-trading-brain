@@ -115,14 +115,20 @@ def test_tracker_failure_does_not_raise_simulation():
 def test_completed_write_still_reached_after_tracker_block():
     """The COMPLETED write must be OUTSIDE the tracker's try/except (a
     sibling statement after it), not nested inside — so it still executes
-    even if the tracker block's except branch fired."""
+    even if the tracker block's except branch fired. Other sibling stages
+    (e.g. Phase 3's own try/except) may legitimately sit in between, as
+    long as every try: they introduce is matched by its own except: before
+    the COMPLETED write — i.e. nothing between here and COMPLETED is left
+    unclosed / still nesting the write inside it."""
     idx_except = BODY.index("except Exception as _fp_exc:")
+    idx_after_except = idx_except + len("except Exception as _fp_exc:")
     idx_completed = BODY.index('_write_eod_status("COMPLETED")')
-    between = BODY[idx_except:idx_completed]
-    # No unmatched "try:" between the except and the completed write —
-    # i.e. we're back at the same indentation level, not still inside a
-    # deeper nested block.
-    assert between.count("try:") == 0
+    between = BODY[idx_after_except:idx_completed]
+    assert between.count("try:") == between.count("except Exception"), (
+        "Every try: between the Phase 2E except and the COMPLETED write "
+        "must be matched by its own except: — none may still be open "
+        "(nesting the COMPLETED write inside it)."
+    )
 
 
 # ── 4. No trading-path behavior changes ─────────────────────────────────
