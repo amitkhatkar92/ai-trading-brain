@@ -267,12 +267,26 @@ class DhanBroker:
     def get_order_status(self, order_id: str) -> Dict[str, Any]:
         """Return fill status for order_id (ARCH-004 LIVE-003/004: fill reconciliation).
         Returns dict with status, filled_qty, avg_fill_price, remaining_qty.
-        Safe to call in paper mode — returns SIM sentinel."""
+        Safe to call in paper mode — returns SIM sentinel.
+
+        FIX (rejection-attribution audit, 2026-09-08): the dhanhq SDK's
+        internal _parse_response() calls .get('errorCode') on Dhan's error
+        response body assuming it is always a dict — for some order_ids Dhan
+        returns a JSON array on error, which raises
+        AttributeError("'list' object has no attribute 'get'") deep inside
+        the third-party library, before it ever returns to us. That is NOT
+        fixable from our side. Instead, on any failure of get_order_by_id(),
+        fall back to get_order_list() (a different endpoint, always a
+        successful 200 response listing today's orders) and find this
+        order_id client-side — the same reconciliation data, via a path
+        that doesn't hit the SDK's buggy error-parsing branch."""
         if not self._connected or self._dhan is None:
             return {"status": "SIM", "filled_qty": 0, "avg_fill_price": 0.0, "remaining_qty": 0}
         try:
             resp = self._dhan.get_order_by_id(order_id=order_id)
             data = resp.get("data", {}) if isinstance(resp, dict) else {}
+            if not data:
+                raise ValueError("get_order_by_id returned no data")
             # V2 Order Book uses filledQty / averageTradedPrice (not tradedQty / tradedPrice)
             return {
                 "status":          data.get("orderStatus", "UNKNOWN"),
@@ -282,7 +296,43 @@ class DhanBroker:
                 "order_id":        order_id,
             }
         except Exception as exc:
-            log.warning("[DhanBroker] get_order_status failed %s: %s", order_id, exc)
+            log.warning(
+                "[DhanBroker] get_order_by_id failed for %s: %s \u2014 "
+                "trying get_order_list() fallback.", order_id, exc,
+            )
+            return self._get_order_status_via_list_fallback(order_id)
+
+    def _get_order_status_via_list_fallback(self, order_id: str) -> Dict[str, Any]:
+        """Fallback reconciliation path — searches get_order_list() (today's
+        full order book) for order_id client-side. Never raises; returns {}
+        on any failure, matching get_order_status()'s existing fail-safe
+        contract (callers already treat an empty dict as unreconciled)."""
+        try:
+            resp = self._dhan.get_order_list()
+            if isinstance(resp, dict):
+                orders = resp.get("data", []) or []
+            elif isinstance(resp, list):
+                orders = resp
+            else:
+                orders = []
+            for o in orders:
+                if not isinstance(o, dict):
+                    continue
+                if str(o.get("orderId", "")) == str(order_id):
+                    return {
+                        "status":          o.get("orderStatus", "UNKNOWN"),
+                        "filled_qty":      int(o.get("filledQty", o.get("tradedQty", 0)) or 0),
+                        "avg_fill_price":  float(o.get("averageTradedPrice", o.get("tradedPrice", 0.0)) or 0.0),
+                        "remaining_qty":   int(o.get("remainingQuantity", 0) or 0),
+                        "order_id":        order_id,
+                    }
+            log.warning(
+                "[DhanBroker] order_id %s not found in get_order_list() fallback either \u2014 "
+                "reconciliation unavailable this cycle.", order_id,
+            )
+            return {}
+        except Exception as exc2:
+            log.warning("[DhanBroker] get_order_list() fallback also failed for %s: %s", order_id, exc2)
             return {}
 
     def get_fill_details(self, order_id: str) -> Dict[str, Any]:

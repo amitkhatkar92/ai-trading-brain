@@ -3413,6 +3413,21 @@ class MasterOrchestrator:
                             + _rc_full.get("stale_rejected", 0)
                             + _rc_full.get("other_rejected", 0)
                         ),
+                        # DTA-REJECTION-ATTRIBUTION-001: named breakdown of the
+                        # "other" bucket above — audit/reporting only, does not
+                        # change any risk decision or threshold. Lets future
+                        # audits identify the exact rejection rule instead of
+                        # an opaque "other" count.
+                        "other_breakdown": {
+                            "governance":     _rc_full.get("governance_rejected", 0),
+                            "cooldown":       _rc_full.get("cooldown_rejected", 0),
+                            "liquidity":      _rc_full.get("liquidity_rejected", 0),
+                            "position_limit": _rc_full.get("position_limit_rejected", 0),
+                            "sector":         _rc_full.get("sector_rejected", 0),
+                            "correlation":    _rc_full.get("correlation_rejected", 0),
+                            "stale":          _rc_full.get("stale_rejected", 0),
+                            "other_rejected": _rc_full.get("other_rejected", 0),
+                        },
                         "total_in":   len(signals),
                         "total_out":  len(stressed),
                     },
@@ -3848,6 +3863,10 @@ class MasterOrchestrator:
                     "strategy":  signal.strategy_name or "",
                     "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
                     "score":     decision.confidence_score,
+                    # DTA-REJECTION-ATTRIBUTION-001: the specific reason
+                    # OrderManager.execute() returned None for (audit/
+                    # reporting only — never influences any decision).
+                    "reason":    getattr(self.order_manager, "last_rejection_reason", None),
                 },
             ))
             return ("EXECUTION_FAILED", decision.confidence_score)

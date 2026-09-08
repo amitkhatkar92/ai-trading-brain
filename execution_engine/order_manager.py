@@ -359,6 +359,11 @@ class OrderManager:
             )
             self._paper_mode = True
         self._broker     = None if self._paper_mode else self._load_broker()
+        # DTA-REJECTION-ATTRIBUTION-001: last reason execute() returned None
+        # for (audit/reporting only -- read by master_orchestrator.py to
+        # enrich the EXECUTION_FAILED event payload). Reset at the top of
+        # every execute() call; never influences any decision or threshold.
+        self.last_rejection_reason: Optional[str] = None
         self._portfolio  = Portfolio(capital=TOTAL_CAPITAL, peak_capital=TOTAL_CAPITAL)
         self._orders: Dict[str, OrderRecord] = {}
         self._reentry_slots: Dict[str, ReentrySlot] = {}
@@ -505,6 +510,14 @@ class OrderManager:
         """D11-001: Wire in FailSafeRiskGuardian so close_position() can call record_trade_result()."""
         self._risk_guardian = risk_guardian
 
+    def _reject(self, reason: str) -> None:
+        """DTA-REJECTION-ATTRIBUTION-001: records why execute() is about to
+        return None (audit/reporting only). Always returns None so call
+        sites can write `return self._reject("REASON")` in place of a bare
+        `return None` — zero change to control flow or decisions."""
+        self.last_rejection_reason = reason
+        return None
+
     def execute(self, signal: TradeSignal,
                 decision: DecisionResult,
                 signal_context: Optional[dict] = None) -> Optional[OrderRecord]:
@@ -522,6 +535,9 @@ class OrderManager:
           vix       – float India VIX value
           distortion – bool any distortion event active
         """
+        # DTA-REJECTION-ATTRIBUTION-001: fresh per call; only reason-setting
+        # exits below (or the final `return record`) determine its value.
+        self.last_rejection_reason = None
         # ── PRR-001 Phase 3: Signal Freshness Gate ───────────────────────────
         # Block execution of signals older than 15 trading days (EXPIRED).
         # WEAKENING signals (6–15 days) are allowed with a warning.
@@ -534,7 +550,7 @@ class OrderManager:
                     signal.symbol,
                     getattr(signal, "timestamp", "?"),
                 )
-                return None
+                return self._reject("SIGNAL_EXPIRED")
         except Exception as _sf_exc:
             log.debug("[SignalFreshnessGate] Check skipped: %s", _sf_exc)
         # ── end Signal Freshness Gate ─────────────────────────────────────────
@@ -559,7 +575,7 @@ class OrderManager:
                 _ewb_now.strftime('%H:%M:%S'),
                 _ewb_mins,
             )
-            return None
+            return self._reject("BEFORE_EXECUTION_WINDOW")
         # ── end ExecutionWindowBlock ──────────────────────────────────────────
 
         # ── FIX 1: Guard against duplicate trades on same symbol ──────
@@ -588,7 +604,7 @@ class OrderManager:
                             "new_symbol=%s status=BLOCKED reason=DAILY_CAP_REACHED",
                             _ss_today, _swap_sym, signal.symbol,
                         )
-                        return None
+                        return self._reject("DUPLICATE_EXPOSURE_SWAP_DAILY_CAP_REACHED")
                     # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
                     # If the weakest position belongs to a DIFFERENT symbol than
                     # the incoming signal, evicting it will NOT reduce the open
@@ -602,7 +618,7 @@ class OrderManager:
                             "Skipping swap to avoid unnecessary loss.",
                             _swap_sym, signal.symbol,
                         )
-                        return None
+                        return self._reject("DUPLICATE_EXPOSURE_SWAP_WOULD_NOT_UNBLOCK")
                     if _swap_sym == signal.symbol:
                         _is_same_symbol_swap = True  # same-symbol replacement — exempt from late-entry guard
                     _swap_rec = self._orders[_swap_oid]
@@ -619,7 +635,7 @@ class OrderManager:
                             "New signal %s rejected to avoid duplicate exposure.",
                             _swap_sym, signal.symbol,
                         )
-                        return None
+                        return self._reject("DUPLICATE_EXPOSURE_SWAP_CLOSE_FAILED")
                     self._swap_rotation_date = _ss_today
                     log.info(
                         "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
@@ -635,7 +651,7 @@ class OrderManager:
                         self._portfolio.positions.pop(_swap_sym, None)
                     # Fall through to execute the new trade
                 else:
-                    return None
+                    return self._reject("DUPLICATE_EXPOSURE_NO_SWAP_AVAILABLE")
 
         # ── FIX 2: Guard against position explosion ────────────────────
         open_count = len(self.get_open_orders())
@@ -657,7 +673,7 @@ class OrderManager:
                         "new_symbol=%s status=BLOCKED reason=DAILY_CAP_REACHED",
                         _ss_today, _swap_sym, signal.symbol,
                     )
-                    return None
+                    return self._reject("MAX_POSITIONS_SWAP_DAILY_CAP_REACHED")
                 # ── PRE-EVICTION DUPGUARD CHECK (validate-first) ──────────
                 # Max-positions guard: evicting a different symbol frees a
                 # portfolio slot, but if signal.symbol already has an open
@@ -675,7 +691,7 @@ class OrderManager:
                             "Skipping swap to avoid unnecessary loss.",
                             _swap_sym, signal.symbol, open_same,
                         )
-                        return None
+                        return self._reject("MAX_POSITIONS_SWAP_WOULD_NOT_UNBLOCK")
                 if _swap_sym == signal.symbol:
                     _is_same_symbol_swap = True  # same-symbol replacement — exempt from late-entry guard
                 _swap_rec = self._orders[_swap_oid]
@@ -692,7 +708,7 @@ class OrderManager:
                         "New signal %s rejected to avoid duplicate exposure.",
                         _swap_sym, signal.symbol,
                     )
-                    return None
+                    return self._reject("MAX_POSITIONS_SWAP_CLOSE_FAILED")
                 self._swap_rotation_date = _ss_today
                 log.info(
                     "[SmartSwapThrottle] rotation_date=%s old_symbol=%s "
@@ -712,7 +728,7 @@ class OrderManager:
                     "(limit: %d). Rejecting %s to prevent position explosion.",
                     open_count, MAX_OPEN_POSITIONS, signal.symbol
                 )
-                return None
+                return self._reject("MAX_OPEN_POSITIONS")
 
         # ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────
         # After an EARLY_LOSS adaptive exit, block fresh entries for the same
@@ -732,7 +748,7 @@ class OrderManager:
                         "(cooldown=%.0fh). Suppressing re-entry on losing setup.",
                         signal.symbol.strip(), _gap_h, _EARLY_LOSS_COOLDOWN_H,
                     )
-                    return None
+                    return self._reject("EARLY_LOSS_COOLDOWN")
 
         # ── Late-day entry control (institutional rule) ───────────────────────
         # Before 13:30         → normal (6.5 floor enforced by DecisionEngine)
@@ -751,7 +767,7 @@ class OrderManager:
                     _LATE_ENTRY_CUTOFF_H, _LATE_ENTRY_CUTOFF_M,
                     _now.strftime("%H:%M"),
                 )
-                return None
+                return self._reject("LATE_ENTRY_AFTER_CUTOFF")
             if _now >= _elevated and _new_score < _LATE_ENTRY_MIN_SCORE:
                 log.info(
                     "[LateEntryBlock] %s rejected — score %.2f < %.1f required after "
@@ -759,13 +775,13 @@ class OrderManager:
                     signal.symbol, _new_score, _LATE_ENTRY_MIN_SCORE,
                     _LATE_ENTRY_ELEVATED_H, _LATE_ENTRY_ELEVATED_M,
                 )
-                return None
+                return self._reject("LATE_ENTRY_SCORE_BELOW_ELEVATED_THRESHOLD")
         # ─────────────────────────────────────────────────────────────────────
 
         qty = int(signal.quantity * decision.position_size_modifier)
         if qty <= 0:
             log.warning("[OrderManager] Zero quantity after modifier for %s.", signal.symbol)
-            return None
+            return self._reject("ZERO_QUANTITY_AFTER_MODIFIER")
 
         # D11-004: hard block on invalid stop_loss before any broker call
         import math as _math
@@ -776,7 +792,7 @@ class OrderManager:
                 "(must be a finite positive number).",
                 signal.symbol, signal.stop_loss or 0,
             )
-            return None
+            return self._reject("INVALID_STOP_LOSS")
 
         # ── FIX 3A: Guard against exceeding capital per single trade ──
         notional_capital = qty * signal.entry_price
@@ -788,7 +804,7 @@ class OrderManager:
                 signal.symbol, qty, signal.entry_price,
                 trade_utilization_pct, MAX_CAPITAL_PER_TRADE_PCT
             )
-            return None
+            return self._reject("CAPITAL_PER_TRADE_EXCEEDED")
 
         # ── FIX 3B: Guard against exceeding total open exposure ──────
         total_open_value = sum(
@@ -804,7 +820,7 @@ class OrderManager:
                 signal.symbol, notional_capital,
                 exposure_pct, MAX_TOTAL_OPEN_EXPOSURE_PCT
             )
-            return None
+            return self._reject("TOTAL_OPEN_EXPOSURE_EXCEEDED")
 
         _trade_type = getattr(decision, "trade_type", "FULL")
 
@@ -824,7 +840,7 @@ class OrderManager:
                     signal.symbol, signal.entry_price,
                     _integrity.classification, _integrity.reason,
                 )
-                return None
+                return self._reject(f"PRICE_INTEGRITY_{_integrity.classification}")
         except Exception as _pv_exc:
             log.debug("[OrderManager] Pre-order price guard skipped: %s", _pv_exc)
         # ─────────────────────────────────────────────────────────────
@@ -889,13 +905,13 @@ class OrderManager:
                 created_at    = datetime.now(),
                 max_wait      = AET_MAX_WAIT_CANDLES,
             )
-            return None   # order will be placed by attempt_aet_confirmations()
+            return self._reject("DEFERRED_AET_CONFIRMATION")   # order will be placed by attempt_aet_confirmations()
 
         order_id = self._place_entry_with_retry(signal, qty, zone_price=_final_px)
         if not order_id:
             log.error("[OrderManager] ❌ Entry order failed after %d attempts for %s — "
                       "signal discarded.", MAX_ORDER_RETRIES, signal.symbol)
-            return None
+            return self._reject("BROKER_ENTRY_PLACEMENT_FAILED")
 
         # ── Place stop-loss order ──────────────────────────────────────
         sl_id = self._place_stop_loss(signal, qty, order_id)
@@ -934,7 +950,7 @@ class OrderManager:
                 "position NOT registered. No phantom position created.",
                 order_id,
             )
-            return None
+            return self._reject("BROKER_REJECTED_ORDER")
         # D-011: Write to live journal BEFORE registering in local state.
         # If process crashes between journal write and _orders update, restart
         # recovers correctly via _restore_from_live_journal.

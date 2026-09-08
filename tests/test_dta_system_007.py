@@ -1034,11 +1034,17 @@ class TestD014SmartSwapCloseCheck:
         import inspect
         import execution_engine.order_manager as om_mod
         src = inspect.getsource(om_mod)
-        # After "swap aborted", within the next 500 chars, must return None
+        # After "swap aborted", within the next 500 chars, must return None —
+        # either directly, or via the DTA-REJECTION-ATTRIBUTION-001 self._reject()
+        # helper, which sets last_rejection_reason and still returns None.
         abort_idx = src.find("swap aborted")
         abort_context = src[abort_idx:abort_idx + 500]
-        assert "return None" in abort_context, (
-            "SmartSwap must return None when close_position fails"
+        assert (
+            "return None" in abort_context
+            or "return self._reject(" in abort_context
+        ), (
+            "SmartSwap must return None (directly or via self._reject()) when "
+            "close_position fails"
         )
 
     # T062: exposure guard portfolio pop is also guarded

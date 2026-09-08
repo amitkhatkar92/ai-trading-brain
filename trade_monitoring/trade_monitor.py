@@ -682,6 +682,15 @@ class TradeMonitor:
             return None
 
         entry   = order.entry_price
+        sl      = order.stop_loss
+        target  = order.target
+        is_long = order.direction == "BUY"
+        risk    = abs(entry - sl) if sl else 0.0
+        if risk == 0:
+            return None
+        unrealised = (ltp - entry) if is_long else (entry - ltp)
+        r_multiple = unrealised / risk
+        peak_r     = self._peak_r.get(oid, 0.0)
         if peak_r >= _AE_GUARD_R:
             return None
 
