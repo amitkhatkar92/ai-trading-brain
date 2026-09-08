@@ -5,10 +5,14 @@ Phase 5 — Champion/Challenger Registry + Promotion Gate.
 
 READ-ONLY, OBSERVATIONAL. Not imported by KDA, DecisionEngine,
 StrategyLab, ExecutionEngine, OrderManager, or any live/paper trading
-path. Standalone, manually invoked (same cadence as Phase 4's
-validator — a periodic research check, not a continuous daily task).
-Writes only to its own registry file
-(data/champion_challenger_registry.jsonl).
+path. Still supports standalone/manual invocation (its original
+cadence). As of Phase 6 (shadow_challenger_tracker_001.py), its
+run_promotion_check() is ALSO called once per day as part of the EOD
+pipeline — Phase 6 needs a freshly-computed status every day to decide
+which fingerprints to shadow-track. This module is still never
+DIRECTLY imported by master_orchestrator.py; its logic now runs daily
+only indirectly, as a dependency of Phase 6. Writes only to its own
+registry file (data/champion_challenger_registry.jsonl).
 
 SCOPE (explicitly confirmed with the user before implementation):
 Promotion in this phase is a REGISTRY/STATUS LABEL CHANGE ONLY.

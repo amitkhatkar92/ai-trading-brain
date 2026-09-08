@@ -247,10 +247,18 @@ def test_selection_intelligence_failure_does_not_raise_simulation():
 
 
 def test_completed_write_not_nested_inside_selection_intel_except():
+    """The COMPLETED write must be a sibling statement, not nested inside
+    Phase 3's except block. Other sibling stages (e.g. Phase 6's own
+    try/except) may legitimately sit in between, as long as every try:
+    they introduce is matched by its own except: before COMPLETED."""
     idx_except = BODY.index("except Exception as _si_exc:")
+    idx_after_except = idx_except + len("except Exception as _si_exc:")
     idx_completed = BODY.index('_write_eod_status("COMPLETED")')
-    between = BODY[idx_except:idx_completed]
-    assert between.count("try:") == 0
+    between = BODY[idx_after_except:idx_completed]
+    assert between.count("try:") == between.count("except Exception"), (
+        "Every try: between the Phase 3 except and the COMPLETED write "
+        "must be matched by its own except: — none may still be open."
+    )
 
 
 def test_selection_intelligence_block_references_no_trading_modules():

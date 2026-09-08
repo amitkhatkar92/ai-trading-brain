@@ -6952,6 +6952,38 @@ class MasterOrchestrator:
         except Exception as _si_exc:
             log.warning("[Phase3-SelectionIntel] scoring failed (non-critical): %s", _si_exc)
 
+        # ── DTA-PHASE6-SHADOW-CHALLENGER-001: prospective challenger monitoring ──
+        # READ-ONLY, OBSERVATIONAL. Runs Phase 5's promotion check fresh, then
+        # for every CURRENTLY CHALLENGER_ELIGIBLE fingerprint records one more
+        # day of Champion-vs-Challenger comparison — a forward-accumulating
+        # shadow track record. Writes to data/shadow_challenger_daily.jsonl
+        # only. Zero reads/writes on V3 scoring, C2 ranking, StrategyLab, KDA,
+        # DecisionEngine, Risk, or Execution — no fingerprint currently
+        # eligible is permitted to influence any live/paper trading decision.
+        # A failure here is logged and never aborts EOD learning or trading.
+        try:
+            from scripts.knowledge_system.shadow_challenger_tracker_001 import (
+                run_shadow_tracking_silent as _run_shadow_tracking,
+            )
+            _sc_results = _run_shadow_tracking()
+            for _sc_r in _sc_results:
+                if _sc_r.get("tracked_today"):
+                    _sc_cum = _sc_r.get("cumulative", {})
+                    log.info(
+                        "[Phase6-ShadowChallenger] fingerprint=%s trade_date=%s new_entry=%s "
+                        "cumulative_days=%s challenger_win_rate=%s",
+                        _sc_r.get("fingerprint_name"), _sc_r.get("trade_date"),
+                        _sc_r.get("wrote_new"), _sc_cum.get("n_days_tracked"),
+                        _sc_cum.get("challenger_win_rate"),
+                    )
+                else:
+                    log.debug(
+                        "[Phase6-ShadowChallenger] fingerprint=%s skipped: %s",
+                        _sc_r.get("fingerprint_name"), _sc_r.get("reason"),
+                    )
+        except Exception as _sc_exc:
+            log.warning("[Phase6-ShadowChallenger] tracking failed (non-critical): %s", _sc_exc)
+
         # DTA-EOD-RETRY-001: mark today COMPLETED only now that every stage
         # above has been reached. If the process freezes/crashes anywhere
         # before this point, the guard stays at STARTED and the next
