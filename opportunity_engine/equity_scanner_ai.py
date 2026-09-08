@@ -90,6 +90,46 @@ def _match_fingerprint_evidence(symbol: str, direction) -> Optional[Dict[str, An
     return cache.get(f"{symbol}_{fp_direction}")
 
 
+def _apply_fingerprint_evidence(sig: Any, symbol: str) -> None:
+    """Phase 9/10: additive, bounded research-evidence nudge. Mutates
+    `sig` in place if (symbol, sig.direction) matches a currently
+    CONTROLLED_LIVE_CANDIDATE fingerprint's prior-close evidence; a
+    no-match leaves `sig` byte-for-byte unchanged (no field is touched at
+    all, not even set to a default). NEVER touches entry_price,
+    stop_loss, target_price, quantity, atr, adv_crore, or any other
+    risk/execution-relevant field — only .confidence (bounded, small)
+    and the two observational audit fields below. Never raises; a
+    failure here silently leaves the signal unboosted. Full audit trail
+    per signal: fingerprint, symbol, direction, original confidence,
+    boost, final confidence, eligibility timestamp, evidence date."""
+    try:
+        from config import ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER
+        if not ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER:
+            return
+        match = _match_fingerprint_evidence(symbol, sig.direction)
+        if match is None:
+            return
+        from config import FINGERPRINT_EVIDENCE_BOOST_AMOUNT
+        original_confidence = sig.confidence
+        boost = FINGERPRINT_EVIDENCE_BOOST_AMOUNT
+        final_confidence = round(original_confidence + boost, 4)
+        sig.confidence = final_confidence
+        sig._fingerprint_evidence_boost = boost
+        sig._fingerprint_evidence_match = {
+            "fingerprint_name": match.get("fingerprint_name"),
+            "symbol": symbol,
+            "direction": getattr(sig.direction, "value", str(sig.direction)),
+            "original_confidence": original_confidence,
+            "boost": boost,
+            "final_confidence": final_confidence,
+            "eligibility_timestamp": match.get("checked_at"),
+            "evidence_date": match.get("as_of_date"),
+            "reason": match.get("reason"),
+        }
+    except Exception:
+        pass
+
+
 # ── Scan-attrition: per-cycle record of evaluated symbols ────────────────────
 # symbol → {"ltp": float, "in_range": bool, "signal_generated": bool}
 # Populated during each scan() call; read by scan_attrition hook in the
@@ -1488,25 +1528,17 @@ class EquityScannerAI:
                     sig._vix = float(snapshot.vix or 0.0)
                 except Exception:
                     pass
-                # ── Phase 9: bounded, additive research-evidence nudge ─────────
+                # ── Phase 9/10: bounded, additive research-evidence nudge ──────
                 # A fingerprint that earned CONTROLLED_LIVE_CANDIDATE status
                 # (scripts/knowledge_system/live_selection_eligibility_001.py)
                 # may nudge .confidence by a small, fixed amount if this
                 # signal's (symbol, direction) matches its prior-close
                 # evidence. Data-driven gate: an empty/missing eligibility
                 # file means zero effect. Never overrides or vetoes —
-                # debate/decision/risk/execution logic is unaffected.
-                try:
-                    from config import ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER
-                    if ENABLE_FINGERPRINT_EVIDENCE_IN_SCANNER:
-                        _fp_match = _match_fingerprint_evidence(stock["symbol"], sig.direction)
-                        if _fp_match is not None:
-                            from config import FINGERPRINT_EVIDENCE_BOOST_AMOUNT
-                            sig.confidence = round(sig.confidence + FINGERPRINT_EVIDENCE_BOOST_AMOUNT, 4)
-                            sig._fingerprint_evidence_boost = FINGERPRINT_EVIDENCE_BOOST_AMOUNT
-                            sig._fingerprint_evidence_match = _fp_match
-                except Exception:
-                    pass
+                # debate/decision/risk/execution logic is unaffected. See
+                # _apply_fingerprint_evidence() for the full, independently
+                # unit-tested implementation.
+                _apply_fingerprint_evidence(sig, stock["symbol"])
                 # ── Universal opportunity lineage ID — generated ONCE here ─────────
                 # Threads through LOL → KLP → KDA → broker for end-to-end traceability.
                 try:

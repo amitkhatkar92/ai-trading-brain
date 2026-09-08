@@ -214,20 +214,26 @@ def run_eligibility_check_silent(ledger_path=None) -> Dict[str, Any]:
             continue
         fresh_matches.extend(match_symbols_for_fingerprint(records, fingerprint))
 
+    # Stamp a single "eligibility checked" timestamp onto every match this
+    # run — this is what equity_scanner_ai.py's per-signal audit annotation
+    # reports as "eligibility_timestamp" (Phase 10 audit-trail requirement).
+    _checked_at = datetime.now(timezone.utc).isoformat()
+    for m in fresh_matches:
+        m["checked_at"] = _checked_at
+
     fresh_keys = {(m["symbol"], m["direction"], m["fingerprint_name"]) for m in fresh_matches}
     prior_eligible = _load_prior_eligible_keys(AUDIT_LOG_PATH)
 
     audit_entries: List[Dict[str, Any]] = []
-    now = datetime.now(timezone.utc).isoformat()
     for m in fresh_matches:
-        audit_entries.append({**m, "event": EVENT_ELIGIBLE, "checked_at": now})
+        audit_entries.append({**m, "event": EVENT_ELIGIBLE, "checked_at": _checked_at})
     for key in prior_eligible:
         if key not in fresh_keys:
             symbol, direction, fingerprint_name = key
             audit_entries.append({
                 "symbol": symbol, "direction": direction, "fingerprint_name": fingerprint_name,
                 "as_of_date": fresh_matches[0]["as_of_date"] if fresh_matches else None,
-                "event": EVENT_WITHDRAWN, "checked_at": now,
+                "event": EVENT_WITHDRAWN, "checked_at": _checked_at,
                 "reason": "no longer matches CONTROLLED_LIVE_CANDIDATE fingerprint on latest check "
                            "(fingerprint lost eligibility, or symbol's prior-close evidence no longer matches)",
             })
