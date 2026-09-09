@@ -361,6 +361,24 @@ class CapitalRiskEngine:
                         _rec = _ec_record(_rem_sig, "MAX_POSITIONS_CAP")
                         _EXPOSURE_REJECTIONS_TODAY.append(_rec)
                         _EXPOSURE_REJECTIONS_LAST_CYCLE.append(_rec)
+                        # DTA-ATTRIBUTION-TRAIL-001: persist to rejection_audit.db
+                        # (in-memory _EXPOSURE_REJECTIONS_TODAY is lost on restart;
+                        # this survives). Audit/observability only.
+                        try:
+                            from analysis.rejection_tracker import get_rejection_tracker as _get_rt_cre
+                            _get_rt_cre().ingest_rejection(
+                                symbol=_rec["symbol"], strategy=str(_rec["strategy"] or "UNKNOWN"),
+                                trade_date=_dt.now().strftime("%Y-%m-%d"),
+                                decision_score=float(_rec["score"] or 0.0),
+                                quality_score=float(_cap_qs), quality_tier="CRE_REJECTION",
+                                rejected_reason="MAX_POSITIONS_CAP"[:200],
+                                price_at_rejection=float(_rec["entry"] or 0.0),
+                                direction=str(_rec.get("direction", "BUY")),
+                                market_regime=str(_rec.get("regime", "UNKNOWN")),
+                                notes=f"cap_rank={_cap_rank} positions_counted={len(result)} max_positions={_MAX_POSITIONS}",
+                            )
+                        except Exception:
+                            pass
                         log.info(
                             "[ExposureCapDecision] symbol=%s strategy=%s "
                             "score=%.2f conviction=%.2f sector=%s regime=%s "
@@ -515,6 +533,23 @@ class CapitalRiskEngine:
                         **self._opportunity_profile_metadata(sig),
                     })
                     _EXPOSURE_REJECTIONS_LAST_CYCLE.append(_EXPOSURE_REJECTIONS_TODAY[-1])
+                    # DTA-ATTRIBUTION-TRAIL-001: persist to rejection_audit.db
+                    # (in-memory _EXPOSURE_REJECTIONS_TODAY is lost on restart;
+                    # this survives). Audit/observability only.
+                    try:
+                        from analysis.rejection_tracker import get_rejection_tracker as _get_rt_cre2
+                        _get_rt_cre2().ingest_rejection(
+                            symbol=sig.symbol, strategy=str(sig.strategy_name or "UNKNOWN"),
+                            trade_date=_dt.now().strftime("%Y-%m-%d"),
+                            decision_score=float(_ec_score or 0.0),
+                            quality_score=float(_ec_conviction or 0.0), quality_tier="CRE_REJECTION",
+                            rejected_reason="EXPOSURE_CAP_EXCEEDED"[:200],
+                            price_at_rejection=float(sig.entry_price or 0.0),
+                            direction=str(sig.direction.value if hasattr(sig.direction, "value") else sig.direction),
+                            market_regime=str(_ec_regime or "UNKNOWN"),
+                        )
+                    except Exception:
+                        pass
                 except Exception as _ec_err:
                     log.debug("[ExposureCapDecision] audit skipped: %s", _ec_err)
 

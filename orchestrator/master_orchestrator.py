@@ -3246,6 +3246,22 @@ class MasterOrchestrator:
                     self.risk_manager._current_portfolio_heat,
                     self.risk_manager._current_portfolio_heat,
                 )
+                # DTA-ATTRIBUTION-TRAIL-001: persist to rejection_audit.db —
+                # audit/observability only, does not change sizing/selection.
+                try:
+                    from analysis.rejection_tracker import get_rejection_tracker as _get_rt_pa
+                    _get_rt_pa().ingest_rejection(
+                        symbol=_s.symbol, strategy=str(_s.strategy_name or "UNKNOWN"),
+                        trade_date=datetime.now().strftime("%Y-%m-%d"),
+                        decision_score=float(_s.confidence or 0.0),
+                        quality_score=float(_s.confidence / 10.0), quality_tier="RISK_REJECTION",
+                        rejected_reason="SIZING_DROP_PA"[:200],
+                        price_at_rejection=float(_s.entry_price or 0.0),
+                        direction=str(_s.direction.value if hasattr(_s.direction, "value") else _s.direction),
+                        market_regime=str(getattr(_s, "scanner_regime_label", "") or "UNKNOWN"),
+                    )
+                except Exception:
+                    pass
         _pa_rej = len(checked) - len(sized)
 
         # ── [RiskControlDecision] for StressTestAI drops ──────────────────────
@@ -3263,6 +3279,22 @@ class MasterOrchestrator:
                     self.risk_manager._current_portfolio_heat,
                     self.risk_manager._current_portfolio_heat,
                 )
+                # DTA-ATTRIBUTION-TRAIL-001: persist to rejection_audit.db —
+                # audit/observability only, does not change simulation gating.
+                try:
+                    from analysis.rejection_tracker import get_rejection_tracker as _get_rt_st
+                    _get_rt_st().ingest_rejection(
+                        symbol=_s.symbol, strategy=str(_s.strategy_name or "UNKNOWN"),
+                        trade_date=datetime.now().strftime("%Y-%m-%d"),
+                        decision_score=float(_s.confidence or 0.0),
+                        quality_score=float(_s.confidence / 10.0), quality_tier="RISK_REJECTION",
+                        rejected_reason="STRESS_TEST_FAIL"[:200],
+                        price_at_rejection=float(_s.entry_price or 0.0),
+                        direction=str(_s.direction.value if hasattr(_s.direction, "value") else _s.direction),
+                        market_regime=str(getattr(_s, "scanner_regime_label", "") or "UNKNOWN"),
+                    )
+                except Exception:
+                    pass
         _st_rej = len(sized) - len(stressed)
 
         # ── [RiskControlSummary] ──────────────────────────────────────────────
