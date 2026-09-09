@@ -1354,6 +1354,59 @@ class OrderManager:
                 log.debug("[PartialFill] status check failed %s: %s", oid, exc)
         return updated
 
+    def _broker_confirms_no_open_position(self, symbol: str) -> bool:
+        """DTA-COALINDIA-RECONCILE-001: cross-day safety check for orders
+        stuck in PENDING/UNRESOLVED/API_ERROR/UNKNOWN.
+
+        get_order_by_id() / get_order_list() are BOTH documented by Dhan as
+        scoped to "orders placed during the day" — they can NEVER resolve an
+        order placed on a previous calendar day, so an order that crosses
+        midnight unresolved would retry forever without this check.
+
+        get_positions() has no such day-scoping — it reflects the broker's
+        CURRENT book. If our symbol's security_id is absent from it, the
+        broker genuinely holds no such position right now (either the
+        original order was never filled, or Dhan's own intraday auto
+        square-off already closed it — both cases we've observed in
+        production for order_id 34126090853803 / COALINDIA on 2026-09-08,
+        confirmed via get_trade_history()).
+
+        Returns True only when the broker's position book was successfully
+        read AND the symbol is confirmed absent. Any failure/uncertainty
+        returns False (fail safe — keep retrying, never guess a position
+        away). Never places, modifies, or cancels any order.
+        """
+        if not self._broker or not hasattr(self._broker, "get_positions"):
+            return False
+        try:
+            from data_feeds.dhan_feed import DHAN_SECURITY_MAP as _DSM
+            _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
+            _meta = _DSM.get(_sym)
+            if not _meta:
+                return False
+            _sec_id = str(_meta["security_id"])
+            resp = self._broker.get_positions()
+            if not isinstance(resp, dict) or resp.get("status") != "success":
+                return False
+            rows = resp.get("data", [])
+            if not isinstance(rows, list):
+                return False
+            for row in rows:
+                if not isinstance(row, dict):
+                    continue
+                if str(row.get("securityId", "")) != _sec_id:
+                    continue
+                # Matching security_id present with a live net quantity —
+                # broker DOES still hold this position; do not clean up.
+                if int(row.get("netQty", 0) or 0) != 0:
+                    return False
+                if str(row.get("positionType", "")).upper() not in ("", "CLOSED"):
+                    return False
+            return True
+        except Exception as exc:
+            log.debug("[BrokerPositionCheck] %s: check skipped (%s).", symbol, exc)
+            return False
+
     def reconcile_pending_orders(self) -> List[str]:
         """D11-005: Re-query broker for any intraday orders still in PENDING/UNRESOLVED state.
         Called once per monitoring cycle so limit orders resolve without waiting for restart.
@@ -1391,6 +1444,26 @@ class OrderManager:
                         "phantom position removed.",
                         rec.symbol, oid, rec.fill_status,
                     )
+                continue
+            # DTA-COALINDIA-RECONCILE-001: still unresolved after the normal
+            # retry above. If this order is from a PREVIOUS calendar day
+            # (order-level endpoints can never resolve it — see docstring),
+            # cross-check the broker's actual position book before giving up.
+            if rec.placed_at and rec.placed_at.date() < datetime.now().date():
+                if self._broker_confirms_no_open_position(rec.symbol):
+                    with self._orders_lock:
+                        self._orders.pop(oid, None)
+                    self._portfolio.positions.pop(rec.symbol, None)
+                    rec.fill_status = "BROKER_NO_POSITION_FOUND"
+                    log.warning(
+                        "[PendingReconcile] %s %s stuck in %s since %s — broker "
+                        "get_positions() confirms NO open position (likely "
+                        "broker-side auto square-off or never-filled order). "
+                        "Internal state corrected; no order placed.",
+                        rec.symbol, oid, prev_status,
+                        rec.placed_at.date().isoformat(),
+                    )
+                    updated.append(oid)
         return updated
 
     def attempt_aet_confirmations(
