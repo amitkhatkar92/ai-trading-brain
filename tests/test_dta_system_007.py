@@ -123,6 +123,41 @@ class TestD008LiveRestorePosition:
             f"Portfolio position must be Position object, got {type(pos)}"
         )
 
+    # DTA-COALINDIA-RECONCILE-001: placed_at must be parsed from the journal
+    # timestamp (previous calendar day order), not left as None or reset to
+    # datetime.now() -- otherwise cross-day reconciliation in
+    # reconcile_pending_orders() can never distinguish a stale prior-day
+    # order from one placed earlier the same session.
+    def test_placed_at_restored_from_journal_timestamp_previous_day(self, tmp_path):
+        from datetime import timedelta
+        yesterday = (datetime.now(timezone.utc) - timedelta(days=1)).isoformat()
+        rows = [{"event": "OPEN", "timestamp": yesterday, "order_id": "O-COAL",
+                 "symbol": "COALINDIA", "direction": "BUY", "quantity": 5,
+                 "entry_price": 419.85, "stop_loss": 405.45, "target_price": 449.33,
+                 "strategy": "KDA_AUTHORITY", "fill_status": "API_ERROR",
+                 "actual_fill_price": 0.0, "opportunity_id": ""}]
+        om = self._restore(tmp_path, rows)
+        rec = om._orders.get("O-COAL")
+        assert rec is not None
+        assert rec.placed_at is not None, (
+            "placed_at must be populated from the journal, not left None"
+        )
+        assert rec.placed_at.date() < datetime.now().date(), (
+            "placed_at must reflect the ORIGINAL journal timestamp (yesterday), "
+            "not datetime.now() at restore time"
+        )
+
+    def test_placed_at_unparseable_timestamp_falls_back_to_none(self, tmp_path):
+        rows = [{"event": "OPEN", "timestamp": "not-a-timestamp", "order_id": "O-BAD",
+                 "symbol": "INFY", "direction": "BUY", "quantity": 5,
+                 "entry_price": 100.0, "stop_loss": 95.0, "target_price": 110.0,
+                 "strategy": "T", "fill_status": "API_ERROR",
+                 "actual_fill_price": 0.0, "opportunity_id": ""}]
+        om = self._restore(tmp_path, rows)
+        rec = om._orders.get("O-BAD")
+        assert rec is not None
+        assert rec.placed_at is None
+
     # T002: Position has ltp attribute (not AttributeError)
     def test_T002_position_has_ltp_attribute(self, tmp_path):
         ts = self._ts()

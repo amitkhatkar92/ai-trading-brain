@@ -4319,6 +4319,20 @@ class OrderManager:
         )
         for oid, row in to_restore.items():
             try:
+                # DTA-COALINDIA-RECONCILE-001: preserve the ORIGINAL placement
+                # timestamp from the journal (not datetime.now()) — restored
+                # orders must keep their true age so cross-day reconciliation
+                # (reconcile_pending_orders) can tell a stale prior-day order
+                # apart from one placed earlier today.  Falls back to None
+                # (previous behaviour) if the journal row is unparseable.
+                _placed_at = None
+                try:
+                    _ts_raw = row.get("timestamp", "")
+                    _placed_at = datetime.fromisoformat(
+                        _ts_raw.replace("Z", "+00:00")
+                    ).replace(tzinfo=None)
+                except Exception:
+                    _placed_at = None
                 rec = OrderRecord(
                     order_id          = oid,
                     broker_order_id   = row.get("broker_order_id") or "",
@@ -4333,6 +4347,7 @@ class OrderManager:
                     actual_fill_price = float(row.get("actual_fill_price") or
                                               row.get("entry_price") or 0),
                     opportunity_id    = row.get("opportunity_id") or "",
+                    placed_at         = _placed_at,
                 )
                 self._orders[oid] = rec
                 # D-008: use Position object, not plain dict — downstream code
