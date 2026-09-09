@@ -1439,6 +1439,16 @@ class OrderManager:
                     with self._orders_lock:
                         self._orders.pop(oid, None)
                     self._portfolio.positions.pop(rec.symbol, None)
+                    # DTA-COALINDIA-RECONCILE-001: TradeMonitor keeps its own
+                    # _open_orders registry — without this it keeps reporting
+                    # a position OrderManager no longer tracks (confirmed in
+                    # production: ExposureAudit/StalePositionAudit kept firing
+                    # for hours after this exact pop for a different order).
+                    if self._trade_monitor is not None:
+                        try:
+                            self._trade_monitor.deregister(oid)
+                        except Exception as _tm_exc:
+                            log.debug("[PendingReconcile] TradeMonitor deregister failed: %s", _tm_exc)
                     log.warning(
                         "[PendingReconcile] %s %s resolved as %s — "
                         "phantom position removed.",
@@ -1454,6 +1464,11 @@ class OrderManager:
                     with self._orders_lock:
                         self._orders.pop(oid, None)
                     self._portfolio.positions.pop(rec.symbol, None)
+                    if self._trade_monitor is not None:
+                        try:
+                            self._trade_monitor.deregister(oid)
+                        except Exception as _tm_exc:
+                            log.debug("[PendingReconcile] TradeMonitor deregister failed: %s", _tm_exc)
                     rec.fill_status = "BROKER_NO_POSITION_FOUND"
                     log.warning(
                         "[PendingReconcile] %s %s stuck in %s since %s — broker "

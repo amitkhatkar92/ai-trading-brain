@@ -79,10 +79,12 @@ class TestCrossDayBrokerPositionCheck:
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
+            om._trade_monitor = MagicMock()
             updated = om.reconcile_pending_orders()
         assert "ORD-COAL-001" in updated
         assert "ORD-COAL-001" not in om._orders
         assert "COALINDIA" not in om._portfolio.positions
+        om._trade_monitor.deregister.assert_called_once_with("ORD-COAL-001")
 
     def test_cross_day_stuck_order_still_open_at_broker_is_kept(self):
         """Broker confirms a live position still exists → must NOT be removed."""
@@ -98,6 +100,18 @@ class TestCrossDayBrokerPositionCheck:
         assert "ORD-COAL-001" not in updated
         assert "ORD-COAL-001" in om._orders
         assert om._orders["ORD-COAL-001"].fill_status == "API_ERROR"
+
+    def test_cleanup_is_safe_when_no_trade_monitor_injected(self):
+        """_trade_monitor defaults to None — cleanup must not raise."""
+        broker = _broker_stuck_api_error()
+        broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
+            om = _make_om_live_with_broker(broker)
+            _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
+            assert om._trade_monitor is None
+            updated = om.reconcile_pending_orders()  # must not raise
+        assert "ORD-COAL-001" in updated
+        assert "ORD-COAL-001" not in om._orders
 
     def test_same_day_stuck_order_not_touched_by_cross_day_check(self):
         """An order placed TODAY must never be swept by the cross-day check,

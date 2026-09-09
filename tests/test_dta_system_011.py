@@ -641,9 +641,13 @@ class TestD11005PendingReconciliation:
         om = _make_om(paper=False, broker=broker)
         oid, rec = self._make_pending_record(om, "PENDING")
         om._portfolio.positions["RELIANCE"] = object()   # fake position
+        om._trade_monitor = MagicMock()
         om.reconcile_pending_orders()
         assert oid not in om._orders
         assert "RELIANCE" not in om._portfolio.positions
+        # DTA-COALINDIA-RECONCILE-001: TradeMonitor must also be told, or it
+        # keeps reporting a position OrderManager no longer tracks.
+        om._trade_monitor.deregister.assert_called_once_with(oid)
 
     # T055 — FILLED orders are not re-reconciled
     def test_T055_already_filled_not_touched(self):
