@@ -1377,15 +1377,34 @@ class OrderManager:
         away). Never places, modifies, or cancels any order.
         """
         if not self._broker or not hasattr(self._broker, "get_positions"):
+            log.info(
+                "[BrokerPositionCheckDiag] symbol=%s early_exit=NO_BROKER_OR_NO_METHOD "
+                "broker_present=%s has_get_positions=%s",
+                symbol, self._broker is not None,
+                hasattr(self._broker, "get_positions") if self._broker else False,
+            )
             return False
         try:
             from data_feeds.dhan_feed import DHAN_SECURITY_MAP as _DSM
             _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
             _meta = _DSM.get(_sym)
             if not _meta:
+                log.info(
+                    "[BrokerPositionCheckDiag] symbol=%s early_exit=NO_SECURITY_MAP_ENTRY",
+                    symbol,
+                )
                 return False
             _sec_id = str(_meta["security_id"])
             resp = self._broker.get_positions()
+            # DTA-COALINDIA-DIAGNOSE-001: single, unconditional visibility
+            # line — diagnostic only, does not change the return value or
+            # any control flow. Confirms exactly what the LIVE, long-running
+            # broker connection returns vs. a fresh diagnostic connection.
+            log.info(
+                "[BrokerPositionCheckDiag] symbol=%s resp_type=%s resp=%s",
+                symbol, type(resp).__name__,
+                str(resp)[:300] if resp is not None else "None",
+            )
             if not isinstance(resp, dict) or resp.get("status") != "success":
                 return False
             rows = resp.get("data", [])
