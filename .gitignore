@@ -153,6 +153,9 @@ data/predictive_gap/
 data/klp/knowledge_fusion/source_inventory.jsonl
 data/klp/knowledge_fusion/source_inventory.jsonl
 
+# ── DTA-MARKET-BENCHMARK-001 — daily benchmark outputs (written every EOD) ────
+data/market_benchmark/
+
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
 

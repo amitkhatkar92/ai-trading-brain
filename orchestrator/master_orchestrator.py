@@ -7440,6 +7440,27 @@ class MasterOrchestrator:
         except Exception as _prr_exc:
             log.warning("[PRR-001] Pipeline failed (non-critical): %s", _prr_exc)
 
+        # ── DTA-MARKET-BENCHMARK-001: Daily Market Opportunity Benchmark ──────
+        # Collects Top-20 Gainers/Losers from the broad NSE-equity universe AND
+        # the standardized NIFTY500 benchmark, classifies every mover against
+        # our universe/20-pool/final-5/live-decision pipeline (categories
+        # A-F), and feeds misses into the existing rejection_audit.db evidence
+        # store. Read-only w.r.t. trading state; never blocks EOD learning.
+        try:
+            from opportunity_engine.market_opportunity_benchmark import (
+                run_daily_market_benchmark_silent as _run_market_benchmark,
+            )
+            _mb = _run_market_benchmark()
+            log.info(
+                "[MarketBenchmark] trade_date=%s nifty500(g=%d,l=%d) "
+                "broad_market(g=%d,l=%d) categories=%s",
+                _mb.get("trade_date"), _mb.get("nifty500_gainers", 0),
+                _mb.get("nifty500_losers", 0), _mb.get("broad_market_gainers", 0),
+                _mb.get("broad_market_losers", 0), _mb.get("category_counts"),
+            )
+        except Exception as _mb_exc:
+            log.warning("[MarketBenchmark] Daily benchmark failed (non-critical): %s", _mb_exc)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     @staticmethod
