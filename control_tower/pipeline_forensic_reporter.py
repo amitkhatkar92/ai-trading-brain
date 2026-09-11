@@ -126,6 +126,12 @@ class PipelineForensicReporter:
         # ── Sector coverage (across all scan cycles today) ───────────
         self._sector_coverage: Dict[str, int] = defaultdict(int)
 
+        # ── KDA authority stage (DTA-KDA-DIAG-001) ────────────────────
+        self._kda_signals_total:      int = 0   # signals processed by KDA shadow eval
+        self._kda_authorized_total:   int = 0   # KNOWLEDGE_BUY/SELL count
+        self._kda_only_added_total:   int = 0   # StrategyLab rejected, KDA authorized anyway
+        self._kda_hold_blocked_total: int = 0   # StrategyLab approved, KDA HOLD blocked it
+
     def _check_rollover(self) -> None:
         """If the calendar date has changed, reset all counters."""
         if date.today() != self._date:
@@ -264,6 +270,31 @@ class PipelineForensicReporter:
                 for sec, cnt in sector_dist.items():
                     self._sector_dist[sec] += cnt
 
+    def record_kda_authority(
+        self,
+        total:        int,
+        authorized:   int,
+        only_added:   int,
+        hold_blocked: int,
+    ) -> None:
+        """
+        Call once per run_full_cycle() after the KDA merge, alongside the
+        existing [KDA] Authority decisions log line.
+
+        Parameters
+        ----------
+        total        : signals processed by KDA shadow evaluation this cycle
+        authorized   : KDA said KNOWLEDGE_BUY/SELL
+        only_added   : StrategyLab had rejected these; KDA added them back
+        hold_blocked : StrategyLab had approved these; KDA HOLD blocked them
+        """
+        with self._lock:
+            self._check_rollover()
+            self._kda_signals_total      += total
+            self._kda_authorized_total   += authorized
+            self._kda_only_added_total   += only_added
+            self._kda_hold_blocked_total += hold_blocked
+
     # ==================================================================
     # Telemetry emission
     # ==================================================================
@@ -391,6 +422,10 @@ class PipelineForensicReporter:
                 sec_dist     = dict(self._sector_dist)
                 sec_cov      = dict(self._sector_coverage)
                 regime_hist  = list(self._regime_history)
+                kda_total    = self._kda_signals_total
+                kda_auth     = self._kda_authorized_total
+                kda_only_add = self._kda_only_added_total
+                kda_hold     = self._kda_hold_blocked_total
 
             # Derived aggregates
             avg_syms       = sym_att // cycles
@@ -403,6 +438,7 @@ class PipelineForensicReporter:
             drift_pct      = round(drift_cnt / cycles * 100.0, 1)
             inv_rate       = round(inv_count / cycles, 2)
             fresh_rate     = round(exp_new / max(1, exp_new + exp_rec) * 100.0, 1)
+            kda_override_rate_pct = round(kda_only_add / max(1, kda_total) * 100.0, 1)
 
             # Dominant regime today
             regime_today = "UNKNOWN"
@@ -499,6 +535,21 @@ class PipelineForensicReporter:
                 exec_cand, exec_appr, exec_ord,
                 drift_pct, stale_cnt,
                 str(top_sectors),
+            )
+
+            # ── Stage 9b: KDA Authority (DTA-KDA-DIAG-001) ─────────────────
+            # StrategyLab is the documented "quality gate", but KDA can
+            # override it in both directions. This makes that override rate
+            # a visible daily number instead of something only found by
+            # reading raw per-cycle logs.
+            log.info(
+                "[PipelineKDA] date=%s DAILY_SUMMARY "
+                "kda_signals_total=%d kda_authorized_total=%d "
+                "kda_only_added_total=%d kda_hold_blocked_total=%d "
+                "strategylab_override_rate_pct=%.1f%%",
+                d,
+                kda_total, kda_auth, kda_only_add, kda_hold,
+                kda_override_rate_pct,
             )
 
             # ── Stage 10: Master Forensic Summary ─────────────────────────

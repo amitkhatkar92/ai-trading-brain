@@ -1412,6 +1412,18 @@ class MasterOrchestrator:
                     _last_r.get("hbe_ess") or "?",
                     _last_r.get("kfe_pool_size") or "?",
                 )
+                # DTA-KDA-DIAG-001: accumulate today's override rate so it's
+                # visible as a daily metric, not just in per-cycle logs.
+                try:
+                    from control_tower.pipeline_forensic_reporter import get_forensic_reporter as _gfr_kda
+                    _gfr_kda().record_kda_authority(
+                        total=len(_kda_results),
+                        authorized=len(_kda_authorized),
+                        only_added=_kda_only_added,
+                        hold_blocked=_kda_hold_blocked,
+                    )
+                except Exception as _kda_diag_exc:
+                    log.debug("[KDA] Daily aggregate recording error: %s", _kda_diag_exc)
             except Exception as _kda_intraday_exc:
                 log.debug("[KDA] Authority pipeline error: %s", _kda_intraday_exc)
 
@@ -1435,7 +1447,15 @@ class MasterOrchestrator:
             cre_signals = self.capital_risk_engine.allocate(
                 enriched_signals, snapshot, portfolio
             )
-        _diag.record_stage("CapitalRiskEngine", len(enriched_signals), len(cre_signals))
+        # DTA-CRE-DIAG-001: surface CRE's own already-computed dominant
+        # rejection reason instead of leaving the diagnostic as "unknown".
+        from risk_control.capital_risk_engine import (
+            get_last_cycle_dominant_rejection_reason as _get_cre_dom_reason,
+        )
+        _diag.record_stage(
+            "CapitalRiskEngine", len(enriched_signals), len(cre_signals),
+            primary_blocker=_get_cre_dom_reason(),
+        )
         # ── DTA-038: CRE stage trace ──────────────────────────────────────
         try:
             from audit.dta038_trace import get_trace_manager as _dta038_tm
@@ -3822,6 +3842,13 @@ class MasterOrchestrator:
                     "distortion": bool(
                         getattr(self.global_intelligence.last_distortion,
                                 "any_distortion", False)
+                    ),
+                    # DTA-AET-DIAG-001: carry the specific distortion flags so
+                    # AET's deferral log can state the real trigger instead of
+                    # always attributing it to VIX.
+                    "distortion_flags": list(
+                        getattr(self.global_intelligence.last_distortion,
+                                "active_flags", None) or []
                     ),
                 },
             )

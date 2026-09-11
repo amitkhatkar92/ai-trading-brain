@@ -75,6 +75,17 @@ def get_last_cycle_exposure_rejections() -> List[dict]:
     """Return the most recent cycle's heat-rejected signal records (non-destructive read)."""
     return list(_EXPOSURE_REJECTIONS_LAST_CYCLE)
 
+# ── Last-cycle dominant rejection reason (DTA-CRE-DIAG-001) ─────────────────
+# Already computed correctly inside allocate() every call; previously only
+# logged, never exposed to callers building diagnostic reports.
+_LAST_CYCLE_DOMINANT_REJECTION_REASON: str = "NONE"
+
+def get_last_cycle_dominant_rejection_reason() -> str:
+    """Return the most recent allocate() call's dominant rejection reason
+    (BUDGET / RISK_AMOUNT / EXPOSURE_CAP / SL_SIZING / OTHER / NONE).
+    Non-destructive read; observability only."""
+    return _LAST_CYCLE_DOMINANT_REJECTION_REASON
+
 # ── Regime → max deployment fraction ──────────────────────────────────────
 _EXPOSURE_MAP: Dict[str, float] = {
     RegimeLabel.BULL_TREND.value:   0.80,
@@ -616,6 +627,8 @@ class CapitalRiskEngine:
              ("OTHER", _crd_other_rejected)],
             key=lambda x: x[1],
         )[0] if _all_rej > 0 else "NONE"
+        global _LAST_CYCLE_DOMINANT_REJECTION_REASON
+        _LAST_CYCLE_DOMINANT_REJECTION_REASON = _dom_reason
         log.info(
             "[CapitalRiskSummary] signals_in=%d signals_out=%d "
             "budget_rejected=%d risk_rejected=%d heat_rejected=%d "

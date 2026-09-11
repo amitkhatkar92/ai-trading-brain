@@ -872,9 +872,11 @@ class OrderManager:
         )
 
         # Adaptive Entry Timing: choose mode, then adjust price
+        _distortion_active = bool((signal_context or {}).get("distortion", False))
+        _distortion_flags  = (signal_context or {}).get("distortion_flags") or []
         _aet_mode  = self._determine_aet_mode(
             _vix_ctx, _regime_ctx,
-            distortion_active=bool((signal_context or {}).get("distortion", False)),
+            distortion_active=_distortion_active,
         )
         _final_px  = self._apply_aet_price(_zone_px, signal.direction.value, _aet_mode)
 
@@ -887,11 +889,19 @@ class OrderManager:
         # CONFIRMATION mode: defer placement to next cycle(s)
         if _aet_mode == AdaptiveTimingMode.CONFIRMATION:
             _slot_id = f"AET_{signal.symbol}_{int(datetime.now().timestamp())}"
+            # DTA-AET-DIAG-001: report the ACTUAL trigger (distortion vs VIX)
+            # instead of always printing the VIX comparison regardless of cause.
+            if _distortion_active:
+                _defer_reason = "distortion active (flags=%s)" % (
+                    ",".join(_distortion_flags) if _distortion_flags else "unspecified"
+                )
+            else:
+                _defer_reason = "VIX=%.1f \u2265 %.1f" % (_vix_ctx, AET_VIX_CONFIRM_THRESHOLD)
             log.info(
-                "[OrderManager] ⏳ AET=CONFIRMATION: %s %s deferred — "
-                "VIX=%.1f ≥ %.1f.  Slot=%s  max_wait=%d candles.",
+                "[OrderManager] \u23f3 AET=CONFIRMATION: %s %s deferred — "
+                "%s.  Slot=%s  max_wait=%d candles.",
                 signal.direction.value, signal.symbol,
-                _vix_ctx, AET_VIX_CONFIRM_THRESHOLD,
+                _defer_reason,
                 _slot_id, AET_MAX_WAIT_CANDLES,
             )
             self._aet_pending[_slot_id] = AetPendingSlot(
