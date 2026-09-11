@@ -852,7 +852,19 @@ class MasterOrchestrator:
             if self._last_snapshot else ""
         )
         _prev_vix       = float(getattr(self._last_snapshot, "vix", 0.0)) if self._last_snapshot else 0.0
-        _prev_distortion = bool(getattr(self.global_intelligence.last_distortion, "any_distortion", False))
+        # DTA-AET-FIX-001: use trading_allowed (scanner's own behavior verdict),
+        # not the raw any_distortion flag. any_distortion flips True from a
+        # single low-severity flag (e.g. currency_stress) even while the
+        # scanner's own risk_level=NORMAL and trading_allowed=True in the same
+        # snapshot -- trading_allowed is only False at risk_level=EXTREME
+        # (see global_intelligence/market_distortion_scanner.py::_build_behavior_overrides).
+        # Audited 2026-09-11: 18/18 any_distortion=True snapshots in the prior
+        # week also had trading_allowed=True, and 0 of 54 resulting AET
+        # deferrals that week ever resolved into a placed order.
+        _prev_distortion = not bool(getattr(
+            getattr(self.global_intelligence.last_distortion, "behavior_overrides", None),
+            "trading_allowed", True,
+        ))
         _expired_ids = self.order_manager.check_and_expire_stale_limits(
             current_regime    = _prev_regime,
             current_vix       = _prev_vix,
@@ -3859,9 +3871,16 @@ class MasterOrchestrator:
                         else str(snapshot.regime)
                     ),
                     "vix":        snapshot.vix,
-                    "distortion": bool(
-                        getattr(self.global_intelligence.last_distortion,
-                                "any_distortion", False)
+                    # DTA-AET-FIX-001: gate on trading_allowed (scanner's own
+                    # behavior verdict), not the raw any_distortion flag --
+                    # see the matching fix + rationale at check_and_expire_stale_limits()
+                    # call site above (same function, ~line 855).
+                    "distortion": not bool(
+                        getattr(
+                            getattr(self.global_intelligence.last_distortion,
+                                    "behavior_overrides", None),
+                            "trading_allowed", True,
+                        )
                     ),
                     # DTA-AET-DIAG-001: carry the specific distortion flags so
                     # AET's deferral log can state the real trigger instead of
