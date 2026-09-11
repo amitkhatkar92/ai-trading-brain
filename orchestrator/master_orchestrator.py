@@ -1142,10 +1142,20 @@ class MasterOrchestrator:
             pass
 
         # ── KDA: Knowledge Intelligence Authority + signal merge ─────────────
-        # KDA is the intelligence authority. It runs on ALL original scanner signals.
-        # Signals authorized by KDA (KNOWLEDGE_BUY/SELL) enter the production path
-        # even if StrategyLab rejected them. StrategyLab is demoted to SHADOW/CONTEXT.
-        # Risk layers (CapitalRisk, RiskControl, RiskGuardian) remain independent veto.
+        # DTA-KDA-FINAL-AUTHORITY-001 (architectural rule, formalized 2026-09-11):
+        #   KDA is the SOLE, FINAL authority on BUY / SELL / REJECT.
+        #   StrategyLab is OBSERVATION ONLY from this point forward in the
+        #   pipeline: its output is recorded (authorization_source, comparison
+        #   logs, override-rate metrics) for research/audit purposes, but is
+        #   NEVER read again to approve, reject, size, or rank a trade.
+        #   A StrategyLab REJECT does not block a KDA BUY/SELL. A StrategyLab
+        #   PASS does not survive a KDA HOLD. Downstream risk layers
+        #   (CapitalRiskEngine, RiskControl, RiskGuardian, MarketSimulation,
+        #   CorrelationEngine) remain fully independent vetoes -- this rule
+        #   only concerns StrategyLab's role, not risk/safety gating.
+        # KDA runs on ALL original scanner signals. Signals authorized by KDA
+        # (KNOWLEDGE_BUY/SELL) enter the production path even if StrategyLab
+        # rejected them. StrategyLab is demoted to SHADOW/CONTEXT.
         # PAPER_TRADING=true is enforced downstream in OrderManager — unchanged.
         # Failure: any exception → enriched_signals unchanged (StrategyLab output used).
         _sl_signal_map = {s.symbol: s for s in enriched_signals}  # StrategyLab-approved
@@ -1222,9 +1232,19 @@ class MasterOrchestrator:
                                            _r.get("hbe_ess") or 0.0)
                         _kr_thp    = _r.get("hbe_target_hit_prob")  # P(target hit) = win rate
                         _kr_base   = 8.0 if _kr_ess >= 100.0 else 7.0
-                        _kr_wr     = (max(0.0, min(1.5, (_kr_thp - 0.55) * 7.5))
+                        # DTA-KDA-CONV-002: win-rate adjustment made symmetric.
+                        # Previously this term only ever added (0 to +1.5) for a
+                        # win-rate above 55% and floored at 0 otherwise -- meaning a
+                        # large sample with a POOR historical win-rate (e.g. 8%)
+                        # got no penalty at all, and conviction was driven almost
+                        # entirely by sample size (_kr_base). Same slope, now applied
+                        # symmetrically below 55% as well, so a bad track record
+                        # actually pulls conviction down instead of just failing to
+                        # raise it. Evidenced in production 2026-09-11 (MOTHERSON,
+                        # ess=1669, thp=8%, conviction was 8.0 -- now 6.5).
+                        _kr_wr     = (max(-1.5, min(1.5, (_kr_thp - 0.55) * 7.5))
                                       if _kr_thp is not None else 0.0)
-                        _kr_conv   = round(min(9.5, _kr_base + _kr_wr), 2)
+                        _kr_conv   = round(min(9.5, max(0.0, _kr_base + _kr_wr)), 2)
                         _kda_sig.kda_conviction = _kr_conv
 
                         # DTA-KDA-AUTHORITY-001: confidence floor now applies to ANY

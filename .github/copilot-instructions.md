@@ -147,8 +147,14 @@ Full cycle:          172ms  ✅  HEALTHY
 | `opportunity_engine/klp_outcome_engine.py` | DTA-041 Phase 2: `fill_pending_pit_outcomes` to resolve matured PIT outcomes from OHLCV bars | No |
 | `opportunity_engine/historical_behaviour_engine.py` | DTA-041 Phase 2: `_load_pit_discovery_file` + maturity-enforced ingestion into HBE evidence pool | No |
 | `tests/test_dta041_phase2_delayed_outcome.py` | DTA-041 Phase 2: 4 new tests proving maturity enforcement, lineage preservation, HBE ingestion, and empirical profile updates | N/A |
+| `risk_control/capital_risk_engine.py` | DTA-CRE-DIAG-001: `get_last_cycle_dominant_rejection_reason()` getter exposing the already-computed dominant rejection reason | No |
+| `execution_engine/order_manager.py` | DTA-AET-DIAG-001: AET CONFIRMATION deferral log now states the real trigger (distortion flags, or VIX) instead of always printing a VIX comparison | No |
+| `control_tower/pipeline_forensic_reporter.py` | DTA-KDA-DIAG-001: `record_kda_authority()` + new `[PipelineKDA]` daily summary line (StrategyLab-override rate as a standing metric) | No |
+| `orchestrator/master_orchestrator.py` | DTA-CRE-DIAG-001/DTA-AET-DIAG-001/DTA-KDA-DIAG-001 wiring; DTA-KDA-FINAL-AUTHORITY-001: formalized KDA as sole final BUY/SELL/REJECT authority, StrategyLab explicitly observation-only; DTA-KDA-CONV-002: made the KDA conviction win-rate term symmetric (previously only rewarded win-rate >55%, never penalized <55%, letting large sample size alone produce high conviction on poor-track-record setups) | No |
+| `ARCHITECTURE.md` | Layer 5: added explicit ARCHITECTURAL RULE callout formalizing KDA as sole final trading authority, StrategyLab as observation-only | N/A |
 
 ---
+
 
 ## Deployment Rule — MANDATORY after every code change
 

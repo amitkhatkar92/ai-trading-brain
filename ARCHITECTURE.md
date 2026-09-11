@@ -142,14 +142,23 @@ Also auto-includes any evolved variants from `data/evolved_strategies.json` that
 
 `BacktestingAI` enforces three gates before a signal is forwarded: **WalkForward ≥ 80%**, **OverfitScore < 3.0**, **CrossMarket ≥ 50%**.
 
-StrategyLab's approval is not final. A **Knowledge Decision Authority (KDA)**
-layer (`knowledge_authority/`) evaluates every scanner signal independently
-and can (a) authorize BUY/SELL for signals StrategyLab rejected, or (b) block
-signals StrategyLab approved via `KNOWLEDGE_HOLD`. Once KDA authorizes
-BUY/SELL, StrategyLab has no further influence on sizing, budget, confidence
-floor, ranking, or regime veto for that trade — StrategyLab is research/
-learning/strategy-generation infrastructure, not an authority over an
-already-authorized KDA decision (see Layer 6/7/10 notes below).
+> **ARCHITECTURAL RULE (formalized 2026-09-11): KDA is the sole, final
+> authority on BUY / SELL / REJECT.** StrategyLab is retained for research,
+> strategy generation, and observational comparison **only** — its output is
+> never read again anywhere downstream to approve, reject, size, or rank a
+> trade. A StrategyLab REJECT never blocks a KDA BUY/SELL. A StrategyLab PASS
+> never survives a KDA `KNOWLEDGE_HOLD`. This does not weaken risk/safety
+> gating: CapitalRiskEngine, RiskControl, RiskGuardian, MarketSimulation, and
+> CorrelationEngine remain fully independent vetoes regardless of KDA's call.
+
+A **Knowledge Decision Authority (KDA)** layer (`knowledge_authority/`)
+evaluates every scanner signal independently and can (a) authorize BUY/SELL
+for signals StrategyLab rejected, or (b) block signals StrategyLab approved
+via `KNOWLEDGE_HOLD`. Once KDA authorizes BUY/SELL, StrategyLab has no
+further influence on sizing, budget, confidence floor, ranking, or regime
+veto for that trade — StrategyLab is research/learning/strategy-generation
+infrastructure, not an authority over an already-authorized KDA decision
+(see Layer 6/7/10 notes below).
 
 ---
 
