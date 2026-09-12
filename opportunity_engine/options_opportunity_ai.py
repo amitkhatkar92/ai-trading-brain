@@ -929,15 +929,20 @@ class OptionsOpportunityAI:
     ) -> float:
         """
         Return 0–10 confidence based on chain quality, IVR fit, DTE,
-        learned strategy×regime weights, and knowledge store influence.
+        learned strategy×regime weights, knowledge store influence, and
+        measured underlying→option leverage capture.
 
-        Learning connections (Phase 4 fix — gaps closed):
+        Learning connections (Phase 4 fix + Phase D self-learning completion):
           1. OptionsPerformanceTracker.get_weight() → multiplicative weight
              based on historical win_rate for this strategy×regime pair.
           2. OptionsKnowledgeStore.get_influence() → bounded additive delta
              only when knowledge is in VALIDATED or AUTHENTICATED state.
-          3. Both connections are wrapped in try/except — failures fall back
-             to the static formula, preserving existing production behaviour.
+          3. OptionsUnderlyingResponseTracker.get_distribution() → bounded
+             additive delta once real observations show whether this
+             context historically captures the underlying's move well.
+          4. All three connections are wrapped in try/except — failures
+             fall back to the static formula, preserving existing
+             production behaviour.
         """
         base = 6.5
         if chain.is_live:
@@ -997,6 +1002,41 @@ class OptionsOpportunityAI:
                 influence, ks_state = store.get_influence(sn, ctx_key)
                 # influence is ±0.05/0.10 fraction → scale to 10-pt system
                 base += influence * 10.0
+        except Exception:
+            pass
+
+        # ── 3. OptionsUnderlyingResponseTracker leverage influence ────────
+        # Closes the "underlying move -> option move" research loop
+        # (DTA-001 Phase 5 / Phase D self-learning completion): once a
+        # strategy+regime+IVR+DTE context has enough REAL observations
+        # (gated internally by the tracker's own MIN_OBS_FOR_DISTRIBUTION),
+        # its measured leverage-capture quality (best_contract_score, a
+        # 0-10 scale already computed by the tracker from real win/loss +
+        # ratio data) nudges confidence. Bounded small and additive, same
+        # fail-open pattern as blocks 1-2 above — zero effect while no
+        # distribution exists yet (i.e. before real data accumulates).
+        try:
+            from knowledge_system.options_underlying_response_tracker import (
+                get_options_underlying_response_tracker,
+            )
+            from knowledge_system.options_feature_extractor import (
+                _ivr_band, _dte_band,
+            )
+            if snapshot is not None and chain is not None:
+                regime_str = str(
+                    snapshot.regime.value
+                    if hasattr(snapshot.regime, "value")
+                    else snapshot.regime
+                )
+                sn = strategy_name or stype
+                dist = get_options_underlying_response_tracker().get_distribution(
+                    sn, regime_str, _ivr_band(chain.iv_rank), _dte_band(chain.dte),
+                )
+                if dist is not None:
+                    # best_contract_score: 0 (poor capture) - 5 (neutral) - 10
+                    # (max leverage capture). Map deviation from neutral to a
+                    # small bounded delta.
+                    base += max(-0.3, min(0.3, (dist.best_contract_score - 5.0) * 0.06))
         except Exception:
             pass
 
