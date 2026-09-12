@@ -129,22 +129,18 @@ class StrategyGeneratorAI:
         for signal in signals:
             assigned = self._assign(signal, snapshot, active)
             if assigned:
-                # Final hard gate: drop any signal assigned to an excluded strategy
-                # (catches fallback paths inside _assign that bypass the active set)
-                # OPTIONS/SPREAD signals are exempt: StrategyLab is observation-only
-                # for options (never a blocking gate) -- OptionsRiskEngine is their
-                # sole capital/risk authority, mirroring the KDA-supremacy rule
-                # already established for equity strategies.
-                if (excluded_strategies
-                        and assigned.strategy_name in excluded_strategies
-                        and assigned.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD)):
-                    # Emit a rich [StrategyBlocked] audit log for every rejection
+                # DTA-EQUITY-STRATEGYLAB-OBSERVATION-001: StrategyLab is
+                # observation-only for ALL signal types — SHM/PerfTracker
+                # health status is recorded as context, never a blocking gate.
+                # KDA is the sole authority on whether the trade proceeds.
+                if excluded_strategies and assigned.strategy_name in excluded_strategies:
                     meta: Dict[str, Any] = {}
                     if shm_ref is not None:
                         meta = shm_ref.get_disable_metadata(assigned.strategy_name)
+                    assigned.strategy_health_status = meta.get("reason", "SHM_EXCLUDED")
                     log.info(
-                        "[StrategyBlocked] %s  strategy=%s  reason=%s  wr=%.0f%%"
-                        "  trades=%s  total_r=%s",
+                        "[StrategyObservation] %s  strategy=%s  reason=%s  wr=%.0f%%"
+                        "  trades=%s  total_r=%s  — recorded only, forwarded to KDA",
                         assigned.symbol,
                         assigned.strategy_name,
                         meta.get("reason", "SHM_EXCLUDED"),
@@ -152,7 +148,6 @@ class StrategyGeneratorAI:
                         meta.get("at_trades", "?"),
                         f"{meta.get('total_r') or 0:.2f}",
                     )
-                    continue
                 enriched.append(assigned)
 
         log.info("[StrategyGeneratorAI] %d/%d signals assigned strategies.",
@@ -194,17 +189,15 @@ class StrategyGeneratorAI:
                                                   min_signal_rr=rr)
             if evolved:
                 signal.strategy_name = evolved
-            # If MetaController says this strategy is inactive, skip it.
-            # OPTIONS/SPREAD signals are exempt: StrategyLab is observation-only
-            # for options -- its strategy_name/params are still used for
-            # research/labeling, but SHM/PerfTracker disablement never blocks
-            # an options trade decision (OptionsRiskEngine remains the sole
-            # independent risk gate for options, unaffected either way).
-            if (active is not None and signal.strategy_name not in active
-                    and signal.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD)):
-                log.debug("[StrategyGeneratorAI] %s strategy %s not in active set — skipped.",
+            # If MetaController says this strategy is inactive, record it as
+            # context only — never a blocking gate (DTA-EQUITY-STRATEGYLAB-
+            # OBSERVATION-001). KDA is the sole authority for every signal
+            # type; StrategyLab's health judgement is observation-only.
+            if active is not None and signal.strategy_name not in active:
+                signal.strategy_health_status = "META_INACTIVE"
+                log.debug("[StrategyGeneratorAI] %s strategy %s not in active set — "
+                          "recorded only, still forwarded.",
                           signal.symbol, signal.strategy_name)
-                return None
             # Validate R:R against whichever strategy (evolved or original) is selected.
             # Options/spread signals (Iron Condor, Short Straddle, Bull Call Spread) have
             # their own quality gates inside the OptionsOpportunityAI builder:

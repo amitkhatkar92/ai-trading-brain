@@ -92,6 +92,12 @@ class TradeSignal:
     stop_source:          Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
     horizon_source:       Optional[str]  = None  # "HBE_EMPIRICAL" | "ATR_FALLBACK" | "NONE"
 
+    # ── DTA-EQUITY-STRATEGYLAB-OBSERVATION-001 ──
+    # StrategyLab's SHM/PerfTracker health judgement, recorded for comparison
+    # only. Never causes StrategyLab to drop the signal (equity or options) —
+    # KDA is the sole authority on whether the trade proceeds.
+    strategy_health_status: Optional[str] = None  # e.g. "SHM_EXCLUDED" | None
+
     @property
     def risk_reward_ratio(self) -> float:
         if self.stop_loss == 0 or self.entry_price == 0:
