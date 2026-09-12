@@ -1473,6 +1473,29 @@ class MasterOrchestrator:
         except Exception as _lol_dec_exc:
             log.debug("[LOL] Decision update skipped: %s", _lol_dec_exc)
 
+        # ── STEP 3.6 (DTA-OPTIONS-CRE-ISOLATION-001): split options/spread
+        # signals out of enriched_signals BEFORE CapitalRiskEngine.
+        # Root cause (Phase D audit): CapitalRiskEngine ranked ALL signals
+        # (equity + options + arb) together and enforced ONE shared
+        # MAX_POSITIONS cap. Equity generates 25-40 candidates/cycle vs. ~2
+        # for options, so options were crowded out of the ranked cutoff on
+        # effectively every cycle (100% of CRE rejections in the retention
+        # window were MAX_POSITIONS_CAP). Options now bypass CapitalRiskEngine
+        # entirely -- OptionsRiskEngine (Step 4b Layer C) is their sole,
+        # independent capital/risk gate, exactly as already documented at the
+        # Options Fast-Path site. Equity's enriched_signals, ranking, and
+        # MAX_POSITIONS cap below are completely unaffected: this only
+        # removes options/spread entries from the list equity was never
+        # meaningfully competing with anyway.
+        _early_options_signals = [
+            s for s in enriched_signals
+            if s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD)
+        ]
+        enriched_signals = [
+            s for s in enriched_signals
+            if s.signal_type not in (_SigType.OPTIONS, _SigType.SPREAD)
+        ]
+
         # ── STEP 3.5: Capital Risk Engine ────────────────────────────
         with self.system_monitor.time_layer("CapitalRiskEngine"):
             portfolio = self.order_manager.get_portfolio()
@@ -1720,13 +1743,14 @@ class MasterOrchestrator:
         # ── STEP 4b: Options Fast-Path ────────────────────────────────
         # Options/spread signals must NOT pass through the equity-oriented
         # gates below (MarketSimulation stability, Debate R:R scoring,
-        # SmartExecution, DecisionEngine 6.8 threshold).  Route them directly
-        # to OptionsRiskEngine → OptionsOrderManager here, then continue with
-        # equity signals only for the remaining steps.
-        _options_signals = [s for s in approved_signals
-                            if s.signal_type in (_SigType.OPTIONS, _SigType.SPREAD)]
-        approved_signals = [s for s in approved_signals
-                            if s.signal_type not in (_SigType.OPTIONS, _SigType.SPREAD)]
+        # SmartExecution, DecisionEngine 6.8 threshold).  They were already
+        # split out at Step 3.6 (before CapitalRiskEngine) so they never
+        # competed with equity for the shared MAX_POSITIONS cap either;
+        # `approved_signals` here is equity/arb only by construction, no
+        # re-filtering needed. Route options directly to OptionsRiskEngine
+        # → OptionsOrderManager, then continue with equity signals only for
+        # the remaining steps.
+        _options_signals = _early_options_signals
         _n_opts_signals = len(_options_signals)  # captured for TradeDiagnostic
 
         if _options_signals:

@@ -323,6 +323,7 @@ class OptionsOpportunityAI:
             "Bear_Put_Spread":   self._build_bear_put_spread,
             "Iron_Condor_Range": self._build_iron_condor,
             "Long_Straddle":     self._build_long_straddle,
+            "Hedging_Model":     self._build_hedging_model,
         }
         build_fn = builders.get(strategy)
         if build_fn is None:
@@ -385,6 +386,12 @@ class OptionsOpportunityAI:
             return "Bull_Call_Spread"
 
         if regime == RegimeLabel.BEAR_MARKET:
+            # Hedging_Model (Bear Call credit spread) preferred when IV is
+            # rich enough to collect meaningful premium -- defined-risk,
+            # secure-profit vehicle. Falls back to the debit Bear_Put_Spread
+            # when premium is too thin to sell profitably.
+            if ivr >= IVR_SELL_THRESHOLD:
+                return "Hedging_Model"
             return "Bear_Put_Spread"
 
         if regime in (RegimeLabel.RANGE_MARKET, RegimeLabel.VOLATILE):
@@ -725,6 +732,116 @@ class OptionsOpportunityAI:
             strategy_name = strategy,
             strike_price  = float(atm),
             option_type   = "IRON_CONDOR",
+            notes         = json.dumps(meta),
+            atr           = round(chain.atm_iv * chain.spot, 2),
+        )
+
+    def _build_hedging_model(
+        self, chain: OptionsChain, strategy: str
+    ) -> Optional[TradeSignal]:
+        """
+        Hedging_Model — Bear Call Spread (credit)
+        ───────────────────────────────────────────
+        Sell 1-strike OTM call / Buy 2-strikes OTM call (single-side credit
+        spread). Realizes the long-reserved "Hedging_Model" strategy slot —
+        the best risk-adjusted profile in the backtest roster (lowest
+        drawdown, highest Sharpe) — with an actual defined-risk,
+        premium-collecting signal generator for defensive/bearish regimes,
+        instead of a naive long protective put (prior research found
+        protective puts underperform: win_rate 13.4%, PF 0.77).
+
+        Max profit = net credit received (spot stays below the short strike)
+        Max loss   = strike width − net credit   (capped by construction)
+        """
+        atm = chain.atm_strike()
+
+        sell_c_list = chain.otm_calls_above(atm, n=2)
+        if len(sell_c_list) < 2:
+            return None
+        sell_c, buy_c = sell_c_list[0], sell_c_list[1]
+
+        if chain.is_live:
+            min_oi = MIN_TRADABLE_OI // 2
+            for leg in (sell_c, buy_c):
+                if leg.open_interest < min_oi:
+                    return None
+
+        for leg in (sell_c, buy_c):
+            if leg.premium < MIN_LEG_PREMIUM:
+                return None
+
+        net_credit = round(sell_c.premium - buy_c.premium, 2)
+        width      = buy_c.strike - sell_c.strike
+        max_loss   = round(width - net_credit, 2)
+
+        if net_credit <= 0 or max_loss <= 0:
+            return None
+
+        # ── Spread construction validation ─────────────────────────────
+        _min_w = (MIN_SPREAD_WIDTH_BANKNIFTY
+                  if chain.symbol == "BANKNIFTY"
+                  else MIN_SPREAD_WIDTH_NIFTY)
+        if width < _min_w:
+            log.debug(
+                "[OptionsOpportunityAI] HM %s width=%.0f < %.0f — invalid.",
+                chain.symbol, width, _min_w,
+            )
+            return None
+
+        credit_to_width = net_credit / width if width > 0 else 0
+        if credit_to_width < IC_MIN_CREDIT_TO_WIDTH:
+            log.debug(
+                "[OptionsOpportunityAI] HM %s credit_to_width=%.2f < %.2f — "
+                "insufficient premium vs max-loss.",
+                chain.symbol, credit_to_width, IC_MIN_CREDIT_TO_WIDTH,
+            )
+            return None
+
+        # Close when 75% of credit is retained (25% left to collect)
+        target_prem = round(net_credit * 0.25, 2)
+        # Exit if debit to close = 2x initial credit (100% loss on credit)
+        stop_prem   = round(net_credit * 2.0, 2)
+
+        legs = [
+            {"type": "CE", "strike": sell_c.strike, "direction": "SELL",
+             "premium": sell_c.premium, "iv": sell_c.iv, "delta": sell_c.delta,
+             "gamma": sell_c.gamma, "theta": sell_c.theta, "vega": sell_c.vega,
+             "open_interest": sell_c.open_interest, "volume": sell_c.volume,
+             "bid": sell_c.bid, "ask": sell_c.ask,
+             "iv_source": getattr(sell_c, "iv_source", "")},
+            {"type": "CE", "strike": buy_c.strike,  "direction": "BUY",
+             "premium": buy_c.premium,  "iv": buy_c.iv,  "delta": buy_c.delta,
+             "gamma": buy_c.gamma, "theta": buy_c.theta, "vega": buy_c.vega,
+             "open_interest": buy_c.open_interest, "volume": buy_c.volume,
+             "bid": buy_c.bid, "ask": buy_c.ask,
+             "iv_source": getattr(buy_c, "iv_source", "")},
+        ]
+        meta = {
+            "strategy_type": "HEDGING_MODEL_BEAR_CALL_SPREAD",
+            "net_credit": net_credit,
+            "width": width,
+            "credit_to_width": round(credit_to_width, 3),
+            "max_profit": net_credit,
+            "max_loss": max_loss,
+            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "dte": chain.dte,
+            "iv_rank": chain.iv_rank,
+            "spot": chain.spot,
+            "legs": legs,
+        }
+        return TradeSignal(
+            symbol        = chain.symbol,
+            direction     = SignalDirection.SELL,   # net seller of premium
+            signal_type   = SignalType.SPREAD,
+            strength      = SignalStrength.MODERATE,
+            entry_price   = net_credit,
+            stop_loss     = stop_prem,
+            target_price  = target_prem,
+            confidence    = self._base_confidence(chain, "credit_spread", strategy_name=strategy, snapshot=self._current_snapshot),
+            source_agent  = "OptionsOpportunityAI",
+            strategy_name = strategy,
+            strike_price  = float(sell_c.strike),
+            option_type   = "HEDGING_MODEL",
             notes         = json.dumps(meta),
             atr           = round(chain.atm_iv * chain.spot, 2),
         )

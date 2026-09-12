@@ -119,6 +119,7 @@ _STRATEGY_SHARE: Dict[str, float] = {
     "Trend_Pullback":           0.18,  # pullback-in-trend; same role as Momentum_Retest
     "Mean_Reversion":           0.22,
     "Bull_Call_Spread":         0.12,
+    "Bear_Put_Spread":         0.12,
     "Iron_Condor_Range":        0.18,
     "Hedging_Model":            0.10,
     "Short_Straddle_IV_Spike":  0.14,

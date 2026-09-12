@@ -39,6 +39,7 @@ STRATEGY_PARAMS = {
     "Trend_Pullback":         {"min_rr": 2.5, "max_loss_pct": 0.02},   # ATR-based pullback inside trend
     "Mean_Reversion":         {"min_rr": 2.0, "max_loss_pct": 0.015},  # was 1.5
     "Bull_Call_Spread":       {"min_rr": 2.0, "max_loss_pct": 0.01},   # was 1.5
+    "Bear_Put_Spread":        {"min_rr": 2.0, "max_loss_pct": 0.01},   # mirrors Bull_Call_Spread — was missing, caused silent StrategyLab mislabel to Hedging_Model
     "Iron_Condor_Range":      {"min_rr": 1.5, "max_loss_pct": 0.01},   # premium income — needs consistency
     "Hedging_Model":          {"min_rr": 1.5, "max_loss_pct": 0.02},   # was 1.0 — hedges must still pay
     "Short_Straddle_IV_Spike":{"min_rr": 1.5, "max_loss_pct": 0.015},
@@ -130,7 +131,13 @@ class StrategyGeneratorAI:
             if assigned:
                 # Final hard gate: drop any signal assigned to an excluded strategy
                 # (catches fallback paths inside _assign that bypass the active set)
-                if excluded_strategies and assigned.strategy_name in excluded_strategies:
+                # OPTIONS/SPREAD signals are exempt: StrategyLab is observation-only
+                # for options (never a blocking gate) -- OptionsRiskEngine is their
+                # sole capital/risk authority, mirroring the KDA-supremacy rule
+                # already established for equity strategies.
+                if (excluded_strategies
+                        and assigned.strategy_name in excluded_strategies
+                        and assigned.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD)):
                     # Emit a rich [StrategyBlocked] audit log for every rejection
                     meta: Dict[str, Any] = {}
                     if shm_ref is not None:
@@ -187,8 +194,14 @@ class StrategyGeneratorAI:
                                                   min_signal_rr=rr)
             if evolved:
                 signal.strategy_name = evolved
-            # If MetaController says this strategy is inactive, skip it
-            if active is not None and signal.strategy_name not in active:
+            # If MetaController says this strategy is inactive, skip it.
+            # OPTIONS/SPREAD signals are exempt: StrategyLab is observation-only
+            # for options -- its strategy_name/params are still used for
+            # research/labeling, but SHM/PerfTracker disablement never blocks
+            # an options trade decision (OptionsRiskEngine remains the sole
+            # independent risk gate for options, unaffected either way).
+            if (active is not None and signal.strategy_name not in active
+                    and signal.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD)):
                 log.debug("[StrategyGeneratorAI] %s strategy %s not in active set — skipped.",
                           signal.symbol, signal.strategy_name)
                 return None

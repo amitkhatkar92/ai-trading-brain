@@ -60,6 +60,7 @@ _REGIME_MAP: Dict[str, List[str]] = {
     ],
     RegimeLabel.BEAR_MARKET.value: [
         "Hedging_Model",
+        "Bear_Put_Spread",
         "Iron_Condor_Range",
         "Futures_Basis_Arb",
     ],
