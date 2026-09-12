@@ -556,6 +556,24 @@ class MasterOrchestrator:
         except Exception as _bridge_exc:
             log.warning("[EDA] OIOS execution bridge not loaded: %s", _bridge_exc)
 
+        # ── Wire Equity-Hedge Shadow Engine (shadow-safe, fire-and-forget) ──
+        # DTA-EQUITY-HEDGE-SHADOW-001: read-only observer of equity's own
+        # ORDER_PLACED events (source_agent="OrderManager" only -- ignores
+        # OptionsOrderManager's own events, keeping index-options and
+        # single-stock evidence domains separate). Never reads from or
+        # writes back into equity decisions -- equity ecosystem behaviour
+        # is unaffected whether this loads or not.
+        try:
+            from knowledge_system.equity_hedge_shadow_engine import (
+                get_equity_hedge_shadow_engine,
+            )
+            self._equity_hedge_shadow = get_equity_hedge_shadow_engine()
+            self._equity_hedge_shadow.subscribe(self.bus)
+            self._equity_hedge_shadow.start()
+            log.info("[EDA] Equity-hedge shadow engine wired (shadow-only, no live capital).")
+        except Exception as _ehs_exc:
+            log.warning("[EDA] Equity-hedge shadow engine not loaded: %s", _ehs_exc)
+
         log.info("[EDA] Communication layer wired. Bus ready. Workers started.")
 
     def _on_system_halt(self, event):
