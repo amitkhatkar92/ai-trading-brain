@@ -269,6 +269,38 @@ def run_loop(
     except Exception as _hf_exc:
         print(f"[KSL] Health file write failed (non-critical): {_hf_exc}")
 
+    # ── STAGE 10: RSL-001 — automated hypothesis validation (Phase B) ─────
+    # Runs pending KSL_AUTO hypotheses through statistical validation.
+    # Fully automated (no human review step). Non-fatal on any failure.
+    try:
+        from scripts.knowledge_system.ranking_hypothesis_validator_001 import (
+            validate_pending_hypotheses,
+        )
+        rhv_result = validate_pending_hypotheses()
+        summary["rsl_validation"] = rhv_result
+        if rhv_result.get("evaluated"):
+            print(f"[KSL] Stage 10: RHV-001 validation — {rhv_result}")
+    except Exception as _rhv_exc:
+        print(f"[KSL] RHV-001 validation failed (non-critical): {_rhv_exc}")
+
+    # ── STAGE 11: RSL-001 — shadow tracking + auto-rollback (Phase E) ──────
+    # Advances shadow-eligible candidates, promotes confirmed ones live,
+    # and monitors already-active adjustments for auto-revert. Fully
+    # automated. Non-fatal on any failure.
+    try:
+        from scripts.knowledge_system.ranking_adjustment_engine_001 import (
+            advance_shadow_tracking, check_rollback,
+        )
+        shadow_result = advance_shadow_tracking()
+        rollback_result = check_rollback()
+        summary["rsl_shadow_tracking"] = shadow_result
+        summary["rsl_rollback_check"] = rollback_result
+        if shadow_result.get("activated_shadow") or shadow_result.get("promoted_live") \
+           or rollback_result.get("rolled_back"):
+            print(f"[KSL] Stage 11: RAE-001 shadow/rollback — shadow={shadow_result} rollback={rollback_result}")
+    except Exception as _rae_exc:
+        print(f"[KSL] RAE-001 shadow tracking failed (non-critical): {_rae_exc}")
+
     print(f"[KSL] Complete. Run: {run_id}")
     return summary
 

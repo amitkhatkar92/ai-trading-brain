@@ -301,9 +301,21 @@ class KSLShadowCandidate:
     required_observation_days: int
     promotion_requirements:  str
     status:                  str = "SHADOW_ELIGIBLE"
+    # Ranking Self-Learning Loop (RSL-001) — additive only, all optional/defaulted
+    # so existing keyword-constructed candidates are unaffected.
+    feature_id:              str = ""            # e.g. "C2_RANKING|UP|OUTRANKED_BY_STRONGER_OPENERS"
+    shadow_start_date:       Optional[str] = None
+    shadow_activated_at:     Optional[str] = None
+    live_activated_at:       Optional[str] = None
+    rolled_back_at:          Optional[str] = None
+    status_reason:           str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__.copy()
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "KSLShadowCandidate":
+        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
 
 
 # ─────────────────────────────────────────────────────────────────────────────

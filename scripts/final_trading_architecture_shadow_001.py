@@ -909,6 +909,19 @@ def run_shadow_day(
 
         # ── Step 6: Assign C2 ranks ───────────────────────────────────────────
         def _assign_ranks(recs: List[Dict]) -> List[Dict]:
+            # RSL-001: additive, always-safe hook. Computes a parallel shadow
+            # score for every candidate; only overrides the real ranking when
+            # this direction has a validated, live-confirmed adjustment.
+            # No active adjustments -> byte-identical to the original ranking.
+            try:
+                from scripts.knowledge_system.ranking_adjustment_engine_001 import (
+                    annotate_adjusted_scores,
+                )
+                direction = recs[0]["direction"] if recs else "UP"
+                recs = annotate_adjusted_scores(recs, direction)
+            except Exception as _rae_exc:
+                log.debug("[RSL-001] annotate_adjusted_scores skipped: %s", _rae_exc)
+
             ranked = select_c2_top_n(recs, n=C2_TOP_N)
             # Also assign gap_rank = rank by |gap_pct|
             valid_gap = [(i, r["gap_pct"]) for i, r in enumerate(ranked)
