@@ -1695,9 +1695,15 @@ class DhanFeed(BaseFeed):
             return None   # caller falls back to NSEFeed simulation
 
         meta = self._lookup(symbol)
-        if not meta or meta["segment"] != "IDX_I":
-            log.debug("[DhanFeed] Options chain only supported for NSE indices.")
+        # DTA-EQUITY-HEDGE-EXEC-001: Dhan's option_chain API supports both
+        # index underlyings (IDX_I) and single-stock underlyings (NSE_EQ) --
+        # empirically confirmed 2026-09-12 (RELIANCE returns real strikes,
+        # security_ids, Greeks via NSE_EQ). Any other segment is genuinely
+        # unsupported (no options market exists for it).
+        if not meta or meta["segment"] not in ("IDX_I", "NSE_EQ"):
+            log.debug("[DhanFeed] Options chain only supported for NSE indices and NSE equities.")
             return None
+        under_seg = meta["segment"]
 
         # Determine nearest weekly expiry if not provided
         if expiry is None:
@@ -1710,7 +1716,7 @@ class DhanFeed(BaseFeed):
             try:
                 _el = self._dhan.expiry_list(
                     under_security_id    = int(meta["security_id"]),
-                    under_exchange_segment="IDX_I",
+                    under_exchange_segment=under_seg,
                 )
                 if isinstance(_el, dict) and _el.get("status") == "success":
                     _el_inner = _el.get("data", {})
@@ -1791,10 +1797,10 @@ class DhanFeed(BaseFeed):
                         pass
         log.info(
             "[DhanForensic] PRE_CALL  symbol=%s  "
-            "payload={'UnderlyingScrip':%d,'UnderlyingSeg':'IDX_I','Expiry':'%s'}"
+            "payload={'UnderlyingScrip':%d,'UnderlyingSeg':'%s','Expiry':'%s'}"
             "  client_obj=%d  ctx_obj=%s  http_obj=%s  token_sfx=%s"
             "  ctx_attrs=%r  http_auth_sfx=%r  http_cookies=%r",
-            symbol, _f_sid, expiry,
+            symbol, _f_sid, under_seg, expiry,
             _f_cid, _f_ctx_id, _f_http_id, _f_tok,
             _f_ctx_info, _f_http_auth, _f_http_cookies,
         )
@@ -1803,7 +1809,7 @@ class DhanFeed(BaseFeed):
             try:
                 resp = self._dhan.option_chain(
                     under_security_id     = _f_sid,
-                    under_exchange_segment= "IDX_I",
+                    under_exchange_segment= under_seg,
                     expiry                = expiry,
                 )
             except Exception:

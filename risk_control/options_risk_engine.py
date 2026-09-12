@@ -91,7 +91,19 @@ class OptionsRiskEngine:
         stype    = meta.get("strategy_type", "")
         dte      = int(meta.get("dte", 0))
         max_loss = float(meta.get("max_loss", signal.entry_price))
-        lot_size = int(meta.get("lot_size", 75))
+        # DTA-EQUITY-HEDGE-EXEC-001: never default an unset lot_size to an
+        # arbitrary value for a real position-sizing calculation -- reject
+        # instead, matching the same fail-closed rule already applied in
+        # OptionsOrderManager.execute().
+        if "lot_size" not in meta:
+            log.warning("[OptionsRiskEngine] %s — lot_size missing from signal "
+                        "metadata — rejecting rather than guessing.", signal.symbol)
+            return False
+        lot_size = int(meta["lot_size"])
+        if lot_size <= 0:
+            log.warning("[OptionsRiskEngine] %s — invalid lot_size=%d — rejecting.",
+                       signal.symbol, lot_size)
+            return False
         vix      = float(getattr(snapshot, "vix", 15.0)) if snapshot else 15.0
 
         # ── Gate 1: total capital exposure ───────────────────────────

@@ -295,7 +295,23 @@ class OptionsOrderManager:
                     return None
 
         # ── Determine lot count (from risk engine or default 1) ────────
-        lot_size = NSE_LOT_SIZES.get(signal.symbol, 75)
+        # DTA-EQUITY-HEDGE-EXEC-001: NSE_LOT_SIZES only covers indices.
+        # For single-stock underlyings, resolve the verified lot size from
+        # Dhan's own instrument master (SEM_LOT_UNITS) -- never default/
+        # guess a lot size for a real order. Reject rather than risk a
+        # wrong quantity.
+        lot_size = NSE_LOT_SIZES.get(signal.symbol)
+        if lot_size is None:
+            from data_feeds.dhan_fno_security_map import get_fno_security_map
+            lot_size = get_fno_security_map().get_lot_size(signal.symbol)
+        if lot_size is None:
+            log.warning(
+                "[OptionsOrderManager] %s — no verified lot size available "
+                "(not an index, not found in instrument master) — rejecting "
+                "rather than guessing.",
+                signal.symbol,
+            )
+            return None
         lots     = meta.get("lots", 1)   # OptionsRiskEngine sets this in meta
         if lots < 1:
             lots = 1

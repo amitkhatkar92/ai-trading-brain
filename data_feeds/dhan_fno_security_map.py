@@ -49,6 +49,7 @@ class DhanFnOSecurityMap:
 
     def __init__(self) -> None:
         self._index:       Dict[_IndexKey, str] = {}
+        self._lot_sizes:    Dict[str, int]      = {}   # underlying -> verified SEM_LOT_UNITS
         self._loaded_date: Optional[date]        = None
         self._lock         = threading.Lock()
         self._load()
@@ -92,6 +93,21 @@ class DhanFnOSecurityMap:
     def index_size(self) -> int:
         """Return number of indexed contracts (for diagnostics)."""
         return len(self._index)
+
+    def get_lot_size(self, underlying: str) -> Optional[int]:
+        """
+        Return the verified NSE F&O lot size for *underlying*, sourced from
+        Dhan's own instrument master (SEM_LOT_UNITS) -- never hard-coded.
+
+        Returns None if the underlying is not found in the current index
+        (e.g. not an F&O-eligible symbol, or the master hasn't loaded).
+        A None result must cause safe rejection -- never default/guess a
+        lot size for a real order.
+        """
+        with self._lock:
+            if self._loaded_date != date.today():
+                self._load()
+            return self._lot_sizes.get(underlying.upper())
 
     # ── Internal ───────────────────────────────────────────────────────
 
@@ -162,6 +178,7 @@ class DhanFnOSecurityMap:
             "BANKNIFTY-Sep2026-49000-CE" → underlying = "BANKNIFTY"
         """
         idx: Dict[_IndexKey, str] = {}
+        lot_sizes: Dict[str, int] = {}
         skipped = 0
         for row in rows:
             exch     = (row.get("SEM_EXM_EXCH_ID") or "").strip()
@@ -202,7 +219,16 @@ class DhanFnOSecurityMap:
             key: _IndexKey = (underlying, expiry_date, strike_int, opt_type)
             idx[key] = sid
 
+            if underlying not in lot_sizes:
+                try:
+                    lot_units = int(round(float((row.get("SEM_LOT_UNITS") or "0"))))
+                    if lot_units > 0:
+                        lot_sizes[underlying] = lot_units
+                except (ValueError, TypeError):
+                    pass
+
         self._index = idx
+        self._lot_sizes = lot_sizes
         if skipped:
             log.debug("[DhanFnOSecurityMap] Skipped %d malformed rows during index build.", skipped)
 
@@ -230,7 +256,16 @@ class DhanFnOSecurityMap:
                 dhan = _DhanHQ(client_id, access_token)
 
             result = dhan.fetch_security_list("compact")
-            rows   = list(result) if result else []
+            # DTA-EQUITY-HEDGE-EXEC-001: dhanhq SDK now returns a pandas
+            # DataFrame from fetch_security_list(), not a list of dicts --
+            # `if result:` on a DataFrame raises "ambiguous truth value".
+            # Normalise both possible return shapes explicitly.
+            if result is None:
+                rows = []
+            elif hasattr(result, "to_dict"):
+                rows = result.to_dict("records")
+            else:
+                rows = list(result)
             if not rows:
                 log.warning("[DhanFnOSecurityMap] fetch_security_list returned no data.")
                 return False

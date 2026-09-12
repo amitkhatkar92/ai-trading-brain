@@ -1,24 +1,33 @@
 """
-Equity-Hedge Shadow Engine
-============================
-DTA-EQUITY-HEDGE-SHADOW-001 — Phase D future-work bootstrap.
+Equity-Hedge Shadow + Execution Engine
+=========================================
+DTA-EQUITY-HEDGE-SHADOW-001 / DTA-EQUITY-HEDGE-EXEC-001.
 
 Read-only observer of equity's own ORDER_PLACED events. For every real
 equity trade, attempts to find a corresponding single-stock option and
-shadow-tracks a hypothetical protective hedge — with ZERO real capital
-risk and ZERO write-back into equity decisions. Equity's own pipeline is
-never touched: this module only listens to the shared EventBus, exactly
-like the existing OIOSExecutionBridge / PaperTradeLogger observers.
+shadow-tracks a hypothetical companion option position — with ZERO real
+capital risk while evidence accumulates, and ZERO write-back into equity
+decisions. Equity's own pipeline is never touched: this module only
+listens to the shared EventBus, exactly like the existing
+OIOSExecutionBridge / PaperTradeLogger observers.
+
+Structure (2026-09-12 clarification): this is a SAME-DIRECTION, defined-
+risk companion option, not a traditional opposite-direction protective
+hedge. When equity BUYS a stock, this engine's target position is a long
+CALL on the same stock (same direction — captures amplified upside per
+the "underlying move -> option move" leverage research, bounded profit
+target) whose maximum loss is the premium paid (defined, capped downside
+-- "minimizes the loss" relative to holding more equity). Equity SELL ->
+long PUT, symmetrically.
 
 Why shadow-first
 -----------------
 Per the audited activation plan (2026-09-12): before any real capital is
-deployed into single-stock option hedges, the system must accumulate its
-OWN evidence — not borrowed from index-options knowledge — that the
-underlying-move -> option-move leverage relationship holds for individual
-stocks specifically, and that a hedge would have been profitable net of
-cost. This engine is that evidence-collection phase. It never places a
-real trade.
+deployed into single-stock option positions, the system must accumulate
+its OWN evidence — not borrowed from index-options knowledge — that the
+leverage relationship holds for individual stocks specifically, and that
+the companion position would be profitable net of cost. This engine
+collects that evidence continuously; live execution is gated on it (below).
 
 Readiness gate (EQH-Ready-1..5) — automated, no human sign-off required
 for the AUTHENTICATION decision itself, mirroring the same no-human-gate
@@ -31,17 +40,20 @@ philosophy already used by OptionsKnowledgeStore:
                observations only (chain_available=True) — never borrowed
                from index-options knowledge stores
 
-IMPORTANT — what "automatic" means here
-----------------------------------------
-Once all 5 checks pass for a symbol, `check_readiness()` marks it
-READY_FOR_LIVE and fires a notification. It does NOT itself place any real
-trade: no single-stock options execution path exists anywhere in this
-codebase today (confirmed empirically 2026-09-12 — `OptionsFeed.get_chain()`
-returns None for individual stocks; `NSE_LOT_SIZES` / `NSE_STRIKE_INTERVALS`
-/ Dhan's option-chain endpoint only cover index instruments). Building that
-execution path is separate, explicit future work requiring its own
-authorization. This module's "no human gate" scope is the AUTHENTICATION
-decision only — not a live-trading switch.
+Live execution (2026-09-12 -- built and verified against real Dhan data)
+--------------------------------------------------------------------------
+Once a symbol passes all 5 checks and is marked READY_FOR_LIVE, the next
+equity ORDER_PLACED for that symbol triggers a companion option order,
+routed through the SAME, already-proven execution machinery used for
+index options (OptionsRiskEngine.approve_and_size -> OptionsOrderManager
+.execute) — no new, untested execution path was built. Verified
+empirically before wiring: Dhan's option_chain API supports single-stock
+(NSE_EQ) underlyings with the identical response schema as indices;
+DhanFnOSecurityMap resolves real security_ids AND real lot sizes
+(SEM_LOT_UNITS) from Dhan's own instrument master — never hard-coded.
+Every step fails closed (chain unavailable, lot size unverified, quality
+too low, etc. all reject rather than guess) rather than defaulting to an
+unverified assumption.
 
 Persistence: data/equity_hedge_shadow.json
 Singleton:   get_equity_hedge_shadow_engine()
@@ -79,6 +91,14 @@ OOS_P_ALPHA            = 0.10  # EQH-Ready-2 (mirrors OOS_P_ALPHA)
 COST_ESTIMATE_PCT      = 0.02  # EQH-Ready-3: assumed round-trip cost as a
                                 # fraction of premium (slippage + brokerage)
 MAX_CONCENTRATION      = 0.80  # EQH-Ready-4 (mirrors CONCENTRATION_MAX)
+
+# ── Live-execution quality gates (reuse the SAME values already used by
+#    the index-options fast path -- no new numbers invented) ──────────────
+_CHAIN_QUALITY_MIN = 0.5    # mirrors master_orchestrator._CHAIN_QUALITY_MIN
+_DTE_MIN           = 10     # mirrors master_orchestrator._DTE_MIN
+_DTE_MAX           = 60     # mirrors master_orchestrator._DTE_MAX
+_MIN_LEG_PREMIUM   = 5.0    # mirrors options_opportunity_ai.MIN_LEG_PREMIUM
+_MIN_TRADABLE_OI   = 500    # mirrors data_feeds.options_feed.MIN_TRADABLE_OI
 
 
 @dataclass
@@ -158,13 +178,20 @@ class EquityHedgeShadowEngine:
             symbol = str(p.get("symbol", ""))
             if not symbol:
                 return
+            direction = str(p.get("direction", "BUY"))
             self.register_equity_trade(
                 symbol=symbol,
                 order_id=str(p.get("order_id", "")),
-                direction=str(p.get("direction", "BUY")),
+                direction=direction,
                 entry_price=float(p.get("entry_price", 0.0) or 0.0),
                 qty=int(p.get("quantity", 0) or 0),
             )
+            # Live execution only ever fires for symbols that have already
+            # passed all 5 automated EQH-Ready checks (self._ready_symbols).
+            # For every other symbol (i.e. all of them today) this is a
+            # pure no-op -- the shadow observation above is all that happens.
+            if symbol in self._ready_symbols:
+                self._attempt_live_execution(symbol, direction, qty)
         except Exception as exc:
             log.debug("[EquityHedgeShadow] on_order_placed error: %s", exc)
 
@@ -203,13 +230,15 @@ class EquityHedgeShadowEngine:
             from data_feeds.options_feed import get_options_feed
             chain = get_options_feed().get_chain(symbol)
             if chain is not None and (chain.calls or chain.puts):
-                # Protective hedge: BUY a PUT against a long equity position,
-                # BUY a CALL against a short equity position.
+                # Same-direction companion: BUY a CALL alongside a long
+                # equity position, BUY a PUT alongside a short position.
+                # Captures amplified upside per the leverage research while
+                # capping downside at the premium paid (defined risk).
                 is_long = direction.upper() in ("BUY", "BULLISH", "LONG")
-                leg = chain.atm_put() if is_long else chain.atm_call()
+                leg = chain.atm_call() if is_long else chain.atm_put()
                 if leg is not None and leg.premium > 0:
                     obs.chain_available = True
-                    obs.hedge_option_type = "PE" if is_long else "CE"
+                    obs.hedge_option_type = "CE" if is_long else "PE"
                     obs.hedge_strike = float(leg.strike)
                     obs.hedge_entry_premium = float(leg.premium)
                     obs.underlying_spot_at_entry = float(chain.spot)
@@ -314,18 +343,18 @@ class EquityHedgeShadowEngine:
                     self._save()
                 log.warning(
                     "[EquityHedgeShadow] READY_FOR_LIVE: %s passed all 5 "
-                    "readiness checks (n=%d). NOTE: no single-stock options "
-                    "execution path exists yet -- this is an authentication "
-                    "signal only, not a live-trading switch.",
+                    "readiness checks (n=%d). Live companion-option execution "
+                    "is now enabled for this symbol on its next equity trade.",
                     symbol, n,
                 )
                 try:
                     from notifications.telegram_bot import get_telegram_bot
                     get_telegram_bot().push(
                         f"[EquityHedgeShadow] {symbol} reached authenticated "
-                        f"evidence (n={n}) for hedge shadow tracking. "
-                        f"Live execution still requires building single-stock "
-                        f"options infrastructure -- not yet active."
+                        f"evidence (n={n}) and is now READY_FOR_LIVE. The next "
+                        f"equity trade in this symbol will trigger a live "
+                        f"companion option order (defined-risk, capped at the "
+                        f"premium paid)."
                     )
                 except Exception:
                     pass
@@ -344,6 +373,156 @@ class EquityHedgeShadowEngine:
                 "analysed_count":          analysed,
                 "ready_symbols":           dict(self._ready_symbols),
             }
+
+    # ── Live execution (gated on EQH-Ready-1..5 authentication only) ────
+
+    def _attempt_live_execution(self, symbol: str, direction: str, equity_qty: int) -> None:
+        """
+        Construct and route a companion option order through the existing,
+        already-proven OptionsRiskEngine -> OptionsOrderManager execution
+        path (same machinery index options already use in production).
+
+        Only ever called for a symbol already in self._ready_symbols (i.e.
+        already passed all 5 automated EQH-Ready checks). Every step below
+        additionally fails closed on its own: unavailable/non-live chain,
+        unverified lot size, thin liquidity, or low chain quality all
+        reject rather than guess -- consistent with never risking real
+        capital on an unverified assumption.
+        """
+        # Defense-in-depth: never execute for a symbol that hasn't passed
+        # the automated readiness gate, even if this method is ever called
+        # directly (e.g. future code, tests) without going through the
+        # normal _on_order_placed() gate check.
+        if symbol not in self._ready_symbols:
+            log.debug("[EquityHedgeShadow] %s: not READY_FOR_LIVE -- refusing "
+                      "to attempt execution.", symbol)
+            return
+        try:
+            from data_feeds.options_feed import get_options_feed
+            from data_feeds.dhan_fno_security_map import get_fno_security_map
+            from models.trade_signal import (
+                TradeSignal, SignalDirection, SignalStrength, SignalType,
+            )
+            import json as _json
+
+            chain = get_options_feed().get_chain(symbol)
+            if chain is None or not chain.is_live:
+                log.info("[EquityHedgeShadow] %s: no live chain available at "
+                        "execution time -- skipped.", symbol)
+                return
+
+            quality_score, quality_issues = get_options_feed().chain_quality_score(chain)
+            if quality_score < _CHAIN_QUALITY_MIN:
+                log.info("[EquityHedgeShadow] %s: chain_quality=%.2f < %.2f -- "
+                        "skipped. issues=%s", symbol, quality_score,
+                        _CHAIN_QUALITY_MIN, quality_issues)
+                return
+
+            if not (_DTE_MIN <= chain.dte <= _DTE_MAX):
+                log.info("[EquityHedgeShadow] %s: DTE=%d outside [%d,%d] -- "
+                        "skipped.", symbol, chain.dte, _DTE_MIN, _DTE_MAX)
+                return
+
+            is_long = direction.upper() in ("BUY", "BULLISH", "LONG")
+            leg = chain.atm_call() if is_long else chain.atm_put()
+            if leg is None or leg.premium < _MIN_LEG_PREMIUM:
+                log.info("[EquityHedgeShadow] %s: no valid ATM leg (premium "
+                        "too low or unavailable) -- skipped.", symbol)
+                return
+            if chain.is_live and leg.open_interest < _MIN_TRADABLE_OI:
+                log.info("[EquityHedgeShadow] %s: OI=%d < %d -- too thin, "
+                        "skipped.", symbol, leg.open_interest, _MIN_TRADABLE_OI)
+                return
+
+            lot_size = get_fno_security_map().get_lot_size(symbol)
+            if lot_size is None or lot_size <= 0:
+                log.warning("[EquityHedgeShadow] %s: no verified lot size in "
+                           "Dhan's instrument master -- rejecting rather than "
+                           "guessing.", symbol)
+                return
+
+            option_type = "CE" if is_long else "PE"
+            premium     = float(leg.premium)
+            stop_prem   = round(premium * 0.50, 2)      # exit at 50% loss (defined risk)
+            target_prem = round(premium * 2.00, 2)      # take profit at 100% gain
+
+            meta = {
+                "strategy_type": "EQUITY_HEDGE_COMPANION",
+                "lot_size":      lot_size,
+                "max_loss":      premium,     # long option: max loss = premium paid
+                "dte":           chain.dte,
+                "iv_rank":       chain.iv_rank,
+                "chain_quality": quality_score,
+                "is_live":       chain.is_live,
+                "spot":          chain.spot,
+                "equity_order_qty": equity_qty,
+                "legs": [{
+                    "type": option_type, "direction": "BUY",
+                    "strike": leg.strike, "premium": premium,
+                    "iv": leg.iv, "delta": leg.delta,
+                    "open_interest": leg.open_interest, "volume": leg.volume,
+                }],
+            }
+
+            signal = TradeSignal(
+                symbol=symbol,
+                direction=SignalDirection.BUY,
+                signal_type=SignalType.OPTIONS,
+                strength=SignalStrength.MODERATE,
+                entry_price=premium,
+                stop_loss=stop_prem,
+                target_price=target_prem,
+                confidence=7.0,
+                source_agent="EquityHedgeShadowEngine",
+                strategy_name="Equity_Hedge_Companion",
+                strike_price=float(leg.strike),
+                option_type=option_type,
+                notes=_json.dumps(meta),
+            )
+
+            from risk_control.options_risk_engine import get_options_risk_engine
+            from execution_engine.options_order_manager import get_options_order_manager
+            risk_engine  = get_options_risk_engine()
+            order_mgr    = get_options_order_manager()
+
+            approved = risk_engine.approve_and_size(
+                signal, None,
+                open_exposure_rs=order_mgr.get_total_options_exposure_rs(),
+            )
+            if not approved:
+                log.info("[EquityHedgeShadow] %s: OptionsRiskEngine rejected "
+                        "companion order.", symbol)
+                return
+
+            from models.agent_output import DecisionResult as _DecisionResult
+            order = order_mgr.execute(signal, _DecisionResult(
+                approved=True, confidence_score=signal.confidence,
+                position_size_modifier=1.0,
+                reasoning="equity_hedge_companion_authenticated",
+            ))
+            if order:
+                log.warning(
+                    "[EquityHedgeShadow] ✅ PLACED companion %s %s  lots=%d  "
+                    "max_loss=₹%.0f  symbol=%s (triggered by equity %s)",
+                    option_type, symbol, order.lots, order.max_loss_rs,
+                    symbol, direction,
+                )
+                try:
+                    from notifications.telegram_bot import get_telegram_bot
+                    get_telegram_bot().push(
+                        f"[EquityHedgeShadow] Companion {option_type} placed for "
+                        f"{symbol} (order {order.order_id}), lots={order.lots}, "
+                        f"max_loss=₹{order.max_loss_rs:.0f} — triggered by "
+                        f"authenticated equity {direction} signal."
+                    )
+                except Exception:
+                    pass
+            else:
+                log.info("[EquityHedgeShadow] %s: OptionsOrderManager did not "
+                        "place the companion order (see its own logs).", symbol)
+        except Exception as exc:
+            log.warning("[EquityHedgeShadow] Live execution attempt failed for "
+                       "%s: %s", symbol, exc)
 
     # ── Background loop (mirrors OptionsResearchPipeline's pattern) ─────
 
@@ -397,18 +576,20 @@ class EquityHedgeShadowEngine:
             spot_change_pct = (current_spot - obs.underlying_spot_at_entry) / obs.underlying_spot_at_entry
             is_long = obs.equity_direction.upper() in ("BUY", "BULLISH", "LONG")
 
-            # A protective put pays off when the underlying FALLS; a
-            # protective call pays off when the underlying RISES.
-            moved_against_equity = (spot_change_pct < -0.005) if is_long else (spot_change_pct > 0.005)
+            # Same-direction companion: a long call pays off when the
+            # underlying RISES; a long put pays off when it FALLS.
+            moved_with_equity = (spot_change_pct > 0.005) if is_long else (spot_change_pct < -0.005)
 
-            if moved_against_equity:
-                # Hedge would likely have offset a losing equity move —
-                # estimate payoff as a multiple of premium paid (bounded).
+            if moved_with_equity:
+                # Companion option would likely have amplified a winning
+                # equity move — estimate payoff as a multiple of premium
+                # paid (bounded), consistent with the leverage research.
                 hypo_pnl = obs.hedge_entry_premium * min(3.0, abs(spot_change_pct) * 40) * obs.equity_qty
                 classification = "HEDGE_WOULD_HAVE_HELPED"
             else:
-                # Underlying moved with (or flat to) the equity position —
-                # the hedge premium would have been a pure cost.
+                # Underlying moved against (or flat to) the equity position —
+                # the long option's loss is capped at the premium paid
+                # (defined risk, unlike unbounded additional equity exposure).
                 hypo_pnl = -obs.hedge_entry_premium * obs.equity_qty
                 classification = "HEDGE_UNNECESSARY"
 
