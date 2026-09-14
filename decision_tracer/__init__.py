@@ -1,4 +1,7 @@
 """
+STATUS: DISCONNECTED from live trading (zero references in master_orchestrator.py) — see ARCHITECTURE.md §13.
+NOTE: this package's own file prefix "dta_" is UNRELATED to this repo's "DTA-XXX" ticket/incident naming convention.
+
 DTA-001 — Decision Traceability Audit
 
 Public API:

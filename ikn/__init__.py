@@ -1,4 +1,6 @@
 """
+STATUS: DISCONNECTED from live trading (zero references in master_orchestrator.py) — see ARCHITECTURE.md §13.
+
 ikn/__init__.py — Public API for IKN-001 Institutional Knowledge Network.
 """
 from .ikn_network import IKNNetwork

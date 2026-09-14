@@ -1,4 +1,8 @@
-"""production_readiness — PRR-001 Final Production Readiness package."""
+"""
+STATUS: gates computed but NEVER ENFORCED anywhere (advisory-only) — see ARCHITECTURE.md §13.
+
+production_readiness — PRR-001 Final Production Readiness package.
+"""
 from .prr_config import *
 from .prr_models import (
     EdgeGateResult,

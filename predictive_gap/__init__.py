@@ -1,4 +1,7 @@
-"""predictive_gap — PGA-001 Predictive Gap Analysis Package.
+"""
+STATUS: DISCONNECTED from live trading (zero references in master_orchestrator.py) — see ARCHITECTURE.md §13.
+
+predictive_gap — PGA-001 Predictive Gap Analysis Package.
 
 Automatically runs every trading day after market close to analyse:
   - Top 5 Gainers and Top 5 Losers

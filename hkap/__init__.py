@@ -1,4 +1,7 @@
 """
+STATUS: DISCONNECTED from live trading (zero references in master_orchestrator.py) — see ARCHITECTURE.md §13.
+NOTE: iios/ is only a Wave-1 placeholder (no implementation) — the "reuses IIOS V1.0" premise below was never true.
+
 hkap — Historical Knowledge Acquisition Program (HKAP-001).
 
 Reuses the complete IIOS V1.0 platform to reconstruct institutional

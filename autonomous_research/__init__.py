@@ -1,4 +1,6 @@
 """
+STATUS: DISCONNECTED from live trading (zero references in master_orchestrator.py) — see ARCHITECTURE.md §13.
+
 autonomous_research — ARS package.
 
 Exports:
