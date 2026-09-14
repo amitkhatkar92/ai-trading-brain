@@ -557,5 +557,7 @@ the safe fix: it removes the ambiguity without touching a single import.
 
 **Known dead-after-construction instantiation (not a naming collision, flagged here for completeness):** `self.research_lab = ResearchLab()` in `master_orchestrator.py` (`research_lab/research_lab.py`, "Experimental Strategy Sandbox") is constructed once and never called again anywhere — its promotion-gate purpose is now wholly superseded by `strategy_lab/` (the real Layer 5). Not fixed here; left as a separate, future housekeeping item.
 
+**Standing rule, going forward (added 2026-09-14, Plan B Phase 3):** do not use "IIOS" as an informal nickname for this trading system (`ai_trading_brain`) in any NEW doc, docstring, script, or report. Refer to the project by its real name, or name the specific subsystem you mean (`oios/`, `knowledge_authority/`, etc). Existing pre-2026-09-14 docs that already use "IIOS" this way are left as historical artifacts, not retroactively edited. `iios/__init__.py` itself now carries a one-line clarifying note distinguishing it from `oios/`.
+
 **If you want the actual rename/merge project:** it needs to be scoped and approved per-subsystem (one rename at a time, each verified with a full test run and, for `oios/`, a full orchestrator smoke-test) — not done as a single bulk pass. Ask explicitly when ready and name which subsystem to start with.
 

@@ -1,6 +1,10 @@
 ﻿"""
 iios
 
+NOTE: unrelated to oios/ (the live, wired-in market-research package) despite
+the similar name -- this is a separate, dormant Enterprise AI Platform
+scaffold, not part of the trading engine. See ARCHITECTURE.md §13.
+
 Investment Intelligence Operating System -- root Python package for the complete IIOS trading system
 
 Architecture Reference: IIOS-FCR-001
