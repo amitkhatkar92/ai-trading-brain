@@ -37,15 +37,16 @@ KBL stages:
                needs its own dedicated evidence before any future phase lets
                anything downstream act on it.
 
-Caveat (found, not fixed -- pre-existing, separate issue): analysis/
-rejection_audit.py's seed_synthetic_data() passes is_backfill=False, so that
-column cannot reliably distinguish synthetic from real rows if that CLI tool
-is ever run against the production db path. It is a manual, human-invoked
-CLI (python analysis/rejection_audit.py --reseed), never called from any
-scheduled/live path (confirmed via grep) -- operationally, production
-data/rejection_audit.db is never seeded. This monitor does not filter on
-is_backfill for that reason; it relies on that CLI never being pointed at
-the production db.
+Root-cause fix applied (2026-09-14): analysis/rejection_audit.py's
+seed_synthetic_data() previously passed is_backfill=False for its
+SYNTHETIC seed rows, which would have made that column unable to
+distinguish synthetic from real data if that CLI tool were ever run
+against the production db path. Fixed at the source to is_backfill=True
+(matching the established convention in trade_quality_tracker.py's
+backfill_from_paper_trades()). This monitor now filters out
+is_backfill=1 rows from both the reliability summary and
+get_reason_reliability() so synthetic/backfilled evidence can never
+contaminate a real per-reason reliability figure.
 
 Safety contract: read-only w.r.t. price data (yfinance). Writes only to the
 existing data/rejection_audit.db schema (no changes) and a new, append-only
@@ -175,7 +176,7 @@ class RejectionAttributionMonitor:
         }
 
     def _compute_reliability_summary(self) -> Dict[str, Any]:
-        classified = self._tracker.get_classified()
+        classified = [r for r in self._tracker.get_classified() if not r.get("is_backfill")]
         by_reason = accuracy_by_reason(classified)
         reliable = {
             reason: stats for reason, stats in by_reason.items()
@@ -192,11 +193,15 @@ class RejectionAttributionMonitor:
     ) -> Optional[Dict[str, Any]]:
         """
         Read-only accessor for a future consumer. Returns None until `reason`
-        has >= min_samples classified (non-PENDING) rejections. Advisory only
-        -- not wired into any live risk/decision gate in this phase.
+        has >= min_samples classified (non-PENDING, non-backfill) rejections.
+        Advisory only -- not wired into any live risk/decision gate in this
+        phase.
         """
         try:
-            recs = [r for r in self._tracker.get_all() if r.get("rejected_reason") == reason]
+            recs = [
+                r for r in self._tracker.get_all()
+                if r.get("rejected_reason") == reason and not r.get("is_backfill")
+            ]
             stats = compute_accuracy_stats(recs)
             if stats["classified"] < min_samples:
                 return None

@@ -12,6 +12,10 @@ T05  get_reason_reliability returns real stats at/above min_samples
 T06  run_daily_cycle never raises even when the tracker itself raises
 T07  Daily summary JSONL gets a new line appended after a cycle
 T08  Never imports anything from execution_engine/order_manager/broker APIs
+T09  is_backfill=1 rows are excluded from reliability computation, even at
+     or above the sample threshold
+T10  Root-cause fix regression: rejection_audit.py's seed_synthetic_data()
+     marks its seeded rows is_backfill=1, not 0
 """
 from __future__ import annotations
 
@@ -114,6 +118,37 @@ class TestReliabilityAccessor:
         assert stats is not None
         assert stats["classified"] >= MIN_SAMPLES_FOR_RELIABILITY
         assert stats["accuracy_pct"] == pytest.approx(100.0)  # all CORRECT_REJECTION
+
+    def test_T09_backfill_rows_excluded_from_reliability(self, tmp_path):
+        tr = _tracker(tmp_path)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        for _ in range(MIN_SAMPLES_FOR_RELIABILITY + 5):
+            tr.ingest_rejection(
+                symbol="RELIANCE", strategy="Equity_Breakout",
+                trade_date=date.today().isoformat(), decision_score=6.0,
+                quality_score=6.5, quality_tier="MEDIUM", rejected_reason="LOW_SFT",
+                price_at_rejection=1000.0, direction="LONG",
+                price_1d=990.0, price_3d=980.0, price_5d=950.0,  # classified at insert time
+                is_backfill=True,
+            )
+        assert mon.get_reason_reliability("LOW_SFT") is None
+        summary = mon._compute_reliability_summary()
+        assert summary["classified_total"] == 0
+        assert "LOW_SFT" not in summary["reasons_with_min_sample"]
+
+
+class TestSyntheticSeederRootCauseFix:
+    def test_T10_seeded_rows_marked_is_backfill(self, tmp_path):
+        from analysis.rejection_audit import seed_synthetic_data
+
+        db_path = str(tmp_path / "seed_test.db")
+        n = seed_synthetic_data(db_path=db_path, years=1)
+        assert n > 0
+
+        tr = RejectionTracker(db_path=db_path)
+        rows = tr.get_all()
+        assert rows
+        assert all(row["is_backfill"] == 1 for row in rows)
 
 
 class TestFailOpen:

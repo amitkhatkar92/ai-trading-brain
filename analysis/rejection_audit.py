@@ -246,7 +246,12 @@ def seed_synthetic_data(
                 price_1d               = p1,
                 price_3d               = p3,
                 price_5d               = p5,
-                is_backfill            = False,
+                # Root-cause fix: this row is SYNTHETIC seed data, not a real
+                # rejection -- must be is_backfill=True so real-data consumers
+                # (e.g. analysis/rejection_attribution_monitor.py) can exclude
+                # it, matching the established convention in
+                # trade_quality_tracker.py's backfill_from_paper_trades().
+                is_backfill            = True,
                 notes                  = f"synthetic reason={reason}",
             )
             total += 1
