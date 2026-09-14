@@ -113,6 +113,9 @@ class HypothesisRegistry:
         required_data: Optional[Dict[str, Any]] = None,
         dependencies: Optional[Sequence[str]] = None,
         notes: Optional[Sequence[str]] = None,
+        subject_type: Optional[str] = None,
+        subject_value: Optional[str] = None,
+        direction: Optional[str] = None,
     ) -> ScientificHypothesis:
         """
         Create and persist a new hypothesis in PROPOSED status.
@@ -175,6 +178,9 @@ class HypothesisRegistry:
                 decision_history=[initial_event],
                 last_reviewed=None,
                 notes=list(notes) if notes else [],
+                subject_type=subject_type,
+                subject_value=subject_value,
+                direction=direction,
             )
 
             self._store[hypothesis_id] = h
@@ -411,6 +417,47 @@ class HypothesisRegistry:
 
     def list_rejected(self) -> List[ScientificHypothesis]:
         return self.list_by_status(HypothesisStatus.REJECTED)
+
+    def get_confirmed_adjustment(
+        self,
+        subject_type: str,
+        subject_value: str,
+        max_delta: float = 0.05,
+    ) -> float:
+        """
+        Self-learning ecosystem Phase 2 bridge accessor.
+
+        Returns a small, BOUNDED confidence delta (in [-max_delta, +max_delta])
+        derived from CONFIRMED hypotheses matching (subject_type, subject_value).
+        Returns 0.0 if no matching CONFIRMED hypothesis with a set `direction`
+        exists -- which is the case for every hypothesis in this registry
+        today, since `subject_type`/`subject_value`/`direction` are brand-new
+        optional fields (see hypothesis_models.py). This method is dormant by
+        construction until a hypothesis is BOTH given a structured subject at
+        creation AND passes the full PROPOSED -> ... -> CONFIRMED lifecycle
+        (real validation via set_validation_result(), not just time passing).
+
+        Multiple matching CONFIRMED hypotheses are averaged (each already
+        individually bounded by its own confidence), then the average is
+        clamped to [-max_delta, +max_delta].
+        """
+        with self._lock:
+            matches = [
+                h for h in self._store.values()
+                if h.status == HypothesisStatus.CONFIRMED
+                and h.subject_type == subject_type
+                and h.subject_value == subject_value
+                and h.direction in ("POSITIVE", "NEGATIVE")
+            ]
+        if not matches:
+            return 0.0
+
+        deltas = [
+            (max_delta * h.confidence) if h.direction == "POSITIVE" else (-max_delta * h.confidence)
+            for h in matches
+        ]
+        avg = sum(deltas) / len(deltas)
+        return max(-max_delta, min(max_delta, avg))
 
     def get_evidence_chain(self, hypothesis_id: str) -> List[EvidenceReference]:
         """Return all evidence references attached to a hypothesis."""

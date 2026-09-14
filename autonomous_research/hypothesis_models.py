@@ -218,6 +218,19 @@ class ScientificHypothesis:
     last_reviewed:           Optional[datetime]
     notes:                   List[str]               # append-only
 
+    # ─── structured subject (Plan B self-learning ecosystem, Phase 2) ───
+    # Additive, optional. Existing hypotheses (created before this field
+    # existed) simply have all three as None -- no re-migration needed.
+    # A CONFIRMED hypothesis with subject_type + subject_value + direction
+    # all set is the ONLY shape HypothesisRegistry.get_confirmed_adjustment()
+    # will ever act on -- everything else (including every hypothesis that
+    # existed before this field was added) contributes zero influence.
+    subject_type:            Optional[str] = None    # e.g. "SYMBOL", "STRATEGY", "REGIME"
+    subject_value:           Optional[str] = None    # e.g. "RELIANCE", "Momentum_Retest"
+    direction:               Optional[str] = None    # "POSITIVE" | "NEGATIVE" -- what a
+                                                      # CONFIRMED verdict would mean for
+                                                      # the subject; None = never eligible
+
     # ─── serialisation ───────────────────────────────────────────────────────
 
     def to_dict(self) -> Dict[str, Any]:
@@ -244,6 +257,9 @@ class ScientificHypothesis:
             "decision_history":        [d.to_dict() for d in self.decision_history],
             "last_reviewed":           self.last_reviewed.isoformat() if self.last_reviewed else None,
             "notes":                   self.notes,
+            "subject_type":            self.subject_type,
+            "subject_value":           self.subject_value,
+            "direction":               self.direction,
         }
 
     @classmethod
@@ -281,6 +297,9 @@ class ScientificHypothesis:
             ],
             last_reviewed=_parse_dt(d["last_reviewed"]) if d.get("last_reviewed") else None,
             notes=d.get("notes") or [],
+            subject_type=d.get("subject_type"),
+            subject_value=d.get("subject_value"),
+            direction=d.get("direction"),
         )
 
 

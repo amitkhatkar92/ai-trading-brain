@@ -332,6 +332,9 @@ def _try_create_hypothesis_cat_a(action: LearningAction) -> bool:
                 f"observation alone."
             ),
             created_by="pga_learning",
+            subject_type="SYMBOL",
+            subject_value=sym,
+            direction="POSITIVE",
         )
         return True
     except Exception as e:
