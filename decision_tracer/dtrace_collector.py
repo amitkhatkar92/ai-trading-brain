@@ -1,5 +1,5 @@
 """
-decision_tracer/dta_collector.py
+decision_tracer/dtrace_collector.py
 ===================================
 DTA-001 — Decision Traceability Audit — Data Collector
 

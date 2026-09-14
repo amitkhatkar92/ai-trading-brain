@@ -1,11 +1,11 @@
 """
-decision_tracer/dta_runner.py
+decision_tracer/dtrace_runner.py
 ================================
 DTA-001 — Decision Traceability Audit — Runner
 
 Usage:
-    python -m decision_tracer.dta_runner --symbol RELIANCE
-    python -m decision_tracer.dta_runner --symbol RELIANCE --date 2026-04-02
+    python -m decision_tracer.dtrace_runner --symbol RELIANCE
+    python -m decision_tracer.dtrace_runner --symbol RELIANCE --date 2026-04-02
 
 Output: data/dta/YYYY-MM-DD/RELIANCE_DECISION_TRACE.md
 """
@@ -17,9 +17,9 @@ import logging
 from datetime import date
 from typing import Optional
 
-from .dta_collector import collect_trace
-from .dta_analyzer  import analyze
-from .dta_reporter  import write_report
+from .dtrace_collector import collect_trace
+from .dtrace_analyzer  import analyze
+from .dtrace_reporter  import write_report
 
 log = logging.getLogger(__name__)
 

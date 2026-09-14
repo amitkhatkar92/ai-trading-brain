@@ -1,5 +1,5 @@
 """
-decision_tracer/dta_analyzer.py
+decision_tracer/dtrace_analyzer.py
 =================================
 DTA-001 — Decision Traceability Audit — Question Analyzer
 
@@ -22,7 +22,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .dta_collector import (
+from .dtrace_collector import (
     TraceBundle, DNAMatch, EdgeMatch, RejectionRecord,
     _eval_condition as _eval_cond,
 )

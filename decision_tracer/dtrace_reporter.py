@@ -1,5 +1,5 @@
 """
-decision_tracer/dta_reporter.py
+decision_tracer/dtrace_reporter.py
 =================================
 DTA-001 — Report Generator
 
@@ -11,8 +11,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from .dta_collector import TraceBundle, DNAMatch, EdgeMatch, IKNReference
-from .dta_analyzer  import DTAAudit, AuditAnswer
+from .dtrace_collector import TraceBundle, DNAMatch, EdgeMatch, IKNReference
+from .dtrace_analyzer  import DTAAudit, AuditAnswer
 
 
 DATA = Path(__file__).parent.parent / "data"
