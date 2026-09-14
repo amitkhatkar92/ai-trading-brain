@@ -7059,6 +7059,27 @@ class MasterOrchestrator:
         except Exception as _kda_cre_exc:
             log.debug("[KDA-CRE] refinement check error (non-critical): %s", _kda_cre_exc)
 
+        # ── Self-Learning Ecosystem Phase 4: rejection-attribution monitor ────
+        # Resolves PENDING rejection_audit.db rows (>=7 calendar days old) via
+        # real yfinance follow-through prices, then recomputes per-reason
+        # reliability stats. Pure observability -- advisory only, not wired
+        # into any live risk/decision gate. Fully automated, no human step.
+        try:
+            from analysis.rejection_attribution_monitor import run_daily_rejection_attribution
+            _rej_attr = run_daily_rejection_attribution()
+            if _rej_attr.get("status") == "OK" and _rej_attr.get("resolved", 0):
+                log.info(
+                    "[RejectionAttribution] resolved=%d skipped_immature=%d "
+                    "skipped_no_data=%d pending_remaining=%d reliable_reasons=%s",
+                    _rej_attr.get("resolved", 0),
+                    _rej_attr.get("skipped_immature", 0),
+                    _rej_attr.get("skipped_no_data", 0),
+                    _rej_attr.get("pending_remaining", 0),
+                    _rej_attr.get("reasons_with_min_sample", []),
+                )
+        except Exception as _rej_attr_exc:
+            log.debug("[RejectionAttribution] monitor error (non-critical): %s", _rej_attr_exc)
+
         # ── KLP→KSL: Knowledge evidence bridge (VPS-safe; no shadow JSONL needed) ──
         # Runs OUTSIDE the local shadow-file guard so completed KLP observations
         # reach the pattern/research pipeline on VPS.  Idempotent — re-runs

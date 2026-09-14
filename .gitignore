@@ -196,6 +196,7 @@ data/live_selection_eligibility.json
 data/live_selection_eligibility_audit.jsonl
 data/regime_strategy_map.json
 data/risk_guardian_state.json
+data/rejection_attribution/
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
