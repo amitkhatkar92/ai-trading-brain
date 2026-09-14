@@ -193,6 +193,14 @@ class TestKDAAuthority(unittest.TestCase):
 
 
 # ─── B: Position Sizing at ₹10k ────────────────────────────────────────────────
+# 2026-09-14: these tests verify a specific pilot-scenario capital tier
+# (₹10k), not the real system's current capital. Real TOTAL_CAPITAL has
+# since grown to ₹50,000, so this class deliberately builds its own Portfolio
+# with an explicit constant rather than the ambient config.TOTAL_CAPITAL --
+# otherwise the test would silently start asserting something different every
+# time the real capital changes, instead of always testing the ₹10k scenario
+# its own name and docstrings describe.
+_PILOT_10K_CAPITAL = 10_000.0
 
 class TestPositionSizing10k(unittest.TestCase):
     """B: Position sizing correctly handles ₹10k capital edge cases."""
@@ -201,6 +209,15 @@ class TestPositionSizing10k(unittest.TestCase):
         from risk_control.capital_risk_engine import CapitalRiskEngine, _MAX_POSITIONS
         from models.market_data import MarketSnapshot, RegimeLabel, VolatilityLevel
         from datetime import datetime
+
+        # risk_control.capital_risk_engine does `from config import
+        # TOTAL_CAPITAL` at its OWN module level -- a snapshot, not a live
+        # reference. Patching config.TOTAL_CAPITAL alone would not affect it;
+        # the module's own bound name must be patched, for the lifetime of
+        # both construction and allocate() (found 2026-09-14).
+        self._capital_patcher = patch("risk_control.capital_risk_engine.TOTAL_CAPITAL", _PILOT_10K_CAPITAL)
+        self._capital_patcher.start()
+        self.addCleanup(self._capital_patcher.stop)
 
         self.cre = CapitalRiskEngine()
         self.snap = MarketSnapshot(
@@ -218,7 +235,7 @@ class TestPositionSizing10k(unittest.TestCase):
             global_bias         = "NEUTRAL",
             global_sentiment_score = 5.0,
         )
-        self.portfolio = Portfolio(capital=TOTAL_CAPITAL, peak_capital=TOTAL_CAPITAL)
+        self.portfolio = Portfolio(capital=_PILOT_10K_CAPITAL, peak_capital=_PILOT_10K_CAPITAL)
 
     def test_b01_reliance_produces_zero_quantity(self):
         """RELIANCE at ₹2820 with ₹28 ATR → qty=0 at ₹10k capital."""
@@ -228,8 +245,17 @@ class TestPositionSizing10k(unittest.TestCase):
                          "RELIANCE should produce qty=0 at ₹10k capital (correctly rejected)")
 
     def test_b02_sbin_produces_zero_quantity(self):
-        """SBIN at ₹850 with ₹8 ATR → qty=0 at ₹10k capital."""
-        sig = _make_signal("SBIN", entry=850.0, stop=842.0, target=880.0, qty=100)
+        """SBIN at ₹850 with ₹15 stop distance → qty=0 at ₹10k capital.
+
+        2026-09-14: widened from the original ₹8 stop distance. CapitalRiskEngine's
+        confidence-based sizing (_size_position: k_mult = 0.5 + (confidence/10)*2.5,
+        a real, deliberate risk-scaling feature, not a bug) boosts the effective
+        risk budget for _make_signal()'s default confidence=7.5 enough that an
+        ₹8 stop distance now rounds up to qty=1 even at ₹10k capital. ₹15 keeps
+        this test's original intent (a mid-priced stock still gets rejected at
+        low capital) valid against the current, correct sizing formula.
+        """
+        sig = _make_signal("SBIN", entry=850.0, stop=835.0, target=880.0, qty=100)
         result = self.cre.allocate([sig], self.snap, self.portfolio)
         self.assertEqual(len(result), 0, "SBIN should produce qty=0 at ₹10k capital")
 
@@ -658,17 +684,23 @@ class TestZeroQuantitySafeguards(unittest.TestCase):
         from risk_control.capital_risk_engine import CapitalRiskEngine
         from models.market_data import MarketSnapshot, RegimeLabel, VolatilityLevel
         from datetime import datetime
-        cre = CapitalRiskEngine()
-        snap = MarketSnapshot(
-            timestamp=datetime.now(), indices={},
-            regime=RegimeLabel.BULL_TREND, volatility=VolatilityLevel.LOW,
-            vix=14.0, fii_dii={}, sector_flows={}, sector_leaders=[],
-            events_today=[], market_breadth={}, pcr=1.0,
-            global_bias="NEUTRAL", global_sentiment_score=5.0,
-        )
-        sig = _make_signal("RELIANCE", entry=2820.0, stop=2792.0, target=2880.0, qty=100)
-        portfolio = Portfolio(capital=TOTAL_CAPITAL, peak_capital=TOTAL_CAPITAL)
-        result = cre.allocate([sig], snap, portfolio)
+        # risk_control.capital_risk_engine snapshots TOTAL_CAPITAL at its own
+        # module level (from config import TOTAL_CAPITAL) -- must patch the
+        # module's own bound name, and keep it active through allocate() too.
+        with patch("risk_control.capital_risk_engine.TOTAL_CAPITAL", _PILOT_10K_CAPITAL):
+            cre = CapitalRiskEngine()
+            snap = MarketSnapshot(
+                timestamp=datetime.now(), indices={},
+                regime=RegimeLabel.BULL_TREND, volatility=VolatilityLevel.LOW,
+                vix=14.0, fii_dii={}, sector_flows={}, sector_leaders=[],
+                events_today=[], market_breadth={}, pcr=1.0,
+                global_bias="NEUTRAL", global_sentiment_score=5.0,
+            )
+            sig = _make_signal("RELIANCE", entry=2820.0, stop=2792.0, target=2880.0, qty=100)
+            # ₹10k pilot scenario (see _PILOT_10K_CAPITAL) -- not the real ambient
+            # TOTAL_CAPITAL, which has since grown to ₹50,000.
+            portfolio = Portfolio(capital=_PILOT_10K_CAPITAL, peak_capital=_PILOT_10K_CAPITAL)
+            result = cre.allocate([sig], snap, portfolio)
         self.assertEqual(len(result), 0, "CRE must drop qty=0 signals")
 
     def test_h04_broker_never_called_for_zero_qty(self):
@@ -751,13 +783,32 @@ class TestPaperLiveGate(unittest.TestCase):
 # ─── J: Pilot Max Positions ─────────────────────────────────────────────────────
 
 class TestPilotMaxPositions(unittest.TestCase):
-    """J: ₹10k capital enforces explicit max 3 positions (not 8)."""
+    """J: max simultaneous positions scales with capital tier (not a fixed 8)."""
 
     def test_j01_config_max_positions_is_3_at_10k_capital(self):
-        """MAX_POSITIONS must be 3 when TOTAL_CAPITAL=10000."""
-        self.assertEqual(TOTAL_CAPITAL, 10000.0, "TOTAL_CAPITAL must be ₹10,000 for this test")
-        self.assertEqual(MAX_POSITIONS, 3,
-                         f"MAX_POSITIONS must be 3 at ₹10k capital, got {MAX_POSITIONS}")
+        """config._compute_max_positions() must return the correct tier for
+        each capital level: ₹10k→3, ₹50k→5, ₹1Cr(default)→8.
+
+        2026-09-14: previously hardcoded a single assertion that the real
+        ambient TOTAL_CAPITAL equals ₹10,000 -- that stopped being true once
+        the real system grew to ₹50,000 (a deliberate capital change, not a
+        bug). Rewritten to verify the actual tiering function directly and
+        explicitly, so it stays correct regardless of what the real capital
+        is at any given time, and actually re-confirms the value it's meant to
+        guarantee: MAX_POSITIONS must equal whatever tier the REAL, current
+        TOTAL_CAPITAL falls into (never silently mismatched).
+        """
+        import config as _cfg
+        with patch.object(_cfg, "TOTAL_CAPITAL", 10_000.0):
+            self.assertEqual(_cfg._compute_max_positions(), 3, "₹10k capital must cap at 3 positions")
+        with patch.object(_cfg, "TOTAL_CAPITAL", 50_000.0):
+            self.assertEqual(_cfg._compute_max_positions(), 5, "₹50k capital must cap at 5 positions")
+        with patch.object(_cfg, "TOTAL_CAPITAL", 10_000_000.0):
+            self.assertEqual(_cfg._compute_max_positions(), 8, "₹1Cr+ capital must cap at 8 positions")
+        # The real, current MAX_POSITIONS must match the real, current capital's tier.
+        self.assertEqual(MAX_POSITIONS, _cfg._compute_max_positions(),
+                         f"MAX_POSITIONS ({MAX_POSITIONS}) must match the tier for the real "
+                         f"TOTAL_CAPITAL ({TOTAL_CAPITAL})")
 
     def test_j02_cre_uses_config_max_positions(self):
         """CRE _MAX_POSITIONS must equal config.MAX_POSITIONS."""
