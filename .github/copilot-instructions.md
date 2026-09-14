@@ -41,7 +41,7 @@ This prevents blind modifications and gives the user a chance to redirect.
 **Project:** `C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\`
 **Stack:** Python 3.14 | `.venv/` | 17-layer hierarchical multi-agent system | ~62 agents
 **Broker:** Dhan (login ✅, data API blocked 451) → yfinance auto-fallback
-**Mode:** Paper trading (`main.py --paper`) | Telegram bot (`main.py --telegram`)
+**Mode:** Live trading (2026-09-14 — deliberate operator decision; `PAPER_TRADING=false`, `LIVE_TRADING_AUTHORIZED=true`). `main.py --paper` | Telegram bot (`main.py --telegram`)
 
 ### Layer Order (do not reorder)
 ```
@@ -179,6 +179,8 @@ Full cycle:          172ms  ✅  HEALTHY
 | `knowledge_authority/knowledge_decision_authority.py` | KDA-CRE-001: added `_effective_constants()` — additive accessor that reads KDA-CRE-001's validated overrides (mtime-cached) and falls back to the exact original hardcoded defaults on any error/missing file. `_classify_evidence_state()` and `_compute_authority()` now read the ESS/stability/contradiction thresholds through this accessor instead of the bare module constants. Public interface (`evaluate()`, inputs/outputs) completely unchanged; behavior is byte-identical unless a shadow-confirmed override exists | No |
 | `orchestrator/master_orchestrator.py` | KDA-CRE-001: added one non-fatal, try/except-wrapped EOD call to `run_daily_refinement_check()` immediately after the existing `run_eod_knowledge_update()` call, matching the established EOD-stage convention | No |
 | `tests/test_kda_constant_refinement_engine.py` | KDA-CRE-001: NEW — 26/26 tests (T01–T26): override accessor (defaults/valid/corrupt/out-of-bounds), dynamic cooldown calculation, scorecard statistics (validates real signal, rejects noise, never moves in a worsening direction), full state machine (waiting/cooldown/shadow-start/promote/reject/rollback/no-premature-rollback), top-level safety (`run_daily_refinement_check` never raises), ledger append-only integrity, and integration proof that `knowledge_decision_authority.py` both falls back safely with no override and actually picks up a valid one | N/A |
+| `control_tower/dashboard_app.py` | Fixed hardcoded "Mode: 🧪 PAPER" header badge — was a static string, never reflected the real trading mode. `.env` was already mounted into this container (GAP-026) but never actually loaded (no `load_dotenv()` call anywhere in the file); added it plus `_real_trading_mode_label()`, mirroring `OrderManager.__init__`'s own live-mode gate exactly (paper unless BOTH `PAPER_TRADING=false` AND `LIVE_TRADING_AUTHORIZED=true`) | No |
+| `ARCHITECTURE.md` / `.github/copilot-instructions.md` | Updated stale "Current mode: Paper trading" headline text to reflect the deliberate 2026-09-14 live-trading decision — was pure documentation drift, never affected runtime behavior | N/A |
 
 ---
 

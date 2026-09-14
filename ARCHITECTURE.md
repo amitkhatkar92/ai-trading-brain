@@ -11,7 +11,7 @@ A **17-layer hierarchical multi-agent trading system** for Indian equity and der
 ~62 specialized agents work in a strict top-down pipeline — each layer feeds the next.  
 The system never trades blindly: every signal must survive regime detection, backtesting quality gates, a 5-agent debate, a decision threshold, and a hard risk kill-switch before reaching the broker.
 
-**Current mode:** Paper trading (`main.py --paper`). Live orders routed through Zerodha (simulation) or Dhan (login ✅, data API blocked 451 → yfinance fallback).
+**Current mode:** Live trading (2026-09-14 — deliberate operator decision; `PAPER_TRADING=false`, `LIVE_TRADING_AUTHORIZED=true`, real orders route through Dhan). `main.py --paper` remains available to force paper mode for local dev/testing.
 
 ---
 

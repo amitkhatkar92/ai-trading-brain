@@ -33,6 +33,13 @@ import time
 from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
+# .env is mounted read-only into this container (GAP-026) but was never
+# actually loaded here -- load it directly (no full `import config`, matching
+# this file's existing "no import needed" pattern) so the real trading mode
+# can be shown instead of a hardcoded label.
+from dotenv import load_dotenv
+load_dotenv()
+
 # ── Optional Streamlit guard ───────────────────────────────────────────────
 try:
     import streamlit as st
@@ -234,6 +241,15 @@ def fetch_paper_trades_csv() -> List[Dict[str, Any]]:
         return rows
     except Exception:
         return []
+
+
+def _real_trading_mode_label() -> str:
+    """Mirrors OrderManager.__init__'s own live-mode gate exactly: paper
+    unless BOTH PAPER_TRADING=false AND LIVE_TRADING_AUTHORIZED=true are
+    explicitly set. Read fresh from the mounted .env, never hardcoded."""
+    _paper = os.getenv("PAPER_TRADING", "true").lower() == "true"
+    _live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() == "true"
+    return "🔴 LIVE" if (not _paper and _live_auth) else "🧪 PAPER"
 
 
 def fetch_paper_trading_eod() -> Optional[Dict[str, Any]]:
@@ -538,7 +554,7 @@ def run_dashboard() -> None:
         f"border-left:5px solid {s_colour};margin-bottom:8px'>"
         f"<span style='font-size:1.3em;font-weight:bold;color:{s_colour}'>{s_icon} VPS Service: {s_status}</span>"
         f"&nbsp;&nbsp;&nbsp;<span style='color:#aaa'>Last activity: {svc['last_ts'] or 'none'} ({s_age_txt})&nbsp;|&nbsp;"
-        f"Today events: {today_evts}&nbsp;|&nbsp;Mode: 🧪 PAPER</span>"
+        f"Today events: {today_evts}&nbsp;|&nbsp;Mode: {_real_trading_mode_label()}</span>"
         f"</div>",
         unsafe_allow_html=True,
     )
