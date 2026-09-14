@@ -7,7 +7,7 @@ Unit tests for configuration dataclass models.
 from __future__ import annotations
 
 import pytest
-from iios.configuration.configuration_models import (
+from enterprise_ai_platform.configuration.configuration_models import (
     AIConfiguration,
     DatabaseConfiguration,
     DecisionConfiguration,
@@ -91,7 +91,7 @@ class TestDecisionConfiguration:
 class TestDatabaseConfiguration:
     def test_defaults(self):
         cfg = DatabaseConfiguration()
-        assert cfg.path == "data/iios.db"
+        assert cfg.path == "data/enterprise_ai_platform.db"
         assert cfg.wal_mode is True
         assert cfg.timeout_seconds == 30.0
         assert cfg.max_connections == 5

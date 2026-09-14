@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.workflow.workflow_state import StageRecord, WorkflowState
-from iios.investment.workflow.workflow_types import (
+from enterprise_ai_platform.investment.workflow.workflow_state import StageRecord, WorkflowState
+from enterprise_ai_platform.investment.workflow.workflow_types import (
     StageStatus, WorkflowStage,
 )
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import asyncio
 import pytest
-from iios.investment.market.trend.trend_intelligence_engine import (
+from enterprise_ai_platform.investment.market.trend.trend_intelligence_engine import (
     InstitutionalTrendIntelligenceEngine,
 )
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendIntelligenceSnapshot,
     TrendEventRecord,
@@ -17,7 +17,7 @@ from iios.investment.market.trend.models import (
     TrendMomentumState,
     StrategyReadiness,
 )
-from iios.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
 from tests.unit.investment.market.trend.conftest import (
     make_structure_snapshot,
     make_regime_snapshot,
@@ -257,6 +257,6 @@ class TestEdgeCases:
         assert eng.timeframe == "1h"
 
     def test_statistics_returns_trend_statistics(self):
-        from iios.investment.market.trend.trend_statistics import TrendStatistics
+        from enterprise_ai_platform.investment.market.trend.trend_statistics import TrendStatistics
         eng = InstitutionalTrendIntelligenceEngine("TEST")
         assert isinstance(eng.statistics(), TrendStatistics)

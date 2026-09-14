@@ -6,16 +6,16 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.strategy_portfolio_engine import StrategyPortfolioEngine
-from iios.investment.strategy.portfolio.construction_constraints import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio_engine import StrategyPortfolioEngine
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import (
     DEFAULT_CONSTRAINTS, DIVERSIFIED_CONSTRAINTS
 )
-from iios.investment.strategy.portfolio.rebalance_policy import DEFAULT_POLICY
-from iios.investment.strategy.portfolio.portfolio_events import PortfolioEventBus, PortfolioEvent
+from enterprise_ai_platform.investment.strategy.portfolio.rebalance_policy import DEFAULT_POLICY
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_events import PortfolioEventBus, PortfolioEvent
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy, five_strategies
 
 

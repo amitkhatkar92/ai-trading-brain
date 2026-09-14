@@ -9,21 +9,21 @@ import uuid
 
 import pytest
 
-from iios.investment.decision.explainability.decision_explainability_engine import (
+from enterprise_ai_platform.investment.decision.explainability.decision_explainability_engine import (
     DecisionExplainabilityEngine,
 )
-from iios.investment.decision.explainability.decision_narrative import (
+from enterprise_ai_platform.investment.decision.explainability.decision_narrative import (
     DecisionNarrative,
     NarrativeReport,
     NarrativeTemplate,
 )
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
     ExplainabilityStatus,
     ExplanationFormat,
 )
-from iios.investment.decision.explainability.explanation_snapshot import ExplanationSnapshot
-from iios.investment.decision.explainability.explanation_statistics import ExplanationStatistics
+from enterprise_ai_platform.investment.decision.explainability.explanation_snapshot import ExplanationSnapshot
+from enterprise_ai_platform.investment.decision.explainability.explanation_statistics import ExplanationStatistics
 
 
 # ─── lifecycle ────────────────────────────────────────────────────────────────
@@ -384,7 +384,7 @@ class TestFormatting:
 
 class TestCounterfactual:
     def test_counterfactual_returns_report(self, rich_input, decision_id):
-        from iios.investment.decision.explainability.counterfactual_engine import (
+        from enterprise_ai_platform.investment.decision.explainability.counterfactual_engine import (
             CounterfactualReport,
         )
         engine = DecisionExplainabilityEngine()

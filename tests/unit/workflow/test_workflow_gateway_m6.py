@@ -10,7 +10,7 @@ import uuid
 
 import pytest
 
-from iios.workflow.gateway import (
+from enterprise_ai_platform.workflow.gateway import (
     # Main class
     WorkflowGateway,
     # Constants
@@ -131,7 +131,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_inherits_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(WorkflowGatewayError, IIOSError)
 
     def test_not_initialized_error(self):
@@ -184,7 +184,7 @@ class TestGatewayRequest:
         assert req.request_id.startswith("wgwreq-")
         assert req.workflow_id   == "wf-1"
         assert req.request_type  == GatewayRequestType.SUBMIT
-        assert req.enterprise_id == "iios"
+        assert req.enterprise_id == "enterprise_ai_platform"
         assert req.correlation_id  # auto-generated
         assert req.priority      == 1
 

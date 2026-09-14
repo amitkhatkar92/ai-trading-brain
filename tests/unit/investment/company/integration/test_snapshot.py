@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.integration.company_snapshot import CompanyIntelligenceSnapshot
-from iios.investment.company.integration.company_state import (
+from enterprise_ai_platform.investment.company.integration.company_snapshot import CompanyIntelligenceSnapshot
+from enterprise_ai_platform.investment.company.integration.company_state import (
     IntelligenceCompleteness, SCORED_ENGINES, score_to_grade,
 )
 

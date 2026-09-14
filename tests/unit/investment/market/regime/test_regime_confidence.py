@@ -5,11 +5,11 @@ import threading
 import time
 import pytest
 
-from iios.investment.market.market_constants import TrendDirection, VolatilityLevel
-from iios.investment.market.regime.models import RegimeType
-from iios.investment.market.regime.regime_confidence import RegimeConfidenceCalculator
-from iios.investment.market.regime.regime_score import RegimeScore, RegimeScorer
-from iios.investment.market.regime.confidence_history import ConfidenceHistory
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection, VolatilityLevel
+from enterprise_ai_platform.investment.market.regime.models import RegimeType
+from enterprise_ai_platform.investment.market.regime.regime_confidence import RegimeConfidenceCalculator
+from enterprise_ai_platform.investment.market.regime.regime_score import RegimeScore, RegimeScorer
+from enterprise_ai_platform.investment.market.regime.confidence_history import ConfidenceHistory
 
 from tests.unit.investment.market.regime.conftest import make_observation
 

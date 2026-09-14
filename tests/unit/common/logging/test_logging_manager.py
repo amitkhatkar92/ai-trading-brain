@@ -9,13 +9,13 @@ from typing import List
 
 import pytest
 
-from iios.common.logging.logging_manager import (
+from enterprise_ai_platform.common.logging.logging_manager import (
     LoggingConfig,
     LoggingManager,
     get_logger,
     _level_int,
 )
-from iios.common.logging.structured_logger import StructuredLogger
+from enterprise_ai_platform.common.logging.structured_logger import StructuredLogger
 
 
 @pytest.fixture(autouse=True)
@@ -92,9 +92,9 @@ class TestConfigure:
     def test_configure_applies_level_overrides(self):
         LoggingManager.configure(LoggingConfig(
             console=False,
-            level_overrides={"iios.test.override": "DEBUG"},
+            level_overrides={"enterprise_ai_platform.test.override": "DEBUG"},
         ))
-        assert logging.getLogger("iios.test.override").level == logging.DEBUG
+        assert logging.getLogger("enterprise_ai_platform.test.override").level == logging.DEBUG
 
     def test_configure_silences_third_party(self):
         LoggingManager.configure(LoggingConfig(
@@ -154,17 +154,17 @@ class TestGetLogger:
 class TestLevelManagement:
 
     def test_set_level_changes_underlying_logger(self):
-        LoggingManager.set_level("iios.level.test", "DEBUG")
-        assert logging.getLogger("iios.level.test").level == logging.DEBUG
+        LoggingManager.set_level("enterprise_ai_platform.level.test", "DEBUG")
+        assert logging.getLogger("enterprise_ai_platform.level.test").level == logging.DEBUG
 
     def test_get_level_returns_name(self):
-        logging.getLogger("iios.level.test2").setLevel(logging.ERROR)
-        level = LoggingManager.get_level("iios.level.test2")
+        logging.getLogger("enterprise_ai_platform.level.test2").setLevel(logging.ERROR)
+        level = LoggingManager.get_level("enterprise_ai_platform.level.test2")
         assert level == "ERROR"
 
     def test_set_all_levels(self):
         LoggingManager.configure(LoggingConfig(console=False, level="INFO"))
-        _ = LoggingManager.get_logger("iios.all.levels")
+        _ = LoggingManager.get_logger("enterprise_ai_platform.all.levels")
         LoggingManager.set_all_levels("DEBUG")
         assert logging.getLogger().level == logging.DEBUG
 
@@ -200,7 +200,7 @@ class TestShutdown:
 
     def test_shutdown_clears_registry(self):
         LoggingManager.configure(LoggingConfig(console=False))
-        LoggingManager.get_logger("iios.shutdown.test")
+        LoggingManager.get_logger("enterprise_ai_platform.shutdown.test")
         LoggingManager.shutdown()
         assert LoggingManager.registered_loggers() == {}
 

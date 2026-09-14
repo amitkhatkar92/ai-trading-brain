@@ -3,7 +3,7 @@ test_knowledge_integration_m6.py
 ---------------------------------
 Comprehensive test suite for C14 M6 — Knowledge Integration.
 
-Coverage target: ≥ 95% of iios/knowledge/integration/*.
+Coverage target: ≥ 95% of enterprise_ai_platform/knowledge/integration/*.
 
 Run:
     .venv/Scripts/python.exe -m pytest tests/unit/knowledge/test_knowledge_integration_m6.py -x --tb=short -q
@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.knowledge.integration import (
+from enterprise_ai_platform.knowledge.integration import (
     # Constants
     INTEGRATION_SYSTEM_ID, VERSION, SCHEMA_VERSION, FRAMEWORK_VERSION,
     DEFAULT_MAX_HISTORY, DEFAULT_MAX_REQUESTS, DEFAULT_TIMEOUT_MS,
@@ -55,7 +55,7 @@ from iios.knowledge.integration import (
     # Engine
     KnowledgeIntegrationEngine,
 )
-from iios.knowledge.snapshot import KnowledgeSnapshotFactory
+from enterprise_ai_platform.knowledge.snapshot import KnowledgeSnapshotFactory
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -93,7 +93,7 @@ def _make_engine(started: bool = True) -> KnowledgeIntegrationEngine:
 
 class TestConstants:
     def test_system_id(self):
-        assert INTEGRATION_SYSTEM_ID == "iios:knowledge:integration"
+        assert INTEGRATION_SYSTEM_ID == "enterprise_ai_platform:knowledge:integration"
 
     def test_version_strings(self):
         assert VERSION and SCHEMA_VERSION and FRAMEWORK_VERSION
@@ -1118,26 +1118,26 @@ class TestConcurrency:
 
 class TestRegression:
     def test_m6_package_importable(self):
-        import iios.knowledge.integration as m6
+        import enterprise_ai_platform.knowledge.integration as m6
         assert hasattr(m6, "KnowledgeIntegrationEngine")
 
     def test_m5_package_unaffected(self):
-        import iios.knowledge.snapshot as m5
+        import enterprise_ai_platform.knowledge.snapshot as m5
         assert hasattr(m5, "KnowledgeSnapshot")
 
     def test_m4_package_unaffected(self):
-        import iios.knowledge.intelligence as m4
+        import enterprise_ai_platform.knowledge.intelligence as m4
         assert hasattr(m4, "KnowledgeIntelligenceEngine")
 
     def test_m2_package_unaffected(self):
-        import iios.knowledge.engine as m2
+        import enterprise_ai_platform.knowledge.engine as m2
         assert hasattr(m2, "KnowledgeEngine")
 
     def test_m1_package_unaffected(self):
-        import iios.knowledge.lifecycle as m1
+        import enterprise_ai_platform.knowledge.lifecycle as m1
         assert hasattr(m1, "KnowledgeLifecycle")
 
     def test_all_exports_present(self):
-        import iios.knowledge.integration as m6
+        import enterprise_ai_platform.knowledge.integration as m6
         for name in m6.__all__:
             assert hasattr(m6, name), f"Missing export: {name!r}"

@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.core.event_dispatcher import EventDispatcher
-from iios.investment.portfolio.core.event_history import EventHistory, EventRecord
-from iios.investment.portfolio.core.portfolio_events import (
+from enterprise_ai_platform.investment.portfolio.core.event_dispatcher import EventDispatcher
+from enterprise_ai_platform.investment.portfolio.core.event_history import EventHistory, EventRecord
+from enterprise_ai_platform.investment.portfolio.core.portfolio_events import (
     AllocationChangedEvent,
     EventPriority,
     FrameworkStartedEvent,

@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.integration.aggregation_engine import AggregationEngine
-from iios.investment.decision.integration.consistency_validator import ConsistencyValidator
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.decision.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     ComponentId,
     ValidationStatus,
 )
-from iios.investment.decision.integration.validation_report import (
+from enterprise_ai_platform.investment.decision.integration.validation_report import (
     build_validation_report,
     ValidationCheck,
 )
@@ -57,8 +57,8 @@ class TestConsistencyValidator:
         assert rep is not None
 
     def test_add_custom_rule(self, _rich_pipeline):
-        from iios.investment.decision.integration.consistency_rules import ConsistencyRule
-        from iios.investment.decision.integration.validation_report import _make_check
+        from enterprise_ai_platform.investment.decision.integration.consistency_rules import ConsistencyRule
+        from enterprise_ai_platform.investment.decision.integration.validation_report import _make_check
 
         class AlwaysWarnRule(ConsistencyRule):
             def _evaluate(self, snap):

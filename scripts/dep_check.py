@@ -1,8 +1,8 @@
 """Dependency analysis script for A1 foundation packages."""
 import sys, importlib, ast, os
 
-BASE = "iios.ai.foundation"
-FOUNDATION_DIR = r"C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\iios\ai\foundation"
+BASE = "enterprise_ai_platform.ai.foundation"
+FOUNDATION_DIR = r"C:\Users\UCIC\OneDrive\Desktop\ai_trading_brain\enterprise_ai_platform\ai\foundation"
 
 packages = [
     "lifecycle", "adapters", "events", "cost", "metrics", "timeout",
@@ -23,7 +23,7 @@ def get_ai_imports(pkg_name, path):
                 continue
             for node in ast.walk(tree):
                 if isinstance(node, ast.ImportFrom) and node.module:
-                    # Absolute: from iios.ai.foundation.X import ...
+                    # Absolute: from enterprise_ai_platform.ai.foundation.X import ...
                     if node.module.startswith(BASE + "."):
                         sub = node.module[len(BASE)+1:].split(".")[0]
                         deps.add(sub)

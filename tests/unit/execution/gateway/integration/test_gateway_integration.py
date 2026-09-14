@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.gateway.integration import (
+from enterprise_ai_platform.execution.gateway.integration import (
     ACTIVE_REQUEST_STATUSES,
     INTEGRATION_SYSTEM_ID,
     TERMINAL_REQUEST_STATUSES,
@@ -59,7 +59,7 @@ from iios.execution.gateway.integration import (
     make_subsystem_started_event,
     make_subsystem_stopped_event,
 )
-from iios.execution.gateway.integration.gateway_integration_manager import (
+from enterprise_ai_platform.execution.gateway.integration.gateway_integration_manager import (
     GatewayIntegrationManager,
 )
 
@@ -105,7 +105,7 @@ class TestConstants:
         assert VERSION == "1.0.0"
 
     def test_system_id(self):
-        assert INTEGRATION_SYSTEM_ID.startswith("iios:execution:gateway")
+        assert INTEGRATION_SYSTEM_ID.startswith("enterprise_ai_platform:execution:gateway")
 
     def test_terminal_statuses(self):
         assert IntegrationRequestStatus.COMPLETED in TERMINAL_REQUEST_STATUSES
@@ -771,7 +771,7 @@ class TestComponentRegistry:
             _ = reg.lifecycle
 
     def test_register_and_access_lifecycle(self):
-        from iios.execution.gateway.lifecycle import GatewayLifecycle
+        from enterprise_ai_platform.execution.gateway.lifecycle import GatewayLifecycle
         reg  = GatewayComponentRegistry()
         lc   = GatewayLifecycle()
         reg.register_lifecycle(lc)
@@ -785,7 +785,7 @@ class TestComponentRegistry:
         assert reg.all_registered is True
 
     def test_start_all_starts_components(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         reg = GatewayComponentFactory.create_all()
         reg.start_all()
         assert reg.lifecycle.lifecycle_state()     == EngineState.RUNNING
@@ -794,7 +794,7 @@ class TestComponentRegistry:
         reg.stop_all()
 
     def test_stop_all_stops_components(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         reg = GatewayComponentFactory.create_all()
         reg.start_all()
         reg.stop_all()
@@ -809,23 +809,23 @@ class TestComponentRegistry:
 
 class TestComponentFactory:
     def test_create_lifecycle(self):
-        from iios.execution.gateway.lifecycle import GatewayLifecycle
+        from enterprise_ai_platform.execution.gateway.lifecycle import GatewayLifecycle
         assert isinstance(GatewayComponentFactory.create_lifecycle(), GatewayLifecycle)
 
     def test_create_engine(self):
-        from iios.execution.gateway.engine import ExecutionGatewayEngine
+        from enterprise_ai_platform.execution.gateway.engine import ExecutionGatewayEngine
         assert isinstance(GatewayComponentFactory.create_engine(), ExecutionGatewayEngine)
 
     def test_create_broker_manager(self):
-        from iios.execution.gateway.brokers import BrokerManager
+        from enterprise_ai_platform.execution.gateway.brokers import BrokerManager
         assert isinstance(GatewayComponentFactory.create_broker_manager(), BrokerManager)
 
     def test_create_routing_engine(self):
-        from iios.execution.gateway.routing import RoutingEngine
+        from enterprise_ai_platform.execution.gateway.routing import RoutingEngine
         assert isinstance(GatewayComponentFactory.create_routing_engine(), RoutingEngine)
 
     def test_create_snapshot_store(self):
-        from iios.execution.gateway.snapshot import GatewaySnapshotStore
+        from enterprise_ai_platform.execution.gateway.snapshot import GatewaySnapshotStore
         assert isinstance(GatewayComponentFactory.create_snapshot_store(), GatewaySnapshotStore)
 
     def test_create_all_returns_registry(self):
@@ -834,7 +834,7 @@ class TestComponentFactory:
         assert reg.all_registered
 
     def test_create_all_components_not_started(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         reg = GatewayComponentFactory.create_all()
         assert reg.lifecycle.lifecycle_state() != EngineState.RUNNING
 
@@ -986,7 +986,7 @@ class TestIntegrationEngine:
         uuid.UUID(e.integration_id)
 
     def test_register_component_after_initialize(self):
-        from iios.execution.gateway.lifecycle import GatewayLifecycle
+        from enterprise_ai_platform.execution.gateway.lifecycle import GatewayLifecycle
         e = ExecutionGatewayIntegrationEngine()
         e.initialize()
         lc = GatewayLifecycle()
@@ -994,7 +994,7 @@ class TestIntegrationEngine:
         assert e._components.lifecycle is lc
 
     def test_register_before_initialize_raises(self):
-        from iios.execution.gateway.lifecycle import GatewayLifecycle
+        from enterprise_ai_platform.execution.gateway.lifecycle import GatewayLifecycle
         e = ExecutionGatewayIntegrationEngine()
         with pytest.raises(SubsystemNotInitializedError):
             e.register_lifecycle(GatewayLifecycle())

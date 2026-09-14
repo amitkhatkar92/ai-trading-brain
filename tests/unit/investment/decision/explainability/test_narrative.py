@@ -8,17 +8,17 @@ import json
 
 import pytest
 
-from iios.investment.decision.explainability.decision_narrative import (
+from enterprise_ai_platform.investment.decision.explainability.decision_narrative import (
     DecisionNarrative,
     EnglishNarrativeTemplate,
     NarrativeReport,
 )
-from iios.investment.decision.explainability.explanation_formatter import (
+from enterprise_ai_platform.investment.decision.explainability.explanation_formatter import (
     ExplanationFormat,
     ExplanationFormatter,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
-from iios.investment.decision.explainability.explainability_constants import DecisionOutcome
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import DecisionOutcome
 
 
 class TestNarrativeReport:
@@ -80,7 +80,7 @@ class TestDecisionNarrative:
         assert isinstance(r, NarrativeReport)
 
     def test_register_custom_template(self, rich_input, decision_id):
-        from iios.investment.decision.explainability.decision_narrative import NarrativeTemplate
+        from enterprise_ai_platform.investment.decision.explainability.decision_narrative import NarrativeTemplate
 
         class SpanishTemplate(NarrativeTemplate):
             @property

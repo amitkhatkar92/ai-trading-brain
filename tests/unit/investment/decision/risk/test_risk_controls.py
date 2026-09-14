@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.risk.control_engine import ControlEngine
-from iios.investment.decision.risk.control_registry import ControlRegistry
-from iios.investment.decision.risk.decision_risk import build_decision_risk
-from iios.investment.decision.risk.risk_constants import (
+from enterprise_ai_platform.investment.decision.risk.control_engine import ControlEngine
+from enterprise_ai_platform.investment.decision.risk.control_registry import ControlRegistry
+from enterprise_ai_platform.investment.decision.risk.decision_risk import build_decision_risk
+from enterprise_ai_platform.investment.decision.risk.risk_constants import (
     RiskControlStatus,
     RiskDimension,
     RiskPolicyStatus,
 )
-from iios.investment.decision.risk.risk_controls import ControlViolation, RiskControl
-from iios.investment.decision.risk.risk_policies import PolicyValidator
+from enterprise_ai_platform.investment.decision.risk.risk_controls import ControlViolation, RiskControl
+from enterprise_ai_platform.investment.decision.risk.risk_policies import PolicyValidator
 
 
 def _make_dr(overall_risk: float = 40.0, controls_breached: bool = False):

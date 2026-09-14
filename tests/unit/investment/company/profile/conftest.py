@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from iios.investment.company.profile.models import (
+from enterprise_ai_platform.investment.company.profile.models import (
     AliasType,
     BusinessProfile,
     BusinessSegment,

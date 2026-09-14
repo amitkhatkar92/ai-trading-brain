@@ -4,8 +4,8 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.market.regime.models import RegimeType
-from iios.investment.market.regime.regime_state import RegimeState
+from enterprise_ai_platform.investment.market.regime.models import RegimeType
+from enterprise_ai_platform.investment.market.regime.regime_state import RegimeState
 
 
 @pytest.fixture

@@ -1,0 +1,169 @@
+"""enterprise_ai_platform/execution/context/__init__.py
+==================================================
+Public API for the IIOS Execution Context package.
+
+C6 Execution Intelligence — Phase 1, Module 4
+"""
+from __future__ import annotations
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.constants import (
+    CONTEXT_SYSTEM_ID,
+    BUILDER_SYSTEM_ID,
+    FACTORY_SYSTEM_ID,
+    REGISTRY_SYSTEM_ID,
+    VALIDATOR_SYSTEM_ID,
+    VERSION,
+    ACTOR_SYSTEM,
+    ACTOR_BUILDER,
+    ACTOR_FACTORY,
+    ACTOR_REGISTRY,
+    ACTOR_VALIDATOR,
+    ACTOR_USER,
+    DEFAULT_MAX_CONTEXTS,
+    DEFAULT_MAX_HISTORY,
+    DEFAULT_MAX_BUNDLE_SIZE,
+    ExecutionMode,
+    ExecutionEnvironment,
+    MarketSession,
+    ContextStatus,
+    ContextValidationCode,
+)
+
+# ── Exceptions ────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.exceptions import (
+    ExecutionContextError,
+    ContextBuildError,
+    ContextValidationError,
+    ContextNotFoundError,
+    DuplicateContextError,
+    ContextCapacityError,
+    ContextRegistryNotRunning,
+    ContextIncompleteError,
+    ContextInconsistencyError,
+    ContextSerializationError,
+    ContextHistoryError,
+)
+
+# ── Core context ──────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context import ExecutionContext
+
+# ── Sub-contexts and descriptors ──────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_metadata import ExecutionMetadata
+from enterprise_ai_platform.execution.context.execution_environment import ExecutionEnvironmentDescriptor
+from enterprise_ai_platform.execution.context.execution_session import ExecutionSession
+from enterprise_ai_platform.execution.context.execution_request_context import (
+    BrokerContextRef,
+    ExecutionRequestContext,
+)
+
+# ── Bundle ────────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_bundle import ExecutionBundle
+
+# ── Events ────────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_events import (
+    ExecutionContextEventType,
+    ExecutionContextEvent,
+    make_context_event,
+)
+
+# ── Validation ────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_validator import (
+    ExecutionContextValidator,
+    ContextValidationResult,
+)
+
+# ── Builder ───────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_builder import ExecutionContextBuilder
+
+# ── Factory ───────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_factory import ExecutionContextFactory
+
+# ── Registry ─────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_registry import (
+    ContextRecord,
+    ExecutionContextRegistry,
+)
+
+# ── History ───────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_history import (
+    ContextRevision,
+    ExecutionContextHistory,
+    make_revision,
+)
+
+# ── Statistics ────────────────────────────────────────────────────────────────
+from enterprise_ai_platform.execution.context.execution_context_statistics import (
+    ContextBuildStatistics,
+    ExecutionContextStatistics,
+)
+
+__all__ = [
+    # System IDs
+    "CONTEXT_SYSTEM_ID",
+    "BUILDER_SYSTEM_ID",
+    "FACTORY_SYSTEM_ID",
+    "REGISTRY_SYSTEM_ID",
+    "VALIDATOR_SYSTEM_ID",
+    "VERSION",
+    # Actors
+    "ACTOR_SYSTEM",
+    "ACTOR_BUILDER",
+    "ACTOR_FACTORY",
+    "ACTOR_REGISTRY",
+    "ACTOR_VALIDATOR",
+    "ACTOR_USER",
+    # Capacity
+    "DEFAULT_MAX_CONTEXTS",
+    "DEFAULT_MAX_HISTORY",
+    "DEFAULT_MAX_BUNDLE_SIZE",
+    # Enums
+    "ExecutionMode",
+    "ExecutionEnvironment",
+    "MarketSession",
+    "ContextStatus",
+    "ContextValidationCode",
+    # Exceptions
+    "ExecutionContextError",
+    "ContextBuildError",
+    "ContextValidationError",
+    "ContextNotFoundError",
+    "DuplicateContextError",
+    "ContextCapacityError",
+    "ContextRegistryNotRunning",
+    "ContextIncompleteError",
+    "ContextInconsistencyError",
+    "ContextSerializationError",
+    "ContextHistoryError",
+    # Core
+    "ExecutionContext",
+    # Sub-contexts
+    "ExecutionMetadata",
+    "ExecutionEnvironmentDescriptor",
+    "ExecutionSession",
+    "BrokerContextRef",
+    "ExecutionRequestContext",
+    # Bundle
+    "ExecutionBundle",
+    # Events
+    "ExecutionContextEventType",
+    "ExecutionContextEvent",
+    "make_context_event",
+    # Validation
+    "ExecutionContextValidator",
+    "ContextValidationResult",
+    # Builder
+    "ExecutionContextBuilder",
+    # Factory
+    "ExecutionContextFactory",
+    # Registry
+    "ContextRecord",
+    "ExecutionContextRegistry",
+    # History
+    "ContextRevision",
+    "ExecutionContextHistory",
+    "make_revision",
+    # Statistics
+    "ContextBuildStatistics",
+    "ExecutionContextStatistics",
+]

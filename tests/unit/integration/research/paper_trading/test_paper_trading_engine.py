@@ -18,7 +18,7 @@ def _run(coro):
 
 # ── Imports under test ────────────────────────────────────────────────────────
 
-from iios.integration.research.paper_trading.paper_trading_constants import (
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_constants import (
     AccountStatus,
     ExchangeStatus,
     FillModel,
@@ -39,7 +39,7 @@ from iios.integration.research.paper_trading.paper_trading_constants import (
     PT_ERROR_PREFIX,
     TRADING_DAYS_PER_YEAR,
 )
-from iios.integration.research.paper_trading.paper_trading_exceptions import (
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_exceptions import (
     AccountError,
     AccountNotFoundError,
     AccountSuspendedError,
@@ -66,49 +66,49 @@ from iios.integration.research.paper_trading.paper_trading_exceptions import (
     SessionNotFoundError,
     SessionStateError,
 )
-from iios.integration.research.paper_trading.core.paper_account    import PaperAccount
-from iios.integration.research.paper_trading.core.paper_position   import PaperPosition
-from iios.integration.research.paper_trading.core.paper_portfolio  import PaperPortfolio, PortfolioSnapshot
-from iios.integration.research.paper_trading.core.paper_order      import PaperOrder
-from iios.integration.research.paper_trading.core.paper_trade      import PaperTrade
-from iios.integration.research.paper_trading.core.paper_session    import PaperSession
-from iios.integration.research.paper_trading.core.paper_statistics import PaperStatistics
-from iios.integration.research.paper_trading.core.paper_history    import PaperHistory, PaperHistoryEntry
-from iios.integration.research.paper_trading.market.market_clock           import MarketClock
-from iios.integration.research.paper_trading.market.market_simulator       import MarketSimulator, PriceBar
-from iios.integration.research.paper_trading.market.exchange_simulator     import ExchangeSimulator
-from iios.integration.research.paper_trading.market.trading_session        import TradingCalendar, TradingSessionManager
-from iios.integration.research.paper_trading.market.market_event_generator import MarketEventGenerator
-from iios.integration.research.paper_trading.execution.slippage_model      import SlippageModel
-from iios.integration.research.paper_trading.execution.commission_model    import CommissionModel
-from iios.integration.research.paper_trading.execution.latency_model       import LatencyModel
-from iios.integration.research.paper_trading.execution.fill_simulator      import FillResult, FillSimulator
-from iios.integration.research.paper_trading.execution.execution_simulator import ExecutionSimulator
-from iios.integration.research.paper_trading.portfolio.cash_manager        import CashManager
-from iios.integration.research.paper_trading.portfolio.position_manager    import PositionManager
-from iios.integration.research.paper_trading.portfolio.risk_monitor        import RiskMonitor
-from iios.integration.research.paper_trading.portfolio.performance_tracker import PerformanceTracker
-from iios.integration.research.paper_trading.portfolio.portfolio_simulator  import PortfolioSimulator
-from iios.integration.research.paper_trading.orders.order_book             import OrderBook
-from iios.integration.research.paper_trading.accounts.account_manager      import AccountManager
-from iios.integration.research.paper_trading.analytics.paper_analytics     import PaperAnalytics
-from iios.integration.research.paper_trading.reporting.trade_report        import TradeReport
-from iios.integration.research.paper_trading.reporting.portfolio_report    import PortfolioReport
-from iios.integration.research.paper_trading.reporting.session_summary     import SessionSummary
-from iios.integration.research.paper_trading.reporting.simulation_report   import SimulationReport
-from iios.integration.research.paper_trading.simulation.simulation_engine  import (
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_account    import PaperAccount
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_position   import PaperPosition
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_portfolio  import PaperPortfolio, PortfolioSnapshot
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_order      import PaperOrder
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_trade      import PaperTrade
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_session    import PaperSession
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_statistics import PaperStatistics
+from enterprise_ai_platform.integration.research.paper_trading.core.paper_history    import PaperHistory, PaperHistoryEntry
+from enterprise_ai_platform.integration.research.paper_trading.market.market_clock           import MarketClock
+from enterprise_ai_platform.integration.research.paper_trading.market.market_simulator       import MarketSimulator, PriceBar
+from enterprise_ai_platform.integration.research.paper_trading.market.exchange_simulator     import ExchangeSimulator
+from enterprise_ai_platform.integration.research.paper_trading.market.trading_session        import TradingCalendar, TradingSessionManager
+from enterprise_ai_platform.integration.research.paper_trading.market.market_event_generator import MarketEventGenerator
+from enterprise_ai_platform.integration.research.paper_trading.execution.slippage_model      import SlippageModel
+from enterprise_ai_platform.integration.research.paper_trading.execution.commission_model    import CommissionModel
+from enterprise_ai_platform.integration.research.paper_trading.execution.latency_model       import LatencyModel
+from enterprise_ai_platform.integration.research.paper_trading.execution.fill_simulator      import FillResult, FillSimulator
+from enterprise_ai_platform.integration.research.paper_trading.execution.execution_simulator import ExecutionSimulator
+from enterprise_ai_platform.integration.research.paper_trading.portfolio.cash_manager        import CashManager
+from enterprise_ai_platform.integration.research.paper_trading.portfolio.position_manager    import PositionManager
+from enterprise_ai_platform.integration.research.paper_trading.portfolio.risk_monitor        import RiskMonitor
+from enterprise_ai_platform.integration.research.paper_trading.portfolio.performance_tracker import PerformanceTracker
+from enterprise_ai_platform.integration.research.paper_trading.portfolio.portfolio_simulator  import PortfolioSimulator
+from enterprise_ai_platform.integration.research.paper_trading.orders.order_book             import OrderBook
+from enterprise_ai_platform.integration.research.paper_trading.accounts.account_manager      import AccountManager
+from enterprise_ai_platform.integration.research.paper_trading.analytics.paper_analytics     import PaperAnalytics
+from enterprise_ai_platform.integration.research.paper_trading.reporting.trade_report        import TradeReport
+from enterprise_ai_platform.integration.research.paper_trading.reporting.portfolio_report    import PortfolioReport
+from enterprise_ai_platform.integration.research.paper_trading.reporting.session_summary     import SessionSummary
+from enterprise_ai_platform.integration.research.paper_trading.reporting.simulation_report   import SimulationReport
+from enterprise_ai_platform.integration.research.paper_trading.simulation.simulation_engine  import (
     OrderSignal,
     PaperSessionResult,
     PaperTradingStrategy,
     SimulationEngine,
 )
-from iios.integration.research.paper_trading.paper_trading_context  import (
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_context  import (
     clear_context, get_context, scope, set_context,
 )
-from iios.integration.research.paper_trading.paper_trading_registry  import PaperTradingRegistry
-from iios.integration.research.paper_trading.paper_trading_factory   import PaperTradingFactory
-from iios.integration.research.paper_trading.paper_trading_manager   import PaperTradingManager
-from iios.integration.research.paper_trading.paper_trading_engine    import (
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_registry  import PaperTradingRegistry
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_factory   import PaperTradingFactory
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_manager   import PaperTradingManager
+from enterprise_ai_platform.integration.research.paper_trading.paper_trading_engine    import (
     PaperTradingEngine,
     get_paper_trading_engine,
     reset_paper_trading_engine,

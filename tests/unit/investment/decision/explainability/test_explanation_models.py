@@ -8,11 +8,11 @@ import uuid
 
 import pytest
 
-from iios.investment.decision.explainability.decision_explanation import (
+from enterprise_ai_platform.investment.decision.explainability.decision_explanation import (
     DecisionExplanation,
     ExplanationFactor,
 )
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
     ExplainabilityGrade,
     ExplainabilityStatus,
@@ -20,13 +20,13 @@ from iios.investment.decision.explainability.explainability_constants import (
     FactorSource,
     TraceabilityLevel,
 )
-from iios.investment.decision.explainability.explanation_history import ExplanationHistory
-from iios.investment.decision.explainability.explanation_snapshot import ExplanationSnapshot
-from iios.investment.decision.explainability.explanation_statistics import (
+from enterprise_ai_platform.investment.decision.explainability.explanation_history import ExplanationHistory
+from enterprise_ai_platform.investment.decision.explainability.explanation_snapshot import ExplanationSnapshot
+from enterprise_ai_platform.investment.decision.explainability.explanation_statistics import (
     ExplanationStatistics,
     ExplanationStatisticsTracker,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
 
 
 # ─── ExplanationFactor ────────────────────────────────────────────────────────
@@ -148,10 +148,10 @@ class TestExplainabilityGrade:
 
 class TestExplanationHistory:
     def _snap_for(self, decision_id="D1", subject_id="TCS") -> ExplanationSnapshot:
-        from iios.investment.decision.explainability.explanation_snapshot import (
+        from enterprise_ai_platform.investment.decision.explainability.explanation_snapshot import (
             build_explanation_snapshot,
         )
-        from iios.investment.decision.explainability.decision_explanation import (
+        from enterprise_ai_platform.investment.decision.explainability.decision_explanation import (
             DecisionExplanation,
         )
         explanation = DecisionExplanation(

@@ -37,8 +37,8 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-import iios.integration.gateway as gw_pkg
-from iios.integration.gateway import (
+import enterprise_ai_platform.integration.gateway as gw_pkg
+from enterprise_ai_platform.integration.gateway import (
     GatewayCapacityError,
     GatewayComponent,
     GatewayComponentError,
@@ -219,7 +219,7 @@ class TestConstants:
         assert len(VALIDATION_CHECK_ORDER) == 7
 
     def test_string_constants(self):
-        from iios.integration.gateway import (
+        from enterprise_ai_platform.integration.gateway import (
             GATEWAY_VERSION, FRAMEWORK_VERSION, DEFAULT_GATEWAY_ID,
             GATEWAY_ID_PREFIX, REQUEST_ID_PREFIX, RESPONSE_ID_PREFIX,
         )
@@ -231,7 +231,7 @@ class TestConstants:
         assert RESPONSE_ID_PREFIX == "gwresp-"
 
     def test_numeric_defaults(self):
-        from iios.integration.gateway import (
+        from enterprise_ai_platform.integration.gateway import (
             DEFAULT_MAX_HISTORY, DEFAULT_MAX_ACTIVE_REQUESTS,
             DEFAULT_REQUEST_TIMEOUT_MS, DEFAULT_MAX_GATEWAYS,
         )
@@ -1553,7 +1553,7 @@ class TestRegression:
             "smtplib", "twilio", "firebase_admin",
         ]
         for key, mod in sys.modules.items():
-            if "iios.integration.gateway" in key and hasattr(mod, "__file__"):
+            if "enterprise_ai_platform.integration.gateway" in key and hasattr(mod, "__file__"):
                 if mod.__file__:
                     with open(mod.__file__, encoding="utf-8", errors="ignore") as f:
                         src = f.read()

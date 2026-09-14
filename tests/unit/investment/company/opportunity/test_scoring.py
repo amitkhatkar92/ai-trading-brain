@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.opportunity.opportunity_quality import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_quality import (
     extract_business_quality,
     extract_earnings_quality,
     extract_financial_strength,
@@ -15,10 +15,10 @@ from iios.investment.company.opportunity.opportunity_quality import (
     extract_risk_penalty,
     extract_valuation_attractiveness,
 )
-from iios.investment.company.opportunity.opportunity_score import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_score import (
     compute_opportunity_score,
 )
-from iios.investment.company.opportunity.opportunity_confidence import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_confidence import (
     compute_opportunity_confidence,
     explain_confidence,
 )

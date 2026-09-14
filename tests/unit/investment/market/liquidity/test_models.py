@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.liquidity.models import (
     VolumeLevel, VolumeTrend, ParticipationBias, EffortResultType,
     LiquidityEventType, VolumeBar, VolumeProfile, ParticipationSnapshot,
     LiquidityProfile, EffortResultAnalysis, OrderFlowSnapshot,

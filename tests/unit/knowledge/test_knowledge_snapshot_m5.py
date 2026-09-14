@@ -3,7 +3,7 @@ test_knowledge_snapshot_m5.py
 ------------------------------
 Comprehensive test suite for C14 M5 — Knowledge Snapshot.
 
-Coverage targets ≥ 95% of iios/knowledge/snapshot/*.
+Coverage targets ≥ 95% of enterprise_ai_platform/knowledge/snapshot/*.
 
 Run:
     .venv/Scripts/python.exe -m pytest tests/unit/knowledge/test_knowledge_snapshot_m5.py -x --tb=short -q
@@ -18,7 +18,7 @@ import pytest
 # ════════════════════════════════════════════════════════════════════════
 # Imports under test
 # ════════════════════════════════════════════════════════════════════════
-from iios.knowledge.snapshot import (
+from enterprise_ai_platform.knowledge.snapshot import (
     # Enums & constants
     SNAPSHOT_SYSTEM_ID, VERSION, SCHEMA_VERSION, FRAMEWORK_VERSION,
     BUILD_VERSION, ACTOR_SNAPSHOT, ACTOR_BUILDER, ACTOR_SYSTEM,
@@ -76,7 +76,7 @@ def _make_snapshot(
 
 class TestConstants:
     def test_snapshot_system_id(self):
-        assert SNAPSHOT_SYSTEM_ID == "iios:knowledge:snapshot"
+        assert SNAPSHOT_SYSTEM_ID == "enterprise_ai_platform:knowledge:snapshot"
 
     def test_version_strings(self):
         assert VERSION
@@ -272,7 +272,7 @@ class TestSnapshotMetadataObject:
         sm = SnapshotMetadata(
             environment="test", framework_version="1.0.0",
             build_version="1.0.0-stable",
-            source_components=("iios.knowledge.engine",),
+            source_components=("enterprise_ai_platform.knowledge.engine",),
             correlation_ids=("cid-1",), trace_ids=("tid-1",),
         )
         assert SnapshotMetadata.from_dict(sm.to_dict()) == sm
@@ -330,7 +330,7 @@ class TestSnapshotMetadataBuilder:
             .with_environment("production")
             .with_framework_version("2.0.0")
             .with_build_version("2.0.0-rc1")
-            .with_source_components(["iios.knowledge.engine"])
+            .with_source_components(["enterprise_ai_platform.knowledge.engine"])
             .with_correlation_id("cid-abc")
             .with_trace_id("tid-xyz")
             .build()
@@ -960,22 +960,22 @@ class TestConcurrency:
 
 class TestRegression:
     def test_m5_package_importable(self):
-        import iios.knowledge.snapshot as m5
+        import enterprise_ai_platform.knowledge.snapshot as m5
         assert hasattr(m5, "KnowledgeSnapshot")
 
     def test_m4_package_importable(self):
-        import iios.knowledge.intelligence as m4
+        import enterprise_ai_platform.knowledge.intelligence as m4
         assert hasattr(m4, "KnowledgeIntelligenceEngine")
 
     def test_m2_package_importable(self):
-        import iios.knowledge.governance as m2
+        import enterprise_ai_platform.knowledge.governance as m2
         assert hasattr(m2, "CertificationManager")
 
     def test_m1_package_importable(self):
-        import iios.knowledge.engine as m1
+        import enterprise_ai_platform.knowledge.engine as m1
         assert hasattr(m1, "KnowledgeEngine")
 
     def test_all_exports_present(self):
-        import iios.knowledge.snapshot as m5
+        import enterprise_ai_platform.knowledge.snapshot as m5
         for name in m5.__all__:
             assert hasattr(m5, name), f"Missing export: {name!r}"

@@ -3,8 +3,8 @@ Integration tests for FinancialStatementEngine — primary engine tests.
 """
 import pytest
 
-from iios.investment.company.financials.financial_statement_engine import FinancialStatementEngine
-from iios.investment.company.financials.financial_period import (
+from enterprise_ai_platform.investment.company.financials.financial_statement_engine import FinancialStatementEngine
+from enterprise_ai_platform.investment.company.financials.financial_period import (
     FinancialPeriod, PeriodType, AccountingStandard,
 )
 

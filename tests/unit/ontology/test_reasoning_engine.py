@@ -14,8 +14,8 @@ import pytest
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _make_type(name, ns="iios.test", parent=None, labels=None, aliases=None, abstract=False):
-    from iios.ontology.ontology_factory import get_ontology_factory
+def _make_type(name, ns="enterprise_ai_platform.test", parent=None, labels=None, aliases=None, abstract=False):
+    from enterprise_ai_platform.ontology.ontology_factory import get_ontology_factory
     fac = get_ontology_factory()
     return fac.create_type(
         name=name, namespace_uri=ns, parent_uri=parent,
@@ -25,7 +25,7 @@ def _make_type(name, ns="iios.test", parent=None, labels=None, aliases=None, abs
 
 
 def _register_type(td):
-    from iios.ontology.registry.ontology_registry_manager import get_registry_manager
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
     mgr = get_registry_manager()
     with mgr._lock:
         mgr._types[td.uri] = td
@@ -36,8 +36,8 @@ def _register_type(td):
 
 
 def _register_namespace(uri: str, name: str | None = None):
-    from iios.ontology.registry.ontology_registry_manager import get_registry_manager
-    from iios.ontology.runtime.runtime_object import OntologyNamespace
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
+    from enterprise_ai_platform.ontology.runtime.runtime_object import OntologyNamespace
     mgr = get_registry_manager()
     ns = OntologyNamespace(uri=uri, name=name or uri.split(".")[-1], prefix=uri.split(".")[-1])
     with mgr._lock:
@@ -45,10 +45,10 @@ def _register_namespace(uri: str, name: str | None = None):
 
 
 def _register_rel(uri, name, source, target, inverse_uri=None):
-    from iios.ontology.registry.ontology_registry_manager import get_registry_manager
-    from iios.ontology.runtime.runtime_object import OntologyRelationshipDef
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
+    from enterprise_ai_platform.ontology.runtime.runtime_object import OntologyRelationshipDef
     rel = OntologyRelationshipDef(
-        uri=uri, name=name, namespace_uri="iios.test",
+        uri=uri, name=name, namespace_uri="enterprise_ai_platform.test",
         source_type_uri=source, target_type_uri=target,
         description="", labels=[],
         inverse_uri=inverse_uri,
@@ -60,23 +60,23 @@ def _register_rel(uri, name, source, target, inverse_uri=None):
 
 
 def _reset_all():
-    from iios.ontology.reasoning.reasoning_engine      import reset_reasoning_engine
-    from iios.ontology.reasoning.reasoning_manager     import reset_reasoning_manager
-    from iios.ontology.reasoning.reasoning_registry    import reset_reasoning_registry
-    from iios.ontology.reasoning.reasoning_context     import reset_reasoning_context
-    from iios.ontology.reasoning.reasoning_factory     import reset_reasoning_factory
-    from iios.ontology.reasoning.reasoning_session     import reset_session_manager
-    from iios.ontology.reasoning.reasoning_statistics  import reset_reasoning_statistics
-    from iios.ontology.reasoning.inference.inference_engine   import reset_inference_engine_instance
-    from iios.ontology.reasoning.inference.inference_executor import reset_inference_executor
-    from iios.ontology.reasoning.inference.inference_registry import reset_inference_registry
+    from enterprise_ai_platform.ontology.reasoning.reasoning_engine      import reset_reasoning_engine
+    from enterprise_ai_platform.ontology.reasoning.reasoning_manager     import reset_reasoning_manager
+    from enterprise_ai_platform.ontology.reasoning.reasoning_registry    import reset_reasoning_registry
+    from enterprise_ai_platform.ontology.reasoning.reasoning_context     import reset_reasoning_context
+    from enterprise_ai_platform.ontology.reasoning.reasoning_factory     import reset_reasoning_factory
+    from enterprise_ai_platform.ontology.reasoning.reasoning_session     import reset_session_manager
+    from enterprise_ai_platform.ontology.reasoning.reasoning_statistics  import reset_reasoning_statistics
+    from enterprise_ai_platform.ontology.reasoning.inference.inference_engine   import reset_inference_engine_instance
+    from enterprise_ai_platform.ontology.reasoning.inference.inference_executor import reset_inference_executor
+    from enterprise_ai_platform.ontology.reasoning.inference.inference_registry import reset_inference_registry
     # inference_graph has no module singleton — nothing to reset
-    from iios.ontology.reasoning.explanation.explanation_engine   import reset_explanation_engine
-    from iios.ontology.reasoning.explanation.proof_generator      import reset_proof_generator
-    from iios.ontology.reasoning.explanation.reasoning_explainer  import reset_reasoning_explainer
+    from enterprise_ai_platform.ontology.reasoning.explanation.explanation_engine   import reset_explanation_engine
+    from enterprise_ai_platform.ontology.reasoning.explanation.proof_generator      import reset_proof_generator
+    from enterprise_ai_platform.ontology.reasoning.explanation.reasoning_explainer  import reset_reasoning_explainer
     # Ontology singletons
-    from iios.ontology.ontology_factory import reset_ontology_factory
-    from iios.ontology.registry.ontology_registry_manager import reset_registry_manager
+    from enterprise_ai_platform.ontology.ontology_factory import reset_ontology_factory
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import reset_registry_manager
     reset_reasoning_engine()
     reset_reasoning_manager()
     reset_reasoning_registry()
@@ -107,14 +107,14 @@ def reset_all_singletons():
 
 class TestConstants:
     def test_reasoning_type_members(self):
-        from iios.ontology.reasoning import ReasoningType
+        from enterprise_ai_platform.ontology.reasoning import ReasoningType
         assert ReasoningType.FORWARD_CHAIN.value == "forward_chain"
         assert ReasoningType.BACKWARD_CHAIN.value == "backward_chain"
         assert ReasoningType.FULL_INFERENCE.value == "full_inference"
         assert ReasoningType.CONSISTENCY_CHECK.value == "consistency_check"
 
     def test_confidence_levels_ordered(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             CONFIDENCE_CERTAIN, CONFIDENCE_HIGH, CONFIDENCE_MEDIUM,
             CONFIDENCE_LOW, CONFIDENCE_SPECULATIVE,
         )
@@ -122,7 +122,7 @@ class TestConstants:
         assert CONFIDENCE_CERTAIN == 1.0
 
     def test_predicates_are_strings(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             PRED_SUBTYPE_OF, PRED_TRANSITIVE_SUBTYPE,
             PRED_INHERITS_PROPERTY, PRED_HAS_OWN_PROPERTY,
             PRED_INVERSE_RELATED, PRED_HAS_NAMESPACE,
@@ -132,7 +132,7 @@ class TestConstants:
             assert isinstance(p, str) and len(p) > 0
 
     def test_rule_ids_are_strings(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             RULE_INHERITANCE_PROPAGATION, RULE_SUBTYPE_TRANSITIVITY,
             RULE_SYMMETRIC_RELATIONSHIP, RULE_TYPE_CONSISTENCY,
             RULE_NAMESPACE_CONSISTENCY, RULE_REFERENCE_VALIDITY,
@@ -150,7 +150,7 @@ class TestConstants:
         assert len(set(rules)) == 9  # all unique
 
     def test_issue_type_members(self):
-        from iios.ontology.reasoning import IssueType
+        from enterprise_ai_platform.ontology.reasoning import IssueType
         assert IssueType.BROKEN_PARENT_REF.value == "broken_parent_ref"
         assert IssueType.ORPHAN_TYPE.value == "orphan_type"
         assert IssueType.ABSTRACT_NO_CHILDREN.value == "abstract_no_children"
@@ -159,7 +159,7 @@ class TestConstants:
         assert IssueType.BROKEN_PROPERTY_REF.value == "broken_property_ref"
 
     def test_limits_positive(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             MAX_INFERENCE_DEPTH, MAX_FIXPOINT_ITERATIONS, MAX_RULES,
             MAX_FACTS_PER_SESSION, REASONING_TIMEOUT_MS, SESSION_TTL_SECONDS,
             MAX_SESSIONS, PROOF_MAX_STEPS,
@@ -176,7 +176,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningError, InferenceError, InferenceTimeoutError,
             InferenceDepthError, InferenceCycleError, ConsistencyError,
             OntologyInconsistencyError, ReasoningConstraintError, ConflictError,
@@ -199,7 +199,7 @@ class TestExceptions:
         assert issubclass(ReasoningNotInitializedError, ReasoningEngineError)
 
     def test_error_codes(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningError, InferenceTimeoutError, SessionNotFoundError,
             ReasoningNotInitializedError,
         )
@@ -209,7 +209,7 @@ class TestExceptions:
         assert ReasoningNotInitializedError().code == "RSN-061"
 
     def test_raise_and_catch(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningError, DuplicateRuleError, SessionNotFoundError,
         )
         with pytest.raises(ReasoningError):
@@ -224,12 +224,12 @@ class TestExceptions:
 
 class TestFactStore:
     def _fact(self, s="a", p="p", o="b", inferred=True, conf=0.9):
-        from iios.ontology.reasoning import InferredFact
+        from enterprise_ai_platform.ontology.reasoning import InferredFact
         return InferredFact(subject_uri=s, predicate=p, object_value=o,
                             confidence=conf, rule_ids=["r1"], inferred=inferred)
 
     def test_add_and_has(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         f  = self._fact()
         assert fs.add(f)
@@ -237,7 +237,7 @@ class TestFactStore:
         assert not fs.has("a", "p", "c")
 
     def test_deduplication(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         f  = self._fact()
         assert fs.add(f)
@@ -245,7 +245,7 @@ class TestFactStore:
         assert fs.count() == 1
 
     def test_about(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         fs.add(self._fact("x", "p1", "y"))
         fs.add(self._fact("x", "p2", "z"))
@@ -256,7 +256,7 @@ class TestFactStore:
         assert subjects == {"x"}
 
     def test_with_predicate(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         fs.add(self._fact("a", "p1", "b"))
         fs.add(self._fact("c", "p2", "d"))
@@ -265,7 +265,7 @@ class TestFactStore:
         assert len(result) == 2
 
     def test_inferred_vs_ground_truth(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         fs.add(self._fact(inferred=True))
         fs.add(self._fact("x", "p", "y", inferred=False))
@@ -273,14 +273,14 @@ class TestFactStore:
         assert len(fs.ground_truth()) == 1
 
     def test_clear(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         fs.add(self._fact())
         fs.clear()
         assert fs.count() == 0
 
     def test_stats(self):
-        from iios.ontology.reasoning import FactStore
+        from enterprise_ai_platform.ontology.reasoning import FactStore
         fs = FactStore()
         fs.add(self._fact(inferred=True))
         fs.add(self._fact("x", "p", "y", inferred=False))
@@ -296,18 +296,18 @@ class TestFactStore:
 
 class TestReasoningResult:
     def _make_result(self, n_facts=2, n_issues=1):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningResult, ReasoningType, InferenceStatus, ConsistencyStatus,
             InferredFact, ConsistencyIssue, IssueSeverity, IssueType,
         )
         facts  = [
-            InferredFact(f"iios.t{i}", "p", f"v{i}", 0.9, ["r1"], True)
+            InferredFact(f"enterprise_ai_platform.t{i}", "p", f"v{i}", 0.9, ["r1"], True)
             for i in range(n_facts)
         ]
         issues = [
             ConsistencyIssue(
                 IssueType.ORPHAN_TYPE, IssueSeverity.ERROR,
-                "Broken parent", ["iios.t0"], "r1",
+                "Broken parent", ["enterprise_ai_platform.t0"], "r1",
             )
         ] * n_issues
         return ReasoningResult(
@@ -331,7 +331,7 @@ class TestReasoningResult:
         assert r.succeeded is True
 
     def test_is_consistent(self):
-        from iios.ontology.reasoning import ConsistencyStatus
+        from enterprise_ai_platform.ontology.reasoning import ConsistencyStatus
         r = self._make_result()
         assert r.is_consistent is False
         r.consistency_status = ConsistencyStatus.CONSISTENT
@@ -351,7 +351,7 @@ class TestReasoningResult:
 
 class TestReasoningTrace:
     def test_add_step_and_counts(self):
-        from iios.ontology.reasoning import ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning import ReasoningTrace
         trace = ReasoningTrace("sess-1")
         trace.add_step("r1", "Rule One", [], [{"x": 1}], [], 0.9)
         trace.add_step("r2", "Rule Two", [], [{"x": 2}, {"x": 3}], [], 0.8)
@@ -360,7 +360,7 @@ class TestReasoningTrace:
         assert trace.total_facts_produced == 3
 
     def test_rules_fired(self):
-        from iios.ontology.reasoning import ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning import ReasoningTrace
         trace = ReasoningTrace("s2")
         trace.add_step("rule_a", "A", [], [{}], [], 1.0)
         trace.add_step("rule_b", "B", [], [], [], 1.0)
@@ -369,7 +369,7 @@ class TestReasoningTrace:
         assert "rule_b" in fired
 
     def test_entries_for_rule(self):
-        from iios.ontology.reasoning import ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning import ReasoningTrace
         trace = ReasoningTrace("s3")
         trace.add_step("r1", "R1", [], [{}], [], 1.0)
         trace.add_step("r1", "R1", [], [{}], [], 1.0)
@@ -378,7 +378,7 @@ class TestReasoningTrace:
         assert len(trace.entries_for_rule("r2")) == 1
 
     def test_summary(self):
-        from iios.ontology.reasoning import ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning import ReasoningTrace
         trace = ReasoningTrace("s4")
         trace.add_step("r1", "R", [], [{}, {}], [], 0.9)
         d = trace.summary()
@@ -392,10 +392,10 @@ class TestReasoningTrace:
 
 class TestReasoningContext:
     def test_context_manager(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_context, ReasoningType,
         )
-        from iios.ontology.reasoning.reasoning_context import reasoning_session
+        from enterprise_ai_platform.ontology.reasoning.reasoning_context import reasoning_session
         with reasoning_session(ReasoningType.FULL_INFERENCE, actor="test_actor"):
             ctx = get_reasoning_context()
             assert ctx.reasoning_type == ReasoningType.FULL_INFERENCE
@@ -403,16 +403,16 @@ class TestReasoningContext:
             assert ctx.session_id is not None
 
     def test_elapsed_ms(self):
-        from iios.ontology.reasoning.reasoning_context import reasoning_session
-        from iios.ontology.reasoning import get_reasoning_context, ReasoningType
+        from enterprise_ai_platform.ontology.reasoning.reasoning_context import reasoning_session
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_context, ReasoningType
         with reasoning_session(ReasoningType.CONSISTENCY_CHECK, actor="actor"):
             time.sleep(0.01)
             ctx = get_reasoning_context()
             assert ctx.elapsed_ms() >= 0
 
     def test_diagnostics(self):
-        from iios.ontology.reasoning.reasoning_context import reasoning_session
-        from iios.ontology.reasoning import get_reasoning_context, ReasoningType
+        from enterprise_ai_platform.ontology.reasoning.reasoning_context import reasoning_session
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_context, ReasoningType
         with reasoning_session(ReasoningType.FULL_INFERENCE, actor="a"):
             ctx = get_reasoning_context()
             ctx.add_diagnostic("WARNING", "test warning", "src")
@@ -426,17 +426,17 @@ class TestReasoningContext:
 
 class TestReasoningFactory:
     def test_make_request(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_factory, ReasoningType,
         )
         fac = get_reasoning_factory()
-        req = fac.make_request(ReasoningType.FULL_INFERENCE, "iios.core.Entity")
+        req = fac.make_request(ReasoningType.FULL_INFERENCE, "enterprise_ai_platform.core.Entity")
         assert req.reasoning_type == ReasoningType.FULL_INFERENCE
-        assert req.target_uri == "iios.core.Entity"
+        assert req.target_uri == "enterprise_ai_platform.core.Entity"
         assert req.request_id is not None
 
     def test_make_response(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_factory, ReasoningType, InferenceStatus,
             ConsistencyStatus, ReasoningResult, ReasoningTrace,
         )
@@ -458,7 +458,7 @@ class TestReasoningFactory:
         assert "result"  in d
 
     def test_singleton(self):
-        from iios.ontology.reasoning import get_reasoning_factory, reset_reasoning_factory
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_factory, reset_reasoning_factory
         a = get_reasoning_factory()
         b = get_reasoning_factory()
         assert a is b
@@ -473,11 +473,11 @@ class TestReasoningFactory:
 
 class TestSessionManager:
     def _req(self):
-        from iios.ontology.reasoning import get_reasoning_factory, ReasoningType
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_factory, ReasoningType
         return get_reasoning_factory().make_request(ReasoningType.FULL_INFERENCE, "*")
 
     def test_create_and_get(self):
-        from iios.ontology.reasoning import get_session_manager
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager
         sm  = get_session_manager()
         req = self._req()
         s   = sm.create(req)
@@ -486,13 +486,13 @@ class TestSessionManager:
         assert retrieved.session_id == s.session_id
 
     def test_not_found(self):
-        from iios.ontology.reasoning import get_session_manager, SessionNotFoundError
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager, SessionNotFoundError
         sm = get_session_manager()
         with pytest.raises(SessionNotFoundError):
             sm.get("nonexistent-id")
 
     def test_close(self):
-        from iios.ontology.reasoning import get_session_manager, SessionNotFoundError
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager, SessionNotFoundError
         sm  = get_session_manager()
         s   = sm.create(self._req())
         sid = s.session_id
@@ -501,7 +501,7 @@ class TestSessionManager:
             sm.get(sid)
 
     def test_stats(self):
-        from iios.ontology.reasoning import get_session_manager
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager
         sm = get_session_manager()
         sm.create(self._req())
         sm.create(self._req())
@@ -510,7 +510,7 @@ class TestSessionManager:
         assert "active" in stats
 
     def test_session_to_dict(self):
-        from iios.ontology.reasoning import get_session_manager
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager
         sm = get_session_manager()
         s  = sm.create(self._req())
         d  = s.to_dict()
@@ -524,8 +524,8 @@ class TestSessionManager:
 
 class TestInferenceRule:
     def test_execute_returns_list(self):
-        from iios.ontology.reasoning.inference import InferenceRule
-        from iios.ontology.reasoning import RuleType, FactStore
+        from enterprise_ai_platform.ontology.reasoning.inference import InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType, FactStore
         rule = InferenceRule(
             rule_id="test.r1", name="Test", description="",
             rule_type=RuleType.IMPLICATION, priority=1,
@@ -535,8 +535,8 @@ class TestInferenceRule:
         assert isinstance(result, list)
 
     def test_disabled_rule_returns_empty(self):
-        from iios.ontology.reasoning.inference import InferenceRule
-        from iios.ontology.reasoning import RuleType, FactStore, InferredFact
+        from enterprise_ai_platform.ontology.reasoning.inference import InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType, FactStore, InferredFact
         fired = []
         def _action(f, m):
             fired.append(1)
@@ -551,16 +551,16 @@ class TestInferenceRule:
         assert fired == []
 
     def test_to_dict(self):
-        from iios.ontology.reasoning.inference import InferenceRule
-        from iios.ontology.reasoning import RuleType
+        from enterprise_ai_platform.ontology.reasoning.inference import InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType
         rule = InferenceRule("r3", "R3", "desc", RuleType.CONSTRAINT)
         d = rule.to_dict()
         assert d["rule_id"] == "r3"
         assert d["enabled"] is True
 
     def test_exception_in_action_returns_empty(self):
-        from iios.ontology.reasoning.inference import InferenceRule
-        from iios.ontology.reasoning import RuleType, FactStore
+        from enterprise_ai_platform.ontology.reasoning.inference import InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType, FactStore
         rule = InferenceRule(
             rule_id="r4", name="bad", description="",
             rule_type=RuleType.DEDUCTION,
@@ -576,8 +576,8 @@ class TestInferenceRule:
 
 class TestInferenceRegistry:
     def test_nine_builtins_registered(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning import (
             RULE_INHERITANCE_PROPAGATION, RULE_SUBTYPE_TRANSITIVITY,
             RULE_SYMMETRIC_RELATIONSHIP, RULE_TYPE_CONSISTENCY,
             RULE_NAMESPACE_CONSISTENCY, RULE_REFERENCE_VALIDITY,
@@ -595,22 +595,22 @@ class TestInferenceRegistry:
             assert reg.has(rid), f"Missing builtin rule: {rid}"
 
     def test_all_builtins_enabled_by_default(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
         reg   = get_inference_registry()
         rules = reg.enabled_rules()
         assert len(rules) >= 9
 
     def test_register_custom_rule(self):
-        from iios.ontology.reasoning.inference import get_inference_registry, InferenceRule
-        from iios.ontology.reasoning import RuleType
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry, InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType
         reg  = get_inference_registry()
         rule = InferenceRule("custom.r1", "CR1", "desc", RuleType.DEDUCTION)
         reg.register(rule)
         assert reg.has("custom.r1")
 
     def test_duplicate_raises(self):
-        from iios.ontology.reasoning.inference import get_inference_registry, InferenceRule
-        from iios.ontology.reasoning import RuleType, DuplicateRuleError
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry, InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType, DuplicateRuleError
         reg  = get_inference_registry()
         rule = InferenceRule("dup.r1", "D", "d", RuleType.DEDUCTION)
         reg.register(rule)
@@ -618,8 +618,8 @@ class TestInferenceRegistry:
             reg.register(rule)
 
     def test_enable_disable(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
-        from iios.ontology.reasoning import RULE_ABSTRACT_TYPE_CHECK
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning import RULE_ABSTRACT_TYPE_CHECK
         reg = get_inference_registry()
         reg.disable(RULE_ABSTRACT_TYPE_CHECK)
         assert not reg.get(RULE_ABSTRACT_TYPE_CHECK).enabled
@@ -627,22 +627,22 @@ class TestInferenceRegistry:
         assert reg.get(RULE_ABSTRACT_TYPE_CHECK).enabled
 
     def test_unknown_raises(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
-        from iios.ontology.reasoning import UnknownRuleError
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning import UnknownRuleError
         reg = get_inference_registry()
         with pytest.raises(UnknownRuleError):
             reg.get("no.such.rule")
 
     def test_stats(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
         reg   = get_inference_registry()
         stats = reg.stats()
         assert stats["total"] >= 9
         assert stats["builtins"] == 9
 
     def test_rules_by_type(self):
-        from iios.ontology.reasoning.inference import get_inference_registry
-        from iios.ontology.reasoning import RuleType
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning import RuleType
         reg         = get_inference_registry()
         constraints = reg.rules_by_type(RuleType.CONSTRAINT)
         assert len(constraints) >= 6  # type, ns, ref, abstract, orphan, rel
@@ -655,44 +655,44 @@ class TestInferenceRegistry:
 class TestForwardChaining:
     def _setup_simple_hierarchy(self):
         """Entity -> Animal -> Dog"""
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         entity = _make_type("Entity", abstract=True)
-        animal = _make_type("Animal", parent="iios.test.Entity")
-        dog    = _make_type("Dog", parent="iios.test.Animal")
+        animal = _make_type("Animal", parent="enterprise_ai_platform.test.Entity")
+        dog    = _make_type("Dog", parent="enterprise_ai_platform.test.Animal")
         _register_type(entity)
         _register_type(animal)
         _register_type(dog)
         return entity, animal, dog
 
     def test_subtype_transitivity_inferred(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, PRED_TRANSITIVE_SUBTYPE,
         )
         self._setup_simple_hierarchy()
         engine = get_reasoning_engine()
         engine.initialize()
-        resp = engine.forward_chain("iios.test.Dog")
+        resp = engine.forward_chain("enterprise_ai_platform.test.Dog")
         # Dog should have transitive_subtype_of Entity
         facts = resp.result.inferred_facts
         transitive = [
             f for f in facts
             if f.predicate == PRED_TRANSITIVE_SUBTYPE
-            and f.subject_uri == "iios.test.Dog"
+            and f.subject_uri == "enterprise_ai_platform.test.Dog"
         ]
         obj_vals = {str(f.object_value) for f in transitive}
-        assert "iios.test.Entity" in obj_vals or "iios.test.Animal" in obj_vals
+        assert "enterprise_ai_platform.test.Entity" in obj_vals or "enterprise_ai_platform.test.Animal" in obj_vals
 
     def test_result_is_completed(self):
-        from iios.ontology.reasoning import get_reasoning_engine, InferenceStatus
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, InferenceStatus
         self._setup_simple_hierarchy()
         engine = get_reasoning_engine()
         engine.initialize()
-        resp = engine.forward_chain("iios.test.Animal")
+        resp = engine.forward_chain("enterprise_ai_platform.test.Animal")
         assert resp.result.status == InferenceStatus.COMPLETED
 
     def test_response_to_dict(self):
         self._setup_simple_hierarchy()
-        from iios.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
         engine = get_reasoning_engine()
         engine.initialize()
         resp = engine.forward_chain("*")
@@ -707,13 +707,13 @@ class TestForwardChaining:
 
 class TestBackwardChaining:
     def test_backward_chain_completes(self):
-        from iios.ontology.reasoning import get_reasoning_engine, InferenceStatus
-        _register_namespace("iios.test")
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, InferenceStatus
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("Target")
         _register_type(t)
         engine = get_reasoning_engine()
         engine.initialize()
-        resp = engine.backward_chain("iios.test.Target")
+        resp = engine.backward_chain("enterprise_ai_platform.test.Target")
         assert resp.result.status == InferenceStatus.COMPLETED
 
 
@@ -723,10 +723,10 @@ class TestBackwardChaining:
 
 class TestConsistencyChecking:
     def test_clean_ontology_has_no_errors(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("Clean")
         _register_type(t)
-        from iios.ontology.reasoning import get_reasoning_engine, IssueSeverity
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, IssueSeverity
         engine = get_reasoning_engine()
         engine.initialize()
         result = engine.check_consistency()
@@ -735,10 +735,10 @@ class TestConsistencyChecking:
 
     def test_broken_parent_detected(self):
         """Register a type with a parent_uri that doesn't exist."""
-        _register_namespace("iios.test")
-        child = _make_type("Orphan", parent="iios.test.GhostParent")
+        _register_namespace("enterprise_ai_platform.test")
+        child = _make_type("Orphan", parent="enterprise_ai_platform.test.GhostParent")
         _register_type(child)
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, IssueType,
         )
         engine = get_reasoning_engine()
@@ -748,10 +748,10 @@ class TestConsistencyChecking:
         assert IssueType.BROKEN_PARENT_REF in issues_t or IssueType.ORPHAN_TYPE in issues_t
 
     def test_abstract_no_children_warning(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         abstract_type = _make_type("AbstractNoKids", abstract=True)
         _register_type(abstract_type)
-        from iios.ontology.reasoning import get_reasoning_engine, IssueType
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, IssueType
         engine = get_reasoning_engine()
         engine.initialize()
         result = engine.check_consistency()
@@ -759,11 +759,11 @@ class TestConsistencyChecking:
         assert IssueType.ABSTRACT_NO_CHILDREN in types_found
 
     def test_broken_relationship_detected(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t1 = _make_type("RelSrc")
         _register_type(t1)
-        _register_rel("iios.test.rel1", "rel1", "iios.test.RelSrc", "iios.test.MISSING")
-        from iios.ontology.reasoning import get_reasoning_engine, IssueType
+        _register_rel("enterprise_ai_platform.test.rel1", "rel1", "enterprise_ai_platform.test.RelSrc", "enterprise_ai_platform.test.MISSING")
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, IssueType
         engine = get_reasoning_engine()
         engine.initialize()
         result = engine.check_consistency()
@@ -771,8 +771,8 @@ class TestConsistencyChecking:
         assert IssueType.RELATIONSHIP_BROKEN in types_found
 
     def test_result_has_consistency_status(self):
-        _register_namespace("iios.test")
-        from iios.ontology.reasoning import (
+        _register_namespace("enterprise_ai_platform.test")
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, ConsistencyStatus,
         )
         engine = get_reasoning_engine()
@@ -787,12 +787,12 @@ class TestConsistencyChecking:
 
 class TestExplanation:
     def _setup_and_run(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         entity = _make_type("ExplEntity", abstract=True)
-        child  = _make_type("ExplChild", parent="iios.test.ExplEntity")
+        child  = _make_type("ExplChild", parent="enterprise_ai_platform.test.ExplEntity")
         _register_type(entity)
         _register_type(child)
-        from iios.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
         engine = get_reasoning_engine()
         engine.initialize()
         return engine
@@ -806,11 +806,11 @@ class TestExplanation:
         assert "session_id" in d or "stats" in d
 
     def test_reasoning_explainer_human(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, ReasoningType, InferenceStatus,
             ConsistencyStatus, ReasoningResult, ReasoningTrace,
         )
-        from iios.ontology.reasoning.explanation import get_reasoning_explainer
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_reasoning_explainer
         explainer = get_reasoning_explainer()
         result    = ReasoningResult(
             session_id="s-expl",
@@ -827,11 +827,11 @@ class TestExplanation:
         assert "CONSISTENT" in text.upper() or "consistent" in text
 
     def test_reasoning_explainer_machine(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningType, InferenceStatus, ConsistencyStatus,
             ReasoningResult, ReasoningTrace,
         )
-        from iios.ontology.reasoning.explanation import get_reasoning_explainer
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_reasoning_explainer
         explainer = get_reasoning_explainer()
         result    = ReasoningResult(
             session_id="s-mach",
@@ -848,8 +848,8 @@ class TestExplanation:
         assert "stats" in d
 
     def test_explain_consistency_report(self):
-        from iios.ontology.reasoning.explanation import get_reasoning_explainer
-        from iios.ontology.reasoning import ConsistencyIssue, IssueSeverity, IssueType
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_reasoning_explainer
+        from enterprise_ai_platform.ontology.reasoning import ConsistencyIssue, IssueSeverity, IssueType
         issues = [
             ConsistencyIssue(IssueType.ORPHAN_TYPE, IssueSeverity.ERROR, "Broken", ["u1"], "r1"),
         ]
@@ -858,7 +858,7 @@ class TestExplanation:
         assert "ERROR" in text.upper() or "orphan" in text.lower()
 
     def test_explain_consistency_empty(self):
-        from iios.ontology.reasoning.explanation import get_reasoning_explainer
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_reasoning_explainer
         text = get_reasoning_explainer().explain_consistency([])
         assert "consistent" in text.lower()
 
@@ -869,29 +869,29 @@ class TestExplanation:
 
 class TestProofGenerator:
     def test_generate_returns_proof_node(self):
-        from iios.ontology.reasoning import InferredFact, ReasoningTrace
-        from iios.ontology.reasoning.explanation import get_proof_generator
-        fact  = InferredFact("iios.t.Dog", "transitive_subtype_of", "iios.t.Entity", 1.0, ["r1"], True)
+        from enterprise_ai_platform.ontology.reasoning import InferredFact, ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_proof_generator
+        fact  = InferredFact("enterprise_ai_platform.t.Dog", "transitive_subtype_of", "enterprise_ai_platform.t.Entity", 1.0, ["r1"], True)
         trace = ReasoningTrace("s5")
         trace.finalise()
         gen   = get_proof_generator()
         proof = gen.generate(fact, trace)
-        from iios.ontology.reasoning.explanation import ProofNode
+        from enterprise_ai_platform.ontology.reasoning.explanation import ProofNode
         assert isinstance(proof, ProofNode)
-        assert proof.fact.subject_uri == "iios.t.Dog"
+        assert proof.fact.subject_uri == "enterprise_ai_platform.t.Dog"
 
     def test_to_human_readable(self):
-        from iios.ontology.reasoning import InferredFact, ReasoningTrace
-        from iios.ontology.reasoning.explanation import get_proof_generator
-        fact  = InferredFact("iios.t.Dog", "p", "iios.t.Entity", 0.9, [], False)
+        from enterprise_ai_platform.ontology.reasoning import InferredFact, ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_proof_generator
+        fact  = InferredFact("enterprise_ai_platform.t.Dog", "p", "enterprise_ai_platform.t.Entity", 0.9, [], False)
         trace = ReasoningTrace("s6")
         trace.finalise()
         gen  = get_proof_generator()
         text = gen.to_human_readable(gen.generate(fact, trace))
-        assert "iios.t.Dog" in text
+        assert "enterprise_ai_platform.t.Dog" in text
 
     def test_singleton(self):
-        from iios.ontology.reasoning.explanation import (
+        from enterprise_ai_platform.ontology.reasoning.explanation import (
             get_proof_generator, reset_proof_generator,
         )
         a = get_proof_generator()
@@ -905,8 +905,8 @@ class TestProofGenerator:
 
 class TestDecisionTrace:
     def test_to_dict_keys(self):
-        from iios.ontology.reasoning import InferredFact
-        from iios.ontology.reasoning.explanation import DecisionTrace
+        from enterprise_ai_platform.ontology.reasoning import InferredFact
+        from enterprise_ai_platform.ontology.reasoning.explanation import DecisionTrace
         fact  = InferredFact("a", "p", "b", 0.9, ["r1"], True)
         dt    = DecisionTrace(fact=fact, supporting_rules=["r1"], evidence_uris=["a"], confidence_path=[0.9], depth=1)
         d     = dt.to_dict()
@@ -915,8 +915,8 @@ class TestDecisionTrace:
         assert "depth" in d
 
     def test_human_readable(self):
-        from iios.ontology.reasoning import InferredFact
-        from iios.ontology.reasoning.explanation import DecisionTrace
+        from enterprise_ai_platform.ontology.reasoning import InferredFact
+        from enterprise_ai_platform.ontology.reasoning.explanation import DecisionTrace
         fact = InferredFact("sub", "pred", "obj", 0.8, ["r"], True)
         dt   = DecisionTrace(fact=fact, supporting_rules=["r"])
         text = dt.human_readable()
@@ -930,11 +930,11 @@ class TestDecisionTrace:
 
 class TestExplanationEngine:
     def test_explain_human(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningType, InferenceStatus, ConsistencyStatus,
             ReasoningResult, ReasoningTrace, ExplanationType,
         )
-        from iios.ontology.reasoning.explanation import get_explanation_engine
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_explanation_engine
         result = ReasoningResult(
             session_id="se1",
             reasoning_type=ReasoningType.FULL_INFERENCE,
@@ -951,11 +951,11 @@ class TestExplanationEngine:
         assert len(text) > 0
 
     def test_explain_machine(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             ReasoningType, InferenceStatus, ConsistencyStatus,
             ReasoningResult, ReasoningTrace, ExplanationType,
         )
-        from iios.ontology.reasoning.explanation import get_explanation_engine
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_explanation_engine
         result = ReasoningResult(
             session_id="se2",
             reasoning_type=ReasoningType.CONSISTENCY_CHECK,
@@ -970,8 +970,8 @@ class TestExplanationEngine:
         assert isinstance(d, dict)
 
     def test_explain_fact(self):
-        from iios.ontology.reasoning import InferredFact, ReasoningTrace
-        from iios.ontology.reasoning.explanation import get_explanation_engine, DecisionTrace
+        from enterprise_ai_platform.ontology.reasoning import InferredFact, ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_explanation_engine, DecisionTrace
         fact  = InferredFact("a", "p", "b", 0.9, ["r1"], True)
         trace = ReasoningTrace("se3")
         trace.finalise()
@@ -980,8 +980,8 @@ class TestExplanationEngine:
         assert isinstance(dt, DecisionTrace)
 
     def test_generate_proof(self):
-        from iios.ontology.reasoning import InferredFact, ReasoningTrace
-        from iios.ontology.reasoning.explanation import get_explanation_engine, ProofNode
+        from enterprise_ai_platform.ontology.reasoning import InferredFact, ReasoningTrace
+        from enterprise_ai_platform.ontology.reasoning.explanation import get_explanation_engine, ProofNode
         fact  = InferredFact("x", "p", "y", 1.0, ["r"], False)
         trace = ReasoningTrace("se4")
         trace.finalise()
@@ -995,7 +995,7 @@ class TestExplanationEngine:
 
 class TestReasoningManager:
     def test_not_initialized_raises(self):
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_manager, ReasoningNotInitializedError,
             get_reasoning_factory, ReasoningType,
         )
@@ -1005,10 +1005,10 @@ class TestReasoningManager:
             mgr.reason(req)
 
     def test_initialize_and_reason(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("MgrType")
         _register_type(t)
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_manager, get_reasoning_factory, ReasoningType,
         )
         mgr = get_reasoning_manager()
@@ -1018,7 +1018,7 @@ class TestReasoningManager:
         assert resp.succeeded
 
     def test_stats_structure(self):
-        from iios.ontology.reasoning import get_reasoning_manager
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_manager
         mgr   = get_reasoning_manager()
         stats = mgr.stats()
         assert "initialized" in stats
@@ -1026,16 +1026,16 @@ class TestReasoningManager:
         assert "reasoning" in stats
 
     def test_health(self):
-        from iios.ontology.reasoning import get_reasoning_manager
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_manager
         mgr = get_reasoning_manager()
         h   = mgr.health()
         assert h["status"] in ("healthy", "not_initialized")
 
     def test_reason_all(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("MgrAll")
         _register_type(t)
-        from iios.ontology.reasoning import get_reasoning_manager
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_manager
         mgr = get_reasoning_manager()
         mgr.initialize()
         resp = mgr.reason_all()
@@ -1048,10 +1048,10 @@ class TestReasoningManager:
 
 class TestReasoningEngineFacade:
     def _engine(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("Facade")
         _register_type(t)
-        from iios.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
         engine = get_reasoning_engine()
         engine.initialize()
         return engine
@@ -1071,13 +1071,13 @@ class TestReasoningEngineFacade:
         assert result is not None
 
     def test_register_and_disable_rule(self):
-        from iios.ontology.reasoning.inference import InferenceRule
-        from iios.ontology.reasoning import RuleType
+        from enterprise_ai_platform.ontology.reasoning.inference import InferenceRule
+        from enterprise_ai_platform.ontology.reasoning import RuleType
         engine = self._engine()
         rule   = InferenceRule("facade.test", "FT", "desc", RuleType.IMPLICATION)
         engine.register_rule(rule)
         engine.disable_rule("facade.test")
-        from iios.ontology.reasoning.inference import get_inference_registry
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_registry
         assert not get_inference_registry().get("facade.test").enabled
         engine.enable_rule("facade.test")
         assert get_inference_registry().get("facade.test").enabled
@@ -1105,7 +1105,7 @@ class TestReasoningEngineFacade:
         assert h["status"] == "healthy"
 
     def test_singleton(self):
-        from iios.ontology.reasoning import get_reasoning_engine, reset_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, reset_reasoning_engine
         a = get_reasoning_engine()
         b = get_reasoning_engine()
         assert a is b
@@ -1121,12 +1121,12 @@ class TestReasoningEngineFacade:
 class TestConcurrency:
     def test_parallel_sessions(self):
         """Multiple threads can reason simultaneously without corruption."""
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         for i in range(5):
             t = _make_type(f"ConcType{i}")
             _register_type(t)
 
-        from iios.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
         engine = get_reasoning_engine()
         engine.initialize()
 
@@ -1150,7 +1150,7 @@ class TestConcurrency:
         assert all(results)
 
     def test_session_manager_thread_safe(self):
-        from iios.ontology.reasoning import get_session_manager, get_reasoning_factory, ReasoningType
+        from enterprise_ai_platform.ontology.reasoning import get_session_manager, get_reasoning_factory, ReasoningType
         sm     = get_session_manager()
         fac    = get_reasoning_factory()
         ids: list = []
@@ -1182,14 +1182,14 @@ class TestConcurrency:
 class TestLargeOntology:
     def test_100_type_inference(self):
         """Forward chaining across 100 types should complete quickly."""
-        _register_namespace("iios.large")
-        root = _make_type("Root", ns="iios.large", abstract=True)
+        _register_namespace("enterprise_ai_platform.large")
+        root = _make_type("Root", ns="enterprise_ai_platform.large", abstract=True)
         _register_type(root)
         for i in range(99):
-            child = _make_type(f"T{i}", ns="iios.large", parent="iios.large.Root")
+            child = _make_type(f"T{i}", ns="enterprise_ai_platform.large", parent="enterprise_ai_platform.large.Root")
             _register_type(child)
 
-        from iios.ontology.reasoning import get_reasoning_engine, InferenceStatus
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine, InferenceStatus
         engine = get_reasoning_engine()
         engine.initialize()
         t0   = time.perf_counter()
@@ -1205,7 +1205,7 @@ class TestLargeOntology:
 
 class TestInferenceGraph:
     def test_add_node_and_edge(self):
-        from iios.ontology.reasoning.inference import (
+        from enterprise_ai_platform.ontology.reasoning.inference import (
             InferenceGraph, InferenceNode, InferenceEdge,
         )
         g = InferenceGraph()
@@ -1216,7 +1216,7 @@ class TestInferenceGraph:
         assert "b" in g.neighbours("a")
 
     def test_path_finding(self):
-        from iios.ontology.reasoning.inference import (
+        from enterprise_ai_platform.ontology.reasoning.inference import (
             InferenceGraph, InferenceNode, InferenceEdge,
         )
         g = InferenceGraph()
@@ -1228,7 +1228,7 @@ class TestInferenceGraph:
         assert path == ["x", "y", "z"]
 
     def test_cycle_detection(self):
-        from iios.ontology.reasoning.inference import (
+        from enterprise_ai_platform.ontology.reasoning.inference import (
             InferenceGraph, InferenceNode, InferenceEdge,
         )
         g = InferenceGraph()
@@ -1241,7 +1241,7 @@ class TestInferenceGraph:
         assert len(cycles) > 0
 
     def test_no_cycle_linear(self):
-        from iios.ontology.reasoning.inference import (
+        from enterprise_ai_platform.ontology.reasoning.inference import (
             InferenceGraph, InferenceNode, InferenceEdge,
         )
         g = InferenceGraph()
@@ -1253,7 +1253,7 @@ class TestInferenceGraph:
         assert cycles == []
 
     def test_stats(self):
-        from iios.ontology.reasoning.inference import (
+        from enterprise_ai_platform.ontology.reasoning.inference import (
             InferenceGraph, InferenceNode, InferenceEdge,
         )
         g = InferenceGraph()
@@ -1278,22 +1278,22 @@ class TestEndToEnd:
         4. Explain session (machine)
         5. Verify inferred facts contain transitivity and inheritance
         """
-        _register_namespace("iios.e2e")
-        root     = _make_type("E2ERoot", ns="iios.e2e", abstract=True)
-        mid      = _make_type("E2EMid",  ns="iios.e2e", parent="iios.e2e.E2ERoot")
-        leaf     = _make_type("E2ELeaf", ns="iios.e2e", parent="iios.e2e.E2EMid")
+        _register_namespace("enterprise_ai_platform.e2e")
+        root     = _make_type("E2ERoot", ns="enterprise_ai_platform.e2e", abstract=True)
+        mid      = _make_type("E2EMid",  ns="enterprise_ai_platform.e2e", parent="enterprise_ai_platform.e2e.E2ERoot")
+        leaf     = _make_type("E2ELeaf", ns="enterprise_ai_platform.e2e", parent="enterprise_ai_platform.e2e.E2EMid")
         _register_type(root)
         _register_type(mid)
         _register_type(leaf)
         _register_rel(
-            "iios.e2e.rel_mid_leaf",
+            "enterprise_ai_platform.e2e.rel_mid_leaf",
             "midToLeaf",
-            "iios.e2e.E2EMid",
-            "iios.e2e.E2ELeaf",
-            inverse_uri="iios.e2e.rel_leaf_mid",
+            "enterprise_ai_platform.e2e.E2EMid",
+            "enterprise_ai_platform.e2e.E2ELeaf",
+            inverse_uri="enterprise_ai_platform.e2e.rel_leaf_mid",
         )
 
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, PRED_TRANSITIVE_SUBTYPE, PRED_INVERSE_RELATED,
             InferenceStatus, IssueType,
         )
@@ -1309,10 +1309,10 @@ class TestEndToEnd:
         trans_facts = [
             f for f in resp.result.inferred_facts
             if f.predicate == PRED_TRANSITIVE_SUBTYPE
-            and f.subject_uri == "iios.e2e.E2ELeaf"
+            and f.subject_uri == "enterprise_ai_platform.e2e.E2ELeaf"
         ]
         objs = {str(f.object_value) for f in trans_facts}
-        assert "iios.e2e.E2ERoot" in objs or "iios.e2e.E2EMid" in objs
+        assert "enterprise_ai_platform.e2e.E2ERoot" in objs or "enterprise_ai_platform.e2e.E2EMid" in objs
 
         # Inverse relationship: E2ELeaf should have inverse_related_to E2EMid
         inv_facts = [
@@ -1342,10 +1342,10 @@ class TestEndToEnd:
         assert session.trace.step_count >= 1
 
     def test_statistics_recorded_after_session(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         t = _make_type("StatType")
         _register_type(t)
-        from iios.ontology.reasoning import (
+        from enterprise_ai_platform.ontology.reasoning import (
             get_reasoning_engine, get_reasoning_statistics,
         )
         engine = get_reasoning_engine()
@@ -1356,28 +1356,28 @@ class TestEndToEnd:
         assert stats["total_facts_inferred"] >= 0
 
     def test_infer_for_type(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         p = _make_type("IFT_Parent")
-        c = _make_type("IFT_Child", parent="iios.test.IFT_Parent")
+        c = _make_type("IFT_Child", parent="enterprise_ai_platform.test.IFT_Parent")
         _register_type(p)
         _register_type(c)
-        from iios.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
         engine = get_reasoning_engine()
         engine.initialize()
-        facts  = engine.infer_for_type("iios.test.IFT_Child")
+        facts  = engine.infer_for_type("enterprise_ai_platform.test.IFT_Child")
         # Returns list (may be empty for leaf)
         assert isinstance(facts, list)
 
     def test_build_inference_graph(self):
-        _register_namespace("iios.test")
+        _register_namespace("enterprise_ai_platform.test")
         for name in ["GraphRoot", "GraphChild1", "GraphChild2"]:
-            t = _make_type(name, parent="iios.test.GraphRoot" if name != "GraphRoot" else None)
+            t = _make_type(name, parent="enterprise_ai_platform.test.GraphRoot" if name != "GraphRoot" else None)
             _register_type(t)
-        from iios.ontology.reasoning import get_reasoning_engine
-        from iios.ontology.reasoning.inference import get_inference_engine_instance
+        from enterprise_ai_platform.ontology.reasoning import get_reasoning_engine
+        from enterprise_ai_platform.ontology.reasoning.inference import get_inference_engine_instance
         engine = get_reasoning_engine()
         engine.initialize()
         facts  = engine._manager._inf_engine.forward_chain_all(engine._manager._mgr)
-        from iios.ontology.registry.ontology_registry_manager import get_registry_manager
+        from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
         graph  = engine._manager._inf_engine.build_graph(facts, get_registry_manager())
         assert graph.stats()["nodes"] >= 3

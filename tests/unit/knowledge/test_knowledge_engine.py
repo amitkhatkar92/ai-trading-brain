@@ -31,21 +31,21 @@ import pytest
 
 def _reset_all() -> None:
     """Reset every singleton so tests are fully isolated."""
-    from iios.knowledge.knowledge_engine import reset_knowledge_engine
-    from iios.knowledge.knowledge_manager import reset_knowledge_manager
-    from iios.knowledge.knowledge_context import reset_knowledge_context
-    from iios.knowledge.knowledge_factory import get_knowledge_factory
-    from iios.knowledge.search.knowledge_search import reset_search_engine
-    from iios.knowledge.graph.knowledge_graph import reset_knowledge_graph
-    from iios.knowledge.versioning.knowledge_versioning import reset_versioning_engine
-    from iios.knowledge.repositories.knowledge_repository import reset_knowledge_repository
-    from iios.knowledge.indexing.knowledge_index import reset_knowledge_index
-    from iios.knowledge.storage.knowledge_cache import reset_knowledge_cache
-    from iios.knowledge.storage.knowledge_storage import reset_knowledge_storage
-    from iios.knowledge.validators.knowledge_validator import reset_knowledge_validator
-    from iios.knowledge.validators.knowledge_constraints import reset_constraint_checker
-    from iios.knowledge.validators.knowledge_integrity import reset_integrity_checker
-    from iios.knowledge.validators.knowledge_consistency import reset_consistency_checker
+    from enterprise_ai_platform.knowledge.knowledge_engine import reset_knowledge_engine
+    from enterprise_ai_platform.knowledge.knowledge_manager import reset_knowledge_manager
+    from enterprise_ai_platform.knowledge.knowledge_context import reset_knowledge_context
+    from enterprise_ai_platform.knowledge.knowledge_factory import get_knowledge_factory
+    from enterprise_ai_platform.knowledge.search.knowledge_search import reset_search_engine
+    from enterprise_ai_platform.knowledge.graph.knowledge_graph import reset_knowledge_graph
+    from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import reset_versioning_engine
+    from enterprise_ai_platform.knowledge.repositories.knowledge_repository import reset_knowledge_repository
+    from enterprise_ai_platform.knowledge.indexing.knowledge_index import reset_knowledge_index
+    from enterprise_ai_platform.knowledge.storage.knowledge_cache import reset_knowledge_cache
+    from enterprise_ai_platform.knowledge.storage.knowledge_storage import reset_knowledge_storage
+    from enterprise_ai_platform.knowledge.validators.knowledge_validator import reset_knowledge_validator
+    from enterprise_ai_platform.knowledge.validators.knowledge_constraints import reset_constraint_checker
+    from enterprise_ai_platform.knowledge.validators.knowledge_integrity import reset_integrity_checker
+    from enterprise_ai_platform.knowledge.validators.knowledge_consistency import reset_consistency_checker
 
     reset_knowledge_engine()
     # reset_knowledge_engine already calls the rest, but be explicit for safety
@@ -63,12 +63,12 @@ def _reset_all() -> None:
     reset_integrity_checker()
     reset_consistency_checker()
     # Reset the module-level factory singleton
-    import iios.knowledge.knowledge_factory as _f
+    import enterprise_ai_platform.knowledge.knowledge_factory as _f
     _f._factory = None
 
 
 def _make_record(title: str = "Test record", **kwargs):
-    from iios.knowledge.knowledge_factory import get_knowledge_factory
+    from enterprise_ai_platform.knowledge.knowledge_factory import get_knowledge_factory
     f = get_knowledge_factory()
     return f.create_fact(title=title, content={"value": 1}, **kwargs)
 
@@ -82,41 +82,41 @@ class TestKnowledgeId:
         _reset_all()
 
     def test_new_generates_unique_ids(self):
-        from iios.knowledge.models.knowledge_identifier import KnowledgeId
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import KnowledgeId
         a = KnowledgeId.new()
         b = KnowledgeId.new()
         assert a.uid != b.uid
 
     def test_full_property(self):
-        from iios.knowledge.models.knowledge_identifier import KnowledgeId
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import KnowledgeId
         kid = KnowledgeId.new()
         assert kid.full == f"{kid.namespace}/{kid.uid}"
 
     def test_from_slug(self):
-        from iios.knowledge.models.knowledge_identifier import KnowledgeId
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import KnowledgeId
         kid = KnowledgeId.from_slug("my-slug")
         assert kid.uid == "my-slug"
 
     def test_parse_full(self):
-        from iios.knowledge.models.knowledge_identifier import KnowledgeId
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import KnowledgeId
         kid = KnowledgeId.new()
         parsed = KnowledgeId.parse(kid.full)
         assert parsed.uid == kid.uid
         assert parsed.namespace == kid.namespace
 
     def test_parse_uid_only(self):
-        from iios.knowledge.models.knowledge_identifier import KnowledgeId
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import KnowledgeId
         parsed = KnowledgeId.parse("just-an-id")
         assert parsed.uid == "just-an-id"
 
     def test_generate_id_helper(self):
-        from iios.knowledge.models.knowledge_identifier import generate_id
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import generate_id
         kid = generate_id("test.ns")
         assert kid.namespace == "test.ns"
         assert len(kid.uid) > 0
 
     def test_parse_id_helper(self):
-        from iios.knowledge.models.knowledge_identifier import generate_id, parse_id
+        from enterprise_ai_platform.knowledge.models.knowledge_identifier import generate_id, parse_id
         kid = generate_id()
         parsed = parse_id(kid.full)
         assert parsed.uid == kid.uid
@@ -131,12 +131,12 @@ class TestKnowledgeMetadata:
         _reset_all()
 
     def test_default_confidence_clamped(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
         m = KnowledgeMetadata(confidence=5.0)
         assert m.confidence == 1.0
 
     def test_tag_management(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
         m = KnowledgeMetadata()
         m.add_tag("equity")
         m.add_tag("nifty")
@@ -145,7 +145,7 @@ class TestKnowledgeMetadata:
         assert not m.has_tag("equity")
 
     def test_touch_updates_timestamp(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
         m = KnowledgeMetadata()
         before = m.updated_at
         time.sleep(0.001)
@@ -153,7 +153,7 @@ class TestKnowledgeMetadata:
         assert m.updated_at >= before
 
     def test_to_dict_roundtrip(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
         m = KnowledgeMetadata(description="test", tags=["a", "b"], confidence=0.8)
         d = m.to_dict()
         m2 = KnowledgeMetadata.from_dict(d)
@@ -162,14 +162,14 @@ class TestKnowledgeMetadata:
         assert m2.confidence == 0.8
 
     def test_max_tags_silently_ignored(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
-        from iios.knowledge.knowledge_constants import MAX_TAGS
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.knowledge_constants import MAX_TAGS
         m = KnowledgeMetadata(tags=[f"tag{i}" for i in range(MAX_TAGS)])
         m.add_tag("overflow")  # exceeds limit — silently ignored
         assert len(m.tags) == MAX_TAGS  # count unchanged
 
     def test_evolve(self):
-        from iios.knowledge.models.knowledge_metadata import KnowledgeMetadata
+        from enterprise_ai_platform.knowledge.models.knowledge_metadata import KnowledgeMetadata
         m = KnowledgeMetadata(description="original")
         m2 = m.evolve(description="updated")
         assert m2.description == "updated"
@@ -190,26 +190,26 @@ class TestKnowledgeRecord:
         assert not rec.is_deleted
 
     def test_is_active_draft(self):
-        from iios.knowledge.knowledge_constants import KnowledgeStatus
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeStatus
         rec = _make_record()
         # factory creates DRAFT by default → is_active is False if active only means ACTIVE
         assert rec.status == KnowledgeStatus.DRAFT
 
     def test_activate(self):
-        from iios.knowledge.knowledge_constants import KnowledgeStatus
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeStatus
         rec = _make_record()
         rec.activate()
         assert rec.status == KnowledgeStatus.ACTIVE
         assert rec.is_active
 
     def test_archive(self):
-        from iios.knowledge.knowledge_constants import KnowledgeStatus
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeStatus
         rec = _make_record()
         rec.archive()
         assert rec.status == KnowledgeStatus.ARCHIVED
 
     def test_deprecate(self):
-        from iios.knowledge.knowledge_constants import KnowledgeStatus
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeStatus
         rec = _make_record()
         rec.deprecate()
         assert rec.status == KnowledgeStatus.DEPRECATED
@@ -217,14 +217,14 @@ class TestKnowledgeRecord:
     def test_to_dict_roundtrip(self):
         rec = _make_record("Roundtrip test")
         d = rec.to_dict()
-        from iios.knowledge.models.knowledge_record import KnowledgeRecord
+        from enterprise_ai_platform.knowledge.models.knowledge_record import KnowledgeRecord
         rec2 = KnowledgeRecord.from_dict(d)
         assert rec2.title == rec.title
         assert rec2.id == rec.id
 
     def test_add_reference(self):
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         rec = _make_record("Src")
         ref = KnowledgeReference(
             source_id="src", target_id="tgt",
@@ -235,8 +235,8 @@ class TestKnowledgeRecord:
         assert len(rec.references) == 1
 
     def test_remove_reference(self):
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         rec = _make_record()
         ref = KnowledgeReference(
             source_id="s", target_id="t",
@@ -259,14 +259,14 @@ class TestKnowledgeValidator:
         _reset_all()
 
     def test_valid_record_passes(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
         v = get_knowledge_validator()
         rec = _make_record("Valid record")
         report = v.validate(rec)
         assert report.passed
 
     def test_empty_title_warns(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
         v = get_knowledge_validator()
         rec = _make_record()
         rec.title = ""
@@ -275,9 +275,9 @@ class TestKnowledgeValidator:
         assert len(report.warnings) > 0
 
     def test_custom_rule(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
-        from iios.knowledge.validators.knowledge_validator import ValidationReport, ValidationIssue
-        from iios.knowledge.knowledge_constants import ValidationResult
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import ValidationReport, ValidationIssue
+        from enterprise_ai_platform.knowledge.knowledge_constants import ValidationResult
         v = get_knowledge_validator()
 
         def no_numeric_titles(rec, report):
@@ -291,8 +291,8 @@ class TestKnowledgeValidator:
         v.unregister_rule("no_numeric")
 
     def test_validate_or_raise(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
-        from iios.knowledge.knowledge_exceptions import KnowledgeValidationError
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeValidationError
         v = get_knowledge_validator()
         rec = _make_record()
         # Force an error: set confidence out of [0,1] via a custom rule
@@ -306,13 +306,13 @@ class TestKnowledgeValidator:
             v.unregister_rule("_test_force_error")
 
     def test_list_rules(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
         v = get_knowledge_validator()
         rules = v.list_rules()
         assert len(rules) >= 7
 
     def test_compute_checksum(self):
-        from iios.knowledge.validators.knowledge_validator import get_knowledge_validator
+        from enterprise_ai_platform.knowledge.validators.knowledge_validator import get_knowledge_validator
         v = get_knowledge_validator()
         rec = _make_record("checksum test")
         cs = v.compute_checksum(rec)
@@ -329,7 +329,7 @@ class TestConstraintChecker:
         _reset_all()
 
     def test_built_in_constraints_pass(self):
-        from iios.knowledge.validators.knowledge_constraints import get_constraint_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_constraints import get_constraint_checker
         cc = get_constraint_checker()
         rec = _make_record("Valid")
         issues = cc.check(rec)
@@ -337,7 +337,7 @@ class TestConstraintChecker:
         assert len(errors) == 0
 
     def test_invalid_confidence_fails(self):
-        from iios.knowledge.validators.knowledge_constraints import get_constraint_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_constraints import get_constraint_checker
         cc = get_constraint_checker()
         rec = _make_record("Bad confidence")
         rec.metadata.confidence = -0.5
@@ -346,8 +346,8 @@ class TestConstraintChecker:
         assert len(errors) > 0
 
     def test_custom_constraint(self):
-        from iios.knowledge.validators.knowledge_constraints import get_constraint_checker, ConstraintDefinition
-        from iios.knowledge.knowledge_constants import ConstraintType
+        from enterprise_ai_platform.knowledge.validators.knowledge_constraints import get_constraint_checker, ConstraintDefinition
+        from enterprise_ai_platform.knowledge.knowledge_constants import ConstraintType
         cc = get_constraint_checker()
 
         # check_fn receives the FIELD VALUE (str) and must return bool (False = violation)
@@ -371,7 +371,7 @@ class TestConstraintChecker:
         cc.unregister("no_bad_title")
 
     def test_list_names(self):
-        from iios.knowledge.validators.knowledge_constraints import get_constraint_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_constraints import get_constraint_checker
         cc = get_constraint_checker()
         names = cc.list_names()
         assert len(names) >= 3
@@ -386,14 +386,14 @@ class TestIntegrityChecker:
         _reset_all()
 
     def test_stamp_and_verify(self):
-        from iios.knowledge.validators.knowledge_integrity import get_integrity_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_integrity import get_integrity_checker
         ic = get_integrity_checker()
         rec = _make_record("integrity test")
         ic.stamp(rec)
         assert ic.verify(rec)
 
     def test_tampered_content_fails(self):
-        from iios.knowledge.validators.knowledge_integrity import get_integrity_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_integrity import get_integrity_checker
         ic = get_integrity_checker()
         rec = _make_record("integrity test")
         ic.stamp(rec)
@@ -402,7 +402,7 @@ class TestIntegrityChecker:
         assert not ic.verify(rec)
 
     def test_checksum_is_deterministic(self):
-        from iios.knowledge.validators.knowledge_integrity import get_integrity_checker
+        from enterprise_ai_platform.knowledge.validators.knowledge_integrity import get_integrity_checker
         ic = get_integrity_checker()
         rec = _make_record("deterministic")
         cs1 = ic.compute_checksum(rec)
@@ -410,8 +410,8 @@ class TestIntegrityChecker:
         assert cs1 == cs2
 
     def test_verify_or_raise(self):
-        from iios.knowledge.validators.knowledge_integrity import get_integrity_checker
-        from iios.knowledge.knowledge_exceptions import KnowledgeIntegrityError
+        from enterprise_ai_platform.knowledge.validators.knowledge_integrity import get_integrity_checker
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeIntegrityError
         ic = get_integrity_checker()
         rec = _make_record("raises test")
         ic.stamp(rec)
@@ -429,7 +429,7 @@ class TestVersioningEngine:
         _reset_all()
 
     def test_snapshot_stores_history(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
         ve = get_versioning_engine()
         rec = _make_record("v-rec")
         snap = ve.snapshot(rec, change_summary="initial")
@@ -438,8 +438,8 @@ class TestVersioningEngine:
         assert history[0].snapshot_id == snap.snapshot_id
 
     def test_bump_patch(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("bump-test")
         assert rec.version == "1.0.0"
@@ -447,24 +447,24 @@ class TestVersioningEngine:
         assert rec.version == "1.0.1"
 
     def test_bump_minor(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("minor-test")
         ve.bump_version(rec, VersionBump.MINOR)
         assert rec.version == "1.1.0"
 
     def test_bump_major(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("major-test")
         ve.bump_version(rec, VersionBump.MAJOR)
         assert rec.version == "2.0.0"
 
     def test_rollback(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("rollback-test")
         snap1 = ve.snapshot(rec, change_summary="v1")
@@ -474,8 +474,8 @@ class TestVersioningEngine:
         assert rolled.title == "rollback-test"
 
     def test_version_count(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("count-test")
         ve.snapshot(rec)
@@ -483,8 +483,8 @@ class TestVersioningEngine:
         assert ve.version_count(rec.id) >= 1
 
     def test_diff(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
-        from iios.knowledge.knowledge_constants import VersionBump
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
         ve = get_versioning_engine()
         rec = _make_record("diff-test")
         snap1 = ve.snapshot(rec, change_summary="v1")
@@ -496,9 +496,9 @@ class TestVersioningEngine:
             assert diff is not None
 
     def test_history_empty_for_unknown(self):
-        from iios.knowledge.versioning.knowledge_versioning import get_versioning_engine
+        from enterprise_ai_platform.knowledge.versioning.knowledge_versioning import get_versioning_engine
         ve = get_versioning_engine()
-        assert ve.history("iios.knowledge/unknown") == []
+        assert ve.history("enterprise_ai_platform.knowledge/unknown") == []
 
 
 # ===========================================================================
@@ -510,8 +510,8 @@ class TestKnowledgeIndex:
         _reset_all()
 
     def test_index_and_find_by_type(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
-        from iios.knowledge.knowledge_constants import KnowledgeType
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeType
         idx = get_knowledge_index()
         rec = _make_record("type-test")
         idx.index(rec)
@@ -519,7 +519,7 @@ class TestKnowledgeIndex:
         assert rec.id in ids
 
     def test_index_and_find_by_tag(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         idx = get_knowledge_index()
         rec = _make_record("tag-test")
         rec.metadata.add_tag("equity")
@@ -528,7 +528,7 @@ class TestKnowledgeIndex:
         assert rec.id in ids
 
     def test_index_and_find_by_keyword(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         idx = get_knowledge_index()
         rec = _make_record("NIFTY 50 trend analysis")
         idx.index(rec)
@@ -536,8 +536,8 @@ class TestKnowledgeIndex:
         assert rec.id in ids
 
     def test_deindex_removes_from_all(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
-        from iios.knowledge.knowledge_constants import KnowledgeType
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeType
         idx = get_knowledge_index()
         rec = _make_record("remove test")
         idx.index(rec)
@@ -546,14 +546,14 @@ class TestKnowledgeIndex:
         assert rec.id not in ids
 
     def test_count(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         idx = get_knowledge_index()
         for i in range(3):
             idx.index(_make_record(f"rec{i}"))
         assert idx.count() == 3
 
     def test_by_tags_match_all(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         idx = get_knowledge_index()
         rec = _make_record("multi-tag")
         rec.metadata.add_tag("a")
@@ -565,7 +565,7 @@ class TestKnowledgeIndex:
         assert rec.id not in ids_miss
 
     def test_all_ids(self):
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         idx = get_knowledge_index()
         rec = _make_record("all-ids-test")
         idx.index(rec)
@@ -581,7 +581,7 @@ class TestKnowledgeStorage:
         _reset_all()
 
     def test_put_and_get(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         rec = _make_record("store-test")
         store.put(rec)
@@ -589,14 +589,14 @@ class TestKnowledgeStorage:
         assert got.id == rec.id
 
     def test_get_missing_raises(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
-        from iios.knowledge.knowledge_exceptions import KnowledgeNotFoundError
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeNotFoundError
         store = get_knowledge_storage()
         with pytest.raises(KnowledgeNotFoundError):
-            store.get("iios.knowledge/nonexistent")
+            store.get("enterprise_ai_platform.knowledge/nonexistent")
 
     def test_soft_delete(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         rec = _make_record("soft-del")
         store.put(rec)
@@ -605,8 +605,8 @@ class TestKnowledgeStorage:
         assert got.is_deleted
 
     def test_hard_delete(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
-        from iios.knowledge.knowledge_exceptions import KnowledgeNotFoundError
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeNotFoundError
         store = get_knowledge_storage()
         rec = _make_record("hard-del")
         store.put(rec)
@@ -615,7 +615,7 @@ class TestKnowledgeStorage:
             store.get(rec.id)
 
     def test_restore(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         rec = _make_record("restore-test")
         store.put(rec)
@@ -625,7 +625,7 @@ class TestKnowledgeStorage:
         assert not got.is_deleted
 
     def test_bulk_put(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         recs = [_make_record(f"bulk-{i}") for i in range(5)]
         n = store.bulk_put(recs)
@@ -633,7 +633,7 @@ class TestKnowledgeStorage:
         assert store.count() >= 5
 
     def test_all_excludes_deleted(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         rec = _make_record("all-excl")
         store.put(rec)
@@ -642,7 +642,7 @@ class TestKnowledgeStorage:
         assert all(not r.is_deleted for r in live)
 
     def test_exists(self):
-        from iios.knowledge.storage.knowledge_storage import get_knowledge_storage
+        from enterprise_ai_platform.knowledge.storage.knowledge_storage import get_knowledge_storage
         store = get_knowledge_storage()
         rec = _make_record("exists-test")
         assert not store.exists(rec.id)
@@ -659,7 +659,7 @@ class TestKnowledgeRepository:
         _reset_all()
 
     def test_add_and_get(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         rec = _make_record("repo-test")
         repo.add(rec)
@@ -667,8 +667,8 @@ class TestKnowledgeRepository:
         assert got.id == rec.id
 
     def test_duplicate_raises(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.knowledge_exceptions import KnowledgeAlreadyExistsError
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeAlreadyExistsError
         repo = get_knowledge_repository()
         rec = _make_record("dup")
         repo.add(rec)
@@ -676,7 +676,7 @@ class TestKnowledgeRepository:
             repo.add(rec)
 
     def test_update(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         rec = _make_record("update-test")
         repo.add(rec)
@@ -686,16 +686,16 @@ class TestKnowledgeRepository:
         assert got.title == "Updated"
 
     def test_update_missing_raises(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.knowledge_exceptions import KnowledgeNotFoundError
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeNotFoundError
         repo = get_knowledge_repository()
         rec = _make_record("missing-update")
         with pytest.raises(KnowledgeNotFoundError):
             repo.update(rec)
 
     def test_delete_soft(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.knowledge_exceptions import KnowledgeNotFoundError
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeNotFoundError
         repo = get_knowledge_repository()
         rec = _make_record("del-test")
         repo.add(rec)
@@ -704,8 +704,8 @@ class TestKnowledgeRepository:
             repo.get(rec.id)
 
     def test_delete_hard(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.knowledge_exceptions import KnowledgeNotFoundError
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeNotFoundError
         repo = get_knowledge_repository()
         rec = _make_record("hard-del-repo")
         repo.add(rec)
@@ -714,7 +714,7 @@ class TestKnowledgeRepository:
             repo.get(rec.id)
 
     def test_restore(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         rec = _make_record("restore-repo")
         repo.add(rec)
@@ -724,8 +724,8 @@ class TestKnowledgeRepository:
         assert not got.is_deleted
 
     def test_query_all(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.models.knowledge_query import KnowledgeQuery
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.models.knowledge_query import KnowledgeQuery
         repo = get_knowledge_repository()
         for i in range(4):
             repo.add(_make_record(f"q-{i}"))
@@ -733,9 +733,9 @@ class TestKnowledgeRepository:
         assert result.total >= 4
 
     def test_query_by_type(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.models.knowledge_query import KnowledgeQuery, KnowledgeFilter
-        from iios.knowledge.knowledge_constants import KnowledgeType
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.models.knowledge_query import KnowledgeQuery, KnowledgeFilter
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeType
         repo = get_knowledge_repository()
         repo.add(_make_record("fact-query"))
         filt = KnowledgeFilter(knowledge_types=[KnowledgeType.FACT])
@@ -743,7 +743,7 @@ class TestKnowledgeRepository:
         assert result.total >= 1
 
     def test_upsert(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         rec = _make_record("upsert-test")
         repo.upsert(rec)
@@ -753,21 +753,21 @@ class TestKnowledgeRepository:
         assert got.title == "Upserted"
 
     def test_bulk_add(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         recs = [_make_record(f"bulk-{i}") for i in range(5)]
         n = repo.bulk_add(recs)
         assert n == 5
 
     def test_count(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         n_before = repo.count()
         repo.add(_make_record("count-test"))
         assert repo.count() == n_before + 1
 
     def test_stats(self):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         repo.add(_make_record("stats-test"))
         s = repo.stats()
@@ -783,8 +783,8 @@ class TestKnowledgeSearchEngine:
         _reset_all()
 
     def _seed_repo(self, n: int = 3):
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         repo = get_knowledge_repository()
         titles = ["NIFTY 50 bullish trend", "BANKNIFTY puts reversal", "equity momentum strategy"]
         for title in titles[:n]:
@@ -793,33 +793,33 @@ class TestKnowledgeSearchEngine:
         return repo
 
     def test_keyword_search_finds_match(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.models.knowledge_query import SearchQuery
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.models.knowledge_query import SearchQuery
         self._seed_repo()
         engine = get_search_engine()
         results = engine.search(SearchQuery(text="NIFTY"))
         assert len(results) >= 1
 
     def test_search_no_match_returns_empty(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.models.knowledge_query import SearchQuery
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.models.knowledge_query import SearchQuery
         self._seed_repo()
         engine = get_search_engine()
         results = engine.search(SearchQuery(text="xyznonexistent123"))
         assert len(results) == 0
 
     def test_find_by_type(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.knowledge_constants import KnowledgeType
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeType
         self._seed_repo()
         engine = get_search_engine()
         recs = engine.find_by_type(KnowledgeType.FACT)
         assert len(recs) >= 1
 
     def test_find_by_tags(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
-        from iios.knowledge.indexing.knowledge_index import get_knowledge_index
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.indexing.knowledge_index import get_knowledge_index
         repo = get_knowledge_repository()
         idx = get_knowledge_index()
         rec = _make_record("tagged record")
@@ -830,8 +830,8 @@ class TestKnowledgeSearchEngine:
         assert any(r.id == rec.id for r in recs)
 
     def test_search_paged(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.models.knowledge_query import SearchQuery, PageRequest
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.models.knowledge_query import SearchQuery, PageRequest
         self._seed_repo()
         engine = get_search_engine()
         sq = SearchQuery(text="nifty", pagination=PageRequest(page=1, page_size=1))
@@ -839,10 +839,10 @@ class TestKnowledgeSearchEngine:
         assert result.page_size == 1
 
     def test_exact_search(self):
-        from iios.knowledge.search.knowledge_search import get_search_engine
-        from iios.knowledge.models.knowledge_query import SearchQuery
-        from iios.knowledge.knowledge_constants import SearchMode
-        from iios.knowledge.repositories.knowledge_repository import get_knowledge_repository
+        from enterprise_ai_platform.knowledge.search.knowledge_search import get_search_engine
+        from enterprise_ai_platform.knowledge.models.knowledge_query import SearchQuery
+        from enterprise_ai_platform.knowledge.knowledge_constants import SearchMode
+        from enterprise_ai_platform.knowledge.repositories.knowledge_repository import get_knowledge_repository
         repo = get_knowledge_repository()
         rec = _make_record("exact-search-record")
         repo.add(rec)
@@ -861,15 +861,15 @@ class TestKnowledgeGraph:
         _reset_all()
 
     def test_add_and_find_node(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
         g = get_knowledge_graph()
         g.add_node("node-a")
         assert g.has_node("node-a")
 
     def test_add_edge_and_successors(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         g = get_knowledge_graph()
         ref = KnowledgeReference(
             source_id="a", target_id="b",
@@ -881,9 +881,9 @@ class TestKnowledgeGraph:
         assert "a" in g.predecessors("b")
 
     def test_shortest_path(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         g = get_knowledge_graph()
         for src, tgt in [("x", "y"), ("y", "z")]:
             ref = KnowledgeReference(
@@ -896,16 +896,16 @@ class TestKnowledgeGraph:
         assert path == ["x", "y", "z"]
 
     def test_no_path_returns_empty(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
         g = get_knowledge_graph()
         g.add_node("isolated-a")
         g.add_node("isolated-b")
         assert g.shortest_path("isolated-a", "isolated-b") == []
 
     def test_cycle_detection(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         g = get_knowledge_graph()
         for src, tgt in [("p", "q"), ("q", "r"), ("r", "p")]:
             ref = KnowledgeReference(
@@ -917,9 +917,9 @@ class TestKnowledgeGraph:
         assert g.has_cycle()
 
     def test_no_cycle_in_dag(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         g = get_knowledge_graph()
         for src, tgt in [("m", "n"), ("n", "o")]:
             ref = KnowledgeReference(
@@ -931,16 +931,16 @@ class TestKnowledgeGraph:
         assert not g.has_cycle()
 
     def test_remove_node(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
         g = get_knowledge_graph()
         g.add_node("del-node")
         g.remove_node("del-node")
         assert not g.has_node("del-node")
 
     def test_descendants(self):
-        from iios.knowledge.graph.knowledge_graph import get_knowledge_graph
-        from iios.knowledge.models.knowledge_reference import KnowledgeReference
-        from iios.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
+        from enterprise_ai_platform.knowledge.graph.knowledge_graph import get_knowledge_graph
+        from enterprise_ai_platform.knowledge.models.knowledge_reference import KnowledgeReference
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType, RelationshipStrength
         g = get_knowledge_graph()
         for src, tgt in [("root", "child"), ("child", "leaf")]:
             ref = KnowledgeReference(
@@ -962,7 +962,7 @@ class TestKnowledgeManager:
         _reset_all()
 
     def test_create_and_get_fact(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         rec = km.create_fact("NIFTY close today", {"close": 24000})
         assert rec.id
@@ -970,14 +970,14 @@ class TestKnowledgeManager:
         assert got.title == "NIFTY close today"
 
     def test_search(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         km.create_fact("BANKNIFTY support zone", {"level": 48000})
         results = km.search("BANKNIFTY")
         assert len(results) >= 1
 
     def test_update(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         rec = km.create_fact("update-me", {"val": 1})
         rec.title = "updated-fact"
@@ -985,7 +985,7 @@ class TestKnowledgeManager:
         assert updated.title == "updated-fact"
 
     def test_delete_and_restore(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         rec = km.create_fact("delete-restore-test")
         assert km.delete(rec.id)
@@ -993,8 +993,8 @@ class TestKnowledgeManager:
         assert km.exists(rec.id)
 
     def test_link_and_related(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
-        from iios.knowledge.knowledge_constants import RelationshipType
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_constants import RelationshipType
         km = get_knowledge_manager()
         a = km.create_fact("node-a")
         b = km.create_fact("node-b")
@@ -1003,22 +1003,22 @@ class TestKnowledgeManager:
         assert b.id in related
 
     def test_history(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         rec = km.create_fact("history-test")
         h = km.history(rec.id)
         assert len(h) >= 1
 
     def test_count(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         km = get_knowledge_manager()
         before = km.count()
         km.create_fact("count-check")
         assert km.count() == before + 1
 
     def test_find_by_tags(self):
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
-        from iios.knowledge.knowledge_constants import KnowledgeDomain
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeDomain
         km = get_knowledge_manager()
         km.create_fact("tagged-fact", tags=["equity"])
         recs = km.find_by_tags(["equity"])
@@ -1034,44 +1034,44 @@ class TestKnowledgeEngine:
         _reset_all()
 
     def test_initialize_and_status(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
         engine = get_knowledge_engine()
         engine.initialize()
         s = engine.status()
         assert s["status"] == "running"
-        assert s["namespace"] == "iios.knowledge"
+        assert s["namespace"] == "enterprise_ai_platform.knowledge"
         engine.shutdown()
 
     def test_shutdown_idempotent(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
         engine = get_knowledge_engine()
         engine.initialize()
         engine.shutdown()
         engine.shutdown()  # must not raise
 
     def test_initialize_idempotent(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
         engine = get_knowledge_engine()
         engine.initialize()
         engine.initialize()  # must not raise
         engine.shutdown()
 
     def test_status_not_initialized(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
         engine = get_knowledge_engine()
         s = engine.status()
         assert s["status"] == "not_initialized"
 
     def test_require_initialized_raises(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
-        from iios.knowledge.knowledge_exceptions import KnowledgeEngineNotInitializedError
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeEngineNotInitializedError
         engine = get_knowledge_engine()
         with pytest.raises(KnowledgeEngineNotInitializedError):
             engine.require_initialized()
 
     def test_full_lifecycle_with_data(self):
-        from iios.knowledge.knowledge_engine import get_knowledge_engine
-        from iios.knowledge.knowledge_manager import get_knowledge_manager
+        from enterprise_ai_platform.knowledge.knowledge_engine import get_knowledge_engine
+        from enterprise_ai_platform.knowledge.knowledge_manager import get_knowledge_manager
         engine = get_knowledge_engine()
         engine.initialize()
         km = get_knowledge_manager()
@@ -1090,8 +1090,8 @@ class TestKnowledgeFactory:
         _reset_all()
 
     def test_create_all_types(self):
-        from iios.knowledge.knowledge_factory import get_knowledge_factory
-        from iios.knowledge.knowledge_constants import KnowledgeType
+        from enterprise_ai_platform.knowledge.knowledge_factory import get_knowledge_factory
+        from enterprise_ai_platform.knowledge.knowledge_constants import KnowledgeType
         factory = get_knowledge_factory()
         expected = [
             (factory.create_fact,        KnowledgeType.FACT),
@@ -1108,13 +1108,13 @@ class TestKnowledgeFactory:
             assert rec.knowledge_type == ktype
 
     def test_factory_sets_owner(self):
-        from iios.knowledge.knowledge_factory import KnowledgeFactory
+        from enterprise_ai_platform.knowledge.knowledge_factory import KnowledgeFactory
         factory = KnowledgeFactory(default_owner="test:owner")
         rec = factory.create_fact("owner test")
         assert rec.metadata.owner_id == "test:owner"
 
     def test_factory_tags(self):
-        from iios.knowledge.knowledge_factory import get_knowledge_factory
+        from enterprise_ai_platform.knowledge.knowledge_factory import get_knowledge_factory
         factory = get_knowledge_factory()
         rec = factory.create_fact("tagged", tags=["nifty", "equity"])
         assert rec.metadata.has_tag("nifty")
@@ -1130,25 +1130,25 @@ class TestKnowledgeContext:
         _reset_all()
 
     def test_default_actor(self):
-        from iios.knowledge.knowledge_context import current_actor
-        from iios.knowledge.knowledge_constants import ANONYMOUS_OWNER
+        from enterprise_ai_platform.knowledge.knowledge_context import current_actor
+        from enterprise_ai_platform.knowledge.knowledge_constants import ANONYMOUS_OWNER
         assert current_actor() == ANONYMOUS_OWNER
 
     def test_context_sets_actor(self):
-        from iios.knowledge.knowledge_context import get_knowledge_context, current_actor
+        from enterprise_ai_platform.knowledge.knowledge_context import get_knowledge_context, current_actor
         ctx = get_knowledge_context()
         with ctx.operation("test-op", actor_id="user:test"):
             assert current_actor() == "user:test"
         assert current_actor() == "user:test" or True  # restored to prev
 
     def test_operation_id_set_in_context(self):
-        from iios.knowledge.knowledge_context import get_knowledge_context, current_operation_id
+        from enterprise_ai_platform.knowledge.knowledge_context import get_knowledge_context, current_operation_id
         ctx = get_knowledge_context()
         with ctx.operation("test-op", actor_id="user:test") as op_id:
             assert op_id == current_operation_id()
             assert len(op_id) > 0
 
     def test_knowledge_operation_shortcut(self):
-        from iios.knowledge.knowledge_context import knowledge_operation, current_actor
+        from enterprise_ai_platform.knowledge.knowledge_context import knowledge_operation, current_actor
         with knowledge_operation("write", actor_id="user:alice"):
             assert current_actor() == "user:alice"

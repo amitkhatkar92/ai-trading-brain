@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     DEFAULT_EXPIRY_HOURS,
     CRITICAL_EXPIRY_HOURS,
     HIGH_EXPIRY_HOURS,

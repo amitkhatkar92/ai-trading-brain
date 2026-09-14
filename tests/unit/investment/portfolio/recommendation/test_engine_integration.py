@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.portfolio_recommendation import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_recommendation import (
     PortfolioRecommendation,
 )
-from iios.investment.portfolio.recommendation.portfolio_recommendation_engine import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_recommendation_engine import (
     PortfolioRecommendationEngine,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     LifecycleState,
     RecommendationAction,
     RecommendationStatus,
@@ -161,7 +161,7 @@ class TestEngineEventCallback:
 
 class TestEnginePolicySelection:
     def test_custom_policy_applied(self, default_intel):
-        from iios.investment.portfolio.recommendation.recommendation_registry import (
+        from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_registry import (
             RecommendationPolicyRegistry,
         )
         registry = RecommendationPolicyRegistry()

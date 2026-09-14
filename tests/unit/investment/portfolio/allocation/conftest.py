@@ -7,8 +7,8 @@ from __future__ import annotations
 import pytest
 from dataclasses import dataclass, field
 from typing import Any, Dict, Tuple
-from iios.investment.portfolio.allocation.allocation_plan import AllocationRequest
-from iios.investment.portfolio.allocation.allocation_types import AllocationMethod
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import AllocationRequest
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import AllocationMethod
 
 
 # ---------------------------------------------------------------------------

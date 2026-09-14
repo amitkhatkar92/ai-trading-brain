@@ -18,7 +18,7 @@ def _run(coro):
 # ---------------------------------------------------------------------------
 # Imports under test
 # ---------------------------------------------------------------------------
-from iios.integration.research.governance import (
+from enterprise_ai_platform.integration.research.governance import (
     GovernanceConfiguration,
     GovernanceEngineStatus,
     ResearchStatus,
@@ -71,21 +71,21 @@ from iios.integration.research.governance import (
     get_governance_engine,
     reset_governance_engine,
 )
-from iios.integration.research.governance.lineage.lineage_graph import LineageGraph
-from iios.integration.research.governance.provenance.provenance_engine import ProvenanceEngine
-from iios.integration.research.governance.reproducibility.environment_snapshot import EnvironmentSnapshot
-from iios.integration.research.governance.reproducibility.configuration_snapshot import ConfigurationSnapshot
-from iios.integration.research.governance.reproducibility.seed_manager import SeedManager
-from iios.integration.research.governance.reproducibility.reproduction_runner import ReproductionRunner
-from iios.integration.research.governance.approvals.approval_workflow import ApprovalWorkflow
-from iios.integration.research.governance.artifacts.artifact_engine import ArtifactEngine
-from iios.integration.research.governance.compliance.policy_validator import GovernancePolicy, PolicyViolation, PolicyValidator
-from iios.integration.research.governance.compliance.compliance_engine import ComplianceEngine
-from iios.integration.research.governance.audit.audit_history import AuditHistory, AuditRecord
-from iios.integration.research.governance.audit.audit_engine import AuditEngine
-from iios.integration.research.governance.governance_registry import ResearchProject, ProjectRegistry
-from iios.integration.research.governance.lineage.lineage_engine import LineageEngine
-from iios.integration.research.governance.lineage.dependency_tracker import DependencyTracker
+from enterprise_ai_platform.integration.research.governance.lineage.lineage_graph import LineageGraph
+from enterprise_ai_platform.integration.research.governance.provenance.provenance_engine import ProvenanceEngine
+from enterprise_ai_platform.integration.research.governance.reproducibility.environment_snapshot import EnvironmentSnapshot
+from enterprise_ai_platform.integration.research.governance.reproducibility.configuration_snapshot import ConfigurationSnapshot
+from enterprise_ai_platform.integration.research.governance.reproducibility.seed_manager import SeedManager
+from enterprise_ai_platform.integration.research.governance.reproducibility.reproduction_runner import ReproductionRunner
+from enterprise_ai_platform.integration.research.governance.approvals.approval_workflow import ApprovalWorkflow
+from enterprise_ai_platform.integration.research.governance.artifacts.artifact_engine import ArtifactEngine
+from enterprise_ai_platform.integration.research.governance.compliance.policy_validator import GovernancePolicy, PolicyViolation, PolicyValidator
+from enterprise_ai_platform.integration.research.governance.compliance.compliance_engine import ComplianceEngine
+from enterprise_ai_platform.integration.research.governance.audit.audit_history import AuditHistory, AuditRecord
+from enterprise_ai_platform.integration.research.governance.audit.audit_engine import AuditEngine
+from enterprise_ai_platform.integration.research.governance.governance_registry import ResearchProject, ProjectRegistry
+from enterprise_ai_platform.integration.research.governance.lineage.lineage_engine import LineageEngine
+from enterprise_ai_platform.integration.research.governance.lineage.dependency_tracker import DependencyTracker
 
 
 # ===========================================================================
@@ -1055,13 +1055,13 @@ class TestSingleton(unittest.TestCase):
 # ===========================================================================
 class TestGovernanceReport(unittest.TestCase):
     def test_create(self):
-        from iios.integration.research.governance.core.governance_report import GovernanceReport
+        from enterprise_ai_platform.integration.research.governance.core.governance_report import GovernanceReport
         rpt = GovernanceReport.create("running", 42.0, total_projects=5)
         self.assertIsNotNone(rpt.report_id)
         self.assertEqual(rpt.total_projects, 5)
 
     def test_to_dict(self):
-        from iios.integration.research.governance.core.governance_report import GovernanceReport
+        from enterprise_ai_platform.integration.research.governance.core.governance_report import GovernanceReport
         rpt = GovernanceReport.create("running", 10.0)
         d   = rpt.to_dict()
         self.assertIn("report_id", d)
@@ -1073,17 +1073,17 @@ class TestGovernanceReport(unittest.TestCase):
 # ===========================================================================
 class TestGovernanceHistory(unittest.TestCase):
     def _event(self, entity_id="e1"):
-        from iios.integration.research.governance.core.governance_event import GovernanceEvent
+        from enterprise_ai_platform.integration.research.governance.core.governance_event import GovernanceEvent
         return GovernanceEvent.create("project.created", "project", entity_id)
 
     def test_append_and_count(self):
-        from iios.integration.research.governance.core.governance_history import GovernanceHistory
+        from enterprise_ai_platform.integration.research.governance.core.governance_history import GovernanceHistory
         hist = GovernanceHistory()
         hist.append(self._event())
         self.assertEqual(hist.count(), 1)
 
     def test_query(self):
-        from iios.integration.research.governance.core.governance_history import GovernanceHistory
+        from enterprise_ai_platform.integration.research.governance.core.governance_history import GovernanceHistory
         hist = GovernanceHistory()
         hist.append(self._event("A"))
         hist.append(self._event("B"))
@@ -1091,7 +1091,7 @@ class TestGovernanceHistory(unittest.TestCase):
         self.assertEqual(len(results), 1)
 
     def test_latest(self):
-        from iios.integration.research.governance.core.governance_history import GovernanceHistory
+        from enterprise_ai_platform.integration.research.governance.core.governance_history import GovernanceHistory
         hist = GovernanceHistory()
         for i in range(5):
             hist.append(self._event(f"e{i}"))
@@ -1099,7 +1099,7 @@ class TestGovernanceHistory(unittest.TestCase):
         self.assertEqual(len(latest), 3)
 
     def test_clear(self):
-        from iios.integration.research.governance.core.governance_history import GovernanceHistory
+        from enterprise_ai_platform.integration.research.governance.core.governance_history import GovernanceHistory
         hist = GovernanceHistory()
         hist.append(self._event())
         hist.clear()

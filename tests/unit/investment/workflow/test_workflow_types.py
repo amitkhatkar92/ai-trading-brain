@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.workflow.workflow_types import (
+from enterprise_ai_platform.investment.workflow.workflow_types import (
     PIPELINE_STAGES,
     TERMINAL_STAGES,
     WORKFLOW_VERSION,

@@ -41,14 +41,14 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     PositionDirection,
     PositionFactory,
     PositionProduct,
     PositionState,
 )
 
-from iios.execution.positions.integration import (
+from enterprise_ai_platform.execution.positions.integration import (
     # constants
     INTEGRATION_SYSTEM_ID,
     MANAGER_SYSTEM_ID,
@@ -371,7 +371,7 @@ class TestComponentHealth:
 
 class TestComponentRegistry:
     def _started_engine_inst(self):
-        from iios.execution.positions.engine import PositionEngine
+        from enterprise_ai_platform.execution.positions.engine import PositionEngine
         e = PositionEngine()
         e.start()
         return e
@@ -444,22 +444,22 @@ class TestComponentFactory:
         assert snapshot is not None
 
     def test_create_engine(self):
-        from iios.execution.positions.engine import PositionEngine
+        from enterprise_ai_platform.execution.positions.engine import PositionEngine
         e = ComponentFactory().create_engine()
         assert isinstance(e, PositionEngine)
 
     def test_create_book(self):
-        from iios.execution.positions.book import PositionBook
+        from enterprise_ai_platform.execution.positions.book import PositionBook
         b = ComponentFactory().create_book()
         assert isinstance(b, PositionBook)
 
     def test_create_risk_manager(self):
-        from iios.execution.positions.risk import PositionRiskManager
+        from enterprise_ai_platform.execution.positions.risk import PositionRiskManager
         r = ComponentFactory().create_risk_manager()
         assert isinstance(r, PositionRiskManager)
 
     def test_create_snapshot_store(self):
-        from iios.execution.positions.snapshot import PositionSnapshotStore
+        from enterprise_ai_platform.execution.positions.snapshot import PositionSnapshotStore
         s = ComponentFactory().create_snapshot_store()
         assert isinstance(s, PositionSnapshotStore)
 
@@ -508,7 +508,7 @@ class TestRequestTypes:
         assert _create_req().operation_type == IntegrationOperationType.CREATE
 
     def test_create_to_engine_request(self):
-        from iios.execution.positions.engine import CreatePositionRequest
+        from enterprise_ai_platform.execution.positions.engine import CreatePositionRequest
         r      = _create_req()
         eng_r  = r.to_engine_request()
         assert isinstance(eng_r, CreatePositionRequest)
@@ -519,7 +519,7 @@ class TestRequestTypes:
         assert r.operation_type == IntegrationOperationType.UPDATE
 
     def test_update_to_engine_request(self):
-        from iios.execution.positions.engine import UpdatePositionRequest
+        from enterprise_ai_platform.execution.positions.engine import UpdatePositionRequest
         r = _update_req("pos-1")
         assert isinstance(r.to_engine_request(), UpdatePositionRequest)
 
@@ -528,7 +528,7 @@ class TestRequestTypes:
         assert r.operation_type == IntegrationOperationType.CLOSE
 
     def test_close_to_engine_request(self):
-        from iios.execution.positions.engine import ClosePositionRequest
+        from enterprise_ai_platform.execution.positions.engine import ClosePositionRequest
         r = _close_req("pos-1")
         assert isinstance(r.to_engine_request(), ClosePositionRequest)
 
@@ -537,7 +537,7 @@ class TestRequestTypes:
         assert r.operation_type == IntegrationOperationType.SYNC
 
     def test_sync_to_engine_request(self):
-        from iios.execution.positions.engine import SyncPositionRequest
+        from enterprise_ai_platform.execution.positions.engine import SyncPositionRequest
         r = SyncPositionIntegrationRequest(position_id="pos-1")
         assert isinstance(r.to_engine_request(), SyncPositionRequest)
 
@@ -546,7 +546,7 @@ class TestRequestTypes:
         assert r.operation_type == IntegrationOperationType.ARCHIVE
 
     def test_archive_to_engine_request(self):
-        from iios.execution.positions.engine import ArchivePositionRequest
+        from enterprise_ai_platform.execution.positions.engine import ArchivePositionRequest
         r = _archive_req("pos-1")
         assert isinstance(r.to_engine_request(), ArchivePositionRequest)
 
@@ -1163,7 +1163,7 @@ class TestQuery:
 
 class TestPublishSnapshot:
     def test_publish_snapshot_returns_snapshot(self):
-        from iios.execution.positions.snapshot import PositionSnapshot
+        from enterprise_ai_platform.execution.positions.snapshot import PositionSnapshot
         e    = _started_engine()
         resp = e.create_position(_create_req())
         snap = e.publish_snapshot(resp.position_id)
@@ -1476,7 +1476,7 @@ class TestConcurrency:
 
 class TestRegressionGuards:
     def test_integration_engine_is_lifecycle_aware(self):
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         e = PositionIntegrationEngine()
         assert isinstance(e, LifecycleAwareMixin)
 
@@ -1499,8 +1499,8 @@ class TestRegressionGuards:
 
     def test_no_internal_classes_exposed(self):
         """PositionIntegrationEngine must NOT expose sub-component classes."""
-        from iios.execution.positions.integration import PositionIntegrationEngine
-        import iios.execution.positions.integration as pkg
+        from enterprise_ai_platform.execution.positions.integration import PositionIntegrationEngine
+        import enterprise_ai_platform.execution.positions.integration as pkg
         all_names = dir(pkg)
         # Internal classes should NOT appear in the public API
         for internal in ["PositionRegistry", "BookRegistry", "RiskRegistry"]:

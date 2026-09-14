@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.opportunity.evidence_collector import EvidenceCollector
-from iios.investment.strategy.opportunity.reason_generator import ReasonGenerator
-from iios.investment.strategy.opportunity.recommendation_engine import RecommendationEngine
-from iios.investment.strategy.opportunity.ranking_score import RankingScore
-from iios.investment.strategy.opportunity.strategy_matcher import MatchResult
-from iios.investment.strategy.opportunity.constraint_engine import ConstraintResult
-from iios.investment.strategy.opportunity.compatibility_engine import CompatibilityScores
-from iios.investment.strategy.opportunity.strategy_suitability import SuitabilityResult
+from enterprise_ai_platform.investment.strategy.opportunity.evidence_collector import EvidenceCollector
+from enterprise_ai_platform.investment.strategy.opportunity.reason_generator import ReasonGenerator
+from enterprise_ai_platform.investment.strategy.opportunity.recommendation_engine import RecommendationEngine
+from enterprise_ai_platform.investment.strategy.opportunity.ranking_score import RankingScore
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_matcher import MatchResult
+from enterprise_ai_platform.investment.strategy.opportunity.constraint_engine import ConstraintResult
+from enterprise_ai_platform.investment.strategy.opportunity.compatibility_engine import CompatibilityScores
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_suitability import SuitabilityResult
 from tests.unit.investment.strategy.opportunity.conftest import (
     make_market_opp, make_company_opp, make_candidate
 )
@@ -112,7 +112,7 @@ class TestEvidenceCollector:
 
 class TestReasonGenerator:
     def _bundle(self):
-        from iios.investment.strategy.opportunity.evidence_collector import Evidence, EvidenceBundle
+        from enterprise_ai_platform.investment.strategy.opportunity.evidence_collector import Evidence, EvidenceBundle
         return EvidenceBundle(
             strategy_id="s1",
             opportunity_id="o1",

@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.opportunity.ranking_engine import RankingEngine
-from iios.investment.strategy.opportunity.ranking_history import RankingHistory
-from iios.investment.strategy.opportunity.ranking_score import RankingScore
-from iios.investment.strategy.opportunity.strategy_ranking import StrategyRanking, RankedOpportunity
-from iios.investment.strategy.opportunity.strategy_matcher import MatchResult
-from iios.investment.strategy.opportunity.strategy_suitability import SuitabilityEngine
+from enterprise_ai_platform.investment.strategy.opportunity.ranking_engine import RankingEngine
+from enterprise_ai_platform.investment.strategy.opportunity.ranking_history import RankingHistory
+from enterprise_ai_platform.investment.strategy.opportunity.ranking_score import RankingScore
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_ranking import StrategyRanking, RankedOpportunity
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_matcher import MatchResult
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_suitability import SuitabilityEngine
 from tests.unit.investment.strategy.opportunity.conftest import (
     make_market_opp, make_candidate
 )
@@ -25,9 +25,9 @@ def _match_result(strategy_id, opp_id, score=70.0, passed=True):
 
 
 def _suitability(strategy_id, opp_id, score=65.0):
-    from iios.investment.strategy.opportunity.constraint_engine import ConstraintResult
-    from iios.investment.strategy.opportunity.compatibility_engine import CompatibilityScores
-    from iios.investment.strategy.opportunity.strategy_suitability import SuitabilityResult
+    from enterprise_ai_platform.investment.strategy.opportunity.constraint_engine import ConstraintResult
+    from enterprise_ai_platform.investment.strategy.opportunity.compatibility_engine import CompatibilityScores
+    from enterprise_ai_platform.investment.strategy.opportunity.strategy_suitability import SuitabilityResult
     return SuitabilityResult(
         strategy_id=strategy_id,
         opportunity_id=opp_id,

@@ -35,14 +35,14 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     Position,
     PositionDirection,
     PositionFactory,
     PositionProduct,
 )
 
-from iios.execution.positions.risk import (
+from enterprise_ai_platform.execution.positions.risk import (
     # constants
     RISK_SYSTEM_ID,
     MANAGER_SYSTEM_ID,
@@ -1357,18 +1357,18 @@ class TestRegressionGuards:
 
     def test_position_risk_state_not_lifecycle_aware(self):
         """PositionRiskState must NOT be a LifecycleAwareMixin."""
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         s = _state()
         assert not isinstance(s, LifecycleAwareMixin)
 
     def test_risk_monitor_not_lifecycle_aware(self):
         """RiskMonitor must NOT be a LifecycleAwareMixin."""
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         m = RiskMonitor()
         assert not isinstance(m, LifecycleAwareMixin)
 
     def test_risk_factory_not_lifecycle_aware(self):
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         f = RiskFactory()
         assert not isinstance(f, LifecycleAwareMixin)
 

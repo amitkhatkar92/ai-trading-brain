@@ -1,5 +1,5 @@
 """
-test_optimization.py — tests for iios.portfolio.optimization
+test_optimization.py — tests for enterprise_ai_platform.portfolio.optimization
 =============================================================
 Comprehensive unit tests for the Portfolio Optimization Framework.
 
@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.portfolio.optimization import (
+from enterprise_ai_platform.portfolio.optimization import (
     AllocationCapability,
     AllocationPlan,
     CandidateStatus,
@@ -72,11 +72,11 @@ from iios.portfolio.optimization import (
     make_rebalancing_generated,
     make_solution_validated,
 )
-from iios.portfolio.optimization.portfolio_allocation_engine import PortfolioAllocationEngine
-from iios.portfolio.optimization.portfolio_priority_engine import PortfolioPriorityEngine
-from iios.portfolio.optimization.portfolio_ranking_engine import PortfolioRankingEngine
-from iios.portfolio.optimization.portfolio_rebalancing_engine import PortfolioRebalancingEngine
-from iios.portfolio.optimization.portfolio_scoring_engine import PortfolioScoringEngine
+from enterprise_ai_platform.portfolio.optimization.portfolio_allocation_engine import PortfolioAllocationEngine
+from enterprise_ai_platform.portfolio.optimization.portfolio_priority_engine import PortfolioPriorityEngine
+from enterprise_ai_platform.portfolio.optimization.portfolio_ranking_engine import PortfolioRankingEngine
+from enterprise_ai_platform.portfolio.optimization.portfolio_rebalancing_engine import PortfolioRebalancingEngine
+from enterprise_ai_platform.portfolio.optimization.portfolio_scoring_engine import PortfolioScoringEngine
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +162,8 @@ def _solution(
 
 class TestConstants:
     def test_optimization_system_id(self):
-        from iios.portfolio.optimization.constants import OPTIMIZATION_SYSTEM_ID
-        assert OPTIMIZATION_SYSTEM_ID == "iios:portfolio:optimization"
+        from enterprise_ai_platform.portfolio.optimization.constants import OPTIMIZATION_SYSTEM_ID
+        assert OPTIMIZATION_SYSTEM_ID == "enterprise_ai_platform:portfolio:optimization"
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -214,7 +214,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_error_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         err = PortfolioOptimizationError("test")
         assert isinstance(err, IIOSError)
         assert err.error_code == "PO-000"  # type: ignore[attr-defined]

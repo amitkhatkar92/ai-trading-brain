@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_scheduler.py
 ===========================================
-Tests for the iios.infrastructure.scheduler subpackage.
+Tests for the enterprise_ai_platform.infrastructure.scheduler subpackage.
 """
 
 from __future__ import annotations
@@ -10,13 +10,13 @@ import datetime
 import time
 import pytest
 
-from iios.infrastructure.scheduler import (
+from enterprise_ai_platform.infrastructure.scheduler import (
     CronExpression, IntervalSchedule, JobScheduler, get_scheduler, reset_scheduler,
     SchedulerRegistry,
 )
-from iios.infrastructure.infrastructure_constants import JobType
-from iios.infrastructure.infrastructure_models import JobDefinition
-from iios.infrastructure.infrastructure_exceptions import SchedulerError
+from enterprise_ai_platform.infrastructure.infrastructure_constants import JobType
+from enterprise_ai_platform.infrastructure.infrastructure_models import JobDefinition
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import SchedulerError
 
 
 class TestCronExpression:

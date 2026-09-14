@@ -25,7 +25,7 @@ from typing import Any
 
 import pytest
 
-from iios.knowledge.governance.quality_constants import (
+from enterprise_ai_platform.knowledge.governance.quality_constants import (
     DIMENSION_WEIGHTS,
     DEFAULT_MIN_KQI,
     AUTO_APPROVE_KQI_THRESHOLD,
@@ -38,7 +38,7 @@ from iios.knowledge.governance.quality_constants import (
     ViolationType,
     SYSTEM_GOVERNANCE_ACTOR,
 )
-from iios.knowledge.governance.governance_constants import (
+from enterprise_ai_platform.knowledge.governance.governance_constants import (
     ApprovalStatus,
     CertificationLevel,
     CertificationStatus,
@@ -50,12 +50,12 @@ from iios.knowledge.governance.governance_constants import (
     SYSTEM_GOVERNANCE_ACTOR as GOV_ACTOR,
     GOVERNANCE_SCHEMA_VERSION as GOV_SCHEMA,
 )
-from iios.knowledge.governance.quality_exceptions import (
+from enterprise_ai_platform.knowledge.governance.quality_exceptions import (
     QualityError,
     QualityThresholdError,
     QualityValidationError,
 )
-from iios.knowledge.governance.governance_exceptions import (
+from enterprise_ai_platform.knowledge.governance.governance_exceptions import (
     ApprovalError,
     ApprovalNotFoundError,
     CertificationExpiredError,
@@ -65,61 +65,61 @@ from iios.knowledge.governance.governance_exceptions import (
     PolicyAlreadyExistsError,
     PolicyNotFoundError,
 )
-from iios.knowledge.governance.models.quality_score import (
+from enterprise_ai_platform.knowledge.governance.models.quality_score import (
     DimensionScore,
     QualityScore,
     compute_kqi,
     compute_tier,
 )
-from iios.knowledge.governance.models.quality_violation import QualityViolation
-from iios.knowledge.governance.models.governance_record import GovernanceRecord
-from iios.knowledge.governance.models.certification import Certification
-from iios.knowledge.governance.models.policy import GovernancePolicy, PolicyCondition
-from iios.knowledge.governance.models.governance_audit import GovernanceAuditEntry
+from enterprise_ai_platform.knowledge.governance.models.quality_violation import QualityViolation
+from enterprise_ai_platform.knowledge.governance.models.governance_record import GovernanceRecord
+from enterprise_ai_platform.knowledge.governance.models.certification import Certification
+from enterprise_ai_platform.knowledge.governance.models.policy import GovernancePolicy, PolicyCondition
+from enterprise_ai_platform.knowledge.governance.models.governance_audit import GovernanceAuditEntry
 
-from iios.knowledge.governance.quality_engine import (
+from enterprise_ai_platform.knowledge.governance.quality_engine import (
     QualityEngine,
     get_quality_engine,
     reset_quality_engine,
 )
-from iios.knowledge.governance.quality_validator import (
+from enterprise_ai_platform.knowledge.governance.quality_validator import (
     QualityValidator,
     get_quality_validator,
     reset_quality_validator,
 )
-from iios.knowledge.governance.quality_monitor import (
+from enterprise_ai_platform.knowledge.governance.quality_monitor import (
     MonitorReport,
     QualityMonitor,
     get_quality_monitor,
     reset_quality_monitor,
 )
-from iios.knowledge.governance.governance_engine import (
+from enterprise_ai_platform.knowledge.governance.governance_engine import (
     GovernanceEngine,
     get_governance_engine,
     reset_governance_engine,
 )
-from iios.knowledge.governance.policy_manager import (
+from enterprise_ai_platform.knowledge.governance.policy_manager import (
     PolicyManager,
     get_policy_manager,
     reset_policy_manager,
 )
-from iios.knowledge.governance.certification_manager import (
+from enterprise_ai_platform.knowledge.governance.certification_manager import (
     CertificationManager,
     get_certification_manager,
     reset_certification_manager,
 )
-from iios.knowledge.governance.governance_audit import (
+from enterprise_ai_platform.knowledge.governance.governance_audit import (
     GovernanceAuditLog,
     get_governance_audit_log,
     reset_governance_audit_log,
 )
-from iios.knowledge.governance.knowledge_governor import (
+from enterprise_ai_platform.knowledge.governance.knowledge_governor import (
     ApprovalResult,
     KnowledgeGovernor,
     get_knowledge_governor,
     reset_knowledge_governor,
 )
-from iios.knowledge.governance.quality_context import (
+from enterprise_ai_platform.knowledge.governance.quality_context import (
     QualityContext,
     current_quality_actor,
     current_quality_operation_id,
@@ -127,19 +127,19 @@ from iios.knowledge.governance.quality_context import (
     quality_operation,
     reset_quality_context,
 )
-from iios.knowledge.governance.governance_context import (
+from enterprise_ai_platform.knowledge.governance.governance_context import (
     GovernanceContext,
     current_governance_actor,
     get_governance_context,
     governance_operation,
     reset_governance_context,
 )
-from iios.knowledge.governance.quality_registry import (
+from enterprise_ai_platform.knowledge.governance.quality_registry import (
     QualityRegistry,
     get_quality_registry,
     reset_quality_registry,
 )
-from iios.knowledge.governance.governance_registry import (
+from enterprise_ai_platform.knowledge.governance.governance_registry import (
     GovernanceRegistry,
     get_governance_registry,
     reset_governance_registry,
@@ -147,13 +147,13 @@ from iios.knowledge.governance.governance_registry import (
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-from iios.knowledge.knowledge_constants import (
+from enterprise_ai_platform.knowledge.knowledge_constants import (
     KnowledgeDomain,
     KnowledgeSource,
     KnowledgeStatus,
     KnowledgeType,
 )
-from iios.knowledge.models.knowledge_record import KnowledgeRecord, KnowledgeMetadata
+from enterprise_ai_platform.knowledge.models.knowledge_record import KnowledgeRecord, KnowledgeMetadata
 
 
 def _meta(**kwargs: Any) -> KnowledgeMetadata:
@@ -227,7 +227,7 @@ class TestQualityConstants:
         assert QualityTier.EXCELLENT.value == "excellent"
 
     def test_system_actor_constant(self) -> None:
-        assert SYSTEM_GOVERNANCE_ACTOR == "iios:governance"
+        assert SYSTEM_GOVERNANCE_ACTOR == "enterprise_ai_platform:governance"
 
     def test_auto_approve_threshold_above_default(self) -> None:
         assert AUTO_APPROVE_KQI_THRESHOLD > DEFAULT_MIN_KQI

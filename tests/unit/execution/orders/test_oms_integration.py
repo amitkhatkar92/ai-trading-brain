@@ -28,7 +28,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.oms.integration import (
+from enterprise_ai_platform.execution.oms.integration import (
     DEFAULT_MAX_EVENTS,
     DEFAULT_MAX_HISTORY,
     ENGINE_SYSTEM_ID,
@@ -95,7 +95,7 @@ def _started_engine() -> OMSIntegrationEngine:
 
 def _mock_component(running: bool = True) -> MagicMock:
     """Create a minimal mock that passes registry registration."""
-    from iios.investment.workflow.engine_lifecycle import EngineState
+    from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
     m = MagicMock()
     m.lifecycle_state.return_value = EngineState.RUNNING if running else EngineState.STOPPED
     m.start.return_value = None
@@ -114,7 +114,7 @@ def _mock_component(running: bool = True) -> MagicMock:
 
 class TestConstants:
     def test_system_id(self):
-        assert OMS_INTEGRATION_SYSTEM_ID.startswith("iios:")
+        assert OMS_INTEGRATION_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version(self):
         parts = VERSION.split(".")
@@ -527,7 +527,7 @@ class TestOMSSnapshot:
 
 class TestOMSValidator:
     def _mock_registry(self, all_running: bool = True) -> MagicMock:
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         registry = MagicMock()
         state    = EngineState.RUNNING if all_running else EngineState.STOPPED
         mock_comp = MagicMock()
@@ -655,7 +655,7 @@ class TestOMSComponentRegistry:
         r.stop()
 
     def test_start_all_and_stop_all(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         r = OMSComponentRegistry()
         r.start()
         for ct in ComponentType:
@@ -669,7 +669,7 @@ class TestOMSComponentRegistry:
         r.stop()
 
     def test_health_all(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         r = OMSComponentRegistry()
         r.start()
         m = MagicMock()
@@ -682,7 +682,7 @@ class TestOMSComponentRegistry:
         r.stop()
 
     def test_status_all(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         r = OMSComponentRegistry()
         r.start()
         m = MagicMock()
@@ -1046,7 +1046,7 @@ class TestOMSIntegrationEngine:
 
     def test_get_component(self):
         engine = _started_engine()
-        from iios.execution.oms.order_manager import OrderManager
+        from enterprise_ai_platform.execution.oms.order_manager import OrderManager
         mgr = engine.get_component(ComponentType.ORDER_MANAGER)
         assert isinstance(mgr, OrderManager)
         engine.stop()
@@ -1181,36 +1181,36 @@ class TestConcurrency:
 class TestRegression:
     def test_order_manager_accessible(self):
         engine = _started_engine()
-        from iios.execution.oms.order_manager import OrderManager
+        from enterprise_ai_platform.execution.oms.order_manager import OrderManager
         assert isinstance(engine.get_component(ComponentType.ORDER_MANAGER), OrderManager)
         engine.stop()
 
     def test_order_book_accessible(self):
         engine = _started_engine()
-        from iios.execution.oms.order_book import OrderBook
+        from enterprise_ai_platform.execution.oms.order_book import OrderBook
         assert isinstance(engine.get_component(ComponentType.ORDER_BOOK), OrderBook)
         engine.stop()
 
     def test_order_router_accessible(self):
         engine = _started_engine()
-        from iios.execution.oms.order_router import OrderRouter
+        from enterprise_ai_platform.execution.oms.order_router import OrderRouter
         assert isinstance(engine.get_component(ComponentType.ORDER_ROUTER), OrderRouter)
         engine.stop()
 
     def test_order_queue_accessible(self):
         engine = _started_engine()
-        from iios.execution.oms.order_queue import OrderQueue
+        from enterprise_ai_platform.execution.oms.order_queue import OrderQueue
         assert isinstance(engine.get_component(ComponentType.ORDER_QUEUE), OrderQueue)
         engine.stop()
 
     def test_persistence_accessible(self):
         engine = _started_engine()
-        from iios.execution.oms.persistence import RepositoryManager
+        from enterprise_ai_platform.execution.oms.persistence import RepositoryManager
         assert isinstance(engine.get_component(ComponentType.PERSISTENCE), RepositoryManager)
         engine.stop()
 
     def test_all_components_running_after_start(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         engine = _started_engine()
         for ct in ComponentType:
             comp = engine.get_component(ct)

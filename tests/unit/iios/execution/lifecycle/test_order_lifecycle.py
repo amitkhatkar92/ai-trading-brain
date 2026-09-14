@@ -1,6 +1,6 @@
-"""tests/unit/iios/execution/lifecycle/test_order_lifecycle.py
+"""tests/unit/enterprise_ai_platform/execution/lifecycle/test_order_lifecycle.py
 ==================================================
-Complete test suite for iios.execution.lifecycle
+Complete test suite for enterprise_ai_platform.execution.lifecycle
 
 Parts
 -----
@@ -28,7 +28,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.lifecycle import (
+from enterprise_ai_platform.execution.lifecycle import (
     ACTOR_BROKER, ACTOR_EXCHANGE, ACTOR_SYSTEM, ACTOR_VALIDATOR,
     ACTIVE_STATES, CANCELLABLE_STATES, FILL_STATES, RECOVERABLE_STATES,
     TERMINAL_STATES, VALID_TRANSITIONS, VERSION,
@@ -823,7 +823,7 @@ class TestOrderFactory:
         assert isinstance(o.quantity, Decimal)
 
     def test_system_id_and_version(self, factory: OrderFactory):
-        assert factory.SYSTEM_ID.startswith("iios:execution:lifecycle")
+        assert factory.SYSTEM_ID.startswith("enterprise_ai_platform:execution:lifecycle")
         assert factory.VERSION == "1.0.0"
 
 
@@ -1045,7 +1045,7 @@ class TestOrderRegistry:
         assert registry.count() == before + 1
 
     def test_system_id_and_version(self, registry: OrderRegistry):
-        assert registry.SYSTEM_ID.startswith("iios:execution:lifecycle")
+        assert registry.SYSTEM_ID.startswith("enterprise_ai_platform:execution:lifecycle")
         assert registry.VERSION == "1.0.0"
 
     def test_faulty_listener_does_not_crash_registry(self, registry: OrderRegistry,

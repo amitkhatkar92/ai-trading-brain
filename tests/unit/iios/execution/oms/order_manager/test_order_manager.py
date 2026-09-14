@@ -1,4 +1,4 @@
-"""tests/unit/iios/execution/oms/order_manager/test_order_manager.py
+"""tests/unit/enterprise_ai_platform/execution/oms/order_manager/test_order_manager.py
 ==================================================
 Comprehensive test suite for C6 Phase 2 Module 1:
 IIOS Order Manager.
@@ -19,7 +19,7 @@ import pytest
 # Imports
 # ─────────────────────────────────────────────────────────────────────────────
 
-from iios.execution.oms.order_manager.constants import (
+from enterprise_ai_platform.execution.oms.order_manager.constants import (
     ACTIVE_MANAGER_STATES,
     TERMINAL_MANAGER_STATES,
     VALID_MANAGER_TRANSITIONS,
@@ -30,7 +30,7 @@ from iios.execution.oms.order_manager.constants import (
     OrderOwnership,
     VERSION,
 )
-from iios.execution.oms.order_manager.exceptions import (
+from enterprise_ai_platform.execution.oms.order_manager.exceptions import (
     DuplicateOrderError,
     OrderAlreadyTerminalError,
     OrderGroupError,
@@ -44,22 +44,22 @@ from iios.execution.oms.order_manager.exceptions import (
     OrderRegistrationError,
     OrderValidationError,
 )
-from iios.execution.oms.order_manager.order_manager_context import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_context import (
     ManagedOrder,
     OrderManagerSnapshot,
 )
-from iios.execution.oms.order_manager.order_manager_events import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_events import (
     OrderManagerEvent,
     make_manager_event,
 )
-from iios.execution.oms.order_manager.order_manager_factory import OrderManagerFactory
-from iios.execution.oms.order_manager.order_manager_history import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_factory import OrderManagerFactory
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_history import (
     ManagerTransition,
     OrderManagerHistory,
     make_transition,
 )
-from iios.execution.oms.order_manager.order_manager_registry import OrderManagerRegistry
-from iios.execution.oms.order_manager.order_manager_request import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_registry import OrderManagerRegistry
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_request import (
     ArchiveOrderRequest,
     CloseOrderRequest,
     CreateOrderRequest,
@@ -68,19 +68,19 @@ from iios.execution.oms.order_manager.order_manager_request import (
     SuspendOrderRequest,
     UpdateOrderRequest,
 )
-from iios.execution.oms.order_manager.order_manager_response import OrderManagerResponse
-from iios.execution.oms.order_manager.order_manager_state import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_response import OrderManagerResponse
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_state import (
     allowed_next,
     assert_manager_transition,
     can_manager_transition,
     is_terminal,
 )
-from iios.execution.oms.order_manager.order_manager_statistics import OrderManagerStatistics
-from iios.execution.oms.order_manager.order_manager_validation import (
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_statistics import OrderManagerStatistics
+from enterprise_ai_platform.execution.oms.order_manager.order_manager_validation import (
     ManagerValidationResult,
     OrderManagerValidator,
 )
-from iios.execution.oms.order_manager.order_manager import OrderManager
+from enterprise_ai_platform.execution.oms.order_manager.order_manager import OrderManager
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -210,7 +210,7 @@ class TestStateMachine:
 
 class TestExceptions:
     def test_hierarchy(self) -> None:
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(OrderManagerError,       IIOSError)
         assert issubclass(OrderNotFoundError,      OrderManagerError)
         assert issubclass(DuplicateOrderError,     OrderManagerError)

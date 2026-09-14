@@ -1,4 +1,4 @@
-"""tests/unit/iios/execution/brokers/test_broker_abstraction_layer.py
+"""tests/unit/enterprise_ai_platform/execution/brokers/test_broker_abstraction_layer.py
 ==================================================
 Comprehensive test suite for C6 Phase 1 Module 3:
 IIOS Broker Abstraction Layer.
@@ -20,7 +20,7 @@ import pytest
 # Imports
 # ─────────────────────────────────────────────────────────────────────────────
 
-from iios.execution.brokers.constants import (
+from enterprise_ai_platform.execution.brokers.constants import (
     BrokerCapabilityCode,
     BrokerConnectionState,
     BrokerHealthStatus,
@@ -34,7 +34,7 @@ from iios.execution.brokers.constants import (
     DEFAULT_MAX_BROKERS,
     VERSION,
 )
-from iios.execution.brokers.exceptions import (
+from enterprise_ai_platform.execution.brokers.exceptions import (
     BrokerAbstractionError,
     BrokerCapacityError,
     BrokerCapabilityError,
@@ -46,12 +46,12 @@ from iios.execution.brokers.exceptions import (
     BrokerValidationError,
     DuplicateBrokerError,
 )
-from iios.execution.brokers.broker_metadata import BrokerMetadata, RateLimitSpec
-from iios.execution.brokers.broker_capabilities import (
+from enterprise_ai_platform.execution.brokers.broker_metadata import BrokerMetadata, RateLimitSpec
+from enterprise_ai_platform.execution.brokers.broker_capabilities import (
     BrokerCapabilities,
     capabilities_from_metadata,
 )
-from iios.execution.brokers.broker_request import (
+from enterprise_ai_platform.execution.brokers.broker_request import (
     BalanceRequest,
     BrokerRequest,
     CancelRequest,
@@ -61,7 +61,7 @@ from iios.execution.brokers.broker_request import (
     OrderRequest,
     PositionRequest,
 )
-from iios.execution.brokers.broker_response import (
+from enterprise_ai_platform.execution.brokers.broker_response import (
     BalanceResponse,
     BrokerResponse,
     CancelResponse,
@@ -72,20 +72,20 @@ from iios.execution.brokers.broker_response import (
     PositionItem,
     PositionResponse,
 )
-from iios.execution.brokers.broker_interface import AbstractBrokerInterface
-from iios.execution.brokers.broker import AbstractBroker
-from iios.execution.brokers.broker_context import BrokerOperationContext, make_context
-from iios.execution.brokers.broker_validation import BrokerValidator, BrokerValidationResult
-from iios.execution.brokers.broker_events import (
+from enterprise_ai_platform.execution.brokers.broker_interface import AbstractBrokerInterface
+from enterprise_ai_platform.execution.brokers.broker import AbstractBroker
+from enterprise_ai_platform.execution.brokers.broker_context import BrokerOperationContext, make_context
+from enterprise_ai_platform.execution.brokers.broker_validation import BrokerValidator, BrokerValidationResult
+from enterprise_ai_platform.execution.brokers.broker_events import (
     BrokerEvent,
     BrokerEventType,
     make_broker_event,
 )
-from iios.execution.brokers.broker_health import BrokerHealthRecord, BrokerHealthMonitor
-from iios.execution.brokers.broker_statistics import BrokerStatistics, RegistryStatistics
-from iios.execution.brokers.broker_registry import BrokerRecord, BrokerRegistry
-from iios.execution.brokers.broker_factory import BrokerFactory
-from iios.execution.brokers.broker_manager import BrokerManager
+from enterprise_ai_platform.execution.brokers.broker_health import BrokerHealthRecord, BrokerHealthMonitor
+from enterprise_ai_platform.execution.brokers.broker_statistics import BrokerStatistics, RegistryStatistics
+from enterprise_ai_platform.execution.brokers.broker_registry import BrokerRecord, BrokerRegistry
+from enterprise_ai_platform.execution.brokers.broker_factory import BrokerFactory
+from enterprise_ai_platform.execution.brokers.broker_manager import BrokerManager
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -203,7 +203,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self) -> None:
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(BrokerAbstractionError, IIOSError)
         assert issubclass(BrokerNotFoundError,    BrokerAbstractionError)
         assert issubclass(DuplicateBrokerError,   BrokerAbstractionError)
@@ -573,8 +573,8 @@ class TestBrokerInterface:
         assert resp.succeeded
 
     def test_require_connected_raises(self) -> None:
-        from iios.execution.brokers.broker import AbstractBroker
-        from iios.execution.brokers.exceptions import BrokerNotConnectedError
+        from enterprise_ai_platform.execution.brokers.broker import AbstractBroker
+        from enterprise_ai_platform.execution.brokers.exceptions import BrokerNotConnectedError
         m = make_metadata("nc-broker")
 
         class ConcreteBroker(AbstractBroker):

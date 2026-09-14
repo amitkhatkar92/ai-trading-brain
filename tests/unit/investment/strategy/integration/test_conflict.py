@@ -5,21 +5,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.aggregation_state import make_update
-from iios.investment.strategy.integration.conflict_classifier import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+from enterprise_ai_platform.investment.strategy.integration.conflict_classifier import (
     Conflict,
     ConflictClassifier,
 )
-from iios.investment.strategy.integration.conflict_engine import ConflictEngine
-from iios.investment.strategy.integration.conflict_history import ConflictHistory
-from iios.investment.strategy.integration.conflict_resolution import ConflictResolver
-from iios.investment.strategy.integration.consistency_rules import (
+from enterprise_ai_platform.investment.strategy.integration.conflict_engine import ConflictEngine
+from enterprise_ai_platform.investment.strategy.integration.conflict_history import ConflictHistory
+from enterprise_ai_platform.investment.strategy.integration.conflict_resolution import ConflictResolver
+from enterprise_ai_platform.investment.strategy.integration.consistency_rules import (
     RuleCheckResult,
     create_default_rule_registry,
 )
-from iios.investment.strategy.integration.conflict_detector import ConflictDetector
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.conflict_detector import ConflictDetector
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     ConflictSeverity,
     ConflictType,
     IntelligenceSource,

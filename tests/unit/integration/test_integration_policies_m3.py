@@ -3,7 +3,7 @@ tests/unit/integration/test_integration_policies_m3.py
 -------------------------------------------------------
 C15 M3 — Integration Governance Policy Framework test suite.
 
-Covers all 21 source files in iios/integration/policies/.
+Covers all 21 source files in enterprise_ai_platform/integration/policies/.
 Target: 95%+ coverage.
 """
 from __future__ import annotations
@@ -20,12 +20,12 @@ import pytest
 
 
 def _make_factory():
-    from iios.integration.policies import IntegrationPolicyFactory
+    from enterprise_ai_platform.integration.policies import IntegrationPolicyFactory
     return IntegrationPolicyFactory()
 
 
 def _make_engine(started: bool = True, with_approve_all: bool = True):
-    from iios.integration.policies import IntegrationPolicyEngine
+    from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
     eng = IntegrationPolicyEngine()
     if started:
         eng.start()
@@ -36,7 +36,7 @@ def _make_engine(started: bool = True, with_approve_all: bool = True):
 
 
 def _make_manager(started: bool = True, with_approve_all: bool = True):
-    from iios.integration.policies import IntegrationPolicyManager
+    from enterprise_ai_platform.integration.policies import IntegrationPolicyManager
     mgr = IntegrationPolicyManager()
     if started:
         mgr.start()
@@ -73,48 +73,48 @@ def _make_request(factory=None, **ctx_kwargs):
 
 class TestConstants:
     def test_policy_type_count(self):
-        from iios.integration.policies import PolicyType
+        from enterprise_ai_platform.integration.policies import PolicyType
         assert len(PolicyType) == 20
 
     def test_policy_action_count(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         assert len(PolicyAction) == 8
 
     def test_policy_priority_count(self):
-        from iios.integration.policies import PolicyPriority
+        from enterprise_ai_platform.integration.policies import PolicyPriority
         assert len(PolicyPriority) == 5
 
     def test_policy_domain_count(self):
-        from iios.integration.policies import PolicyDomain
+        from enterprise_ai_platform.integration.policies import PolicyDomain
         assert len(PolicyDomain) == 13
 
     def test_policy_chain_mode_count(self):
-        from iios.integration.policies import PolicyChainMode
+        from enterprise_ai_platform.integration.policies import PolicyChainMode
         assert len(PolicyChainMode) == 6
 
     def test_condition_operator_count(self):
-        from iios.integration.policies import ConditionOperator
+        from enterprise_ai_platform.integration.policies import ConditionOperator
         assert len(ConditionOperator) == 10
 
     def test_policy_event_type_count(self):
-        from iios.integration.policies import PolicyEventType
+        from enterprise_ai_platform.integration.policies import PolicyEventType
         assert len(PolicyEventType) == 9
 
     def test_action_precedence_length(self):
-        from iios.integration.policies import ACTION_PRECEDENCE, PolicyAction
+        from enterprise_ai_platform.integration.policies import ACTION_PRECEDENCE, PolicyAction
         assert len(ACTION_PRECEDENCE) == len(PolicyAction)
 
     def test_action_to_status_coverage(self):
-        from iios.integration.policies import ACTION_TO_STATUS, PolicyAction
+        from enterprise_ai_platform.integration.policies import ACTION_TO_STATUS, PolicyAction
         for action in PolicyAction:
             assert action in ACTION_TO_STATUS
 
     def test_system_id(self):
-        from iios.integration.policies import POLICY_SYSTEM_ID
+        from enterprise_ai_platform.integration.policies import POLICY_SYSTEM_ID
         assert "integration" in POLICY_SYSTEM_ID
 
     def test_default_limits(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             DEFAULT_MAX_POLICIES,
             DEFAULT_MAX_HISTORY,
             DEFAULT_MAX_AUDIT,
@@ -124,7 +124,7 @@ class TestConstants:
         assert DEFAULT_MAX_AUDIT    >= 1_000
 
     def test_pipeline_stages(self):
-        from iios.integration.policies import PIPELINE_STAGES
+        from enterprise_ai_platform.integration.policies import PIPELINE_STAGES
         assert len(PIPELINE_STAGES) == 7
 
 
@@ -135,62 +135,62 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_ipg_000(self):
-        from iios.integration.policies import IntegrationPolicyError
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyError
         exc = IntegrationPolicyError("test")
         assert "IPG-000" in exc.error_code
 
     def test_not_ready_ipg_001(self):
-        from iios.integration.policies import PolicyEngineNotReadyError
+        from enterprise_ai_platform.integration.policies import PolicyEngineNotReadyError
         exc = PolicyEngineNotReadyError()
         assert "IPG-001" in exc.error_code
 
     def test_not_found_ipg_002(self):
-        from iios.integration.policies import PolicyNotFoundError
+        from enterprise_ai_platform.integration.policies import PolicyNotFoundError
         exc = PolicyNotFoundError("pol-abc")
         assert exc.policy_id == "pol-abc"
         assert "IPG-002" in exc.error_code
 
     def test_rule_error_ipg_003(self):
-        from iios.integration.policies import PolicyRuleError
+        from enterprise_ai_platform.integration.policies import PolicyRuleError
         exc = PolicyRuleError("rule-001", "missing action")
         assert exc.rule_id == "rule-001"
         assert "IPG-003" in exc.error_code
 
     def test_condition_error_ipg_004(self):
-        from iios.integration.policies import PolicyConditionError
+        from enterprise_ai_platform.integration.policies import PolicyConditionError
         exc = PolicyConditionError("cond-001", "bad operator")
         assert exc.condition_id == "cond-001"
 
     def test_validation_error_ipg_005(self):
-        from iios.integration.policies import PolicyValidationError
+        from enterprise_ai_platform.integration.policies import PolicyValidationError
         exc = PolicyValidationError("bad policy", failed_checks=["policy_has_name"])
         assert "policy_has_name" in exc.failed_checks
 
     def test_conflict_error_ipg_006(self):
-        from iios.integration.policies import PolicyConflictError
+        from enterprise_ai_platform.integration.policies import PolicyConflictError
         exc = PolicyConflictError("conflict", policy_ids=["p1", "p2"])
         assert "p1" in exc.policy_ids
 
     def test_evaluation_error_ipg_007(self):
-        from iios.integration.policies import PolicyEvaluationError
+        from enterprise_ai_platform.integration.policies import PolicyEvaluationError
         exc = PolicyEvaluationError("eval failed", request_id="req-001")
         assert exc.request_id == "req-001"
 
     def test_registration_error_ipg_008(self):
-        from iios.integration.policies import PolicyRegistrationError
+        from enterprise_ai_platform.integration.policies import PolicyRegistrationError
         exc = PolicyRegistrationError("registry full")
         assert "IPG-008" in exc.error_code
 
     def test_chain_error_ipg_009(self):
-        from iios.integration.policies import PolicyChainError
+        from enterprise_ai_platform.integration.policies import PolicyChainError
         exc = PolicyChainError("chain failed")
         assert "IPG-009" in exc.error_code
 
     def test_hierarchy(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyError, PolicyNotFoundError,
         )
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(PolicyNotFoundError, IntegrationPolicyError)
         assert issubclass(IntegrationPolicyError, IIOSError)
 
@@ -202,7 +202,7 @@ class TestExceptions:
 
 class TestCondition:
     def test_create(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "env check", "environment", ConditionOperator.EQUALS, "production"
         )
@@ -210,29 +210,29 @@ class TestCondition:
         assert c.operator == ConditionOperator.EQUALS
 
     def test_frozen(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("x", "y", ConditionOperator.EXISTS)
         with pytest.raises((AttributeError, TypeError)):
             c.name = "changed"  # type: ignore
 
     def test_equals_passes(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "env", ConditionOperator.EQUALS, "prod")
         assert c.evaluate({"env": "prod"}) is True
 
     def test_equals_fails(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "env", ConditionOperator.EQUALS, "prod")
         assert c.evaluate({"env": "staging"}) is False
 
     def test_not_equals(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "env", ConditionOperator.NOT_EQUALS, "prod")
         assert c.evaluate({"env": "staging"}) is True
         assert c.evaluate({"env": "prod"})    is False
 
     def test_in_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "env", ConditionOperator.IN, ["prod", "staging"]
         )
@@ -240,7 +240,7 @@ class TestCondition:
         assert c.evaluate({"env": "testing"}) is False
 
     def test_not_in_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "env", ConditionOperator.NOT_IN, ["prod"]
         )
@@ -248,7 +248,7 @@ class TestCondition:
         assert c.evaluate({"env": "prod"})    is False
 
     def test_contains_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "endpoint", ConditionOperator.CONTAINS, "api"
         )
@@ -256,38 +256,38 @@ class TestCondition:
         assert c.evaluate({"endpoint": "https://data.example.com"}) is False
 
     def test_not_contains_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "endpoint", ConditionOperator.NOT_CONTAINS, "evil"
         )
         assert c.evaluate({"endpoint": "https://api.example.com"}) is True
 
     def test_greater_than(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "priority", ConditionOperator.GREATER_THAN, 5)
         assert c.evaluate({"priority": 8}) is True
         assert c.evaluate({"priority": 3}) is False
 
     def test_less_than(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "priority", ConditionOperator.LESS_THAN, 5)
         assert c.evaluate({"priority": 3}) is True
         assert c.evaluate({"priority": 8}) is False
 
     def test_exists_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "token", ConditionOperator.EXISTS)
         assert c.evaluate({"token": "abc"}) is True
         assert c.evaluate({})              is False
 
     def test_not_exists_operator(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create("t", "token", ConditionOperator.NOT_EXISTS)
         assert c.evaluate({})              is True
         assert c.evaluate({"token": "x"}) is False
 
     def test_dot_path_resolution(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "security_config.tls_enabled", ConditionOperator.EQUALS, True
         )
@@ -295,14 +295,14 @@ class TestCondition:
         assert c.evaluate({"security_config": {"tls_enabled": False}}) is False
 
     def test_missing_nested_key(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "t", "auth_config.token", ConditionOperator.EQUALS, "secret"
         )
         assert c.evaluate({"auth_config": {}}) is False
 
     def test_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyCondition, ConditionOperator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyCondition, ConditionOperator
         c = IntegrationPolicyCondition.create(
             "env check", "environment", ConditionOperator.EQUALS, "production"
         )
@@ -319,24 +319,24 @@ class TestCondition:
 
 class TestRule:
     def test_create(self):
-        from iios.integration.policies import IntegrationPolicyRule, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRule, PolicyAction
         r = IntegrationPolicyRule.create("allow", PolicyAction.APPROVE)
         assert r.rule_id.startswith("rule-")
         assert r.action == PolicyAction.APPROVE
 
     def test_frozen(self):
-        from iios.integration.policies import IntegrationPolicyRule, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRule, PolicyAction
         r = IntegrationPolicyRule.create("allow", PolicyAction.APPROVE)
         with pytest.raises((AttributeError, TypeError)):
             r.name = "changed"  # type: ignore
 
     def test_no_conditions_always_fires(self):
-        from iios.integration.policies import IntegrationPolicyRule, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRule, PolicyAction
         r = IntegrationPolicyRule.create("always", PolicyAction.APPROVE)
         assert r.evaluate({}) == PolicyAction.APPROVE
 
     def test_all_must_pass_mode(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRule, IntegrationPolicyCondition,
             PolicyAction, ConditionOperator, PolicyEvaluationMode,
         )
@@ -351,7 +351,7 @@ class TestRule:
         assert r.evaluate({"env": "staging", "priority": 3}) is None
 
     def test_any_must_pass_mode(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRule, IntegrationPolicyCondition,
             PolicyAction, ConditionOperator, PolicyEvaluationMode,
         )
@@ -366,7 +366,7 @@ class TestRule:
         assert r.evaluate({"env": "staging", "priority": 9}) is None
 
     def test_none_must_pass_mode(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRule, IntegrationPolicyCondition,
             PolicyAction, ConditionOperator, PolicyEvaluationMode,
         )
@@ -379,7 +379,7 @@ class TestRule:
         assert r.evaluate({"blocked": True})  is None
 
     def test_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyRule, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRule, PolicyAction
         r = IntegrationPolicyRule.create("allow", PolicyAction.APPROVE)
         d = r.to_dict()
         assert d["action"] == "approve"
@@ -393,7 +393,7 @@ class TestRule:
 
 class TestPolicy:
     def test_create(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicy, PolicyType, PolicyDomain, PolicyPriority,
         )
         p = IntegrationPolicy.create(
@@ -405,23 +405,23 @@ class TestPolicy:
         assert p.version == "1.0.0"
 
     def test_frozen(self):
-        from iios.integration.policies import IntegrationPolicy, PolicyType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicy, PolicyType
         p = IntegrationPolicy.create("P", PolicyType.COMPLIANCE)
         with pytest.raises((AttributeError, TypeError)):
             p.name = "changed"  # type: ignore
 
     def test_disabled_policy_returns_none(self):
-        from iios.integration.policies import IntegrationPolicy, PolicyType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicy, PolicyType
         p = IntegrationPolicy.create("P", PolicyType.COMPLIANCE, enabled=False)
         assert p.evaluate({}) is None
 
     def test_no_rules_returns_none(self):
-        from iios.integration.policies import IntegrationPolicy, PolicyType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicy, PolicyType
         p = IntegrationPolicy.create("P", PolicyType.COMPLIANCE)
         assert p.evaluate({}) is None
 
     def test_highest_precedence_action_wins(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicy, IntegrationPolicyRule,
             PolicyType, PolicyAction,
         )
@@ -431,7 +431,7 @@ class TestPolicy:
         assert p.evaluate({}) == PolicyAction.BLOCK
 
     def test_to_dict(self):
-        from iios.integration.policies import IntegrationPolicy, PolicyType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicy, PolicyType
         p = IntegrationPolicy.create("P", PolicyType.COMPLIANCE, description="Test")
         d = p.to_dict()
         assert "policy_id"   in d
@@ -493,12 +493,12 @@ class TestRequest:
             req.correlation_id = "x"  # type: ignore
 
     def test_all_domains_by_default(self):
-        from iios.integration.policies import PolicyDomain
+        from enterprise_ai_platform.integration.policies import PolicyDomain
         req = _make_request()
         assert len(req.requested_domains) == len(PolicyDomain)
 
     def test_filtered_domains(self):
-        from iios.integration.policies import PolicyDomain, IntegrationPolicyRequest
+        from enterprise_ai_platform.integration.policies import PolicyDomain, IntegrationPolicyRequest
         f   = _make_factory()
         ctx = _make_context(f)
         req = IntegrationPolicyRequest.create(
@@ -521,49 +521,49 @@ class TestRequest:
 
 class TestResultAndDecision:
     def test_result_create(self):
-        from iios.integration.policies import IntegrationPolicyResult, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResult, PolicyAction
         r = IntegrationPolicyResult.create("pol-001", "Test", PolicyAction.APPROVE)
         assert r.result_id.startswith("prslt-")
         assert r.is_approved is True
         assert r.is_blocking is False
 
     def test_result_blocking(self):
-        from iios.integration.policies import IntegrationPolicyResult, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResult, PolicyAction
         for action in (PolicyAction.BLOCK, PolicyAction.REJECT, PolicyAction.EMERGENCY_STOP):
             r = IntegrationPolicyResult.create("p", "P", action)
             assert r.is_blocking is True
 
     def test_result_frozen(self):
-        from iios.integration.policies import IntegrationPolicyResult, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResult, PolicyAction
         r = IntegrationPolicyResult.create("p", "P", PolicyAction.APPROVE)
         with pytest.raises((AttributeError, TypeError)):
             r.reason = "x"  # type: ignore
 
     def test_result_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyResult, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResult, PolicyAction
         r = IntegrationPolicyResult.create("p", "P", PolicyAction.ESCALATE)
         d = r.to_dict()
         assert d["action"] == "escalate"
 
     def test_governance_decision_approved(self):
-        from iios.integration.policies import GovernanceDecision, PolicyAction
+        from enterprise_ai_platform.integration.policies import GovernanceDecision, PolicyAction
         d = GovernanceDecision.create("req-001", PolicyAction.APPROVE, [])
         assert d.approved is True
         assert d.decision_id.startswith("gdec-")
 
     def test_governance_decision_rejected(self):
-        from iios.integration.policies import GovernanceDecision, PolicyAction
+        from enterprise_ai_platform.integration.policies import GovernanceDecision, PolicyAction
         d = GovernanceDecision.create("req-001", PolicyAction.BLOCK, [])
         assert d.approved is False
 
     def test_governance_decision_frozen(self):
-        from iios.integration.policies import GovernanceDecision, PolicyAction
+        from enterprise_ai_platform.integration.policies import GovernanceDecision, PolicyAction
         d = GovernanceDecision.create("req-001", PolicyAction.APPROVE, [])
         with pytest.raises((AttributeError, TypeError)):
             d.approved = False  # type: ignore
 
     def test_governance_decision_to_dict(self):
-        from iios.integration.policies import GovernanceDecision, PolicyAction
+        from enterprise_ai_platform.integration.policies import GovernanceDecision, PolicyAction
         d = GovernanceDecision.create("req-001", PolicyAction.APPROVE, [])
         dd = d.to_dict()
         assert "decision_id"  in dd
@@ -578,7 +578,7 @@ class TestResultAndDecision:
 
 class TestResponse:
     def _decision(self, action=None):
-        from iios.integration.policies import GovernanceDecision, PolicyAction
+        from enterprise_ai_platform.integration.policies import GovernanceDecision, PolicyAction
         return GovernanceDecision.create(
             "req-001",
             action or PolicyAction.APPROVE,
@@ -586,7 +586,7 @@ class TestResponse:
         )
 
     def test_approved_response(self):
-        from iios.integration.policies import IntegrationPolicyResponse
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResponse
         resp = IntegrationPolicyResponse.approved(
             "req-001", self._decision(), evaluation_time_ms=42.0
         )
@@ -595,20 +595,20 @@ class TestResponse:
         assert resp.evaluation_time_ms == 42.0
 
     def test_rejected_response(self):
-        from iios.integration.policies import IntegrationPolicyResponse, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResponse, PolicyAction
         resp = IntegrationPolicyResponse.rejected(
             "req-001", self._decision(PolicyAction.BLOCK)
         )
         assert resp.is_rejected is True
 
     def test_frozen(self):
-        from iios.integration.policies import IntegrationPolicyResponse
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResponse
         resp = IntegrationPolicyResponse.approved("req-001", self._decision())
         with pytest.raises((AttributeError, TypeError)):
             resp.request_id = "x"  # type: ignore
 
     def test_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyResponse
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyResponse
         resp = IntegrationPolicyResponse.approved("req-001", self._decision())
         d    = resp.to_dict()
         assert "response_id"  in d
@@ -623,7 +623,7 @@ class TestResponse:
 
 class TestPriority:
     def test_most_restrictive_default(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyPriority, IntegrationPolicyResult, PolicyAction,
         )
         resolver = IntegrationPolicyPriority()
@@ -634,7 +634,7 @@ class TestPriority:
         assert resolver.resolve(results) == PolicyAction.BLOCK
 
     def test_emergency_stop_overrides_all(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyPriority, IntegrationPolicyResult, PolicyAction,
             ConflictResolutionStrategy,
         )
@@ -648,7 +648,7 @@ class TestPriority:
         assert resolver.resolve(results) == PolicyAction.EMERGENCY_STOP
 
     def test_most_permissive(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyPriority, IntegrationPolicyResult, PolicyAction,
             ConflictResolutionStrategy,
         )
@@ -662,19 +662,19 @@ class TestPriority:
         assert resolver.resolve(results) == PolicyAction.APPROVE
 
     def test_empty_results_approve(self):
-        from iios.integration.policies import IntegrationPolicyPriority, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyPriority, PolicyAction
         resolver = IntegrationPolicyPriority()
         assert resolver.resolve([]) == PolicyAction.APPROVE
 
     def test_rank_ordering(self):
-        from iios.integration.policies import IntegrationPolicyPriority, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyPriority, PolicyAction
         resolver = IntegrationPolicyPriority()
         assert resolver.rank(PolicyAction.EMERGENCY_STOP) > resolver.rank(PolicyAction.BLOCK)
         assert resolver.rank(PolicyAction.BLOCK) > resolver.rank(PolicyAction.REJECT)
         assert resolver.rank(PolicyAction.REJECT) > resolver.rank(PolicyAction.APPROVE)
 
     def test_critical_overrides_all(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyPriority, IntegrationPolicyResult, PolicyAction,
             ConflictResolutionStrategy, IntegrationPolicy, PolicyType, PolicyPriority,
         )
@@ -699,7 +699,7 @@ class TestPriority:
 
 class TestEvaluator:
     def test_approve_all_policy(self):
-        from iios.integration.policies import IntegrationPolicyEvaluator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvaluator
         f         = _make_factory()
         evaluator = IntegrationPolicyEvaluator()
         policies  = [f.create_approve_all_policy()]
@@ -708,7 +708,7 @@ class TestEvaluator:
         assert decision.approved is True
 
     def test_reject_all_policy(self):
-        from iios.integration.policies import IntegrationPolicyEvaluator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvaluator
         f         = _make_factory()
         evaluator = IntegrationPolicyEvaluator()
         policies  = [f.create_reject_all_policy()]
@@ -717,14 +717,14 @@ class TestEvaluator:
         assert decision.approved is False
 
     def test_empty_policies_approve(self):
-        from iios.integration.policies import IntegrationPolicyEvaluator, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvaluator, PolicyAction
         evaluator = IntegrationPolicyEvaluator()
         ctx       = _make_context()
         decision  = evaluator.evaluate([], ctx)
         assert decision.final_action == PolicyAction.APPROVE
 
     def test_domain_filter(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEvaluator, PolicyDomain,
         )
         f         = _make_factory()
@@ -739,7 +739,7 @@ class TestEvaluator:
         assert decision.approved is True
 
     def test_disabled_policy_skipped(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEvaluator, IntegrationPolicy, PolicyType,
             IntegrationPolicyRule, PolicyAction,
         )
@@ -751,7 +751,7 @@ class TestEvaluator:
         assert decision.approved is True
 
     def test_evaluate_single(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEvaluator, PolicyAction,
         )
         f     = _make_factory()
@@ -761,7 +761,7 @@ class TestEvaluator:
         assert result.action == PolicyAction.APPROVE
 
     def test_conditions_from_context(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEvaluator, IntegrationPolicyCondition,
             IntegrationPolicyRule, IntegrationPolicy,
             PolicyType, PolicyAction, ConditionOperator,
@@ -777,7 +777,7 @@ class TestEvaluator:
         assert decision.final_action == PolicyAction.BLOCK
 
     def test_conditions_do_not_fire_on_wrong_env(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEvaluator, IntegrationPolicyCondition,
             IntegrationPolicyRule, IntegrationPolicy,
             PolicyType, PolicyAction, ConditionOperator,
@@ -801,7 +801,7 @@ class TestEvaluator:
 
 class TestValidator:
     def test_valid_policy_passes(self):
-        from iios.integration.policies import IntegrationPolicyValidator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyValidator
         f       = _make_factory()
         policy  = f.create_approve_all_policy()
         report  = IntegrationPolicyValidator().validate(policy)
@@ -809,7 +809,7 @@ class TestValidator:
         assert report.failed_checks == []
 
     def test_empty_name_fails(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyValidator, IntegrationPolicy, PolicyType,
         )
         p      = IntegrationPolicy.create("", PolicyType.COMPLIANCE)
@@ -818,7 +818,7 @@ class TestValidator:
         assert "policy_has_name" in report.failed_checks
 
     def test_too_many_rules_fails(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyValidator, IntegrationPolicy, PolicyType,
             IntegrationPolicyRule, PolicyAction,
             DEFAULT_MAX_RULES_PER_POLICY,
@@ -833,7 +833,7 @@ class TestValidator:
         assert "rule_count_within_limits" in report.failed_checks
 
     def test_validate_or_raise_on_failure(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyValidator, IntegrationPolicy, PolicyType,
             PolicyValidationError,
         )
@@ -842,7 +842,7 @@ class TestValidator:
             IntegrationPolicyValidator().validate_or_raise(p)
 
     def test_report_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyValidator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyValidator
         f      = _make_factory()
         policy = f.create_approve_all_policy()
         report = IntegrationPolicyValidator().validate(policy)
@@ -852,7 +852,7 @@ class TestValidator:
         assert "failed_checks" in d
 
     def test_7_checks_present(self):
-        from iios.integration.policies import IntegrationPolicyValidator
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyValidator
         f      = _make_factory()
         policy = f.create_approve_all_policy()
         report = IntegrationPolicyValidator().validate(policy)
@@ -866,7 +866,7 @@ class TestValidator:
 
 class TestRegistry:
     def test_register_and_get(self):
-        from iios.integration.policies import IntegrationPolicyRegistry
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry
         f   = _make_factory()
         reg = IntegrationPolicyRegistry()
         p   = f.create_approve_all_policy()
@@ -874,7 +874,7 @@ class TestRegistry:
         assert reg.get(p.policy_id) is p
 
     def test_deregister(self):
-        from iios.integration.policies import IntegrationPolicyRegistry
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry
         f   = _make_factory()
         reg = IntegrationPolicyRegistry()
         p   = f.create_approve_all_policy()
@@ -883,13 +883,13 @@ class TestRegistry:
         assert reg.get(p.policy_id) is None
 
     def test_get_or_raise(self):
-        from iios.integration.policies import IntegrationPolicyRegistry, PolicyNotFoundError
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry, PolicyNotFoundError
         reg = IntegrationPolicyRegistry()
         with pytest.raises(PolicyNotFoundError):
             reg.get_or_raise("nonexistent")
 
     def test_capacity_error(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRegistry, PolicyRegistrationError,
         )
         f   = _make_factory()
@@ -899,7 +899,7 @@ class TestRegistry:
             reg.register(f.create_reject_all_policy())
 
     def test_by_domain(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRegistry, PolicyDomain,
         )
         f   = _make_factory()
@@ -910,7 +910,7 @@ class TestRegistry:
         assert p in result
 
     def test_by_type(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRegistry, PolicyType,
         )
         f   = _make_factory()
@@ -921,7 +921,7 @@ class TestRegistry:
         assert p in result
 
     def test_all_enabled(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyRegistry, IntegrationPolicy, PolicyType,
         )
         f   = _make_factory()
@@ -935,7 +935,7 @@ class TestRegistry:
         assert p2 not in enabled
 
     def test_summary(self):
-        from iios.integration.policies import IntegrationPolicyRegistry
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry
         f   = _make_factory()
         reg = IntegrationPolicyRegistry()
         reg.register(f.create_approve_all_policy())
@@ -944,7 +944,7 @@ class TestRegistry:
         assert s["enabled"] == 1
 
     def test_count_and_clear(self):
-        from iios.integration.policies import IntegrationPolicyRegistry
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry
         f   = _make_factory()
         reg = IntegrationPolicyRegistry()
         reg.register(f.create_approve_all_policy())
@@ -960,7 +960,7 @@ class TestRegistry:
 
 class TestPolicyChain:
     def test_sequential_approves(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode=PolicyChainMode.SEQUENTIAL,
@@ -972,7 +972,7 @@ class TestPolicyChain:
         assert exec.decision.approved is True
 
     def test_sequential_stops_on_block(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyChain, PolicyChainMode, PolicyAction,
         )
         f        = _make_factory()
@@ -989,7 +989,7 @@ class TestPolicyChain:
         assert len(exec.results) == 1
 
     def test_parallel_evaluates_all(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode=PolicyChainMode.PARALLEL,
@@ -1000,7 +1000,7 @@ class TestPolicyChain:
         assert len(exec.results) == 2
 
     def test_conditional_skips_when_false(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode      = PolicyChainMode.CONDITIONAL,
@@ -1013,7 +1013,7 @@ class TestPolicyChain:
         assert exec.decision.approved is True
 
     def test_conditional_evaluates_when_true(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode      = PolicyChainMode.CONDITIONAL,
@@ -1025,7 +1025,7 @@ class TestPolicyChain:
         assert exec.decision.approved is False
 
     def test_composite_mode(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode=PolicyChainMode.COMPOSITE,
@@ -1036,7 +1036,7 @@ class TestPolicyChain:
         assert exec.success is True
 
     def test_priority_mode_evaluates_by_priority(self):
-        from iios.integration.policies import IntegrationPolicyChain, PolicyChainMode
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain, PolicyChainMode
         f     = _make_factory()
         chain = IntegrationPolicyChain(
             mode=PolicyChainMode.PRIORITY,
@@ -1047,7 +1047,7 @@ class TestPolicyChain:
         assert exec.success is True
 
     def test_add_policy(self):
-        from iios.integration.policies import IntegrationPolicyChain
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain
         f     = _make_factory()
         chain = IntegrationPolicyChain()
         assert chain.policy_count == 0
@@ -1055,7 +1055,7 @@ class TestPolicyChain:
         assert chain.policy_count == 1
 
     def test_execution_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyChain
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyChain
         f     = _make_factory()
         chain = IntegrationPolicyChain(policies=[f.create_approve_all_policy()])
         ctx   = _make_context(f)
@@ -1073,7 +1073,7 @@ class TestPolicyChain:
 
 class TestAudit:
     def _entry(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationAuditEntry, GovernanceDecision, PolicyAction,
         )
         decision = GovernanceDecision.create("req-001", PolicyAction.APPROVE, [])
@@ -1086,7 +1086,7 @@ class TestAudit:
         )
 
     def test_record_and_get(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         entry = self._entry()
         audit.record(entry)
@@ -1094,7 +1094,7 @@ class TestAudit:
         assert found is entry
 
     def test_by_request(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         entry = self._entry()
         audit.record(entry)
@@ -1102,14 +1102,14 @@ class TestAudit:
         assert entry in found
 
     def test_recent(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         for _ in range(30):
             audit.record(self._entry())
         assert len(audit.recent(n=10)) == 10
 
     def test_report(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         audit.record(self._entry())
         report = audit.report()
@@ -1117,14 +1117,14 @@ class TestAudit:
         assert report.total_approved    == 1
 
     def test_report_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         d     = audit.report().to_dict()
         assert "total_evaluations" in d
         assert "avg_evaluation_ms" in d
 
     def test_bounded(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit(max_entries=3)
         for _ in range(5):
             audit.record(self._entry())
@@ -1137,7 +1137,7 @@ class TestAudit:
         assert "final_action" in d
 
     def test_clear(self):
-        from iios.integration.policies import IntegrationPolicyAudit
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyAudit
         audit = IntegrationPolicyAudit()
         audit.record(self._entry())
         audit.clear()
@@ -1151,7 +1151,7 @@ class TestAudit:
 
 class TestStatistics:
     def test_all_9_counters(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         stats.record_evaluated()
         stats.record_approved()
@@ -1173,7 +1173,7 @@ class TestStatistics:
         assert r.average_evaluation_ms == 50.0
 
     def test_governance_coverage_approved_over_evaluated(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         stats.record_evaluated()
         stats.record_evaluated()
@@ -1182,13 +1182,13 @@ class TestStatistics:
         assert r.governance_coverage == 0.5
 
     def test_coverage_defaults_1_when_no_evaluations(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         r     = stats.report()
         assert r.governance_coverage == 1.0
 
     def test_reset(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         stats.record_evaluated()
         stats.reset()
@@ -1196,7 +1196,7 @@ class TestStatistics:
         assert r.policies_evaluated == 0
 
     def test_report_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         d     = stats.report().to_dict()
         assert "policies_evaluated"    in d
@@ -1204,7 +1204,7 @@ class TestStatistics:
         assert "average_evaluation_ms" in d
 
     def test_avg_zero_with_no_times(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
         assert stats.report().average_evaluation_ms == 0.0
 
@@ -1216,14 +1216,14 @@ class TestStatistics:
 
 class TestHistory:
     def test_record_and_retrieve_request(self):
-        from iios.integration.policies import IntegrationPolicyHistory
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyHistory
         h   = IntegrationPolicyHistory()
         req = _make_request()
         h.record_request(req)
         assert h.get_request(req.request_id) is req
 
     def test_record_and_retrieve_response(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyHistory, IntegrationPolicyResponse, GovernanceDecision, PolicyAction,
         )
         h    = IntegrationPolicyHistory()
@@ -1234,7 +1234,7 @@ class TestHistory:
         assert h.get_response(resp.response_id) is resp
 
     def test_response_for_request(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyHistory, IntegrationPolicyResponse, GovernanceDecision, PolicyAction,
         )
         h    = IntegrationPolicyHistory()
@@ -1245,21 +1245,21 @@ class TestHistory:
         assert h.response_for_request(req.request_id) is resp
 
     def test_recent_requests(self):
-        from iios.integration.policies import IntegrationPolicyHistory
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyHistory
         h = IntegrationPolicyHistory()
         for _ in range(30):
             h.record_request(_make_request())
         assert len(h.recent_requests(n=10)) == 10
 
     def test_bounded(self):
-        from iios.integration.policies import IntegrationPolicyHistory
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyHistory
         h = IntegrationPolicyHistory(max_history=3)
         for _ in range(5):
             h.record_request(_make_request())
         assert h.request_count() == 3
 
     def test_clear(self):
-        from iios.integration.policies import IntegrationPolicyHistory
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyHistory
         h = IntegrationPolicyHistory()
         h.record_request(_make_request())
         h.clear()
@@ -1274,7 +1274,7 @@ class TestHistory:
 
 class TestEvents:
     def test_event_create(self):
-        from iios.integration.policies import IntegrationPolicyEvent, PolicyEventType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvent, PolicyEventType
         evt = IntegrationPolicyEvent.create(
             PolicyEventType.GOVERNANCE_STARTED, "eng-001", "req-001"
         )
@@ -1282,7 +1282,7 @@ class TestEvents:
         assert evt.engine_id == "eng-001"
 
     def test_event_frozen(self):
-        from iios.integration.policies import IntegrationPolicyEvent, PolicyEventType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvent, PolicyEventType
         evt = IntegrationPolicyEvent.create(
             PolicyEventType.GOVERNANCE_COMPLETED, "e", "r"
         )
@@ -1290,7 +1290,7 @@ class TestEvents:
             evt.engine_id = "x"  # type: ignore
 
     def test_all_9_events_emittable(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEventBus, PolicyEventType,
         )
         bus      = IntegrationPolicyEventBus()
@@ -1301,7 +1301,7 @@ class TestEvents:
         assert len(received) == 9
 
     def test_listener_exception_suppressed(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEventBus, PolicyEventType,
         )
         bus = IntegrationPolicyEventBus()
@@ -1310,7 +1310,7 @@ class TestEvents:
         bus.emit(PolicyEventType.EMERGENCY_STOP_TRIGGERED, "e", "r")
 
     def test_remove_listener(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEventBus, PolicyEventType,
         )
         received = []
@@ -1322,14 +1322,14 @@ class TestEvents:
         assert len(received) == 0
 
     def test_listener_count(self):
-        from iios.integration.policies import IntegrationPolicyEventBus
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEventBus
         bus = IntegrationPolicyEventBus()
         assert bus.listener_count() == 0
         bus.add_listener(lambda e: None)
         assert bus.listener_count() == 1
 
     def test_event_to_dict(self):
-        from iios.integration.policies import IntegrationPolicyEvent, PolicyEventType
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEvent, PolicyEventType
         evt = IntegrationPolicyEvent.create(
             PolicyEventType.INTEGRATION_APPROVED, "e", "r", {"k": "v"}
         )
@@ -1345,25 +1345,25 @@ class TestEvents:
 
 class TestEngineLifecycle:
     def test_starts_not_ready(self):
-        from iios.integration.policies import IntegrationPolicyEngine
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
         eng = IntegrationPolicyEngine()
         assert eng.is_ready is False
 
     def test_start_makes_ready(self):
-        from iios.integration.policies import IntegrationPolicyEngine
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
         eng = IntegrationPolicyEngine()
         eng.start()
         assert eng.is_ready is True
 
     def test_stop_clears_ready(self):
-        from iios.integration.policies import IntegrationPolicyEngine
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
         eng = IntegrationPolicyEngine()
         eng.start()
         eng.stop()
         assert eng.is_ready is False
 
     def test_evaluate_before_start_raises(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEngine, PolicyEngineNotReadyError,
         )
         eng = IntegrationPolicyEngine()
@@ -1371,7 +1371,7 @@ class TestEngineLifecycle:
             eng.evaluate(_make_request())
 
     def test_evaluate_after_stop_raises(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEngine, PolicyEngineNotReadyError,
         )
         eng = IntegrationPolicyEngine()
@@ -1381,7 +1381,7 @@ class TestEngineLifecycle:
             eng.evaluate(_make_request())
 
     def test_manager_start_stop(self):
-        from iios.integration.policies import IntegrationPolicyManager
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyManager
         mgr = IntegrationPolicyManager()
         mgr.start()
         assert mgr.is_started
@@ -1389,7 +1389,7 @@ class TestEngineLifecycle:
         assert not mgr.is_started
 
     def test_double_start_idempotent(self):
-        from iios.integration.policies import IntegrationPolicyManager
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyManager
         mgr = IntegrationPolicyManager()
         mgr.start()
         mgr.start()   # must not raise
@@ -1408,7 +1408,7 @@ class TestEngineEvaluation:
         assert resp.is_approved is True
 
     def test_reject_all_returns_rejected(self):
-        from iios.integration.policies import IntegrationPolicyEngine
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
         f   = _make_factory()
         eng = IntegrationPolicyEngine()
         eng.start()
@@ -1446,7 +1446,7 @@ class TestEngineEvaluation:
         assert eng.history.response_count() >= 1
 
     def test_events_emitted_on_evaluate(self):
-        from iios.integration.policies import PolicyEventType
+        from enterprise_ai_platform.integration.policies import PolicyEventType
         eng      = _make_engine()
         received = []
         eng.event_bus.add_listener(received.append)
@@ -1466,7 +1466,7 @@ class TestEngineEvaluation:
         assert eng.query("nonexistent-req-id") is None
 
     def test_emergency_stop_policy(self):
-        from iios.integration.policies import IntegrationPolicyEngine, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine, PolicyAction
         f   = _make_factory()
         eng = IntegrationPolicyEngine()
         eng.start()
@@ -1480,7 +1480,7 @@ class TestEngineEvaluation:
         assert resp.decision.final_action == PolicyAction.EMERGENCY_STOP
 
     def test_security_approval_policy(self):
-        from iios.integration.policies import IntegrationPolicyEngine, PolicyAction
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine, PolicyAction
         f   = _make_factory()
         eng = IntegrationPolicyEngine()
         eng.start()
@@ -1508,7 +1508,7 @@ class TestEngineEvaluation:
         assert "statistics"        in s
 
     def test_chain_evaluation(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEngine, IntegrationPolicyChain, PolicyChainMode,
         )
         f   = _make_factory()
@@ -1544,7 +1544,7 @@ class TestEngineEvaluation:
         mgr.stop()
 
     def test_load_and_remove_policy(self):
-        from iios.integration.policies import IntegrationPolicyEngine
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyEngine
         f   = _make_factory()
         eng = IntegrationPolicyEngine()
         eng.start()
@@ -1562,25 +1562,25 @@ class TestEngineEvaluation:
 
 class TestFactory:
     def test_create_condition(self):
-        from iios.integration.policies import ConditionOperator
+        from enterprise_ai_platform.integration.policies import ConditionOperator
         f = _make_factory()
         c = f.create_condition("env", "environment", ConditionOperator.EQUALS, "prod")
         assert c.field_path == "environment"
 
     def test_create_rule(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         f = _make_factory()
         r = f.create_rule("allow", PolicyAction.APPROVE)
         assert r.action == PolicyAction.APPROVE
 
     def test_create_policy(self):
-        from iios.integration.policies import PolicyType
+        from enterprise_ai_platform.integration.policies import PolicyType
         f = _make_factory()
         p = f.create_policy("Test", PolicyType.COMPLIANCE)
         assert p.policy_id.startswith("pol-")
 
     def test_create_chain(self):
-        from iios.integration.policies import PolicyChainMode
+        from enterprise_ai_platform.integration.policies import PolicyChainMode
         f     = _make_factory()
         chain = f.create_chain(mode=PolicyChainMode.PARALLEL)
         assert chain.mode == PolicyChainMode.PARALLEL
@@ -1597,26 +1597,26 @@ class TestFactory:
         assert req.request_id.startswith("preq-")
 
     def test_approve_all_policy(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         f = _make_factory()
         p = f.create_approve_all_policy()
         assert p.evaluate({}) == PolicyAction.APPROVE
 
     def test_reject_all_policy(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         f = _make_factory()
         p = f.create_reject_all_policy()
         assert p.evaluate({}) == PolicyAction.REJECT
 
     def test_emergency_stop_policy(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         f = _make_factory()
         p = f.create_emergency_stop_policy(field_path="env", trigger_value="stop")
         assert p.evaluate({"env": "stop"})   == PolicyAction.EMERGENCY_STOP
         assert p.evaluate({"env": "normal"}) is None
 
     def test_security_approval_policy(self):
-        from iios.integration.policies import PolicyAction
+        from enterprise_ai_platform.integration.policies import PolicyAction
         f = _make_factory()
         p = f.create_security_approval_policy()
         result = p.evaluate({"security_config": {"requires_approval": True}})
@@ -1650,7 +1650,7 @@ class TestConcurrency:
         assert all(r.is_approved for r in results)
 
     def test_concurrent_policy_registration(self):
-        from iios.integration.policies import IntegrationPolicyRegistry
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyRegistry
         f      = _make_factory()
         reg    = IntegrationPolicyRegistry(max_policies=200)
         errors = []
@@ -1668,7 +1668,7 @@ class TestConcurrency:
         assert errors == []
 
     def test_concurrent_statistics(self):
-        from iios.integration.policies import IntegrationPolicyStatistics
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyStatistics
         stats = IntegrationPolicyStatistics()
 
         def increment():
@@ -1682,7 +1682,7 @@ class TestConcurrency:
         assert stats.report().policies_evaluated == 2000
 
     def test_concurrent_audit(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyAudit, IntegrationAuditEntry, GovernanceDecision, PolicyAction,
         )
         audit  = IntegrationPolicyAudit(max_entries=1000)
@@ -1718,14 +1718,14 @@ class TestStressTesting:
         assert r.policies_evaluated >= 1000
 
     def test_history_bounded_under_load(self):
-        from iios.integration.policies import IntegrationPolicyHistory
+        from enterprise_ai_platform.integration.policies import IntegrationPolicyHistory
         h = IntegrationPolicyHistory(max_history=100)
         for _ in range(500):
             h.record_request(_make_request())
         assert h.request_count() == 100
 
     def test_audit_bounded_under_load(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyAudit, IntegrationAuditEntry, GovernanceDecision, PolicyAction,
         )
         audit = IntegrationPolicyAudit(max_entries=50)
@@ -1736,7 +1736,7 @@ class TestStressTesting:
         assert audit.count() == 50
 
     def test_event_bus_high_throughput(self):
-        from iios.integration.policies import (
+        from enterprise_ai_platform.integration.policies import (
             IntegrationPolicyEventBus, PolicyEventType,
         )
         bus      = IntegrationPolicyEventBus()
@@ -1754,43 +1754,43 @@ class TestStressTesting:
 
 class TestRegression:
     def test_policies_module_importable(self):
-        import iios.integration.policies as m
+        import enterprise_ai_platform.integration.policies as m
         assert hasattr(m, "IntegrationPolicyEngine")
         assert hasattr(m, "IntegrationPolicyManager")
 
     def test_engine_module_still_importable(self):
-        import iios.integration.engine as m
+        import enterprise_ai_platform.integration.engine as m
         assert hasattr(m, "IntegrationEngine")
 
     def test_lifecycle_module_still_importable(self):
-        import iios.integration.lifecycle as m
+        import enterprise_ai_platform.integration.lifecycle as m
         assert hasattr(m, "IntegrationLifecycle")
 
     def test_knowledge_modules_importable(self):
-        import iios.knowledge
-        assert iios.knowledge is not None
+        import enterprise_ai_platform.knowledge
+        assert enterprise_ai_platform.knowledge is not None
 
     def test_supervisor_importable(self):
-        import iios.supervisor
-        assert iios.supervisor is not None
+        import enterprise_ai_platform.supervisor
+        assert enterprise_ai_platform.supervisor is not None
 
     def test_all_exports_present(self):
-        from iios.integration.policies import __all__
-        import iios.integration.policies as m
+        from enterprise_ai_platform.integration.policies import __all__
+        import enterprise_ai_platform.integration.policies as m
         for name in __all__:
             assert hasattr(m, name), f"Missing export: {name!r}"
 
     def test_no_network_code_in_engine(self):
         """Policy engine must not import any network/vendor clients."""
         import inspect
-        import iios.integration.policies.integration_policy_engine as mod
+        import enterprise_ai_platform.integration.policies.integration_policy_engine as mod
         src = inspect.getsource(mod)
         for forbidden in ("requests.get", "httpx", "aiohttp", "kafka", "pika", "socket"):
             assert forbidden not in src, f"Forbidden import found: {forbidden!r}"
 
     def test_no_network_code_in_evaluator(self):
         import inspect
-        import iios.integration.policies.integration_policy_evaluator as mod
+        import enterprise_ai_platform.integration.policies.integration_policy_evaluator as mod
         src = inspect.getsource(mod)
         for forbidden in ("requests", "httpx", "socket", "urllib"):
             assert forbidden not in src, f"Forbidden import found: {forbidden!r}"
@@ -1798,6 +1798,6 @@ class TestRegression:
     def test_engine_module_no_circular_import(self):
         """Policies must not import from integration.engine (avoid circular)."""
         import inspect
-        import iios.integration.policies.integration_policy_engine as mod
+        import enterprise_ai_platform.integration.policies.integration_policy_engine as mod
         src = inspect.getsource(mod)
-        assert "iios.integration.engine" not in src
+        assert "enterprise_ai_platform.integration.engine" not in src

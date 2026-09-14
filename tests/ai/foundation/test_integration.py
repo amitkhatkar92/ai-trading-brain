@@ -19,42 +19,42 @@ import unittest
 from typing import Any, Dict, List
 
 # ── Framework imports ──────────────────────────────────────────────────────
-from iios.ai.foundation.container    import AIContainer
-from iios.ai.foundation.gateway      import AIFoundationGateway
+from enterprise_ai_platform.ai.foundation.container    import AIContainer
+from enterprise_ai_platform.ai.foundation.gateway      import AIFoundationGateway
 
-from iios.ai.foundation.session      import AISessionManager, SessionFactory
-from iios.ai.foundation.context      import (
+from enterprise_ai_platform.ai.foundation.session      import AISessionManager, SessionFactory
+from enterprise_ai_platform.ai.foundation.context      import (
     AIContext, ContextBuilder, ContextValidator, ContextMetadata,
 )
-from iios.ai.foundation.request      import (
+from enterprise_ai_platform.ai.foundation.request      import (
     AIRequest, AIResponse, AIExecutionRequest, RequestMetadata,
 )
-from iios.ai.foundation.provider     import (
+from enterprise_ai_platform.ai.foundation.provider     import (
     AIProviderRuntime, AIProviderExtension, AIProviderCapabilities,
     ProviderCapabilityType, ProviderTier,
 )
-from iios.ai.foundation.runtime      import (
+from enterprise_ai_platform.ai.foundation.runtime      import (
     ExecutionRuntime, ExecutionPipeline, ExecutionContext,
 )
-from iios.ai.foundation.events       import (
+from enterprise_ai_platform.ai.foundation.events       import (
     AIEventBus, AIEventType,
     SessionStartedEvent, SessionEndedEvent,
     ExecutionCompletedEvent, ExecutionFailedEvent,
 )
-from iios.ai.foundation.metrics      import RuntimeMetrics, ProviderMetrics
-from iios.ai.foundation.cost         import CostTracker, TokenUsage, ExecutionCost
-from iios.ai.foundation.retry        import RetryManager, RetryPolicy, ExponentialBackoffStrategy
-from iios.ai.foundation.timeout      import TimeoutPolicy, ExecutionDeadline
-from iios.ai.foundation.health       import HealthReporter, HealthLevel
-from iios.ai.foundation.config       import AIFrameworkConfiguration, EnvironmentConfigurationLoader
-from iios.ai.foundation.observability import StructuredLogger, ExecutionTimer
-from iios.ai.foundation.lifecycle    import AILifecycleAwareMixin, AILifecycleState
-from iios.ai.foundation.exceptions   import (
+from enterprise_ai_platform.ai.foundation.metrics      import RuntimeMetrics, ProviderMetrics
+from enterprise_ai_platform.ai.foundation.cost         import CostTracker, TokenUsage, ExecutionCost
+from enterprise_ai_platform.ai.foundation.retry        import RetryManager, RetryPolicy, ExponentialBackoffStrategy
+from enterprise_ai_platform.ai.foundation.timeout      import TimeoutPolicy, ExecutionDeadline
+from enterprise_ai_platform.ai.foundation.health       import HealthReporter, HealthLevel
+from enterprise_ai_platform.ai.foundation.config       import AIFrameworkConfiguration, EnvironmentConfigurationLoader
+from enterprise_ai_platform.ai.foundation.observability import StructuredLogger, ExecutionTimer
+from enterprise_ai_platform.ai.foundation.lifecycle    import AILifecycleAwareMixin, AILifecycleState
+from enterprise_ai_platform.ai.foundation.exceptions   import (
     AIException, AISessionException, AISessionNotFoundError,
     AISessionLimitError, AIProviderException, AIExecutionException,
     AIRequestException, AIContextException,
 )
-from iios.ai.foundation.snapshot     import FoundationSnapshot
+from enterprise_ai_platform.ai.foundation.snapshot     import FoundationSnapshot
 
 
 # ── Helper stubs ───────────────────────────────────────────────────────────
@@ -195,25 +195,25 @@ class TestSessionLifecycle(unittest.TestCase):
 
     def test_create_active_session(self):
         s = self.manager.create_session("mod.a")
-        from iios.ai.foundation.session import SessionState
+        from enterprise_ai_platform.ai.foundation.session import SessionState
         self.assertEqual(s.state, SessionState.ACTIVE)
         self.assertIsNotNone(s.session_id)
 
     def test_session_full_lifecycle(self):
-        from iios.ai.foundation.session import SessionState
+        from enterprise_ai_platform.ai.foundation.session import SessionState
         s = self.manager.create_session("mod.a")
         self.assertEqual(s.state, SessionState.ACTIVE)
         s.complete()
         self.assertEqual(s.state, SessionState.COMPLETED)
 
     def test_session_cancel(self):
-        from iios.ai.foundation.session import SessionState
+        from enterprise_ai_platform.ai.foundation.session import SessionState
         s = self.manager.create_session("mod.a")
         s.cancel()
         self.assertEqual(s.state, SessionState.CANCELLED)
 
     def test_session_fail(self):
-        from iios.ai.foundation.session import SessionState
+        from enterprise_ai_platform.ai.foundation.session import SessionState
         s = self.manager.create_session("mod.a")
         s.fail("test error")
         self.assertEqual(s.state, SessionState.FAILED)
@@ -238,7 +238,7 @@ class TestSessionLifecycle(unittest.TestCase):
 
     def test_session_state_machine_invalid_transition(self):
         """suspend() uses _transition() which raises on invalid state."""
-        from iios.ai.foundation.exceptions import AISessionStateError
+        from enterprise_ai_platform.ai.foundation.exceptions import AISessionStateError
         s = self.manager.create_session("mod.a")
         s.complete()  # → COMPLETED
         with self.assertRaises(AISessionStateError):
@@ -253,7 +253,7 @@ class TestContextLifecycle(unittest.TestCase):
 
     def _meta(self, session_id="s1"):
         import uuid, time
-        from iios.ai.foundation.context.context_metadata import ContextMetadata
+        from enterprise_ai_platform.ai.foundation.context.context_metadata import ContextMetadata
         return ContextMetadata(
             context_id   = "ctx-1",
             session_id   = session_id,
@@ -292,7 +292,7 @@ class TestContextLifecycle(unittest.TestCase):
         self.assertTrue(result.is_valid)
 
     def test_context_validator_fails_empty(self):
-        from iios.ai.foundation.exceptions import AIContextValidationError
+        from enterprise_ai_platform.ai.foundation.exceptions import AIContextValidationError
         validator = ContextValidator()
         ctx = AIContext(metadata=self._meta())
         with self.assertRaises(AIContextValidationError):
@@ -309,20 +309,20 @@ class TestExecutionPipelineLifecycle(unittest.TestCase):
         return _make_exec_request(messages=msgs)
 
     def test_stub_pipeline_succeeds(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         pipeline = ExecutionPipeline()
         resp, ctx = pipeline.run(self._exec_req())
         self.assertTrue(resp.succeeded)
         self.assertIn("stub", resp.content)
 
     def test_pipeline_validation_rejects_empty_messages(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         pipeline = ExecutionPipeline()
         resp, ctx = pipeline.run(_make_exec_request(messages=[]))
         self.assertFalse(resp.succeeded)
 
     def test_pipeline_routes_to_registered_provider(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         stub = _StubProvider("my-llm")
         pr   = AIProviderRuntime()
         pr.initialize(); pr.start()
@@ -335,12 +335,12 @@ class TestExecutionPipelineLifecycle(unittest.TestCase):
         pr.stop()
 
     def test_pipeline_stage_count(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         pipeline = ExecutionPipeline()
         self.assertEqual(len(pipeline.stage_names()), 8)
 
     def test_pipeline_publishes_events(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         bus = AIEventBus()
         completed = []
         bus.subscribe(AIEventType.EXECUTION_COMPLETED, completed.append)
@@ -350,7 +350,7 @@ class TestExecutionPipelineLifecycle(unittest.TestCase):
         self.assertEqual(completed[0].event_type, AIEventType.EXECUTION_COMPLETED)
 
     def test_pipeline_execution_context_records_stages(self):
-        from iios.ai.foundation.runtime import ExecutionPipeline
+        from enterprise_ai_platform.ai.foundation.runtime import ExecutionPipeline
         pipeline = ExecutionPipeline()
         resp, ctx = pipeline.run(self._exec_req())
         # ExecutionContext has stage records
@@ -660,13 +660,13 @@ class TestEventPublishingIntegration(unittest.TestCase):
 class TestHealthReportingIntegration(unittest.TestCase):
 
     def _make_reporter(self, healthy: bool = True) -> HealthReporter:
-        from iios.ai.foundation.health.health_models import HealthCheck
+        from enterprise_ai_platform.ai.foundation.health.health_models import HealthCheck
         class _FlagCheck(HealthCheck):
             def __init__(self, ok: bool): self._ok = ok
             @property
             def name(self) -> str: return "flag"
             def check(self) -> bool: return self._ok
-        reporter = HealthReporter("iios:test:module")
+        reporter = HealthReporter("enterprise_ai_platform:test:module")
         reporter.add_check(_FlagCheck(healthy))
         return reporter
 
@@ -683,7 +683,7 @@ class TestHealthReportingIntegration(unittest.TestCase):
         self.assertFalse(status.is_healthy)
 
     def test_health_reporter_degraded(self):
-        from iios.ai.foundation.health.health_models import HealthCheck
+        from enterprise_ai_platform.ai.foundation.health.health_models import HealthCheck
         class _PassCheck(HealthCheck):
             @property
             def name(self): return "pass"
@@ -692,7 +692,7 @@ class TestHealthReportingIntegration(unittest.TestCase):
             @property
             def name(self): return "fail"
             def check(self): return False
-        reporter = HealthReporter("iios:test")
+        reporter = HealthReporter("enterprise_ai_platform:test")
         reporter.add_check(_PassCheck())
         reporter.add_check(_FailCheck())
         status = reporter.health()
@@ -773,7 +773,7 @@ class TestExceptionHierarchy(unittest.TestCase):
             )
 
     def test_all_exceptions_inherit_from_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         self.assertTrue(issubclass(AIException, IIOSError))
 
     def test_session_not_found_carries_code(self):

@@ -2,29 +2,29 @@
 import time
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_quality import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_quality import (
     OptimizationQualityAssessor,
 )
-from iios.investment.portfolio.optimization.optimization_score import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_score import (
     OptimizationScoreCalculator,
     OptimizationScoreHistory,
 )
-from iios.investment.portfolio.optimization.optimization_metrics import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_metrics import (
     compute_optimization_metrics,
 )
-from iios.investment.portfolio.optimization.optimization_health import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_health import (
     HealthStatus,
     OptimizationHealthMonitor,
 )
-from iios.investment.portfolio.optimization.optimization_statistics import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_statistics import (
     OptimizationRunMetric,
     OptimizationStatistics,
 )
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationPlan,
     OptimizedPosition,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ConvergenceStatus,
     OptimizationQualityGrade,
 )
@@ -65,7 +65,7 @@ def _good_plan(n=5):
 
 
 def _make_validation_report(is_valid=True, failures=0):
-    from iios.investment.portfolio.optimization.optimization_validator import (
+    from enterprise_ai_platform.investment.portfolio.optimization.optimization_validator import (
         OptimizationValidationReport,
     )
     return OptimizationValidationReport(
@@ -81,7 +81,7 @@ def _make_validation_report(is_valid=True, failures=0):
 
 
 def _make_constraint_report(is_feasible=True, violations=0):
-    from iios.investment.portfolio.optimization.constraint_validator import (
+    from enterprise_ai_platform.investment.portfolio.optimization.constraint_validator import (
         ConstraintValidationReport,
     )
     return ConstraintValidationReport(

@@ -1,11 +1,11 @@
 """tests/unit/investment/company/business_quality/test_resilience.py"""
 import pytest
 
-from iios.investment.company.business_quality.cyclicality import CyclicalityDetector
-from iios.investment.company.business_quality.business_risk import BusinessRiskAnalyzer
-from iios.investment.company.business_quality.stress_resilience import StressResilienceAnalyzer
-from iios.investment.company.business_quality.resilience_engine import ResilienceEngine
-from iios.investment.company.business_quality.business_resilience import CyclicalityLabel
+from enterprise_ai_platform.investment.company.business_quality.cyclicality import CyclicalityDetector
+from enterprise_ai_platform.investment.company.business_quality.business_risk import BusinessRiskAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.stress_resilience import StressResilienceAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.resilience_engine import ResilienceEngine
+from enterprise_ai_platform.investment.company.business_quality.business_resilience import CyclicalityLabel
 from tests.unit.investment.company.business_quality.conftest import make_ctx
 
 
@@ -13,7 +13,7 @@ def make_cyclical_ctx():
     from tests.unit.investment.company.business_quality.conftest import (
         make_financial_snapshot, make_earnings_snapshot,
     )
-    from iios.investment.company.business_quality.assessment_context import AssessmentContext
+    from enterprise_ai_platform.investment.company.business_quality.assessment_context import AssessmentContext
     fs = make_financial_snapshot(gross_margin=12.0)
     es = make_earnings_snapshot(
         revenue_volatility=0.6, margin_volatility=5.0, is_cyclical=True, loss_rate=0.2,
@@ -137,12 +137,12 @@ class TestResilienceEngine:
         assert hq > cm
 
     def test_pricing_power_set(self, ctx_high_quality):
-        from iios.investment.company.business_quality.business_resilience import PricingPowerLabel
+        from enterprise_ai_platform.investment.company.business_quality.business_resilience import PricingPowerLabel
         p = ResilienceEngine().analyze(ctx_high_quality)
         assert isinstance(p.pricing_power, PricingPowerLabel)
 
     def test_pricing_power_strong_for_high_gm(self, ctx_high_quality):
-        from iios.investment.company.business_quality.business_resilience import PricingPowerLabel
+        from enterprise_ai_platform.investment.company.business_quality.business_resilience import PricingPowerLabel
         p = ResilienceEngine().analyze(ctx_high_quality)
         assert p.pricing_power in [PricingPowerLabel.STRONG, PricingPowerLabel.MODERATE]
 

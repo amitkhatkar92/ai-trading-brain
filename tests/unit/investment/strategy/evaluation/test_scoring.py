@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.evaluation.evaluation_grade import (
+from enterprise_ai_platform.investment.strategy.evaluation.evaluation_grade import (
     EvaluationGrade, grade_from_score, grade_label, score_range_for_grade
 )
-from iios.investment.strategy.evaluation.confidence_score import ConfidenceScoreCalculator
-from iios.investment.strategy.evaluation.approval_engine import (
+from enterprise_ai_platform.investment.strategy.evaluation.confidence_score import ConfidenceScoreCalculator
+from enterprise_ai_platform.investment.strategy.evaluation.approval_engine import (
     ApprovalEngine, ApprovalCriteria, ApprovalStatus
 )
-from iios.investment.strategy.evaluation.institutional_score import InstitutionalStrategyScore
+from enterprise_ai_platform.investment.strategy.evaluation.institutional_score import InstitutionalStrategyScore
 
 
 class TestEvaluationGrade:
@@ -170,7 +170,7 @@ class TestInstitutionalStrategyScore:
             win_rate=0.62, profit_factor=1.9, robustness=0.85,
             exec_efficiency=0.92, confidence=80.0,
         )
-        from iios.investment.strategy.evaluation.evaluation_grade import grade_from_score
+        from enterprise_ai_platform.investment.strategy.evaluation.evaluation_grade import grade_from_score
         assert score.grade == grade_from_score(score.overall_score)
 
     def test_to_dict_complete(self):

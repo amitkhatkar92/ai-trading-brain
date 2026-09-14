@@ -1,14 +1,14 @@
 """tests/unit/investment/strategy/debate/test_participants.py"""
 import pytest
-from iios.investment.strategy.debate.debate_constants import ParticipantRole
-from iios.investment.strategy.debate.participant_profile import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import ParticipantRole
+from enterprise_ai_platform.investment.strategy.debate.participant_profile import (
     build_profile, DEFAULT_WEIGHTS, ParticipantProfile,
 )
-from iios.investment.strategy.debate.participant_roles import (
+from enterprise_ai_platform.investment.strategy.debate.participant_roles import (
     BaseDebateAgent, TechnicalAnalystAgent, RiskAnalystAgent,
     MarketIntelligenceAgent, ROLE_CLASS_MAP,
 )
-from iios.investment.strategy.debate.agent_registry import (
+from enterprise_ai_platform.investment.strategy.debate.agent_registry import (
     AgentRegistry, create_default_registry,
 )
 
@@ -50,7 +50,7 @@ class TestBuiltinAgents:
 
     def test_risk_analyst_has_higher_weight(self):
         risk  = RiskAnalystAgent()
-        sent  = pytest.importorskip("iios.investment.strategy.debate.participant_roles")
+        sent  = pytest.importorskip("enterprise_ai_platform.investment.strategy.debate.participant_roles")
         senti = sent.SentimentAnalystAgent()
         assert risk.weight > senti.weight
 

@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from iios.execution.planning import (
+from enterprise_ai_platform.execution.planning import (
     # Engine
     ExecutionPlanningEngine,
     get_planning_engine,
@@ -100,7 +100,7 @@ from iios.execution.planning import (
     PlanningEngineAlreadyRunningError,
     PlanningRegistryOverflowError,
 )
-from iios.execution.planning.planning_constants import (
+from enterprise_ai_platform.execution.planning.planning_constants import (
     PLANNING_ENGINE_VERSION,
     PLANNING_ENGINE_SYSTEM_ID,
 )
@@ -1113,14 +1113,14 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_exports_importable(self):
-        import iios.execution.planning as pkg
+        import enterprise_ai_platform.execution.planning as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing export: {name}"
 
     def test_version(self):
-        import iios.execution.planning as pkg
+        import enterprise_ai_platform.execution.planning as pkg
         assert pkg.__version__ == PLANNING_ENGINE_VERSION
 
     def test_system_id(self):
-        import iios.execution.planning as pkg
+        import enterprise_ai_platform.execution.planning as pkg
         assert "planning" in pkg.__system_id__

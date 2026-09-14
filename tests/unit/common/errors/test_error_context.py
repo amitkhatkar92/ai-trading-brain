@@ -9,7 +9,7 @@ from typing import List, Optional
 
 import pytest
 
-from iios.common.errors.error_context import (
+from enterprise_ai_platform.common.errors.error_context import (
     ErrorContext,
     bind_error_context,
     clear_error_context,
@@ -43,8 +43,8 @@ class TestErrorContextDataclass:
         assert ctx.extra          == {}
 
     def test_custom_values(self):
-        ctx = ErrorContext(engine_id="iios:test", stage="fetch", workflow_id="WF-1")
-        assert ctx.engine_id   == "iios:test"
+        ctx = ErrorContext(engine_id="enterprise_ai_platform:test", stage="fetch", workflow_id="WF-1")
+        assert ctx.engine_id   == "enterprise_ai_platform:test"
         assert ctx.stage       == "fetch"
         assert ctx.workflow_id == "WF-1"
 
@@ -145,7 +145,7 @@ class TestContextVarAPI:
         ctx = ErrorContext(engine_id="E")
         token = set_error_context(ctx)
         assert get_error_context() is ctx
-        from iios.common.errors.error_context import _CONTEXT_VAR
+        from enterprise_ai_platform.common.errors.error_context import _CONTEXT_VAR
         _CONTEXT_VAR.reset(token)
 
     def test_clear_sets_none(self):
@@ -162,7 +162,7 @@ class TestContextVarAPI:
         d = current_context_dict()
         assert d["engine_id"] == "E"
         assert d["stage"]     == "S"
-        from iios.common.errors.error_context import _CONTEXT_VAR
+        from enterprise_ai_platform.common.errors.error_context import _CONTEXT_VAR
         _CONTEXT_VAR.reset(token)
 
 
@@ -188,7 +188,7 @@ class TestBindErrorContext:
         with bind_error_context(inner):
             assert get_error_context() is inner
         assert get_error_context() is outer
-        from iios.common.errors.error_context import _CONTEXT_VAR
+        from enterprise_ai_platform.common.errors.error_context import _CONTEXT_VAR
         _CONTEXT_VAR.reset(token)
 
     def test_exception_added_to_chain_on_error(self):

@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     EngineId, IntegrationParameters,
 )
-from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
     PortfolioIntelligenceIntegrationEngine,
 )
 

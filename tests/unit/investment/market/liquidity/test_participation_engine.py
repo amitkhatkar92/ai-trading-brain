@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.models import ParticipationBias
-from iios.investment.market.liquidity.participation_score import ParticipationScoreCalculator
-from iios.investment.market.liquidity.participation_tracker import ParticipationTracker
-from iios.investment.market.liquidity.participation_engine import ParticipationEngine
-from iios.investment.market.liquidity.volume_engine import VolumeEngine
+from enterprise_ai_platform.investment.market.liquidity.models import ParticipationBias
+from enterprise_ai_platform.investment.market.liquidity.participation_score import ParticipationScoreCalculator
+from enterprise_ai_platform.investment.market.liquidity.participation_tracker import ParticipationTracker
+from enterprise_ai_platform.investment.market.liquidity.participation_engine import ParticipationEngine
+from enterprise_ai_platform.investment.market.liquidity.volume_engine import VolumeEngine
 
 from tests.unit.investment.market.liquidity.conftest import (
     make_bar, make_up_bar, make_down_bar, make_bars, make_volume_bar,

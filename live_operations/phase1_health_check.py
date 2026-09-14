@@ -178,7 +178,7 @@ def _check_control_tower_db() -> tuple:
 
 
 def _check_iios_db() -> tuple:
-    return _check_database(DB_IIOS, "iios.db")
+    return _check_database(DB_IIOS, "enterprise_ai_platform.db")
 
 
 def _check_paper_trades() -> tuple:

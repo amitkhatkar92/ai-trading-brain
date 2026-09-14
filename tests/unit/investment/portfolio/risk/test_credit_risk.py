@@ -1,7 +1,7 @@
 """tests/unit/investment/portfolio/risk/test_credit_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.credit_risk import analyze_credit_risk, CreditRiskResult
-from iios.investment.portfolio.risk.risk_types import RiskLevel, RiskPosition
+from enterprise_ai_platform.investment.portfolio.risk.credit_risk import analyze_credit_risk, CreditRiskResult
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel, RiskPosition
 
 
 def test_credit_risk_empty():

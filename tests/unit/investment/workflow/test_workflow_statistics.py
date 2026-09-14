@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.workflow.workflow_statistics import (
+from enterprise_ai_platform.investment.workflow.workflow_statistics import (
     WorkflowRunMetric,
     WorkflowStatistics,
     WorkflowStatisticsSnapshot,

@@ -5,17 +5,17 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-from iios.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
-from iios.investment.decision.evidence.provider_registry import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+from enterprise_ai_platform.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.provider_registry import (
     DuplicateProviderError, ProviderRegistry, UnknownProviderError,
 )
-from iios.investment.decision.evidence.market_evidence import MarketEvidenceProvider
-from iios.investment.decision.evidence.company_evidence import CompanyEvidenceProvider
-from iios.investment.decision.evidence.strategy_evidence import StrategyEvidenceProvider
-from iios.investment.decision.evidence.risk_evidence import RiskEvidenceProvider
-from iios.investment.decision.evidence.knowledge_evidence import KnowledgeEvidenceProvider
-from iios.investment.decision.evidence.research_evidence import ResearchEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.market_evidence import MarketEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.company_evidence import CompanyEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.strategy_evidence import StrategyEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.risk_evidence import RiskEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.knowledge_evidence import KnowledgeEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.research_evidence import ResearchEvidenceProvider
 
 
 # ============================= ProviderRegistry ==========================

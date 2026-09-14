@@ -1,9 +1,9 @@
-"""Tests for iios.common.async_exec.async_execution_manager"""
+"""Tests for enterprise_ai_platform.common.async_exec.async_execution_manager"""
 import asyncio
 import time
 import threading
 import pytest
-from iios.common.async_exec.async_execution_manager import (
+from enterprise_ai_platform.common.async_exec.async_execution_manager import (
     AsyncExecutionManager,
     ExecutionManagerConfig,
     ExecutionMetricsSnapshot,
@@ -12,10 +12,10 @@ from iios.common.async_exec.async_execution_manager import (
     get_execution_manager,
     reset_execution_manager,
 )
-from iios.common.async_exec.cancellation import CancellationToken
-from iios.common.async_exec.execution_classifier import WorkloadType
-from iios.common.async_exec.timeout_policy import TimeoutPolicy
-from iios.common.errors.exceptions import TimeoutError as IIOSTimeoutError
+from enterprise_ai_platform.common.async_exec.cancellation import CancellationToken
+from enterprise_ai_platform.common.async_exec.execution_classifier import WorkloadType
+from enterprise_ai_platform.common.async_exec.timeout_policy import TimeoutPolicy
+from enterprise_ai_platform.common.errors.exceptions import TimeoutError as IIOSTimeoutError
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

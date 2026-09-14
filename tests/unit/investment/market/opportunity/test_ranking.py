@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.models import (
     IntelligenceContext,
     Opportunity,
     OpportunityCategory,
     RankingScore,
 )
-from iios.investment.market.opportunity.ranking_engine import RankingEngine
-from iios.investment.market.opportunity.ranking_history import RankingHistory
-from iios.investment.market.opportunity.ranking_score import score_opportunity
-from iios.investment.market.opportunity.ranking_statistics import (
+from enterprise_ai_platform.investment.market.opportunity.ranking_engine import RankingEngine
+from enterprise_ai_platform.investment.market.opportunity.ranking_history import RankingHistory
+from enterprise_ai_platform.investment.market.opportunity.ranking_score import score_opportunity
+from enterprise_ai_platform.investment.market.opportunity.ranking_statistics import (
     avg_score_by_category,
     rank_stability,
     top_stable_opportunities,
@@ -69,7 +69,7 @@ class TestScoreOpportunity:
 
 class TestRankingEngine:
     def test_update_assigns_ranks(self, obs_batch):
-        from iios.investment.market.opportunity.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.investment.market.opportunity.classification_engine import ClassificationEngine
         engine   = RankingEngine()
         cls_eng  = ClassificationEngine()
         opps     = list(cls_eng.classify_batch(obs_batch).values())
@@ -79,7 +79,7 @@ class TestRankingEngine:
         assert min(ranks) == 1
 
     def test_rank_1_has_highest_score(self, obs_batch):
-        from iios.investment.market.opportunity.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.investment.market.opportunity.classification_engine import ClassificationEngine
         engine  = RankingEngine()
         cls_eng = ClassificationEngine()
         opps    = list(cls_eng.classify_batch(obs_batch).values())
@@ -88,7 +88,7 @@ class TestRankingEngine:
             assert ranked[0].composite_score >= ranked[1].composite_score
 
     def test_top_n(self, obs_batch):
-        from iios.investment.market.opportunity.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.investment.market.opportunity.classification_engine import ClassificationEngine
         engine  = RankingEngine()
         cls_eng = ClassificationEngine()
         opps    = list(cls_eng.classify_batch(obs_batch).values())
@@ -97,7 +97,7 @@ class TestRankingEngine:
         assert len(top3) <= 3
 
     def test_get_score(self, obs_batch):
-        from iios.investment.market.opportunity.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.investment.market.opportunity.classification_engine import ClassificationEngine
         engine  = RankingEngine()
         cls_eng = ClassificationEngine()
         opps    = list(cls_eng.classify_batch(obs_batch).values())

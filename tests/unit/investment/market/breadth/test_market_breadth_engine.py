@@ -5,8 +5,8 @@ import time
 
 import pytest
 
-from iios.investment.market.breadth import InstitutionalMarketBreadthEngine
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth import InstitutionalMarketBreadthEngine
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthEventType,
     BreadthIntelligenceSnapshot,
     BreadthRegimeType,
@@ -178,7 +178,7 @@ class TestContextPassthrough:
 
 class TestMetricManagement:
     def test_register_and_unregister(self):
-        from iios.investment.market.breadth.advance_decline_metric import AdvanceDeclineMetric
+        from enterprise_ai_platform.investment.market.breadth.advance_decline_metric import AdvanceDeclineMetric
         engine = InstitutionalMarketBreadthEngine(metrics=[])
         ad = AdvanceDeclineMetric()
         engine.register_metric(ad)

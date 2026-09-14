@@ -1,21 +1,21 @@
 """Tests for performance score, quality, health, confidence, forecast."""
 import pytest
-from iios.investment.portfolio.performance.performance_score import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_score import (
     PerformanceScoreCalculator, PerformanceScoreHistory, PerformanceScore,
 )
-from iios.investment.portfolio.performance.performance_quality import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_quality import (
     PerformanceQualityAssessor,
 )
-from iios.investment.portfolio.performance.performance_health import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_health import (
     PerformanceHealthMonitor,
 )
-from iios.investment.portfolio.performance.performance_confidence import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_confidence import (
     compute_performance_confidence,
 )
-from iios.investment.portfolio.performance.performance_forecast import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_forecast import (
     forecast_performance, _cdf_approx,
 )
-from iios.investment.portfolio.performance.performance_types import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_types import (
     PerformanceGrade, PerformanceLevel, PerformanceTrend,
 )
 

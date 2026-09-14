@@ -1,6 +1,6 @@
-"""tests/unit/iios/execution/engine/test_execution_engine.py
+"""tests/unit/enterprise_ai_platform/execution/engine/test_execution_engine.py
 ==================================================
-Complete test suite for iios.execution.engine
+Complete test suite for enterprise_ai_platform.execution.engine
 
 Parts
 -----
@@ -31,7 +31,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.engine import (
+from enterprise_ai_platform.execution.engine import (
     ACTIVE_ENGINE_STATES, ACTOR_ENGINE, ACTOR_SYSTEM, ACTOR_VALIDATOR,
     CANCELLABLE_ENGINE_STATES, TERMINAL_ENGINE_STATES, VALID_ENGINE_TRANSITIONS,
     VERSION, EngineExecutionState, EngineStatistics, ExecutionCancelledError,
@@ -626,7 +626,7 @@ class TestExecutionValidation:
 
     def test_context_warns_on_missing_portfolio(self, validator: ExecutionValidator,
                                                  request_: ExecutionRequest):
-        from iios.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
+        from enterprise_ai_platform.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
         from decimal import Decimal
         order_ctx = OrderContext(strategy_id="S", portfolio_id="P",
                                  decision_id="D", workflow_id="W")
@@ -720,7 +720,7 @@ class TestExecutionFactory:
         assert ctx.order is mock_order
 
     def test_create_context_none_request_raises(self, factory: ExecutionFactory):
-        from iios.execution.engine import ExecutionRequestError
+        from enterprise_ai_platform.execution.engine import ExecutionRequestError
         with pytest.raises(ExecutionRequestError):
             factory.create_context(request=None, execution_id="E")  # type: ignore
 
@@ -730,7 +730,7 @@ class TestExecutionFactory:
         assert len(eid) > 5
 
     def test_factory_system_id(self, factory: ExecutionFactory):
-        assert factory.SYSTEM_ID.startswith("iios:execution:engine")
+        assert factory.SYSTEM_ID.startswith("enterprise_ai_platform:execution:engine")
         assert factory.VERSION == "1.0.0"
 
 
@@ -901,9 +901,9 @@ class TestExecutionEngine:
 
     def test_submit_with_mock_registry_succeeds(self, engine: ExecutionEngine,
                                                   request_: ExecutionRequest):
-        from iios.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
+        from enterprise_ai_platform.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
         from decimal import Decimal
-        from iios.execution.lifecycle.order_state import OrderState
+        from enterprise_ai_platform.execution.lifecycle.order_state import OrderState
 
         order_ctx = OrderContext(strategy_id="S", portfolio_id="P",
                                  decision_id="D", workflow_id="W")
@@ -926,9 +926,9 @@ class TestExecutionEngine:
 
     def test_submit_emits_events(self, engine: ExecutionEngine,
                                   request_: ExecutionRequest):
-        from iios.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
+        from enterprise_ai_platform.execution.lifecycle import Order, OrderContext, OrderSide, OrderType
         from decimal import Decimal
-        from iios.execution.lifecycle.order_state import OrderState
+        from enterprise_ai_platform.execution.lifecycle.order_state import OrderState
 
         order_ctx = OrderContext(strategy_id="S", portfolio_id="P",
                                  decision_id="D", workflow_id="W")
@@ -986,7 +986,7 @@ class TestExecutionEngine:
         assert stats.total_registered >= 1
 
     def test_system_id_and_version(self, engine: ExecutionEngine):
-        assert engine.SYSTEM_ID.startswith("iios:execution:engine")
+        assert engine.SYSTEM_ID.startswith("enterprise_ai_platform:execution:engine")
         assert engine.VERSION == "1.0.0"
 
 
@@ -1045,7 +1045,7 @@ class TestIntegrationWithOrderLifecycle:
 
     @pytest.fixture
     def order_registry(self):
-        from iios.execution.lifecycle import OrderRegistry
+        from enterprise_ai_platform.execution.lifecycle import OrderRegistry
         reg = OrderRegistry()
         reg.start()
         yield reg
@@ -1054,7 +1054,7 @@ class TestIntegrationWithOrderLifecycle:
 
     @pytest.fixture
     def validated_order(self, order_registry):
-        from iios.execution.lifecycle import (
+        from enterprise_ai_platform.execution.lifecycle import (
             Order, OrderContext, OrderFactory, OrderRegistry, OrderSide,
             OrderState, OrderType,
         )
@@ -1080,7 +1080,7 @@ class TestIntegrationWithOrderLifecycle:
         order_registry,
         validated_order,
     ):
-        from iios.execution.lifecycle.order_state import OrderState
+        from enterprise_ai_platform.execution.lifecycle.order_state import OrderState
 
         request = ExecutionRequest(
             order_id     = validated_order.order_id,

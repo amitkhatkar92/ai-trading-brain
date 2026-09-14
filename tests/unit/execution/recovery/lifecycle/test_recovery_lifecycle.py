@@ -32,7 +32,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.recovery.lifecycle.constants import (
+from enterprise_ai_platform.execution.recovery.lifecycle.constants import (
     ACTIVE_STATES,
     ACTOR_LIFECYCLE,
     DEFAULT_MAX_HISTORY,
@@ -47,7 +47,7 @@ from iios.execution.recovery.lifecycle.constants import (
     RecoveryState,
     RecoveryTrigger,
 )
-from iios.execution.recovery.lifecycle.exceptions import (
+from enterprise_ai_platform.execution.recovery.lifecycle.exceptions import (
     RecoveryAlreadyRunningError,
     RecoveryError,
     RecoveryHistoryError,
@@ -58,24 +58,24 @@ from iios.execution.recovery.lifecycle.exceptions import (
     RecoverySessionTerminalError,
     RecoveryValidationError,
 )
-from iios.execution.recovery.lifecycle.recovery_context import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_context import (
     RecoveryContext,
     make_recovery_context,
 )
-from iios.execution.recovery.lifecycle.recovery_metadata import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_metadata import (
     RecoveryMetadata,
     make_recovery_metadata,
 )
-from iios.execution.recovery.lifecycle.recovery_session import RecoverySession
-from iios.execution.recovery.lifecycle.recovery_state import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_session import RecoverySession
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_state import (
     RecoveryStateRecord,
     can_transition,
 )
-from iios.execution.recovery.lifecycle.recovery_transition import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_transition import (
     RecoveryTransition,
     make_recovery_transition,
 )
-from iios.execution.recovery.lifecycle.recovery_events import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_events import (
     RecoveryEvent,
     make_recovery_aborted,
     make_recovery_archived,
@@ -89,15 +89,15 @@ from iios.execution.recovery.lifecycle.recovery_events import (
     make_recovery_started,
     make_recovery_verifying,
 )
-from iios.execution.recovery.lifecycle.recovery_validation import (
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_validation import (
     RecoveryValidationResult,
     RecoveryValidator,
 )
-from iios.execution.recovery.lifecycle.recovery_statistics import RecoveryStatistics
-from iios.execution.recovery.lifecycle.recovery_history import RecoveryHistory
-from iios.execution.recovery.lifecycle.recovery_registry import RecoveryRegistry
-from iios.execution.recovery.lifecycle.recovery_factory import RecoveryFactory
-from iios.execution.recovery.lifecycle.recovery_lifecycle import RecoveryLifecycle
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_statistics import RecoveryStatistics
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_history import RecoveryHistory
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_registry import RecoveryRegistry
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_factory import RecoveryFactory
+from enterprise_ai_platform.execution.recovery.lifecycle.recovery_lifecycle import RecoveryLifecycle
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

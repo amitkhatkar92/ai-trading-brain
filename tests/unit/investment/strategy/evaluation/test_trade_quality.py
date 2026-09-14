@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.strategy.evaluation.trade_statistics import TradeStatisticsCalculator
-from iios.investment.strategy.evaluation.execution_quality import ExecutionQualityAnalyzer
-from iios.investment.strategy.evaluation.trade_distribution import TradeDistributionAnalyzer
-from iios.investment.strategy.evaluation.trade_quality import TradeQualityAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.trade_statistics import TradeStatisticsCalculator
+from enterprise_ai_platform.investment.strategy.evaluation.execution_quality import ExecutionQualityAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.trade_distribution import TradeDistributionAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.trade_quality import TradeQualityAnalyzer
 from tests.unit.investment.strategy.evaluation.conftest import (
     make_trade, make_evaluation_input
 )

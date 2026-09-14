@@ -1,7 +1,7 @@
 """
 tests/unit/knowledge/test_knowledge_engine.py
 ----------------------------------------------
-Comprehensive test suite for iios.knowledge.engine (C14 M2).
+Comprehensive test suite for enterprise_ai_platform.knowledge.engine (C14 M2).
 
 Coverage targets : ≥ 95 %
 Test classes     : 18
@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.knowledge.engine import (
+from enterprise_ai_platform.knowledge.engine import (
     ACTOR_ENGINE,
     EngineState,
     KnowledgeCapacityError,
@@ -58,7 +58,7 @@ from iios.knowledge.engine import (
     ValidationResult,
     VERSION,
 )
-from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
 
 
 # ===========================================================================
@@ -143,7 +143,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(KnowledgeEngineError, IIOSError)
 
     def test_unique_error_codes(self):
@@ -679,7 +679,7 @@ class TestValidator:
             workflow_type=req.workflow_type, priority=req.priority, context=req.context,
         )
         results = v.validate_request(req2)
-        from iios.knowledge.engine.constants import KnowledgeValidationCode
+        from enterprise_ai_platform.knowledge.engine.constants import KnowledgeValidationCode
         ki = next(r for r in results if r.code == KnowledgeValidationCode.KNOWLEDGE_INTEGRITY)
         assert not ki.passed
 
@@ -687,12 +687,12 @@ class TestValidator:
         active = [10]
         v = KnowledgeEngineValidator(max_sessions=5, active_count_fn=lambda: active[0])
         results = v.validate_request(_make_request())
-        from iios.knowledge.engine.constants import KnowledgeValidationCode
+        from enterprise_ai_platform.knowledge.engine.constants import KnowledgeValidationCode
         lc = next(r for r in results if r.code == KnowledgeValidationCode.LIFECYCLE_CONSISTENCY)
         assert not lc.passed
 
     def test_raise_on_failure(self):
-        from iios.knowledge.engine.exceptions import KnowledgeEngineValidationError
+        from enterprise_ai_platform.knowledge.engine.exceptions import KnowledgeEngineValidationError
         active = [999]
         v = KnowledgeEngineValidator(max_sessions=5, active_count_fn=lambda: active[0])
         with pytest.raises(KnowledgeEngineValidationError):
@@ -706,12 +706,12 @@ class TestValidator:
     def test_artifact_consistency_fails_for_non_dict(self):
         v = KnowledgeEngineValidator()
         results = v.validate_artifacts("not a dict")  # type: ignore[arg-type]
-        from iios.knowledge.engine.constants import KnowledgeValidationCode
+        from enterprise_ai_platform.knowledge.engine.constants import KnowledgeValidationCode
         ac = next(r for r in results if r.code == KnowledgeValidationCode.ARTIFACT_CONSISTENCY)
         assert not ac.passed
 
     def test_validation_result_to_dict(self):
-        from iios.knowledge.engine.constants import KnowledgeValidationCode
+        from enterprise_ai_platform.knowledge.engine.constants import KnowledgeValidationCode
         r = ValidationResult(
             code=KnowledgeValidationCode.KNOWLEDGE_INTEGRITY,
             passed=True,
@@ -1218,17 +1218,17 @@ class TestPublicSurface:
 
 class TestRegression:
     def test_lifecycle_m1_import_unaffected(self):
-        from iios.knowledge.lifecycle import KnowledgeLifecycle  # noqa: F401
+        from enterprise_ai_platform.knowledge.lifecycle import KnowledgeLifecycle  # noqa: F401
 
     def test_supervisor_engine_import_unaffected(self):
-        from iios.supervisor.engine import SupervisorEngine  # noqa: F401
+        from enterprise_ai_platform.supervisor.engine import SupervisorEngine  # noqa: F401
 
     def test_engine_error_codes_distinct_from_lifecycle(self):
-        from iios.knowledge.lifecycle.exceptions import KnowledgeLifecycleError
+        from enterprise_ai_platform.knowledge.lifecycle.exceptions import KnowledgeLifecycleError
         assert KnowledgeEngineError.error_code != KnowledgeLifecycleError.error_code
 
     def test_engine_states_distinct_from_lifecycle_states(self):
-        from iios.knowledge.lifecycle.constants import KnowledgeLifecycleState
+        from enterprise_ai_platform.knowledge.lifecycle.constants import KnowledgeLifecycleState
         engine_values    = {s.value for s in EngineState}
         lifecycle_values = {s.value for s in KnowledgeLifecycleState}
         # Overlapping names (like "failed") are acceptable but the enums must be different objects

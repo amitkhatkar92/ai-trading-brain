@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.integration.aggregation_engine import AggregationEngine
-from iios.investment.market.integration.aggregation_state import AggregationState
-from iios.investment.market.integration.conflict_classifier import ConflictClassifier
-from iios.investment.market.integration.conflict_detector import ConflictDetector
-from iios.investment.market.integration.conflict_engine import ConflictEngine
-from iios.investment.market.integration.conflict_history import ConflictHistory
-from iios.investment.market.integration.conflict_resolution import ConflictResolver
-from iios.investment.market.integration.consistency_validator import ConsistencyValidator
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
+from enterprise_ai_platform.investment.market.integration.conflict_classifier import ConflictClassifier
+from enterprise_ai_platform.investment.market.integration.conflict_detector import ConflictDetector
+from enterprise_ai_platform.investment.market.integration.conflict_engine import ConflictEngine
+from enterprise_ai_platform.investment.market.integration.conflict_history import ConflictHistory
+from enterprise_ai_platform.investment.market.integration.conflict_resolution import ConflictResolver
+from enterprise_ai_platform.investment.market.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.market.integration.models import (
     Conflict,
     ConflictSeverity,
     ConflictType,
@@ -149,28 +149,28 @@ class TestConflictResolver:
 
 class TestConflictHistory:
     def test_append_and_latest(self):
-        from iios.investment.market.integration.models import ConflictSummary
+        from enterprise_ai_platform.investment.market.integration.models import ConflictSummary
         hist = ConflictHistory()
         cs   = ConflictSummary(1, 2, 0, 1, 1, 0, 1, 1)
         hist.append(cs)
         assert hist.latest() is cs
 
     def test_critical_series(self):
-        from iios.investment.market.integration.models import ConflictSummary
+        from enterprise_ai_platform.investment.market.integration.models import ConflictSummary
         hist = ConflictHistory()
         for i, crit in enumerate([1, 0, 1]):
             hist.append(ConflictSummary(i + 1, 1, crit, 0, 0, 0, 0, 1))
         assert hist.critical_series(3) == [1, 0, 1]
 
     def test_has_persistent_critical_true(self):
-        from iios.investment.market.integration.models import ConflictSummary
+        from enterprise_ai_platform.investment.market.integration.models import ConflictSummary
         hist = ConflictHistory()
         for i in range(3):
             hist.append(ConflictSummary(i + 1, 2, 1, 1, 0, 0, 0, 2))
         assert hist.has_persistent_critical(3) is True
 
     def test_has_persistent_critical_false(self):
-        from iios.investment.market.integration.models import ConflictSummary
+        from enterprise_ai_platform.investment.market.integration.models import ConflictSummary
         hist = ConflictHistory()
         for i in range(3):
             hist.append(ConflictSummary(i + 1, 2, 0, 1, 1, 0, 1, 1))

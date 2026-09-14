@@ -38,14 +38,14 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     Position,
     PositionDirection,
     PositionProduct,
     PositionState,
 )
 
-from iios.execution.positions.engine import (
+from enterprise_ai_platform.execution.positions.engine import (
     # constants
     ENGINE_SYSTEM_ID,
     EngineEventType,
@@ -555,7 +555,7 @@ class TestEngineHistory:
 
 class TestSnapshotTypes:
     def _make_open_position(self) -> Position:
-        from iios.execution.positions.lifecycle import PositionFactory
+        from enterprise_ai_platform.execution.positions.lifecycle import PositionFactory
         f = PositionFactory()
         p = f.create_long("NIFTY50", "NSE", PositionProduct.FUTURES, Decimal("100"))
         p.transition_to(PositionState.OPENING)
@@ -651,7 +651,7 @@ class TestEngineEvents:
 
 class TestEngineValidator:
     def _open_pos(self) -> Position:
-        from iios.execution.positions.lifecycle import PositionFactory
+        from enterprise_ai_platform.execution.positions.lifecycle import PositionFactory
         f = PositionFactory()
         p = f.create_long("NIFTY50", "NSE", PositionProduct.FUTURES, Decimal("100"),
                           portfolio_id="port", strategy_id="strat")
@@ -746,7 +746,7 @@ class TestEngineValidator:
 
     def test_close_rejects_archived_position(self):
         v = EngineValidator()
-        from iios.execution.positions.lifecycle import PositionFactory
+        from enterprise_ai_platform.execution.positions.lifecycle import PositionFactory
         f = PositionFactory()
         p = f.create_long("X", "NSE", PositionProduct.EQUITY, Decimal("10"))
         for s in (PositionState.OPENING, PositionState.OPEN,
@@ -899,7 +899,7 @@ class TestEngineRegistry:
         assert reg.get("ghost") is None
 
     def test_require_raises_for_unknown(self):
-        from iios.execution.positions.lifecycle import PositionNotFoundError
+        from enterprise_ai_platform.execution.positions.lifecycle import PositionNotFoundError
         reg = self._reg()
         with pytest.raises(PositionNotFoundError):
             reg.require("ghost")
@@ -1394,7 +1394,7 @@ class TestPositionEngine:
         e.stop()
 
     def test_require_position(self):
-        from iios.execution.positions.lifecycle import PositionNotFoundError
+        from enterprise_ai_platform.execution.positions.lifecycle import PositionNotFoundError
         e = _started_engine()
         with pytest.raises(PositionNotFoundError):
             e.require_position("ghost")

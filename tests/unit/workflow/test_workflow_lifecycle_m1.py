@@ -3,7 +3,7 @@ tests/unit/workflow/test_workflow_lifecycle_m1.py
 --------------------------------------------------
 C16 M1 — Workflow Lifecycle test suite.
 
-Tests all 14 source files in iios/workflow/lifecycle/.
+Tests all 14 source files in enterprise_ai_platform/workflow/lifecycle/.
 Groups:
   A  Constants & enums
   B  Exceptions
@@ -42,70 +42,70 @@ import pytest
 
 class TestConstants:
     def test_state_count(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         assert len(WorkflowLifecycleState) == 14
 
     def test_event_type_count(self):
-        from iios.workflow.lifecycle import WorkflowEventType
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowEventType
         assert len(WorkflowEventType) == 11
 
     def test_workflow_type_count(self):
-        from iios.workflow.lifecycle import WorkflowType
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowType
         assert len(WorkflowType) == 10
 
     def test_workflow_priority_count(self):
-        from iios.workflow.lifecycle import WorkflowPriority
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowPriority
         assert len(WorkflowPriority) == 4
 
     def test_validation_code_count(self):
-        from iios.workflow.lifecycle import WorkflowValidationCode
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidationCode
         assert len(WorkflowValidationCode) == 5
 
     def test_valid_transitions_covers_all_states(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         for state in WorkflowLifecycleState:
             assert state in VALID_TRANSITIONS, f"{state!r} missing from VALID_TRANSITIONS"
 
     def test_archived_has_no_outgoing_transitions(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         assert VALID_TRANSITIONS[WorkflowLifecycleState.ARCHIVED] == set()
 
     def test_failed_allows_retry_to_initializing(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         assert (
             WorkflowLifecycleState.INITIALIZING
             in VALID_TRANSITIONS[WorkflowLifecycleState.FAILED]
         )
 
     def test_failed_allows_archive(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         assert WorkflowLifecycleState.ARCHIVED in VALID_TRANSITIONS[WorkflowLifecycleState.FAILED]
 
     def test_active_states_does_not_include_archived(self):
-        from iios.workflow.lifecycle import ACTIVE_STATES, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import ACTIVE_STATES, WorkflowLifecycleState
         assert WorkflowLifecycleState.ARCHIVED not in ACTIVE_STATES
 
     def test_active_states_includes_running(self):
-        from iios.workflow.lifecycle import ACTIVE_STATES, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import ACTIVE_STATES, WorkflowLifecycleState
         assert WorkflowLifecycleState.RUNNING in ACTIVE_STATES
 
     def test_terminal_states_set(self):
-        from iios.workflow.lifecycle import TERMINAL_STATES, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import TERMINAL_STATES, WorkflowLifecycleState
         assert WorkflowLifecycleState.COMPLETED in TERMINAL_STATES
         assert WorkflowLifecycleState.FAILED in TERMINAL_STATES
         assert WorkflowLifecycleState.CANCELLED in TERMINAL_STATES
         assert WorkflowLifecycleState.ARCHIVED in TERMINAL_STATES
 
     def test_immutable_states_only_archived(self):
-        from iios.workflow.lifecycle import IMMUTABLE_STATES, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import IMMUTABLE_STATES, WorkflowLifecycleState
         assert IMMUTABLE_STATES == {WorkflowLifecycleState.ARCHIVED}
 
     def test_success_states_only_completed(self):
-        from iios.workflow.lifecycle import SUCCESS_STATES, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import SUCCESS_STATES, WorkflowLifecycleState
         assert SUCCESS_STATES == {WorkflowLifecycleState.COMPLETED}
 
     def test_default_constants(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             DEFAULT_MAX_SESSIONS,
             DEFAULT_MAX_HISTORY,
             DEFAULT_MAX_TRANSITIONS,
@@ -117,7 +117,7 @@ class TestConstants:
         assert DEFAULT_MAX_ARCHIVED > 0
 
     def test_actor_constants_non_empty(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             ACTOR_LIFECYCLE, ACTOR_SYSTEM, ACTOR_OPERATOR
         )
         assert ACTOR_LIFECYCLE
@@ -125,13 +125,13 @@ class TestConstants:
         assert ACTOR_OPERATOR
 
     def test_version_constants(self):
-        from iios.workflow.lifecycle import VERSION, FRAMEWORK_VERSION, BUILD_VERSION
+        from enterprise_ai_platform.workflow.lifecycle import VERSION, FRAMEWORK_VERSION, BUILD_VERSION
         assert VERSION
         assert FRAMEWORK_VERSION
         assert BUILD_VERSION
 
     def test_running_has_multiple_exit_paths(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         exits = VALID_TRANSITIONS[WorkflowLifecycleState.RUNNING]
         assert WorkflowLifecycleState.COMPLETED in exits
         assert WorkflowLifecycleState.FAILED in exits
@@ -140,13 +140,13 @@ class TestConstants:
         assert WorkflowLifecycleState.WAITING in exits
 
     def test_state_values_are_strings(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         for state in WorkflowLifecycleState:
             assert isinstance(state.value, str)
             assert state.value == state.value.lower()
 
     def test_ready_can_go_directly_to_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState, VALID_TRANSITIONS
         assert WorkflowLifecycleState.RUNNING in VALID_TRANSITIONS[WorkflowLifecycleState.READY]
 
 
@@ -157,18 +157,18 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_exception_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
-        from iios.workflow.lifecycle import WorkflowLifecycleError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleError
         assert issubclass(WorkflowLifecycleError, IIOSError)
 
     def test_session_not_found_error(self):
-        from iios.workflow.lifecycle import WorkflowSessionNotFoundError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowSessionNotFoundError
         exc = WorkflowSessionNotFoundError("sid-001")
         assert "sid-001" in str(exc)
         assert exc.session_id == "sid-001"
 
     def test_invalid_transition_error(self):
-        from iios.workflow.lifecycle import WorkflowInvalidTransitionError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowInvalidTransitionError
         exc = WorkflowInvalidTransitionError("created", "running")
         assert "created" in str(exc)
         assert "running" in str(exc)
@@ -176,29 +176,29 @@ class TestExceptions:
         assert exc.to_state   == "running"
 
     def test_session_terminated_error(self):
-        from iios.workflow.lifecycle import WorkflowSessionTerminatedError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowSessionTerminatedError
         exc = WorkflowSessionTerminatedError("ws-999")
         assert "ws-999" in str(exc)
         assert exc.session_id == "ws-999"
 
     def test_validation_error(self):
-        from iios.workflow.lifecycle import WorkflowValidationError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidationError
         exc = WorkflowValidationError("check failed")
         assert "check failed" in str(exc)
 
     def test_capacity_error(self):
-        from iios.workflow.lifecycle import WorkflowCapacityError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowCapacityError
         exc = WorkflowCapacityError(limit=5000)
         assert exc.limit == 5000
         assert "5000" in str(exc)
 
     def test_history_error(self):
-        from iios.workflow.lifecycle import WorkflowHistoryError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistoryError
         exc = WorkflowHistoryError("integrity violation")
         assert "integrity violation" in str(exc)
 
     def test_exception_hierarchy(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleError,
             WorkflowSessionNotFoundError,
             WorkflowInvalidTransitionError,
@@ -219,18 +219,18 @@ class TestExceptions:
 
 class TestWorkflowStateRecord:
     def test_create_returns_frozen(self):
-        from iios.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
         r = WorkflowStateRecord.create("sid-1", WorkflowLifecycleState.CREATED)
         with pytest.raises((AttributeError, TypeError)):
             r.state = WorkflowLifecycleState.RUNNING  # type: ignore
 
     def test_record_id_prefix(self):
-        from iios.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
         r = WorkflowStateRecord.create("sid-1", WorkflowLifecycleState.CREATED)
         assert r.record_id.startswith("wsr-")
 
     def test_to_dict_roundtrip(self):
-        from iios.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
         r = WorkflowStateRecord.create(
             "sid-1", WorkflowLifecycleState.RUNNING, actor="test", reason="started"
         )
@@ -239,7 +239,7 @@ class TestWorkflowStateRecord:
         assert r == r2
 
     def test_state_value_in_dict(self):
-        from iios.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
         r = WorkflowStateRecord.create("sid-1", WorkflowLifecycleState.COMPLETED)
         assert r.to_dict()["state"] == "completed"
 
@@ -251,7 +251,7 @@ class TestWorkflowStateRecord:
 
 class TestWorkflowTransition:
     def test_create_returns_frozen(self):
-        from iios.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
         t = WorkflowTransition.create(
             "sid-1",
             WorkflowLifecycleState.CREATED,
@@ -261,7 +261,7 @@ class TestWorkflowTransition:
             t.from_state = WorkflowLifecycleState.RUNNING  # type: ignore
 
     def test_transition_id_prefix(self):
-        from iios.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
         t = WorkflowTransition.create(
             "sid-1",
             WorkflowLifecycleState.CREATED,
@@ -270,7 +270,7 @@ class TestWorkflowTransition:
         assert t.transition_id.startswith("wtr-")
 
     def test_to_dict_roundtrip(self):
-        from iios.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
         t = WorkflowTransition.create(
             "sid-1",
             WorkflowLifecycleState.RUNNING,
@@ -283,7 +283,7 @@ class TestWorkflowTransition:
         assert t == t2
 
     def test_states_in_dict(self):
-        from iios.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
         t = WorkflowTransition.create(
             "sid-1",
             WorkflowLifecycleState.QUEUED,
@@ -301,31 +301,31 @@ class TestWorkflowTransition:
 
 class TestWorkflowContext:
     def test_create_fills_ids(self):
-        from iios.workflow.lifecycle import WorkflowContext
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowContext
         ctx = WorkflowContext.create("sid-1")
         assert ctx.context_id.startswith("wctx-")
         assert ctx.correlation_id
         assert ctx.trace_id
 
     def test_custom_correlation(self):
-        from iios.workflow.lifecycle import WorkflowContext
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowContext
         ctx = WorkflowContext.create("sid-1", correlation_id="my-cid")
         assert ctx.correlation_id == "my-cid"
 
     def test_to_dict_roundtrip(self):
-        from iios.workflow.lifecycle import WorkflowContext
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowContext
         ctx = WorkflowContext.create("sid-1", environment="staging")
         ctx2 = WorkflowContext.from_dict(ctx.to_dict())
         assert ctx == ctx2
 
     def test_frozen(self):
-        from iios.workflow.lifecycle import WorkflowContext
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowContext
         ctx = WorkflowContext.create("sid-1")
         with pytest.raises((AttributeError, TypeError)):
             ctx.environment = "dev"  # type: ignore
 
     def test_platform_metadata_stored(self):
-        from iios.workflow.lifecycle import WorkflowContext
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowContext
         ctx = WorkflowContext.create("sid-1", platform_metadata={"key": "val"})
         assert ctx.platform_metadata["key"] == "val"
 
@@ -337,7 +337,7 @@ class TestWorkflowContext:
 
 class TestWorkflowMetadata:
     def test_default_values(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowMetadata, WorkflowType, WorkflowPriority
         )
         m = WorkflowMetadata.default()
@@ -345,7 +345,7 @@ class TestWorkflowMetadata:
         assert m.workflow_priority == WorkflowPriority.NORMAL
 
     def test_custom_metadata(self):
-        from iios.workflow.lifecycle import WorkflowMetadata, WorkflowType, WorkflowPriority
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowMetadata, WorkflowType, WorkflowPriority
         m = WorkflowMetadata.create(
             WorkflowType.PARALLEL,
             WorkflowPriority.HIGH,
@@ -358,19 +358,19 @@ class TestWorkflowMetadata:
         assert "etl" in m.tags
 
     def test_to_dict_roundtrip(self):
-        from iios.workflow.lifecycle import WorkflowMetadata
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowMetadata
         m = WorkflowMetadata.default()
         m2 = WorkflowMetadata.from_dict(m.to_dict())
         assert m == m2
 
     def test_frozen(self):
-        from iios.workflow.lifecycle import WorkflowMetadata
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowMetadata
         m = WorkflowMetadata.default()
         with pytest.raises((AttributeError, TypeError)):
             m.enterprise_id = "new"  # type: ignore
 
     def test_tags_are_tuple(self):
-        from iios.workflow.lifecycle import WorkflowMetadata
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowMetadata
         m = WorkflowMetadata.create(tags=["a", "b"])
         assert isinstance(m.tags, tuple)
 
@@ -382,7 +382,7 @@ class TestWorkflowMetadata:
 
 class TestWorkflowSession:
     def _make_session(self, sid="sid-001", wid="wf-001"):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowSession, WorkflowContext, WorkflowMetadata
         )
         ctx = WorkflowContext.create(sid)
@@ -392,7 +392,7 @@ class TestWorkflowSession:
         )
 
     def test_initial_state_is_created(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         s = self._make_session()
         assert s.state == WorkflowLifecycleState.CREATED
 
@@ -401,14 +401,14 @@ class TestWorkflowSession:
         assert len(s.state_records()) == 1
 
     def test_valid_transition_succeeds(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         s = self._make_session()
         t = s.transition_to(WorkflowLifecycleState.INITIALIZING)
         assert s.state == WorkflowLifecycleState.INITIALIZING
         assert t.to_state == WorkflowLifecycleState.INITIALIZING
 
     def test_invalid_transition_raises(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleState, WorkflowInvalidTransitionError
         )
         s = self._make_session()
@@ -416,7 +416,7 @@ class TestWorkflowSession:
             s.transition_to(WorkflowLifecycleState.COMPLETED)  # CREATED → COMPLETED invalid
 
     def test_transition_count_increments(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         s = self._make_session()
         s.transition_to(WorkflowLifecycleState.INITIALIZING)
         assert s.transition_count() == 1
@@ -424,7 +424,7 @@ class TestWorkflowSession:
         assert s.transition_count() == 2
 
     def test_archived_raises_terminated(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleState, WorkflowSessionTerminatedError
         )
         s = self._make_session()
@@ -438,13 +438,13 @@ class TestWorkflowSession:
             s.transition_to(WorkflowLifecycleState.INITIALIZING)
 
     def test_is_active(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         s = self._make_session()
         s.transition_to(WorkflowLifecycleState.INITIALIZING)
         assert s.is_active
 
     def test_is_terminal_after_completed(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         s = self._make_session()
         s.transition_to(WorkflowLifecycleState.INITIALIZING)
         s.transition_to(WorkflowLifecycleState.VALIDATING)
@@ -469,7 +469,7 @@ class TestWorkflowSession:
 
 class TestWorkflowEvents:
     def test_event_id_prefix(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEvent, WorkflowEventType, WorkflowLifecycleState
         )
         e = WorkflowLifecycleEvent.create(
@@ -478,7 +478,7 @@ class TestWorkflowEvents:
         assert e.event_id.startswith("wevt-")
 
     def test_event_is_frozen(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEvent, WorkflowEventType, WorkflowLifecycleState
         )
         e = WorkflowLifecycleEvent.create(
@@ -488,7 +488,7 @@ class TestWorkflowEvents:
             e.session_id = "other"  # type: ignore
 
     def test_event_bus_emit_calls_listener(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEventBus, WorkflowEventType, WorkflowLifecycleState
         )
         bus = WorkflowLifecycleEventBus()
@@ -503,7 +503,7 @@ class TestWorkflowEvents:
         assert received[0].event_type == WorkflowEventType.WORKFLOW_COMPLETED
 
     def test_event_bus_remove_listener(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEventBus, WorkflowEventType, WorkflowLifecycleState
         )
         bus = WorkflowLifecycleEventBus()
@@ -518,7 +518,7 @@ class TestWorkflowEvents:
         assert len(received) == 0
 
     def test_listener_exception_suppressed(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEventBus, WorkflowEventType, WorkflowLifecycleState
         )
         bus = WorkflowLifecycleEventBus()
@@ -531,7 +531,7 @@ class TestWorkflowEvents:
         )
 
     def test_event_to_dict(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEvent, WorkflowEventType, WorkflowLifecycleState
         )
         e = WorkflowLifecycleEvent.create(
@@ -543,7 +543,7 @@ class TestWorkflowEvents:
         assert d["payload"]["reason"] == "done"
 
     def test_listener_count(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleEventBus
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleEventBus
         bus = WorkflowLifecycleEventBus()
         bus.add_listener(lambda e: None)
         bus.add_listener(lambda e: None)
@@ -557,24 +557,24 @@ class TestWorkflowEvents:
 
 class TestWorkflowHistory:
     def _make_transition(self, sid="sid-1"):
-        from iios.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowTransition, WorkflowLifecycleState
         return WorkflowTransition.create(
             sid, WorkflowLifecycleState.CREATED, WorkflowLifecycleState.INITIALIZING
         )
 
     def _make_state_record(self, sid="sid-1"):
-        from iios.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowStateRecord, WorkflowLifecycleState
         return WorkflowStateRecord.create(sid, WorkflowLifecycleState.INITIALIZING)
 
     def test_record_and_retrieve_transition(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory()
         t = self._make_transition()
         h.record_transition(t)
         assert h.get_transition(t.transition_id) == t
 
     def test_transitions_for_session(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory()
         t = self._make_transition("sid-A")
         h.record_transition(t)
@@ -583,7 +583,7 @@ class TestWorkflowHistory:
         assert results[0] == t
 
     def test_state_records_for_session(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory()
         r = self._make_state_record("sid-B")
         h.record_state(r)
@@ -591,14 +591,14 @@ class TestWorkflowHistory:
         assert len(results) == 1
 
     def test_recent_transitions(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory()
         for idx in range(5):
             h.record_transition(self._make_transition(f"sid-{idx}"))
         assert len(h.recent_transitions(3)) == 3
 
     def test_clear(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory()
         for idx in range(3):
             h.record_transition(self._make_transition(f"sid-{idx}"))
@@ -606,7 +606,7 @@ class TestWorkflowHistory:
         assert h.transition_count() == 0
 
     def test_bounded_capacity(self):
-        from iios.workflow.lifecycle import WorkflowHistory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowHistory
         h = WorkflowHistory(max_transitions=3, max_history=3)
         for idx in range(6):
             h.record_transition(self._make_transition(f"s-{idx}"))
@@ -620,7 +620,7 @@ class TestWorkflowHistory:
 
 class TestWorkflowStatistics:
     def test_initial_all_zero(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         r = s.report()
         assert r.workflows_created   == 0
@@ -629,14 +629,14 @@ class TestWorkflowStatistics:
         assert r.workflows_cancelled == 0
 
     def test_record_created_increments(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_created()
         s.record_created()
         assert s.report().workflows_created == 2
 
     def test_record_completed_decrements_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_started()
         s.record_completed(runtime_ms=500.0)
@@ -645,7 +645,7 @@ class TestWorkflowStatistics:
         assert r.workflows_completed == 1
 
     def test_average_runtime_computed(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_started()
         s.record_completed(runtime_ms=1000.0)
@@ -655,7 +655,7 @@ class TestWorkflowStatistics:
         assert r.average_runtime_ms == 1500.0
 
     def test_record_failed(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_started()
         s.record_failed()
@@ -664,13 +664,13 @@ class TestWorkflowStatistics:
         assert r.workflows_running == 0
 
     def test_record_cancelled(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_cancelled()
         assert s.report().workflows_cancelled == 1
 
     def test_reset_clears_all(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         s.record_created()
         s.record_started()
@@ -681,7 +681,7 @@ class TestWorkflowStatistics:
         assert r.workflows_completed == 0
 
     def test_to_dict_has_all_keys(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         s = WorkflowLifecycleStatistics()
         d = s.report().to_dict()
         for key in (
@@ -699,7 +699,7 @@ class TestWorkflowStatistics:
 
 class TestWorkflowRegistry:
     def _make_session(self, sid="s1", wid="w1"):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowSession, WorkflowContext, WorkflowMetadata
         )
         ctx  = WorkflowContext.create(sid)
@@ -707,20 +707,20 @@ class TestWorkflowRegistry:
         return WorkflowSession(session_id=sid, workflow_id=wid, context=ctx, metadata=meta)
 
     def test_register_and_get(self):
-        from iios.workflow.lifecycle import WorkflowRegistry
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry
         r = WorkflowRegistry()
         s = self._make_session("s1")
         r.register(s)
         assert r.get("s1") is s
 
     def test_get_or_raise_unknown(self):
-        from iios.workflow.lifecycle import WorkflowRegistry, WorkflowSessionNotFoundError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry, WorkflowSessionNotFoundError
         r = WorkflowRegistry()
         with pytest.raises(WorkflowSessionNotFoundError):
             r.get_or_raise("unknown")
 
     def test_deregister(self):
-        from iios.workflow.lifecycle import WorkflowRegistry
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry
         r = WorkflowRegistry()
         s = self._make_session("s1")
         r.register(s)
@@ -728,7 +728,7 @@ class TestWorkflowRegistry:
         assert r.get("s1") is None
 
     def test_by_state(self):
-        from iios.workflow.lifecycle import WorkflowRegistry, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry, WorkflowLifecycleState
         r = WorkflowRegistry()
         s = self._make_session("s1")
         r.register(s)
@@ -737,7 +737,7 @@ class TestWorkflowRegistry:
         assert s in result
 
     def test_capacity_error(self):
-        from iios.workflow.lifecycle import WorkflowRegistry, WorkflowCapacityError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry, WorkflowCapacityError
         r = WorkflowRegistry(max_sessions=2)
         r.register(self._make_session("s1"))
         r.register(self._make_session("s2"))
@@ -745,14 +745,14 @@ class TestWorkflowRegistry:
             r.register(self._make_session("s3"))
 
     def test_by_workflow(self):
-        from iios.workflow.lifecycle import WorkflowRegistry
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry
         r = WorkflowRegistry()
         r.register(self._make_session("s1", "wf-A"))
         r.register(self._make_session("s2", "wf-B"))
         assert len(r.by_workflow("wf-A")) == 1
 
     def test_count(self):
-        from iios.workflow.lifecycle import WorkflowRegistry
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowRegistry
         r = WorkflowRegistry()
         r.register(self._make_session("s1"))
         r.register(self._make_session("s2"))
@@ -766,31 +766,31 @@ class TestWorkflowRegistry:
 
 class TestWorkflowFactory:
     def test_create_returns_session(self):
-        from iios.workflow.lifecycle import WorkflowFactory, WorkflowSession
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory, WorkflowSession
         f = WorkflowFactory()
         s = f.create("wf-001")
         assert isinstance(s, WorkflowSession)
 
     def test_session_id_prefix(self):
-        from iios.workflow.lifecycle import WorkflowFactory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory
         f = WorkflowFactory()
         s = f.create("wf-001")
         assert s.session_id.startswith("ws-")
 
     def test_custom_session_id(self):
-        from iios.workflow.lifecycle import WorkflowFactory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory
         f = WorkflowFactory()
         s = f.create("wf-001", session_id="my-custom-id")
         assert s.session_id == "my-custom-id"
 
     def test_initial_state_is_created(self):
-        from iios.workflow.lifecycle import WorkflowFactory, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory, WorkflowLifecycleState
         f = WorkflowFactory()
         s = f.create("wf-001")
         assert s.state == WorkflowLifecycleState.CREATED
 
     def test_custom_metadata_applied(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowFactory, WorkflowMetadata, WorkflowType, WorkflowPriority
         )
         f = WorkflowFactory()
@@ -800,7 +800,7 @@ class TestWorkflowFactory:
         assert s.workflow_priority == WorkflowPriority.HIGH
 
     def test_create_default(self):
-        from iios.workflow.lifecycle import WorkflowFactory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory
         f = WorkflowFactory()
         s = f.create_default("wf-001")
         assert s.workflow_id == "wf-001"
@@ -813,7 +813,7 @@ class TestWorkflowFactory:
 
 class TestWorkflowValidator:
     def _make_session(self, sid="sid-1", wid="wf-1"):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowSession, WorkflowContext, WorkflowMetadata
         )
         ctx  = WorkflowContext.create(sid)
@@ -821,20 +821,20 @@ class TestWorkflowValidator:
         return WorkflowSession(session_id=sid, workflow_id=wid, context=ctx, metadata=meta)
 
     def test_fresh_session_passes(self):
-        from iios.workflow.lifecycle import WorkflowValidator
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidator
         v = WorkflowValidator()
         r = v.validate(self._make_session())
         assert r.passed
         assert r.failed_checks == []
 
     def test_report_has_five_checks(self):
-        from iios.workflow.lifecycle import WorkflowValidator
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidator
         v = WorkflowValidator()
         r = v.validate(self._make_session())
         assert len(r.results) == 5
 
     def test_to_dict_has_keys(self):
-        from iios.workflow.lifecycle import WorkflowValidator
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidator
         v = WorkflowValidator()
         r = v.validate(self._make_session())
         d = r.to_dict()
@@ -843,7 +843,7 @@ class TestWorkflowValidator:
         assert "results"    in d
 
     def test_session_after_transitions_still_passes(self):
-        from iios.workflow.lifecycle import WorkflowValidator, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowValidator, WorkflowLifecycleState
         v = WorkflowValidator()
         s = self._make_session()
         s.transition_to(WorkflowLifecycleState.INITIALIZING)
@@ -859,13 +859,13 @@ class TestWorkflowValidator:
 
 class TestWorkflowLifecycleHappyPath:
     def test_create_session(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         assert s.state == WorkflowLifecycleState.CREATED
 
     def test_full_success_path(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.initialize(s.session_id)
@@ -877,7 +877,7 @@ class TestWorkflowLifecycleHappyPath:
         assert s.state == WorkflowLifecycleState.ARCHIVED
 
     def test_schedule_queue_path(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-002")
         lc.initialize(s.session_id)
@@ -890,7 +890,7 @@ class TestWorkflowLifecycleHappyPath:
         assert s.state == WorkflowLifecycleState.COMPLETED
 
     def test_statistics_after_full_path(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-003")
         lc.initialize(s.session_id)
@@ -903,14 +903,14 @@ class TestWorkflowLifecycleHappyPath:
         assert r.workflows_completed == 1
 
     def test_list_sessions(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         lc.create_session("wf-001")
         lc.create_session("wf-002")
         assert len(lc.list_sessions()) == 2
 
     def test_sessions_by_state(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s1 = lc.create_session("wf-001")
         s2 = lc.create_session("wf-002")
@@ -920,7 +920,7 @@ class TestWorkflowLifecycleHappyPath:
         assert s1 not in created
 
     def test_event_emitted_on_create(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowEventType
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowEventType
         lc = WorkflowLifecycle()
         received = []
         lc.event_bus().add_listener(received.append)
@@ -928,7 +928,7 @@ class TestWorkflowLifecycleHappyPath:
         assert any(e.event_type == WorkflowEventType.WORKFLOW_CREATED for e in received)
 
     def test_transition_recorded_in_history(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.initialize(s.session_id)
@@ -943,20 +943,20 @@ class TestWorkflowLifecycleHappyPath:
 
 class TestWorkflowLifecycleErrors:
     def test_unknown_session_raises(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowSessionNotFoundError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowSessionNotFoundError
         lc = WorkflowLifecycle()
         with pytest.raises(WorkflowSessionNotFoundError):
             lc.initialize("nonexistent")
 
     def test_invalid_transition_raises(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowInvalidTransitionError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowInvalidTransitionError
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         with pytest.raises(WorkflowInvalidTransitionError):
             lc.complete(s.session_id)  # CREATED → COMPLETED invalid
 
     def test_archived_session_raises_terminated(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycle, WorkflowSessionTerminatedError
         )
         lc = WorkflowLifecycle()
@@ -971,12 +971,12 @@ class TestWorkflowLifecycleErrors:
             lc.initialize(s.session_id)
 
     def test_get_session_returns_none_for_unknown(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         assert lc.get_session("nonexistent") is None
 
     def test_get_session_or_raise(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowSessionNotFoundError
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowSessionNotFoundError
         lc = WorkflowLifecycle()
         with pytest.raises(WorkflowSessionNotFoundError):
             lc.get_session_or_raise("missing")
@@ -989,7 +989,7 @@ class TestWorkflowLifecycleErrors:
 
 class TestPauseResumeWait:
     def _running_session(self, lc=None):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = lc or WorkflowLifecycle()
         s = lc.create_session("wf-prw")
         lc.initialize(s.session_id)
@@ -999,20 +999,20 @@ class TestPauseResumeWait:
         return lc, s
 
     def test_pause_from_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         lc, s = self._running_session()
         lc.pause(s.session_id)
         assert s.state == WorkflowLifecycleState.PAUSED
 
     def test_resume_from_paused(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         lc, s = self._running_session()
         lc.pause(s.session_id)
         lc.resume(s.session_id)
         assert s.state == WorkflowLifecycleState.RESUMING
 
     def test_resuming_to_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         lc, s = self._running_session()
         lc.pause(s.session_id)
         lc.resume(s.session_id)
@@ -1020,13 +1020,13 @@ class TestPauseResumeWait:
         assert s.state == WorkflowLifecycleState.RUNNING
 
     def test_wait_from_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         lc, s = self._running_session()
         lc.wait(s.session_id)
         assert s.state == WorkflowLifecycleState.WAITING
 
     def test_resume_from_wait_to_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         lc, s = self._running_session()
         lc.wait(s.session_id)
         lc.resume_from_wait(s.session_id)
@@ -1040,21 +1040,21 @@ class TestPauseResumeWait:
 
 class TestCancelRetry:
     def test_cancel_from_created(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.cancel(s.session_id)
         assert s.state == WorkflowLifecycleState.CANCELLED
 
     def test_cancel_stats_updated(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.cancel(s.session_id)
         assert lc.statistics().workflows_cancelled == 1
 
     def test_fail_and_retry(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.initialize(s.session_id)
@@ -1064,7 +1064,7 @@ class TestCancelRetry:
         assert s.state == WorkflowLifecycleState.INITIALIZING
 
     def test_cancel_then_archive(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-001")
         lc.cancel(s.session_id)
@@ -1072,7 +1072,7 @@ class TestCancelRetry:
         assert s.state == WorkflowLifecycleState.ARCHIVED
 
     def test_fail_event_emitted(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowEventType
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowEventType
         lc = WorkflowLifecycle()
         received = []
         lc.event_bus().add_listener(received.append)
@@ -1090,7 +1090,7 @@ class TestCancelRetry:
 
 class TestScheduleQueue:
     def test_ready_to_scheduled_to_queued_to_running(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-sq")
         lc.initialize(s.session_id)
@@ -1104,7 +1104,7 @@ class TestScheduleQueue:
         assert s.state == WorkflowLifecycleState.RUNNING
 
     def test_ready_to_queued_directly(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-sq2")
         lc.initialize(s.session_id)
@@ -1114,7 +1114,7 @@ class TestScheduleQueue:
         assert s.state == WorkflowLifecycleState.QUEUED
 
     def test_ready_to_running_directly(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowLifecycleState
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-sq3")
         lc.initialize(s.session_id)
@@ -1124,7 +1124,7 @@ class TestScheduleQueue:
         assert s.state == WorkflowLifecycleState.RUNNING
 
     def test_sessions_by_workflow(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         lc.create_session("wf-X")
         lc.create_session("wf-X")
@@ -1140,7 +1140,7 @@ class TestScheduleQueue:
 
 class TestConcurrency:
     def test_concurrent_create_sessions(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         errors = []
 
@@ -1161,7 +1161,7 @@ class TestConcurrency:
 
     def test_concurrent_transitions_on_same_session(self):
         """Only one thread can perform the first transition; others should fail gracefully."""
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycle,
             WorkflowInvalidTransitionError,
             WorkflowSessionTerminatedError,
@@ -1189,7 +1189,7 @@ class TestConcurrency:
         assert len(failures)  == 19
 
     def test_statistics_thread_safe(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleStatistics
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleStatistics
         stats = WorkflowLifecycleStatistics()
         threads = [
             threading.Thread(target=stats.record_created) for _ in range(100)
@@ -1201,7 +1201,7 @@ class TestConcurrency:
         assert stats.report().workflows_created == 100
 
     def test_registry_thread_safe(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowRegistry, WorkflowSession, WorkflowContext, WorkflowMetadata
         )
         reg = WorkflowRegistry(max_sessions=200)
@@ -1228,7 +1228,7 @@ class TestConcurrency:
         assert reg.count() == 100
 
     def test_event_bus_thread_safe(self):
-        from iios.workflow.lifecycle import (
+        from enterprise_ai_platform.workflow.lifecycle import (
             WorkflowLifecycleEventBus, WorkflowEventType, WorkflowLifecycleState
         )
         bus = WorkflowLifecycleEventBus()
@@ -1263,12 +1263,12 @@ class TestConcurrency:
 
 class TestRegression:
     def test_exports_complete(self):
-        import iios.workflow.lifecycle as mod
+        import enterprise_ai_platform.workflow.lifecycle as mod
         for name in mod.__all__:
             assert hasattr(mod, name), f"Missing export: {name}"
 
     def test_all_states_have_values(self):
-        from iios.workflow.lifecycle import WorkflowLifecycleState
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycleState
         expected = {
             "created", "initializing", "validating", "ready",
             "scheduled", "queued", "running", "waiting", "paused",
@@ -1278,7 +1278,7 @@ class TestRegression:
         assert actual == expected
 
     def test_all_event_types_have_values(self):
-        from iios.workflow.lifecycle import WorkflowEventType
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowEventType
         expected = {
             "workflow_created", "workflow_initialized", "workflow_validated",
             "workflow_scheduled", "workflow_started", "workflow_paused",
@@ -1289,14 +1289,14 @@ class TestRegression:
         assert actual == expected
 
     def test_no_two_sessions_share_id(self):
-        from iios.workflow.lifecycle import WorkflowFactory
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowFactory
         f = WorkflowFactory()
         ids = {f.create("wf-x").session_id for _ in range(100)}
         assert len(ids) == 100
 
     def test_full_lifecycle_transition_count(self):
         """CREATED→INIT→VAL→READY→RUN→COMPLETED → 5 transitions."""
-        from iios.workflow.lifecycle import WorkflowLifecycle
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-tc")
         lc.initialize(s.session_id)
@@ -1307,7 +1307,7 @@ class TestRegression:
         assert s.transition_count() == 5
 
     def test_validation_passes_after_full_lifecycle(self):
-        from iios.workflow.lifecycle import WorkflowLifecycle, WorkflowValidator
+        from enterprise_ai_platform.workflow.lifecycle import WorkflowLifecycle, WorkflowValidator
         lc = WorkflowLifecycle()
         s = lc.create_session("wf-val")
         lc.initialize(s.session_id)

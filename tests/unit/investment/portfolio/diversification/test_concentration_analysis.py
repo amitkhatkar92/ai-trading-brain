@@ -1,14 +1,14 @@
 """test_concentration_analysis.py"""
 import pytest
 
-from iios.investment.portfolio.diversification.concentration_analysis import (
+from enterprise_ai_platform.investment.portfolio.diversification.concentration_analysis import (
     analyze_exposure_concentration,
     analyze_position_concentration,
 )
-from iios.investment.portfolio.diversification.concentration_engine import ConcentrationEngine
-from iios.investment.portfolio.diversification.sector_concentration import analyze_sector_concentration
-from iios.investment.portfolio.diversification.factor_concentration import analyze_factor_concentration
-from iios.investment.portfolio.diversification.diversification_types import (
+from enterprise_ai_platform.investment.portfolio.diversification.concentration_engine import ConcentrationEngine
+from enterprise_ai_platform.investment.portfolio.diversification.sector_concentration import analyze_sector_concentration
+from enterprise_ai_platform.investment.portfolio.diversification.factor_concentration import analyze_factor_concentration
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import (
     ConcentrationLevel, PositionData,
 )
 

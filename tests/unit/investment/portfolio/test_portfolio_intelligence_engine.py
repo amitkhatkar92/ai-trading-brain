@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from iios.investment.portfolio import (
+from enterprise_ai_platform.investment.portfolio import (
     # Engine
     PortfolioIntelligenceEngine,
     get_portfolio_engine,
@@ -94,7 +94,7 @@ from iios.investment.portfolio import (
     RiskLimitExceededError,
     ExposureLimitExceededError,
 )
-from iios.investment.portfolio.portfolio_constants import (
+from enterprise_ai_platform.investment.portfolio.portfolio_constants import (
     PORTFOLIO_ENGINE_VERSION,
     PORTFOLIO_ENGINE_SYSTEM_ID,
 )
@@ -1201,14 +1201,14 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_exports_importable(self):
-        import iios.investment.portfolio as pkg
+        import enterprise_ai_platform.investment.portfolio as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing export: {name}"
 
     def test_version(self):
-        import iios.investment.portfolio as pkg
+        import enterprise_ai_platform.investment.portfolio as pkg
         assert pkg.__version__ == PORTFOLIO_ENGINE_VERSION
 
     def test_system_id(self):
-        import iios.investment.portfolio as pkg
+        import enterprise_ai_platform.investment.portfolio as pkg
         assert "portfolio" in pkg.__system_id__

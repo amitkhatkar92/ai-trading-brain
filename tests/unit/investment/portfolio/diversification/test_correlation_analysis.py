@@ -1,15 +1,15 @@
 """test_correlation_analysis.py"""
 import pytest
 
-from iios.investment.portfolio.diversification.correlation_matrix import (
+from enterprise_ai_platform.investment.portfolio.diversification.correlation_matrix import (
     build_correlation_matrix, diversification_ratio, portfolio_risk_from_matrix,
 )
-from iios.investment.portfolio.diversification.correlation_analysis import analyze_correlations
-from iios.investment.portfolio.diversification.correlation_engine import CorrelationEngine
-from iios.investment.portfolio.diversification.dependency_analysis import analyze_dependencies
-from iios.investment.portfolio.diversification.relationship_graph import build_relationship_graph
-from iios.investment.portfolio.diversification.overlap_analysis import analyze_overlap
-from iios.investment.portfolio.diversification.diversification_types import (
+from enterprise_ai_platform.investment.portfolio.diversification.correlation_analysis import analyze_correlations
+from enterprise_ai_platform.investment.portfolio.diversification.correlation_engine import CorrelationEngine
+from enterprise_ai_platform.investment.portfolio.diversification.dependency_analysis import analyze_dependencies
+from enterprise_ai_platform.investment.portfolio.diversification.relationship_graph import build_relationship_graph
+from enterprise_ai_platform.investment.portfolio.diversification.overlap_analysis import analyze_overlap
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import (
     CORR_SAME_INDUSTRY, CORR_SAME_SECTOR, CORR_DIFFERENT, PositionData,
 )
 

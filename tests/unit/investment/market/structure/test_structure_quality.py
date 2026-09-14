@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.market_constants import MarketStrength, TrendDirection
-from iios.investment.market.structure.confidence_calculator import ConfidenceCalculator
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.market_constants import MarketStrength, TrendDirection
+from enterprise_ai_platform.investment.market.structure.confidence_calculator import ConfidenceCalculator
+from enterprise_ai_platform.investment.market.structure.models import (
     StructurePhase,
     StructureQualityScore,
     SwingPoint,
@@ -18,8 +18,8 @@ from iios.investment.market.structure.models import (
     ZoneStrength,
     ZoneType,
 )
-from iios.investment.market.structure.structure_quality import StructureQualityAssessor
-from iios.investment.market.structure.structure_score import StructureScorer
+from enterprise_ai_platform.investment.market.structure.structure_quality import StructureQualityAssessor
+from enterprise_ai_platform.investment.market.structure.structure_score import StructureScorer
 from tests.unit.investment.market.structure.conftest import (
     make_uptrend_bars,
 )
@@ -138,7 +138,7 @@ class TestStructureScorer:
         assert result.grade == "F"
 
     def test_weights_sum_to_one(self):
-        from iios.investment.market.structure.structure_score import (
+        from enterprise_ai_platform.investment.market.structure.structure_score import (
             _W_SWING, _W_TREND, _W_ZONE, _W_BREAKOUT, _W_DATA
         )
         total = _W_SWING + _W_TREND + _W_ZONE + _W_BREAKOUT + _W_DATA

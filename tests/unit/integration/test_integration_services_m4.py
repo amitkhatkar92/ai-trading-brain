@@ -32,8 +32,8 @@ from typing import Any, Dict, List
 
 import pytest
 
-import iios.integration.services as svc
-from iios.integration.services.constants import (
+import enterprise_ai_platform.integration.services as svc
+from enterprise_ai_platform.integration.services.constants import (
     AdapterProtocol,
     AuthScheme,
     ConnectionState,
@@ -47,9 +47,9 @@ from iios.integration.services.constants import (
     StreamMode,
     TransportType,
 )
-from iios.integration.services.connector_context import ConnectorContext
-from iios.integration.services.connector_request import ConnectorRequest
-from iios.integration.services.connector_response import ConnectorResponse
+from enterprise_ai_platform.integration.services.connector_context import ConnectorContext
+from enterprise_ai_platform.integration.services.connector_request import ConnectorRequest
+from enterprise_ai_platform.integration.services.connector_response import ConnectorResponse
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -102,7 +102,7 @@ class TestConstants:
         assert len(ServiceValidationCheck) == 6
 
     def test_constants_defaults(self):
-        from iios.integration.services.constants import (
+        from enterprise_ai_platform.integration.services.constants import (
             DEFAULT_TIMEOUT_MS, DEFAULT_RETRY_COUNT, DEFAULT_POOL_SIZE,
             DEFAULT_POOL_MAX, FIBONACCI_DELAYS_MS, WORKFLOW_STAGES,
         )
@@ -237,14 +237,14 @@ class TestConnectorContext:
 
 class TestConnectorRegistry:
     def _make_descriptor(self, svc_type=ServiceType.REST_API, name="test"):
-        from iios.integration.services.connector_registry import ConnectorDescriptor
+        from enterprise_ai_platform.integration.services.connector_registry import ConnectorDescriptor
         return ConnectorDescriptor.create(
             name         = name,
             service_type = svc_type,
         )
 
     def test_register_and_retrieve(self):
-        from iios.integration.services.connector_registry import ConnectorRegistry
+        from enterprise_ai_platform.integration.services.connector_registry import ConnectorRegistry
         reg = ConnectorRegistry()
         desc = self._make_descriptor()
         reg.register(desc)
@@ -252,14 +252,14 @@ class TestConnectorRegistry:
         assert found is not None
 
     def test_count(self):
-        from iios.integration.services.connector_registry import ConnectorRegistry
+        from enterprise_ai_platform.integration.services.connector_registry import ConnectorRegistry
         reg = ConnectorRegistry()
         for _ in range(3):
             reg.register(self._make_descriptor())
         assert reg.count() >= 3
 
     def test_supports_type(self):
-        from iios.integration.services.connector_registry import ConnectorRegistry
+        from enterprise_ai_platform.integration.services.connector_registry import ConnectorRegistry
         reg = ConnectorRegistry()
         reg.register(self._make_descriptor(ServiceType.KAFKA))
         assert reg.supports_type(ServiceType.KAFKA)
@@ -268,7 +268,7 @@ class TestConnectorRegistry:
 
 class TestAdapterRegistry:
     def _make_adapter_desc(self):
-        from iios.integration.services.adapter_registry import AdapterDescriptor
+        from enterprise_ai_platform.integration.services.adapter_registry import AdapterDescriptor
         return AdapterDescriptor.create(
             name         = "test-adapter",
             protocol     = AdapterProtocol.REST,
@@ -276,7 +276,7 @@ class TestAdapterRegistry:
         )
 
     def test_register_and_find(self):
-        from iios.integration.services.adapter_registry import AdapterRegistry
+        from enterprise_ai_platform.integration.services.adapter_registry import AdapterRegistry
         reg = AdapterRegistry()
         desc = self._make_adapter_desc()
         reg.register(desc)
@@ -284,7 +284,7 @@ class TestAdapterRegistry:
         assert found is not None
 
     def test_missing_returns_none(self):
-        from iios.integration.services.adapter_registry import AdapterRegistry
+        from enterprise_ai_platform.integration.services.adapter_registry import AdapterRegistry
         reg = AdapterRegistry()
         assert reg.first_for_service(ServiceType.GRPC) is None
 
@@ -296,36 +296,36 @@ class TestAdapterRegistry:
 
 class TestHttpClient:
     def test_get(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         c = SimulatedHttpClient()
         result = c.get("https://example.com")
         assert result["status_code"] == 200
         assert result["simulated"] is True
 
     def test_post(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         c = SimulatedHttpClient()
         result = c.post("https://example.com", payload={"key": "val"})
         assert result["method"] == "POST"
 
     def test_put(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         c = SimulatedHttpClient()
         result = c.put("https://example.com", payload={"k": "v"})
         assert result["method"] == "PUT"
 
     def test_delete(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         c = SimulatedHttpClient()
         result = c.delete("https://example.com")
         assert result["method"] == "DELETE"
 
     def test_health_check(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         assert SimulatedHttpClient().health_check() is True
 
     def test_execute_integration(self):
-        from iios.integration.services.http_client import SimulatedHttpClient
+        from enterprise_ai_platform.integration.services.http_client import SimulatedHttpClient
         c   = SimulatedHttpClient()
         req = ConnectorRequest.create(
             approved_request_id = "x",
@@ -338,13 +338,13 @@ class TestHttpClient:
 
 class TestRestClient:
     def test_call(self):
-        from iios.integration.services.rest_client import SimulatedRestClient
+        from enterprise_ai_platform.integration.services.rest_client import SimulatedRestClient
         c = SimulatedRestClient()
         r = c.call("GET", "https://api.example.com")
         assert r["status_code"] == 200
 
     def test_execute(self):
-        from iios.integration.services.rest_client import SimulatedRestClient
+        from enterprise_ai_platform.integration.services.rest_client import SimulatedRestClient
         c   = SimulatedRestClient()
         req = ConnectorRequest.create(
             approved_request_id = "rest-x",
@@ -357,44 +357,44 @@ class TestRestClient:
 
 class TestGraphqlClient:
     def test_query(self):
-        from iios.integration.services.graphql_client import SimulatedGraphqlClient
+        from enterprise_ai_platform.integration.services.graphql_client import SimulatedGraphqlClient
         c = SimulatedGraphqlClient()
         r = c.query("https://gql.example.com", "{ users { id } }")
         assert r["simulated"] is True
 
     def test_mutate(self):
-        from iios.integration.services.graphql_client import SimulatedGraphqlClient
+        from enterprise_ai_platform.integration.services.graphql_client import SimulatedGraphqlClient
         c = SimulatedGraphqlClient()
         r = c.mutate("https://gql.example.com", "mutation { createUser(name: \"x\") { id } }")
         assert r["simulated"] is True
 
     def test_health_check(self):
-        from iios.integration.services.graphql_client import SimulatedGraphqlClient
+        from enterprise_ai_platform.integration.services.graphql_client import SimulatedGraphqlClient
         assert SimulatedGraphqlClient().health_check() is True
 
 
 class TestGrpcClient:
     def test_unary(self):
-        from iios.integration.services.grpc_client import SimulatedGrpcClient
+        from enterprise_ai_platform.integration.services.grpc_client import SimulatedGrpcClient
         c = SimulatedGrpcClient()
         r = c.unary("orders.OrderService", "GetOrder", {"id": 1})
         assert r["simulated"] is True
 
     def test_server_stream(self):
-        from iios.integration.services.grpc_client import SimulatedGrpcClient
+        from enterprise_ai_platform.integration.services.grpc_client import SimulatedGrpcClient
         c = SimulatedGrpcClient()
         msgs = c.server_stream("stream.StreamService", "Watch", {})
         assert isinstance(msgs, list)
         assert len(msgs) >= 1
 
     def test_health_check(self):
-        from iios.integration.services.grpc_client import SimulatedGrpcClient
+        from enterprise_ai_platform.integration.services.grpc_client import SimulatedGrpcClient
         assert SimulatedGrpcClient().health_check() is True
 
 
 class TestWebSocketClient:
     def test_connect_send_receive_close(self):
-        from iios.integration.services.websocket_client import SimulatedWebSocketClient
+        from enterprise_ai_platform.integration.services.websocket_client import SimulatedWebSocketClient
         c = SimulatedWebSocketClient()
         c.connect("wss://stream.example.com")
         c.send('{"subscribe": "NIFTY"}')
@@ -403,7 +403,7 @@ class TestWebSocketClient:
         c.close()
 
     def test_health_check(self):
-        from iios.integration.services.websocket_client import SimulatedWebSocketClient
+        from enterprise_ai_platform.integration.services.websocket_client import SimulatedWebSocketClient
         assert SimulatedWebSocketClient().health_check() is True
 
 
@@ -528,13 +528,13 @@ class TestRabbitMQAdapter:
 class TestRedisStreamAdapter:
     def test_xadd(self):
         adapter = svc.SimulatedRedisStreamAdapter()
-        entry = adapter.xadd("iios:trades", {"symbol": "NIFTY"})
-        assert entry.stream_key == "iios:trades"
+        entry = adapter.xadd("enterprise_ai_platform:trades", {"symbol": "NIFTY"})
+        assert entry.stream_key == "enterprise_ai_platform:trades"
         assert entry.entry_id.startswith("0-")
 
     def test_xread(self):
         adapter = svc.SimulatedRedisStreamAdapter()
-        entries = adapter.xread("iios:trades", "my-group", "consumer-1")
+        entries = adapter.xread("enterprise_ai_platform:trades", "my-group", "consumer-1")
         assert isinstance(entries, list)
 
     def test_execute_xadd(self):
@@ -546,7 +546,7 @@ class TestRedisStreamAdapter:
             payload             = {"event": "trade"},
             connector_config    = {
                 "redis_operation":  "xadd",
-                "redis_stream_key": "iios:stream",
+                "redis_stream_key": "enterprise_ai_platform:stream",
             },
         )
         resp = adapter.execute(req)
@@ -1077,7 +1077,7 @@ class TestRetryEngine:
             if counter["n"] < 2:
                 raise RuntimeError("transient")
             return "done"
-        from iios.integration.services.retry_engine import RetryConfig
+        from enterprise_ai_platform.integration.services.retry_engine import RetryConfig
         re = svc.RetryEngine(RetryConfig(max_attempts=3, strategy=RetryStrategy.IMMEDIATE))
         result = re.execute(fn)
         assert result.success is True
@@ -1085,7 +1085,7 @@ class TestRetryEngine:
 
     def test_exhausted_returns_failure(self):
         re = svc.RetryEngine()
-        from iios.integration.services.retry_engine import RetryConfig
+        from enterprise_ai_platform.integration.services.retry_engine import RetryConfig
         result = re.execute(
             lambda: (_ for _ in ()).throw(RuntimeError("always fails")),  # type: ignore
             config=RetryConfig(max_attempts=2, strategy=RetryStrategy.IMMEDIATE),
@@ -1094,13 +1094,13 @@ class TestRetryEngine:
         assert result.total_attempts == 2
 
     def test_fibonacci_strategy(self):
-        from iios.integration.services.retry_engine import RetryConfig, RetryEngine
+        from enterprise_ai_platform.integration.services.retry_engine import RetryConfig, RetryEngine
         re = RetryEngine(RetryConfig(max_attempts=1, strategy=RetryStrategy.FIBONACCI))
         result = re.execute(lambda: "ok")
         assert result.success is True
 
     def test_fixed_delay_strategy(self):
-        from iios.integration.services.retry_engine import RetryConfig, RetryEngine
+        from enterprise_ai_platform.integration.services.retry_engine import RetryConfig, RetryEngine
         re = RetryEngine(RetryConfig(max_attempts=1, strategy=RetryStrategy.FIXED_DELAY, delay_ms=0))
         result = re.execute(lambda: "ok")
         assert result.success is True
@@ -1152,7 +1152,7 @@ class TestRateLimitEngine:
         assert result.allowed is True
 
     def test_reject_when_depleted(self):
-        from iios.integration.services.rate_limit_engine import RateLimitConfig
+        from enterprise_ai_platform.integration.services.rate_limit_engine import RateLimitConfig
         rle = svc.RateLimitEngine()
         rle.configure("tight", RateLimitConfig(rps=1000, burst=2))
         rle.acquire("tight")
@@ -1757,22 +1757,22 @@ class TestConcurrency:
 
 class TestRegression:
     def test_no_circular_imports(self):
-        """Verify iios.integration.services does not import from policies or engine."""
+        """Verify enterprise_ai_platform.integration.services does not import from policies or engine."""
         import importlib, sys
         # Remove cached modules to force fresh import check
         for key in list(sys.modules.keys()):
             if "integration.services" in key:
                 del sys.modules[key]
-        import iios.integration.services  # must not raise
+        import enterprise_ai_platform.integration.services  # must not raise
         # Check none of the services modules import from policies
         for key, mod in sys.modules.items():
-            if "iios.integration.services" in key and hasattr(mod, "__file__"):
+            if "enterprise_ai_platform.integration.services" in key and hasattr(mod, "__file__"):
                 if mod.__file__:
                     with open(mod.__file__, "r", encoding="utf-8", errors="ignore") as f:
                         src = f.read()
-                    assert "iios.integration.policies" not in src, \
+                    assert "enterprise_ai_platform.integration.policies" not in src, \
                         f"{key} imports from policies (circular)"
-                    assert "iios.integration.engine" not in src, \
+                    assert "enterprise_ai_platform.integration.engine" not in src, \
                         f"{key} imports from engine (circular)"
 
     def test_no_vendor_sdk_imports(self):
@@ -1783,7 +1783,7 @@ class TestRegression:
                      "paramiko", "ftplib", "smtplib", "twilio", "firebase_admin",
                      "grpc", "websockets"]
         for key, mod in sys.modules.items():
-            if "iios.integration.services" in key and hasattr(mod, "__file__"):
+            if "enterprise_ai_platform.integration.services" in key and hasattr(mod, "__file__"):
                 if mod.__file__:
                     with open(mod.__file__, "r", encoding="utf-8", errors="ignore") as f:
                         src = f.read()
@@ -1793,7 +1793,7 @@ class TestRegression:
 
     def test_all_public_api_importable(self):
         """Every name in __all__ must be importable from the package."""
-        import iios.integration.services as svc_mod
+        import enterprise_ai_platform.integration.services as svc_mod
         for name in svc_mod.__all__:
             assert hasattr(svc_mod, name), f"__all__ member {name!r} not accessible"
 

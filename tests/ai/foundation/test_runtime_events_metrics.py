@@ -15,19 +15,19 @@ from __future__ import annotations
 import time
 import unittest
 
-from iios.ai.foundation.events import (
+from enterprise_ai_platform.ai.foundation.events import (
     AIEventBus, AIEventType,
     SessionStartedEvent, ExecutionCompletedEvent,
     ProviderRegisteredEvent, RetryStartedEvent,
 )
-from iios.ai.foundation.metrics import (
+from enterprise_ai_platform.ai.foundation.metrics import (
     RuntimeMetrics, ProviderMetrics, SessionMetrics, ExecutionMetrics,
 )
-from iios.ai.foundation.cost import (
+from enterprise_ai_platform.ai.foundation.cost import (
     TokenUsage, ExecutionCost, CostSummary, CostTracker,
 )
-from iios.ai.foundation.request import AIRequest, AIExecutionRequest, RequestMetadata
-from iios.ai.foundation.runtime import (
+from enterprise_ai_platform.ai.foundation.request import AIRequest, AIExecutionRequest, RequestMetadata
+from enterprise_ai_platform.ai.foundation.runtime import (
     ExecutionPipeline, ExecutionRuntime, ExecutionContext,
 )
 
@@ -282,7 +282,7 @@ class TestExecutionPipeline(unittest.TestCase):
         self.assertEqual(len(names), 8)
 
     def test_custom_stage_appended(self):
-        from iios.ai.foundation.runtime import RuntimePipelineStage
+        from enterprise_ai_platform.ai.foundation.runtime import RuntimePipelineStage
         class MyStage(RuntimePipelineStage):
             name = "custom"
             def execute(self, ctx): ctx.set("custom_ran", True)

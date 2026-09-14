@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.configuration.configuration_merger import ArrayMergeStrategy, ConfigurationMerger
-from iios.configuration.configuration_exception import ConfigurationMergeError
+from enterprise_ai_platform.configuration.configuration_merger import ArrayMergeStrategy, ConfigurationMerger
+from enterprise_ai_platform.configuration.configuration_exception import ConfigurationMergeError
 
 
 class TestConfigurationMerger:

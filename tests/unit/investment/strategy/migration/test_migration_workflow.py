@@ -1,18 +1,18 @@
 """Tests for the migration workflow (session, steps, pipeline, statistics)."""
 import pytest
 
-from iios.investment.strategy.migration.migration_session import MigrationSession
-from iios.investment.strategy.migration.migration_status import (
+from enterprise_ai_platform.investment.strategy.migration.migration_session import MigrationSession
+from enterprise_ai_platform.investment.strategy.migration.migration_status import (
     MigrationStatus,
     MigrationPhase,
     RollbackReason,
 )
-from iios.investment.strategy.migration.migration_steps import (
+from enterprise_ai_platform.investment.strategy.migration.migration_steps import (
     MigrationStepExecutor,
     StepResult,
 )
-from iios.investment.strategy.migration.migration_statistics import MigrationStatistics
-from iios.investment.strategy.migration.migration_pipeline import (
+from enterprise_ai_platform.investment.strategy.migration.migration_statistics import MigrationStatistics
+from enterprise_ai_platform.investment.strategy.migration.migration_pipeline import (
     MigrationPipeline,
     PipelineConfig,
 )

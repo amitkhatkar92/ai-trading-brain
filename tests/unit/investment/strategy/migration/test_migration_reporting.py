@@ -2,27 +2,27 @@
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.strategy.migration.migration_report import (
+from enterprise_ai_platform.investment.strategy.migration.migration_report import (
     MigrationReport,
     build_migration_report,
     RECOMMEND_APPROVE,
     RECOMMEND_REJECT,
     RECOMMEND_REVIEW,
 )
-from iios.investment.strategy.migration.migration_summary import (
+from enterprise_ai_platform.investment.strategy.migration.migration_summary import (
     MigrationSummary,
     MigrationSummaryBuilder,
 )
-from iios.investment.strategy.migration.migration_audit import (
+from enterprise_ai_platform.investment.strategy.migration.migration_audit import (
     AuditEntry,
     MigrationAudit,
     make_entry,
 )
-from iios.investment.strategy.migration.migration_confidence import MigrationConfidence
-from iios.investment.strategy.migration.migration_session import MigrationSession
-from iios.investment.strategy.migration.migration_status import MigrationStatus
-from iios.investment.strategy.migration.adapter_factory import AdapterFactory
-from iios.investment.strategy.migration.migration_validator import MigrationValidator
+from enterprise_ai_platform.investment.strategy.migration.migration_confidence import MigrationConfidence
+from enterprise_ai_platform.investment.strategy.migration.migration_session import MigrationSession
+from enterprise_ai_platform.investment.strategy.migration.migration_status import MigrationStatus
+from enterprise_ai_platform.investment.strategy.migration.adapter_factory import AdapterFactory
+from enterprise_ai_platform.investment.strategy.migration.migration_validator import MigrationValidator
 
 
 class TestMigrationReport:

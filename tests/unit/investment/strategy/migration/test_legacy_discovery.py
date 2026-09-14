@@ -1,12 +1,12 @@
 """Tests for legacy discovery engine."""
 import pytest
-from iios.investment.strategy.migration.legacy_discovery import (
+from enterprise_ai_platform.investment.strategy.migration.legacy_discovery import (
     DiscoveryConfig,
     DiscoveryResult,
     LegacyDiscoveryEngine,
 )
-from iios.investment.strategy.migration.legacy_metadata import LegacyStrategySource
-from iios.investment.strategy.migration.legacy_catalog import LegacyCatalog
+from enterprise_ai_platform.investment.strategy.migration.legacy_metadata import LegacyStrategySource
+from enterprise_ai_platform.investment.strategy.migration.legacy_catalog import LegacyCatalog
 
 
 class TestDiscoveryEngine:
@@ -63,7 +63,7 @@ class TestDiscoveryEngine:
 
     def test_catalog_by_source(self):
         self.engine.discover()
-        from iios.investment.strategy.migration.legacy_metadata import LegacyStrategySource
+        from enterprise_ai_platform.investment.strategy.migration.legacy_metadata import LegacyStrategySource
         strategies = self.engine.get_catalog().filter(
             source=LegacyStrategySource.STRATEGY_GENERATOR
         )
@@ -112,7 +112,7 @@ class TestDiscoveryEngine:
 
     def test_discovered_at_set(self):
         from datetime import datetime
-        from iios.investment.strategy.migration.legacy_metadata import LegacyStrategySource
+        from enterprise_ai_platform.investment.strategy.migration.legacy_metadata import LegacyStrategySource
         self.engine.discover()
         # Only JSON-discovered strategies have discovered_at; code-based may have None
         for meta in self.engine.get_catalog().all():

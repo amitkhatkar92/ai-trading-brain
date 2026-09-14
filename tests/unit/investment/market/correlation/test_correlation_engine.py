@@ -4,12 +4,12 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from iios.investment.market.correlation.pearson_estimator import PearsonEstimator
-from iios.investment.market.correlation.spearman_estimator import SpearmanEstimator
-from iios.investment.market.correlation.kendall_estimator import KendallEstimator
-from iios.investment.market.correlation.estimator_registry import EstimatorRegistry
-from iios.investment.market.correlation.correlation_engine import CorrelationEngine
-from iios.investment.market.correlation.models import CorrelationMethod
+from enterprise_ai_platform.investment.market.correlation.pearson_estimator import PearsonEstimator
+from enterprise_ai_platform.investment.market.correlation.spearman_estimator import SpearmanEstimator
+from enterprise_ai_platform.investment.market.correlation.kendall_estimator import KendallEstimator
+from enterprise_ai_platform.investment.market.correlation.estimator_registry import EstimatorRegistry
+from enterprise_ai_platform.investment.market.correlation.correlation_engine import CorrelationEngine
+from enterprise_ai_platform.investment.market.correlation.models import CorrelationMethod
 
 from tests.unit.investment.market.correlation.conftest import (
     make_correlated_snapshots,

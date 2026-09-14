@@ -5,18 +5,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
     DecisionIntelligenceIntegrationEngine,
 )
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     QualityGrade,
     SnapshotStatus,
     ValidationStatus,
 )
-from iios.investment.decision.integration.decision_state import build_decision_state
-from iios.investment.decision.integration.decision_summary import DecisionSummaryBuilder
-from iios.investment.decision.integration.aggregation_engine import AggregationEngine
-from iios.investment.decision.integration.integration_constants import ComponentId
+from enterprise_ai_platform.investment.decision.integration.decision_state import build_decision_state
+from enterprise_ai_platform.investment.decision.integration.decision_summary import DecisionSummaryBuilder
+from enterprise_ai_platform.investment.decision.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.decision.integration.integration_constants import ComponentId
 
 
 def _run(pipeline):

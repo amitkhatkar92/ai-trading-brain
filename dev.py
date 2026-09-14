@@ -37,11 +37,11 @@ def _print_diagnostic() -> None:
     print(f"  LOG     : {os.environ.get('IIOS_LOG_LEVEL', 'DEBUG')}")
 
     try:
-        import iios
+        import enterprise_ai_platform
 
-        print(f"  iios    : v{iios.__version__} [{iios.__status__}]")
+        print(f"  enterprise_ai_platform    : v{enterprise_ai_platform.__version__} [{enterprise_ai_platform.__status__}]")
     except ImportError:
-        print("  iios    : not yet importable (Wave 1 pending)")
+        print("  enterprise_ai_platform    : not yet importable (Wave 1 pending)")
 
     print("=" * 56)
 

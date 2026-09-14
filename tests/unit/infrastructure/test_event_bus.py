@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_event_bus.py
 ===========================================
-Tests for the iios.infrastructure.events subpackage.
+Tests for the enterprise_ai_platform.infrastructure.events subpackage.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import time
 import threading
 import pytest
 
-from iios.infrastructure.events import (
+from enterprise_ai_platform.infrastructure.events import (
     EventBus, get_event_bus, reset_event_bus,
     EventQueue, DeadLetterQueue,
     EventRouter,
@@ -18,9 +18,9 @@ from iios.infrastructure.events import (
     EventDispatcher,
     Subscriber, SubscriberDescriptor,
 )
-from iios.infrastructure.infrastructure_constants import EventPriority
-from iios.infrastructure.infrastructure_models import EventEnvelope
-from iios.infrastructure.infrastructure_exceptions import EventBusError
+from enterprise_ai_platform.infrastructure.infrastructure_constants import EventPriority
+from enterprise_ai_platform.infrastructure.infrastructure_models import EventEnvelope
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import EventBusError
 
 
 # ---------------------------------------------------------------------------

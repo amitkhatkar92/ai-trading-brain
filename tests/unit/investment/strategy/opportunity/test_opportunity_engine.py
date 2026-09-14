@@ -6,11 +6,11 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.strategy.opportunity.strategy_opportunity_engine import StrategyOpportunityEngine
-from iios.investment.strategy.opportunity.strategy_opportunity import OpportunityState
-from iios.investment.strategy.opportunity.matching_profile import CONSERVATIVE_PROFILE
-from iios.investment.strategy.opportunity.opportunity_event import EventType
-from iios.investment.strategy.opportunity.market_opportunity import MarketRegime
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_opportunity_engine import StrategyOpportunityEngine
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_opportunity import OpportunityState
+from enterprise_ai_platform.investment.strategy.opportunity.matching_profile import CONSERVATIVE_PROFILE
+from enterprise_ai_platform.investment.strategy.opportunity.opportunity_event import EventType
+from enterprise_ai_platform.investment.strategy.opportunity.market_opportunity import MarketRegime
 from tests.unit.investment.strategy.opportunity.conftest import (
     make_market_opp, make_company_opp, make_candidate, make_engine
 )

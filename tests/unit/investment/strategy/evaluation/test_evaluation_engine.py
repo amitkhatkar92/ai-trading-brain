@@ -7,13 +7,13 @@ import math
 import threading
 import pytest
 
-from iios.investment.strategy.evaluation.strategy_evaluation_engine import (
+from enterprise_ai_platform.investment.strategy.evaluation.strategy_evaluation_engine import (
     StrategyEvaluationEngine, EvaluationReport
 )
-from iios.investment.strategy.evaluation.approval_engine import (
+from enterprise_ai_platform.investment.strategy.evaluation.approval_engine import (
     ApprovalCriteria, ApprovalStatus
 )
-from iios.investment.strategy.evaluation.evaluation_grade import EvaluationGrade
+from enterprise_ai_platform.investment.strategy.evaluation.evaluation_grade import EvaluationGrade
 from tests.unit.investment.strategy.evaluation.conftest import (
     make_evaluation_input, make_trade, make_equity_curve
 )
@@ -128,7 +128,7 @@ class TestHistoryAndQuery:
     def test_all_strategy_ids(self):
         engine = make_engine()
         for i in range(3):
-            from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+            from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
             inp = make_evaluation_input()
             inp2 = EvaluationInput(
                 strategy_id=f"strat-{i}", strategy_name=f"s{i}",
@@ -148,7 +148,7 @@ class TestApprovalIntegration:
         trades = [make_trade(i, 250.0) for i in range(80)]
         eq_vals = [100_000.0 + i * 250.0 for i in range(81)]
         curve = make_equity_curve(eq_vals)
-        from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+        from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
         inp = EvaluationInput(
             strategy_id="excellent", strategy_name="Excellent",
             trades=trades, equity_curve=curve,
@@ -169,7 +169,7 @@ class TestApprovalIntegration:
         trades = [make_trade(i, -100.0) for i in range(40)]
         eq_vals = [100_000.0 - i * 100.0 for i in range(41)]
         curve = make_equity_curve(eq_vals)
-        from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+        from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
         inp = EvaluationInput(
             strategy_id="loser", strategy_name="Loser",
             trades=trades, equity_curve=curve,
@@ -214,7 +214,7 @@ class TestThreadSafety:
 
         def run(i):
             try:
-                from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+                from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
                 inp_base = make_evaluation_input(n_trades=40)
                 inp = EvaluationInput(
                     strategy_id=f"strat-{i}", strategy_name=f"s{i}",

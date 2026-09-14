@@ -1,11 +1,11 @@
 """test_constraints_and_limits.py — Exposure limits, policy, history, statistics."""
 import pytest
-from iios.investment.portfolio.allocation.exposure_limits import (
+from enterprise_ai_platform.investment.portfolio.allocation.exposure_limits import (
     ExposureCheck,
     ExposureLimitChecker,
     ExposureOutcome,
 )
-from iios.investment.portfolio.allocation.allocation_policy import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_policy import (
     AGGRESSIVE_POLICY,
     BALANCED_POLICY,
     CONSERVATIVE_POLICY,
@@ -14,15 +14,15 @@ from iios.investment.portfolio.allocation.allocation_policy import (
     ExposurePolicy,
     PositionSizingPolicy,
 )
-from iios.investment.portfolio.allocation.allocation_history import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_history import (
     AllocationHistory,
     AllocationRecord,
 )
-from iios.investment.portfolio.allocation.allocation_snapshot import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_snapshot import (
     AllocationHolding,
     AllocationSnapshot,
 )
-from iios.investment.portfolio.allocation.allocation_statistics import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_statistics import (
     AllocationRunMetric,
     AllocationStatistics,
 )

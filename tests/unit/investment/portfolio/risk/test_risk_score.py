@@ -1,12 +1,12 @@
 """tests/unit/investment/portfolio/risk/test_risk_score.py"""
 import pytest
-from iios.investment.portfolio.risk.portfolio_risk_score import (
+from enterprise_ai_platform.investment.portfolio.risk.portfolio_risk_score import (
     RiskScore, RiskDimensionScore, RiskScoreCalculator, RiskScoreHistory,
 )
-from iios.investment.portfolio.risk.risk_health import RiskHealthMonitor, RiskHealthReport
-from iios.investment.portfolio.risk.risk_quality import RiskQualityAssessor, RiskQualityReport
-from iios.investment.portfolio.risk.risk_confidence import compute_risk_confidence
-from iios.investment.portfolio.risk.risk_types import RiskGrade, RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.risk_health import RiskHealthMonitor, RiskHealthReport
+from enterprise_ai_platform.investment.portfolio.risk.risk_quality import RiskQualityAssessor, RiskQualityReport
+from enterprise_ai_platform.investment.portfolio.risk.risk_confidence import compute_risk_confidence
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskGrade, RiskLevel
 
 
 # ── RiskScoreCalculator ───────────────────────────────────────────────────
@@ -180,7 +180,7 @@ def test_confidence_level_valid(positions_5_diverse):
 
 
 def test_confidence_no_sector_metadata():
-    from iios.investment.portfolio.risk.risk_types import RiskPosition
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
     no_sector = [
         RiskPosition(
             symbol="X", weight=0.5, sector="unknown", industry="unknown",

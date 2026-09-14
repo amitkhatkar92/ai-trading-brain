@@ -29,30 +29,30 @@ import pytest
 
 # ── IIOS imports ──────────────────────────────────────────────────────────────
 
-from iios.investment.investment_constants import (
+from enterprise_ai_platform.investment.investment_constants import (
     AssetClass, InvestmentObjective, RiskProfile, TimeHorizon,
 )
-from iios.investment.models.investment_request import InvestmentRequest
-from iios.investment.workflow.institutional_investment_workflow import (
+from enterprise_ai_platform.investment.models.investment_request import InvestmentRequest
+from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
     InstitutionalInvestmentWorkflow,
     InstitutionalWorkflowOrchestrator,
     WorkflowResult,
 )
-from iios.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
-from iios.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
-from iios.investment.workflow.workflow_history import WorkflowRunRecord
-from iios.investment.workflow.workflow_statistics import WorkflowStatisticsSnapshot
-from iios.investment.workflow.workflow_types import (
+from enterprise_ai_platform.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
+from enterprise_ai_platform.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
+from enterprise_ai_platform.investment.workflow.workflow_history import WorkflowRunRecord
+from enterprise_ai_platform.investment.workflow.workflow_statistics import WorkflowStatisticsSnapshot
+from enterprise_ai_platform.investment.workflow.workflow_types import (
     PIPELINE_STAGES, PipelineEventType, WorkflowStage,
 )
-from iios.investment.workflow.engine_lifecycle import (
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import (
     EngineState, LifecycleAwareMixin, LifecycleError,
 )
 
-from iios.common.async_exec.async_execution_manager import (
+from enterprise_ai_platform.common.async_exec.async_execution_manager import (
     reset_execution_manager, get_execution_manager,
 )
-from iios.common.errors.error_manager import (
+from enterprise_ai_platform.common.errors.error_manager import (
     reset_error_manager, get_error_manager,
 )
 

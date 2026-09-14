@@ -9,13 +9,13 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory,
     EvidencePriority,
     EvidenceSourceType,
 )
-from iios.investment.decision.evidence.evidence_item import EvidenceItem, make_evidence_item
-from iios.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import EvidenceItem, make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
 
 
 # ------------------------------------------------------------------ helpers

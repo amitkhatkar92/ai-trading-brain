@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-from iios.investment.decision.risk.market_risk import MarketRiskEvaluator
-from iios.investment.decision.risk.company_risk import CompanyRiskEvaluator
-from iios.investment.decision.risk.strategy_risk import StrategyRiskEvaluator
-from iios.investment.decision.risk.execution_risk import ExecutionRiskEvaluator
-from iios.investment.decision.risk.confidence_risk import ConfidenceRiskEvaluator
-from iios.investment.decision.risk.risk_constants import EXECUTION_RISK_CONF_FLOOR
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+from enterprise_ai_platform.investment.decision.risk.market_risk import MarketRiskEvaluator
+from enterprise_ai_platform.investment.decision.risk.company_risk import CompanyRiskEvaluator
+from enterprise_ai_platform.investment.decision.risk.strategy_risk import StrategyRiskEvaluator
+from enterprise_ai_platform.investment.decision.risk.execution_risk import ExecutionRiskEvaluator
+from enterprise_ai_platform.investment.decision.risk.confidence_risk import ConfidenceRiskEvaluator
+from enterprise_ai_platform.investment.decision.risk.risk_constants import EXECUTION_RISK_CONF_FLOOR
 
 
 # ─── MarketRiskEvaluator ─────────────────────────────────────────────────────

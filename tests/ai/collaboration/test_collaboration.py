@@ -36,154 +36,154 @@ class TestExceptions:
     """T-EXC: All 22 exception classes with correct error codes."""
 
     def test_base_exception_code(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationException,
         )
         ex = AICollaborationException("test")
         assert "AI-1100" in ex.message
 
     def test_session_not_found(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationSessionNotFoundError,
         )
         ex = AICollaborationSessionNotFoundError("s1")
         assert ex.error_code == "AI-1101"
 
     def test_session_already_exists(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationSessionAlreadyExistsError,
         )
         ex = AICollaborationSessionAlreadyExistsError("s1")
         assert ex.error_code == "AI-1102"
 
     def test_session_closed(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationSessionClosedError,
         )
         ex = AICollaborationSessionClosedError("s1")
         assert ex.error_code == "AI-1103"
 
     def test_participant_not_found(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationParticipantNotFoundError,
         )
         ex = AICollaborationParticipantNotFoundError("a1")
         assert ex.error_code == "AI-1104"
 
     def test_participant_already_exists(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationParticipantAlreadyExistsError,
         )
         ex = AICollaborationParticipantAlreadyExistsError("a1")
         assert ex.error_code == "AI-1105"
 
     def test_validation_error(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationValidationError,
         )
         ex = AICollaborationValidationError("bad")
         assert ex.error_code == "AI-1106"
 
     def test_message_exception(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIMessageException,
         )
         ex = AIMessageException("m")
         assert ex.error_code == "AI-1110"
 
     def test_message_not_found(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIMessageNotFoundError,
         )
         ex = AIMessageNotFoundError("m")
         assert ex.error_code == "AI-1111"
 
     def test_message_routing_error(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIMessageRoutingError,
         )
         ex = AIMessageRoutingError("m")
         assert ex.error_code == "AI-1112"
 
     def test_debate_exception(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateException,
         )
         ex = AIDebateException("d")
         assert ex.error_code == "AI-1120"
 
     def test_debate_not_found(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateNotFoundError,
         )
         ex = AIDebateNotFoundError("d")
         assert ex.error_code == "AI-1121"
 
     def test_debate_already_closed(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateAlreadyClosedError,
         )
         ex = AIDebateAlreadyClosedError("d")
         assert ex.error_code == "AI-1122"
 
     def test_debate_round_error(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateRoundError,
         )
         ex = AIDebateRoundError("d")
         assert ex.error_code == "AI-1123"
 
     def test_consensus_exception(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIConsensusException,
         )
         ex = AIConsensusException("c")
         assert ex.error_code == "AI-1130"
 
     def test_consensus_failed(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIConsensusFailedError,
         )
         ex = AIConsensusFailedError("c")
         assert ex.error_code == "AI-1131"
 
     def test_consensus_timeout(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIConsensusTimeoutError,
         )
         ex = AIConsensusTimeoutError("c")
         assert ex.error_code == "AI-1132"
 
     def test_escalation_exception(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIEscalationException,
         )
         ex = AIEscalationException("e")
         assert ex.error_code == "AI-1140"
 
     def test_escalation_not_found(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIEscalationNotFoundError,
         )
         ex = AIEscalationNotFoundError("e")
         assert ex.error_code == "AI-1141"
 
     def test_escalation_policy_violation(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIEscalationPolicyViolationError,
         )
         ex = AIEscalationPolicyViolationError("e")
         assert ex.error_code == "AI-1142"
 
     def test_collab_policy_exception(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationPolicyException,
         )
         ex = AICollaborationPolicyException("p")
         assert ex.error_code == "AI-1150"
 
     def test_collab_policy_violation(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationPolicyViolationError,
         )
         ex = AICollaborationPolicyViolationError("p")
@@ -198,7 +198,7 @@ class TestLifecycleReExports:
     """T-LC: M1 lifecycle re-exports."""
 
     def test_imports(self):
-        from iios.ai.collaboration.lifecycle import (
+        from enterprise_ai_platform.ai.collaboration.lifecycle import (
             AILifecycleAwareMixin,
             AILifecycleState,
             AILifecycleError,
@@ -218,7 +218,7 @@ class TestCollaborationMetadata:
     """T-CORE: CollaborationMetadata factory and fields."""
 
     def test_create(self):
-        from iios.ai.collaboration.core.collaboration_metadata import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
             CollaborationMetadata,
             CollaborationType,
         )
@@ -233,7 +233,7 @@ class TestCollaborationMetadata:
         assert m.max_rounds == 3
 
     def test_session_id_is_uuid(self):
-        from iios.ai.collaboration.core.collaboration_metadata import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
             CollaborationMetadata,
             CollaborationType,
         )
@@ -241,7 +241,7 @@ class TestCollaborationMetadata:
         uuid.UUID(m.session_id)  # must not raise
 
     def test_status_active_terminal(self):
-        from iios.ai.collaboration.core.collaboration_metadata import CollaborationStatus
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import CollaborationStatus
         assert CollaborationStatus.OPEN.is_active()
         assert CollaborationStatus.CLOSED.is_terminal()
         assert not CollaborationStatus.OPEN.is_terminal()
@@ -251,18 +251,18 @@ class TestAgentRoleAssignment:
     """T-CORE: CollaborationRole helpers."""
 
     def test_can_vote(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         assert CollaborationRole.VOTER.can_vote()
         assert CollaborationRole.LEAD.can_vote()
         assert not CollaborationRole.OBSERVER.can_vote()
 
     def test_can_debate(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         assert CollaborationRole.ANALYST.can_debate()
         assert not CollaborationRole.OBSERVER.can_debate()
 
     def test_specialist_default_roles(self):
-        from iios.ai.collaboration.core.agent_role_assignment import (
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import (
             SPECIALIST_DEFAULT_ROLES,
             CollaborationRole,
         )
@@ -273,8 +273,8 @@ class TestParticipant:
     """T-CORE: Participant and with_status/with_role mutations."""
 
     def _make(self):
-        from iios.ai.collaboration.core.participant import Participant, ParticipantStatus
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.participant import Participant, ParticipantStatus
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         return Participant(
             participant_id = "p1",
             agent_id       = "a1",
@@ -287,15 +287,15 @@ class TestParticipant:
         )
 
     def test_with_status(self):
-        from iios.ai.collaboration.core.participant import ParticipantStatus
+        from enterprise_ai_platform.ai.collaboration.core.participant import ParticipantStatus
         p  = self._make()
         p2 = p.with_status(ParticipantStatus.REMOVED)
         assert p2.status == ParticipantStatus.REMOVED
         assert p.status == ParticipantStatus.ACTIVE  # original unchanged
 
     def test_can_vote(self):
-        from iios.ai.collaboration.core.participant import Participant, ParticipantStatus
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.participant import Participant, ParticipantStatus
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         p = Participant(
             participant_id = "p2",
             agent_id       = "a2",
@@ -313,15 +313,15 @@ class TestCollaborationContext:
     """T-CORE: CollaborationContext factory."""
 
     def _metadata(self):
-        from iios.ai.collaboration.core.collaboration_metadata import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
             CollaborationMetadata,
             CollaborationType,
         )
         return CollaborationMetadata.create("Test", CollaborationType.DEBATE, "sys")
 
     def test_create(self):
-        from iios.ai.collaboration.core.collaboration_context import CollaborationContext
-        from iios.ai.collaboration.core.collaboration_metadata import CollaborationStatus
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_context import CollaborationContext
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import CollaborationStatus
         ctx = CollaborationContext.create(
             metadata      = self._metadata(),
             status        = CollaborationStatus.OPEN,
@@ -333,10 +333,10 @@ class TestCollaborationContext:
         assert ctx.participant_count == 0
 
     def test_active_participant_count(self):
-        from iios.ai.collaboration.core.collaboration_context import CollaborationContext
-        from iios.ai.collaboration.core.collaboration_metadata import CollaborationStatus
-        from iios.ai.collaboration.core.participant import Participant, ParticipantStatus
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_context import CollaborationContext
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import CollaborationStatus
+        from enterprise_ai_platform.ai.collaboration.core.participant import Participant, ParticipantStatus
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         p = Participant(
             participant_id="px", agent_id="ax", agent_name="X", agent_type="T",
             role=CollaborationRole.ANALYST, status=ParticipantStatus.ACTIVE,
@@ -356,7 +356,7 @@ class TestCollaborationResult:
     """T-CORE: CollaborationResult factories."""
 
     def test_consensus_factory(self):
-        from iios.ai.collaboration.core.collaboration_result import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_result import (
             CollaborationResult,
             CollaborationOutcome,
         )
@@ -371,7 +371,7 @@ class TestCollaborationResult:
         assert r.is_decided()
 
     def test_failed_factory(self):
-        from iios.ai.collaboration.core.collaboration_result import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_result import (
             CollaborationResult,
             CollaborationOutcome,
         )
@@ -391,22 +391,22 @@ class TestCollaborationEvents:
     """T-EVT: All 13 event types have working create() factories."""
 
     def test_started_event(self):
-        from iios.ai.collaboration.events.collaboration_events import CollaborationStartedEvent
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import CollaborationStartedEvent
         e = CollaborationStartedEvent.create("s1", "topic", "debate")
         assert e.session_id == "s1"
 
     def test_closed_event(self):
-        from iios.ai.collaboration.events.collaboration_events import CollaborationClosedEvent
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import CollaborationClosedEvent
         e = CollaborationClosedEvent.create("s1", "consensus_reached", 0.9)
         assert e.outcome == "consensus_reached"
 
     def test_agent_invited_event(self):
-        from iios.ai.collaboration.events.collaboration_events import AgentInvitedEvent
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import AgentInvitedEvent
         e = AgentInvitedEvent.create("s1", "a1", "Alice", "Analyst", "analyst")
         assert e.agent_id == "a1"
 
     def test_debate_events(self):
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             DebateStartedEvent,
             DebateRoundClosedEvent,
             DebateCompletedEvent,
@@ -416,7 +416,7 @@ class TestCollaborationEvents:
         assert DebateCompletedEvent.create("s1", 2, 5).rounds_completed == 2
 
     def test_vote_and_consensus_events(self):
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             VoteSubmittedEvent,
             ConsensusReachedEvent,
             ConsensusFailedEvent,
@@ -426,7 +426,7 @@ class TestCollaborationEvents:
         assert ConsensusFailedEvent.create("s1", "tie", "majority").reason == "tie"
 
     def test_escalation_events(self):
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             EscalationTriggeredEvent,
             EscalationResolvedEvent,
         )
@@ -436,7 +436,7 @@ class TestCollaborationEvents:
         assert e2.decided_by == "admin"
 
     def test_message_sent_event(self):
-        from iios.ai.collaboration.events.collaboration_events import MessageSentEvent
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import MessageSentEvent
         e = MessageSentEvent.create("s1", "m1", "a1", "direct", False)
         assert not e.broadcast
 
@@ -445,8 +445,8 @@ class TestCollaborationEventBus:
     """T-EVT: CollaborationEventBus pub/sub."""
 
     def test_subscribe_and_publish(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             CollaborationEventType,
             CollaborationStartedEvent,
         )
@@ -459,8 +459,8 @@ class TestCollaborationEventBus:
         assert bus.published_count == 1
 
     def test_unsubscribe(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             CollaborationEventType,
             CollaborationStartedEvent,
         )
@@ -472,8 +472,8 @@ class TestCollaborationEventBus:
         assert len(handler) == 0
 
     def test_broken_handler_does_not_propagate(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.events.collaboration_events import (
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import (
             CollaborationEventType,
             CollaborationStartedEvent,
         )
@@ -484,15 +484,15 @@ class TestCollaborationEventBus:
         bus.publish(CollaborationStartedEvent.create("s1", "t", "debate"))  # must not raise
 
     def test_subscriber_count(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.events.collaboration_events import CollaborationEventType
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import CollaborationEventType
         bus = CollaborationEventBus()
         bus.subscribe(CollaborationEventType.DEBATE_STARTED, lambda e: None)
         assert bus.subscriber_count(CollaborationEventType.DEBATE_STARTED) == 1
 
     def test_clear(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.events.collaboration_events import CollaborationEventType
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import CollaborationEventType
         bus = CollaborationEventBus()
         bus.subscribe(CollaborationEventType.DEBATE_STARTED, lambda e: None)
         bus.clear()
@@ -507,7 +507,7 @@ class TestAgentMessage:
     """T-MSG: AgentMessage creation and properties."""
 
     def test_create_direct(self):
-        from iios.ai.collaboration.messaging.agent_message import (
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import (
             AgentMessage, MessageType, MessagePriority,
         )
         m = AgentMessage.create(
@@ -522,7 +522,7 @@ class TestAgentMessage:
         assert not m.is_broadcast
 
     def test_create_broadcast(self):
-        from iios.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
         m = AgentMessage.create(
             sender_id    = "a1",
             session_id   = "s1",
@@ -532,7 +532,7 @@ class TestAgentMessage:
         assert m.is_broadcast
 
     def test_meta_roundtrip(self):
-        from iios.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
         m = AgentMessage.create(
             sender_id="a1", session_id="s1",
             message_type=MessageType.NOTIFICATION, content="x",
@@ -546,12 +546,12 @@ class TestMessageMetadata:
     """T-MSG: MessageMetadata TTL expiry."""
 
     def test_not_expired_when_no_ttl(self):
-        from iios.ai.collaboration.messaging.message_metadata import MessageMetadata
+        from enterprise_ai_platform.ai.collaboration.messaging.message_metadata import MessageMetadata
         m = MessageMetadata.create("s1", ttl_s=None)
         assert not m.is_expired()
 
     def test_expired_when_ttl_exceeded(self):
-        from iios.ai.collaboration.messaging.message_metadata import MessageMetadata
+        from enterprise_ai_platform.ai.collaboration.messaging.message_metadata import MessageMetadata
         m = MessageMetadata.create("s1", ttl_s=0.001)
         time.sleep(0.01)
         assert m.is_expired()
@@ -561,7 +561,7 @@ class TestMessageBus:
     """T-MSG: MessageBus send, history, count, clear."""
 
     def _msg(self, session_id: str = "s1"):
-        from iios.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
         return AgentMessage.create(
             sender_id="a1", session_id=session_id,
             message_type=MessageType.DIRECT, content="hello",
@@ -569,14 +569,14 @@ class TestMessageBus:
         )
 
     def test_send_and_count(self):
-        from iios.ai.collaboration.messaging.message_bus import MessageBus
+        from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
         bus = MessageBus()
         bus.send(self._msg())
         assert bus.message_count("s1") == 1
 
     def test_history_filter(self):
-        from iios.ai.collaboration.messaging.message_bus import MessageBus
-        from iios.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
+        from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
         bus = MessageBus()
         bus.send(self._msg())
         m2 = AgentMessage.create(
@@ -587,7 +587,7 @@ class TestMessageBus:
         assert len(bus.get_history("s1", sender_id="a1")) == 1
 
     def test_clear_session(self):
-        from iios.ai.collaboration.messaging.message_bus import MessageBus
+        from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
         bus = MessageBus()
         bus.send(self._msg())
         bus.clear_session("s1")
@@ -598,11 +598,11 @@ class TestMessageRouter:
     """T-MSG: MessageRouter dispatch."""
 
     def test_route_direct(self):
-        from iios.ai.collaboration.messaging.message_bus import MessageBus
-        from iios.ai.collaboration.messaging.message_envelope import MessageEnvelope
-        from iios.ai.collaboration.messaging.message_metadata import MessageMetadata
-        from iios.ai.collaboration.messaging.message_router import MessageRouter
-        from iios.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
+        from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
+        from enterprise_ai_platform.ai.collaboration.messaging.message_envelope import MessageEnvelope
+        from enterprise_ai_platform.ai.collaboration.messaging.message_metadata import MessageMetadata
+        from enterprise_ai_platform.ai.collaboration.messaging.message_router import MessageRouter
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import AgentMessage, MessageType
 
         router   = MessageRouter()
         received = []
@@ -617,7 +617,7 @@ class TestMessageRouter:
         assert len(received) == 1
 
     def test_unregister(self):
-        from iios.ai.collaboration.messaging.message_router import MessageRouter
+        from enterprise_ai_platform.ai.collaboration.messaging.message_router import MessageRouter
         router = MessageRouter()
         h = lambda e: None
         router.register_handler("a1", h)
@@ -633,7 +633,7 @@ class TestDebatePosition:
     """T-DEB: DebatePosition factories and helpers."""
 
     def test_create(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
         p = DebatePosition.create(
             session_id="s1", agent_id="a1", round_number=1,
             position_type=PositionType.FOR, argument="good", confidence=0.9,
@@ -642,12 +642,12 @@ class TestDebatePosition:
         assert p.confidence == 0.9
 
     def test_confidence_clamped(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
         p = DebatePosition.create("s1", "a1", 1, PositionType.FOR, confidence=5.0)
         assert p.confidence == 1.0
 
     def test_is_decisive(self):
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         assert PositionType.FOR.is_decisive()
         assert not PositionType.ABSTAIN.is_decisive()
 
@@ -656,13 +656,13 @@ class TestDebateSession:
     """T-DEB: DebateSession full life-cycle."""
 
     def _ds(self, session_id: str = "s1") -> "DebateSession":
-        from iios.ai.collaboration.debate.debate_session import DebateSession
+        from enterprise_ai_platform.ai.collaboration.debate.debate_session import DebateSession
         ds = DebateSession(session_id, "Buy NIFTY?")
         ds.open()
         return ds
 
     def test_submit_and_close_round(self):
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         ds  = self._ds()
         pos = ds.submit_position("a1", PositionType.FOR, "momentum")
         r   = ds.close_round()
@@ -670,13 +670,13 @@ class TestDebateSession:
 
     def test_next_round_increments(self):
         ds = self._ds()
-        ds.submit_position("a1", __import__("iios.ai.collaboration.debate.debate_position",
+        ds.submit_position("a1", __import__("enterprise_ai_platform.ai.collaboration.debate.debate_position",
                                             fromlist=["PositionType"]).PositionType.FOR)
         ds.next_round()
         assert ds.current_round_number == 2
 
     def test_close_returns_result(self):
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         ds = self._ds()
         ds.submit_position("a1", PositionType.FOR, "reason")
         result = ds.close()
@@ -684,8 +684,8 @@ class TestDebateSession:
         assert ds.is_closed
 
     def test_submit_after_close_raises(self):
-        from iios.ai.collaboration.debate.debate_position import PositionType
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateAlreadyClosedError,
         )
         ds = self._ds()
@@ -695,7 +695,7 @@ class TestDebateSession:
             ds.submit_position("a1", PositionType.FOR)
 
     def test_double_close_idempotent(self):
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         ds = self._ds()
         ds.submit_position("a1", PositionType.FOR)
         r1 = ds.close()
@@ -707,9 +707,9 @@ class TestDebateResult:
     """T-DEB: DebateResult.from_rounds dominant position detection."""
 
     def test_dominant_for(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
-        from iios.ai.collaboration.debate.debate_round import DebateRound
-        from iios.ai.collaboration.debate.debate_result import DebateResult
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_round import DebateRound
+        from enterprise_ai_platform.ai.collaboration.debate.debate_result import DebateResult
         positions = frozenset([
             DebatePosition.create("s1","a1",1,PositionType.FOR),
             DebatePosition.create("s1","a2",1,PositionType.FOR),
@@ -720,9 +720,9 @@ class TestDebateResult:
         assert result.dominant_position == PositionType.FOR
 
     def test_no_dominant_on_tie(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
-        from iios.ai.collaboration.debate.debate_round import DebateRound
-        from iios.ai.collaboration.debate.debate_result import DebateResult
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.debate.debate_round import DebateRound
+        from enterprise_ai_platform.ai.collaboration.debate.debate_result import DebateResult
         positions = frozenset([
             DebatePosition.create("s1","a1",1,PositionType.FOR),
             DebatePosition.create("s1","a2",1,PositionType.AGAINST),
@@ -736,15 +736,15 @@ class TestDebateManager:
     """T-DEB: DebateManager CRUD."""
 
     def test_create_and_get(self):
-        from iios.ai.collaboration.debate.debate_manager import DebateManager
+        from enterprise_ai_platform.ai.collaboration.debate.debate_manager import DebateManager
         dm = DebateManager()
         ds = dm.create("s1", "topic")
         assert ds.is_open
         assert dm.get("s1") is ds
 
     def test_get_missing_raises(self):
-        from iios.ai.collaboration.debate.debate_manager import DebateManager
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.debate.debate_manager import DebateManager
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIDebateNotFoundError,
         )
         dm = DebateManager()
@@ -752,7 +752,7 @@ class TestDebateManager:
             dm.get("nonexistent")
 
     def test_remove(self):
-        from iios.ai.collaboration.debate.debate_manager import DebateManager
+        from enterprise_ai_platform.ai.collaboration.debate.debate_manager import DebateManager
         dm = DebateManager()
         dm.create("s1", "topic")
         dm.remove("s1")
@@ -764,7 +764,7 @@ class TestDebateManager:
 # ---------------------------------------------------------------------------
 
 def _make_positions(session_id: str = "s1"):
-    from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+    from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
     return [
         DebatePosition.create(session_id,"a1",0,PositionType.FOR,confidence=0.9),
         DebatePosition.create(session_id,"a2",0,PositionType.FOR,confidence=0.8),
@@ -776,17 +776,17 @@ class TestMajorityVoteStrategy:
     """T-CNS: MajorityVoteStrategy."""
 
     def test_majority_wins(self):
-        from iios.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         strat  = MajorityVoteStrategy()
         result = strat.calculate("s1", _make_positions(), {})
         assert result.outcome == ConsensusOutcome.MAJORITY_VOTE
         assert result.winning_position == "for"
 
     def test_no_decisive_fails(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
-        from iios.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         pos = [DebatePosition.create("s1","a1",0,PositionType.ABSTAIN)]
         r   = MajorityVoteStrategy().calculate("s1", pos, {})
         assert r.outcome == ConsensusOutcome.INSUFFICIENT_VOTES
@@ -796,7 +796,7 @@ class TestWeightedVoteStrategy:
     """T-CNS: WeightedVoteStrategy."""
 
     def test_weighted_wins(self):
-        from iios.ai.collaboration.consensus.consensus_strategy import WeightedVoteStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import WeightedVoteStrategy
         result = WeightedVoteStrategy().calculate(
             "s1", _make_positions(), {"a1": 2.0, "a2": 2.0, "a3": 1.0}
         )
@@ -807,9 +807,9 @@ class TestUnanimousStrategy:
     """T-CNS: UnanimousStrategy."""
 
     def test_unanimous_success(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
-        from iios.ai.collaboration.consensus.consensus_strategy import UnanimousStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import UnanimousStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         pos = [
             DebatePosition.create("s1","a1",0,PositionType.FOR),
             DebatePosition.create("s1","a2",0,PositionType.FOR),
@@ -818,8 +818,8 @@ class TestUnanimousStrategy:
         assert r.outcome == ConsensusOutcome.REACHED
 
     def test_unanimous_failure(self):
-        from iios.ai.collaboration.consensus.consensus_strategy import UnanimousStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import UnanimousStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         r = UnanimousStrategy().calculate("s1", _make_positions(), {})
         assert r.outcome == ConsensusOutcome.FAILED
 
@@ -828,15 +828,15 @@ class TestConfidenceThresholdStrategy:
     """T-CNS: ConfidenceThresholdStrategy."""
 
     def test_above_threshold(self):
-        from iios.ai.collaboration.consensus.consensus_strategy import ConfidenceThresholdStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import ConfidenceThresholdStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         r = ConfidenceThresholdStrategy(0.7).calculate("s1", _make_positions(), {})
         assert r.outcome == ConsensusOutcome.MAJORITY_VOTE
 
     def test_below_threshold(self):
-        from iios.ai.collaboration.debate.debate_position import DebatePosition, PositionType
-        from iios.ai.collaboration.consensus.consensus_strategy import ConfidenceThresholdStrategy
-        from iios.ai.collaboration.consensus.consensus_result import ConsensusOutcome
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import DebatePosition, PositionType
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import ConfidenceThresholdStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_result import ConsensusOutcome
         pos = [
             DebatePosition.create("s1","a1",0,PositionType.FOR,confidence=0.3),
             DebatePosition.create("s1","a2",0,PositionType.FOR,confidence=0.3),
@@ -850,16 +850,16 @@ class TestConsensusManager:
     """T-CNS: ConsensusManager strategy dispatch."""
 
     def test_unknown_strategy_raises(self):
-        from iios.ai.collaboration.consensus.consensus_manager import ConsensusManager
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_manager import ConsensusManager
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIConsensusFailedError,
         )
         with pytest.raises(AIConsensusFailedError):
             ConsensusManager().calculate("s1", [], "nonexistent")
 
     def test_register_custom(self):
-        from iios.ai.collaboration.consensus.consensus_manager import ConsensusManager
-        from iios.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_manager import ConsensusManager
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_strategy import MajorityVoteStrategy
 
         class MyStrategy(MajorityVoteStrategy):
             name = "custom_majority"
@@ -877,17 +877,17 @@ class TestEscalationRequest:
     """T-ESC: EscalationRequest life-cycle."""
 
     def test_create(self):
-        from iios.ai.collaboration.escalation.escalation_request import EscalationRequest
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_request import EscalationRequest
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
         req = EscalationRequest.create("s1", EscalationTrigger.MANUAL, "no consensus", "agent-1")
         assert not req.is_terminal()
 
     def test_update_status(self):
-        from iios.ai.collaboration.escalation.escalation_request import (
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_request import (
             EscalationRequest,
             EscalationStatus,
         )
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
         req = EscalationRequest.create("s1", EscalationTrigger.MANUAL, "r", "a1")
         req.update_status(EscalationStatus.RESOLVED, "approved")
         assert req.is_terminal()
@@ -897,7 +897,7 @@ class TestEscalationDecision:
     """T-ESC: EscalationDecision creation."""
 
     def test_create(self):
-        from iios.ai.collaboration.escalation.escalation_decision import (
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_decision import (
             EscalationDecision,
             EscalationAction,
         )
@@ -916,9 +916,9 @@ class TestEscalationManager:
     """T-ESC: EscalationManager full life-cycle."""
 
     def test_create_and_resolve(self):
-        from iios.ai.collaboration.escalation.escalation_manager import EscalationManager
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
-        from iios.ai.collaboration.escalation.escalation_decision import EscalationAction
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_manager import EscalationManager
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_decision import EscalationAction
         mgr = EscalationManager()
         req = mgr.create("s1", EscalationTrigger.MANUAL, "reason", "agent")
         dec = mgr.resolve(req.request_id, EscalationAction.APPROVE, "admin")
@@ -926,10 +926,10 @@ class TestEscalationManager:
         assert req.is_terminal()
 
     def test_resolve_already_terminal_raises(self):
-        from iios.ai.collaboration.escalation.escalation_manager import EscalationManager
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
-        from iios.ai.collaboration.escalation.escalation_decision import EscalationAction
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_manager import EscalationManager
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_decision import EscalationAction
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIEscalationPolicyViolationError,
         )
         mgr = EscalationManager()
@@ -939,8 +939,8 @@ class TestEscalationManager:
             mgr.resolve(req.request_id, EscalationAction.APPROVE, "admin")
 
     def test_get_missing_raises(self):
-        from iios.ai.collaboration.escalation.escalation_manager import EscalationManager
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_manager import EscalationManager
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AIEscalationNotFoundError,
         )
         with pytest.raises(AIEscalationNotFoundError):
@@ -955,14 +955,14 @@ class TestPolicies:
     """T-POL: Default policy implementations."""
 
     def _ctx(self, active: int = 2):
-        from iios.ai.collaboration.core.collaboration_context import CollaborationContext
-        from iios.ai.collaboration.core.collaboration_metadata import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_context import CollaborationContext
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
             CollaborationMetadata,
             CollaborationStatus,
             CollaborationType,
         )
-        from iios.ai.collaboration.core.participant import Participant, ParticipantStatus
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.participant import Participant, ParticipantStatus
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         metadata = CollaborationMetadata.create("test", CollaborationType.DEBATE, "sys")
         participants = frozenset(
             Participant(
@@ -981,29 +981,29 @@ class TestPolicies:
         )
 
     def test_debate_policy_enough_participants(self):
-        from iios.ai.collaboration.policy.debate_policy import DefaultDebatePolicy
+        from enterprise_ai_platform.ai.collaboration.policy.debate_policy import DefaultDebatePolicy
         DefaultDebatePolicy().validate_start(self._ctx(2))  # should not raise
 
     def test_debate_policy_too_few_participants(self):
-        from iios.ai.collaboration.policy.debate_policy import DefaultDebatePolicy
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.policy.debate_policy import DefaultDebatePolicy
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationPolicyViolationError,
         )
         with pytest.raises(AICollaborationPolicyViolationError):
             DefaultDebatePolicy().validate_start(self._ctx(0))
 
     def test_voting_policy_invalid_confidence(self):
-        from iios.ai.collaboration.policy.voting_policy import DefaultVotingPolicy
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.policy.voting_policy import DefaultVotingPolicy
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationPolicyViolationError,
         )
         with pytest.raises(AICollaborationPolicyViolationError):
             DefaultVotingPolicy().validate_vote(self._ctx(), "a0", 2.0)
 
     def test_participation_policy_duplicate(self):
-        from iios.ai.collaboration.policy.participation_policy import DefaultParticipationPolicy
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.policy.participation_policy import DefaultParticipationPolicy
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationPolicyViolationError,
         )
         with pytest.raises(AICollaborationPolicyViolationError):
@@ -1012,19 +1012,19 @@ class TestPolicies:
             )
 
     def test_escalation_policy_auto_triggers(self):
-        from iios.ai.collaboration.policy.escalation_policy import DefaultEscalationPolicy
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.policy.escalation_policy import DefaultEscalationPolicy
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
         pol = DefaultEscalationPolicy()
         assert pol.should_auto_escalate(self._ctx(), EscalationTrigger.CONSENSUS_FAILED)
         assert not pol.should_auto_escalate(self._ctx(), EscalationTrigger.MANUAL)
 
     def test_timeout_policy_not_expired(self):
-        from iios.ai.collaboration.policy.timeout_policy import DefaultTimeoutPolicy
+        from enterprise_ai_platform.ai.collaboration.policy.timeout_policy import DefaultTimeoutPolicy
         pol = DefaultTimeoutPolicy()
         assert not pol.is_session_timed_out(self._ctx(), time.time())
 
     def test_timeout_policy_expired(self):
-        from iios.ai.collaboration.policy.timeout_policy import DefaultTimeoutPolicy
+        from enterprise_ai_platform.ai.collaboration.policy.timeout_policy import DefaultTimeoutPolicy
         pol = DefaultTimeoutPolicy()
         ancient = time.time() - 7200
         assert pol.is_session_timed_out(self._ctx(), ancient)
@@ -1038,10 +1038,10 @@ class TestSnapshots:
     """T-SNAP: CollaborationSessionSnapshot and CollaborationFrameworkSnapshot."""
 
     def test_session_snapshot(self):
-        from iios.ai.collaboration.snapshot.collaboration_snapshot import (
+        from enterprise_ai_platform.ai.collaboration.snapshot.collaboration_snapshot import (
             CollaborationSessionSnapshot,
         )
-        from iios.ai.collaboration.core.collaboration_metadata import (
+        from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
             CollaborationStatus,
             CollaborationType,
         )
@@ -1059,11 +1059,11 @@ class TestSnapshots:
         assert not s.is_terminal()
 
     def test_framework_snapshot(self):
-        from iios.ai.collaboration.snapshot.collaboration_snapshot import (
+        from enterprise_ai_platform.ai.collaboration.snapshot.collaboration_snapshot import (
             CollaborationFrameworkSnapshot,
         )
         snap = CollaborationFrameworkSnapshot.capture(
-            system_id        = "iios:ai:collaboration",
+            system_id        = "enterprise_ai_platform:ai:collaboration",
             version          = "1.0.0",
             is_running       = True,
             sessions         = frozenset(),
@@ -1079,16 +1079,16 @@ class TestSnapshots:
 
 def _build_session():
     """Return a ready-to-use CollaborationSession."""
-    from iios.ai.collaboration.core.collaboration_metadata import (
+    from enterprise_ai_platform.ai.collaboration.core.collaboration_metadata import (
         CollaborationMetadata,
         CollaborationType,
     )
-    from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-    from iios.ai.collaboration.debate.debate_manager import DebateManager
-    from iios.ai.collaboration.consensus.consensus_manager import ConsensusManager
-    from iios.ai.collaboration.escalation.escalation_manager import EscalationManager
-    from iios.ai.collaboration.messaging.message_bus import MessageBus
-    from iios.ai.collaboration.session.collaboration_session import CollaborationSession
+    from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+    from enterprise_ai_platform.ai.collaboration.debate.debate_manager import DebateManager
+    from enterprise_ai_platform.ai.collaboration.consensus.consensus_manager import ConsensusManager
+    from enterprise_ai_platform.ai.collaboration.escalation.escalation_manager import EscalationManager
+    from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
+    from enterprise_ai_platform.ai.collaboration.session.collaboration_session import CollaborationSession
 
     metadata = CollaborationMetadata.create("Buy NIFTY?", CollaborationType.DEBATE, "sys")
     session  = CollaborationSession(
@@ -1107,15 +1107,15 @@ class TestCollaborationSession:
     """T-SES: CollaborationSession integration."""
 
     def test_invite_agent(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         s = _build_session()
         p = s.invite_agent("a1", "Alice", "Analyst", CollaborationRole.ANALYST)
         assert p.agent_id == "a1"
         assert s.participant_count == 1
 
     def test_invite_duplicate_raises(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationParticipantAlreadyExistsError,
         )
         s = _build_session()
@@ -1124,7 +1124,7 @@ class TestCollaborationSession:
             s.invite_agent("a1", "Alice2", "Analyst", CollaborationRole.ANALYST)
 
     def test_send_message(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         s = _build_session()
         s.invite_agent("a1", "Alice", "Analyst", CollaborationRole.ANALYST)
         s.invite_agent("a2", "Bob",   "Risk",    CollaborationRole.CHALLENGER)
@@ -1133,8 +1133,8 @@ class TestCollaborationSession:
         assert len(s.get_messages()) >= 1
 
     def test_full_debate_and_vote(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         s = _build_session()
         s.invite_agent("a1", "Alice", "Analyst",    CollaborationRole.ANALYST)
         s.invite_agent("a2", "Bob",   "Challenger", CollaborationRole.CHALLENGER)
@@ -1148,14 +1148,14 @@ class TestCollaborationSession:
         assert result.winning_position == "for"
 
     def test_escalate(self):
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
         s = _build_session()
         req = s.escalate(EscalationTrigger.MANUAL, "deadlock")
         assert req.session_id == s.session_id
 
     def test_close_returns_result(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         s = _build_session()
         s.invite_agent("a1", "Alice", "Analyst", CollaborationRole.ANALYST)
         s.start_debate()
@@ -1167,7 +1167,7 @@ class TestCollaborationSession:
         assert final is not None
 
     def test_context(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         s = _build_session()
         s.invite_agent("a1", "A", "T", CollaborationRole.ANALYST)
         ctx = s.context()
@@ -1182,12 +1182,12 @@ class TestCollaborationManager:
     """T-MGR: CollaborationManager CRUD and snapshots."""
 
     def _mgr(self):
-        from iios.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
-        from iios.ai.collaboration.debate.debate_manager import DebateManager
-        from iios.ai.collaboration.consensus.consensus_manager import ConsensusManager
-        from iios.ai.collaboration.escalation.escalation_manager import EscalationManager
-        from iios.ai.collaboration.messaging.message_bus import MessageBus
-        from iios.ai.collaboration.manager.collaboration_manager import CollaborationManager
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_event_bus import CollaborationEventBus
+        from enterprise_ai_platform.ai.collaboration.debate.debate_manager import DebateManager
+        from enterprise_ai_platform.ai.collaboration.consensus.consensus_manager import ConsensusManager
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_manager import EscalationManager
+        from enterprise_ai_platform.ai.collaboration.messaging.message_bus import MessageBus
+        from enterprise_ai_platform.ai.collaboration.manager.collaboration_manager import CollaborationManager
         return CollaborationManager(
             event_bus          = CollaborationEventBus(),
             debate_manager     = DebateManager(),
@@ -1202,7 +1202,7 @@ class TestCollaborationManager:
         assert mgr.get(s.session_id) is s
 
     def test_get_missing_raises(self):
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationSessionNotFoundError,
         )
         with pytest.raises(AICollaborationSessionNotFoundError):
@@ -1223,7 +1223,7 @@ class TestCollaborationManager:
     def test_framework_snapshot(self):
         mgr  = self._mgr()
         mgr.create("t1")
-        fsnap = mgr.framework_snapshot("iios:test", "1.0.0", True)
+        fsnap = mgr.framework_snapshot("enterprise_ai_platform:test", "1.0.0", True)
         assert fsnap.total_sessions == 1
         assert fsnap.is_running
 
@@ -1236,7 +1236,7 @@ class TestCollaborationGateway:
     """T-GW: M6 gateway life-cycle and API."""
 
     def _gw(self):
-        from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+        from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
         gw = CollaborationGateway()
         gw.start()
         return gw
@@ -1261,7 +1261,7 @@ class TestCollaborationGateway:
         gw.stop()
 
     def test_invite_agent(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
         gw  = self._gw()
         sid = gw.create_collaboration("topic")
         p   = gw.invite_agent(sid, "a1", "Alice", "Analyst", CollaborationRole.ANALYST)
@@ -1269,8 +1269,8 @@ class TestCollaborationGateway:
         gw.stop()
 
     def test_full_cycle_via_gateway(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
         gw  = self._gw()
         sid = gw.create_collaboration("NIFTY direction")
         gw.invite_agent(sid, "bull", "Bull", "MarketAnalystAgent", CollaborationRole.ANALYST)
@@ -1303,7 +1303,7 @@ class TestCollaborationGateway:
         gw.stop()
 
     def test_escalate_via_gateway(self):
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
         gw  = self._gw()
         sid = gw.create_collaboration("risk session")
         req = gw.escalate(sid, EscalationTrigger.MANUAL, "manual override")
@@ -1311,8 +1311,8 @@ class TestCollaborationGateway:
         gw.stop()
 
     def test_send_message_via_gateway(self):
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.messaging.agent_message import MessageType
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.messaging.agent_message import MessageType
         gw  = self._gw()
         sid = gw.create_collaboration("msg session")
         gw.invite_agent(sid, "a1", "Alice", "Analyst", CollaborationRole.ANALYST)
@@ -1322,8 +1322,8 @@ class TestCollaborationGateway:
         gw.stop()
 
     def test_call_before_start_raises(self):
-        from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
-        from iios.ai.collaboration.exceptions.collaboration_exceptions import (
+        from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+        from enterprise_ai_platform.ai.collaboration.exceptions.collaboration_exceptions import (
             AICollaborationException,
         )
         gw = CollaborationGateway()
@@ -1346,9 +1346,9 @@ class TestEndToEndIntegration:
 
     def test_consensus_reached_pipeline(self):
         """5 agents debate and reach consensus via weighted vote."""
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
-        from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
 
         gw  = CollaborationGateway()
         gw.start()
@@ -1388,10 +1388,10 @@ class TestEndToEndIntegration:
 
     def test_escalation_on_consensus_failure(self):
         """Simulate a tie → escalate."""
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
-        from iios.ai.collaboration.escalation.escalation_rule import EscalationTrigger
-        from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.escalation.escalation_rule import EscalationTrigger
+        from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
 
         gw  = CollaborationGateway()
         gw.start()
@@ -1416,10 +1416,10 @@ class TestEndToEndIntegration:
 
     def test_event_bus_captures_full_cycle(self):
         """All expected events are published during a full cycle."""
-        from iios.ai.collaboration.core.agent_role_assignment import CollaborationRole
-        from iios.ai.collaboration.debate.debate_position import PositionType
-        from iios.ai.collaboration.events.collaboration_events import CollaborationEventType
-        from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+        from enterprise_ai_platform.ai.collaboration.core.agent_role_assignment import CollaborationRole
+        from enterprise_ai_platform.ai.collaboration.debate.debate_position import PositionType
+        from enterprise_ai_platform.ai.collaboration.events.collaboration_events import CollaborationEventType
+        from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
 
         gw  = CollaborationGateway()
         gw.start()

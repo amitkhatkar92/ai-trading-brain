@@ -4,14 +4,14 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.strategy.evaluation.performance_statistics import (
+from enterprise_ai_platform.investment.strategy.evaluation.performance_statistics import (
     safe_mean, safe_std, percentile, covariance, annualized_return,
     sharpe_ratio, sortino_ratio, calmar_ratio, profit_factor,
     expectancy, beta, alpha, information_ratio, treynor_ratio,
     scale_metric, clamp,
 )
-from iios.investment.strategy.evaluation.performance_engine import PerformanceEngine
-from iios.investment.strategy.evaluation.equity_curve import EquityCurve
+from enterprise_ai_platform.investment.strategy.evaluation.performance_engine import PerformanceEngine
+from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve
 from tests.unit.investment.strategy.evaluation.conftest import (
     make_evaluation_input, make_equity_curve
 )
@@ -153,8 +153,8 @@ class TestExpectancy:
 
 class TestPerformanceEngine:
     def test_empty_curve_returns_zeros(self):
-        from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
-        from iios.investment.strategy.evaluation.equity_curve import EquityCurve
+        from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
+        from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve
         inp = EvaluationInput(
             strategy_id="s1", strategy_name="s", trades=[],
             equity_curve=EquityCurve([]),
@@ -183,7 +183,7 @@ class TestPerformanceEngine:
             trades.append(make_trade(i, -100.0, pnl_pct=-0.01))
         eq_vals = [100_000.0 - 100.0 * i for i in range(31)]
         curve = make_equity_curve(eq_vals)
-        from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+        from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
         inp = EvaluationInput("s", "s", trades, curve)
         pm = PerformanceEngine().compute(inp)
         assert pm.total_return < 0.0

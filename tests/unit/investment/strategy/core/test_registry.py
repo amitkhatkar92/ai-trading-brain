@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.core import (
+from enterprise_ai_platform.investment.strategy.core import (
     AssetSupport, InstitutionalStrategyCatalog, InstitutionalStrategyFactory,
     InstitutionalStrategyRegistry, LoaderError, RegistrationError,
     StrategyCapability, StrategyDescriptor, StrategyVersion,
     SupportedAssetClass, TradingStyle,
 )
-from iios.investment.strategy.core.strategy_loader import StrategyLoader
+from enterprise_ai_platform.investment.strategy.core.strategy_loader import StrategyLoader
 from .conftest import (
     ConcreteStrategy, make_descriptor, make_config,
 )
@@ -127,16 +127,16 @@ class TestInstitutionalStrategyFactory:
     def test_create_with_config_loads(self, factory):
         config = make_config()
         inst = factory.create("test_strategy", config=config)
-        from iios.investment.strategy.core import StrategyState
+        from enterprise_ai_platform.investment.strategy.core import StrategyState
         assert inst.state == StrategyState.LOADED
 
     def test_create_unknown_raises(self, factory):
-        from iios.investment.strategy.core import FactoryError
+        from enterprise_ai_platform.investment.strategy.core import FactoryError
         with pytest.raises(FactoryError):
             factory.create("unknown")
 
     def test_create_disabled_raises(self, factory):
-        from iios.investment.strategy.core import FactoryError
+        from enterprise_ai_platform.investment.strategy.core import FactoryError
         factory._registry.disable("test_strategy")
         with pytest.raises(FactoryError):
             factory.create("test_strategy")
@@ -147,7 +147,7 @@ class TestInstitutionalStrategyFactory:
         assert config.environment == "paper"
 
     def test_build_default_config_unknown_raises(self, factory):
-        from iios.investment.strategy.core import FactoryError
+        from enterprise_ai_platform.investment.strategy.core import FactoryError
         with pytest.raises(FactoryError):
             factory.build_default_config("nonexistent")
 
@@ -182,7 +182,7 @@ class TestStrategyLoader:
         reg = InstitutionalStrategyRegistry()
         loader = StrategyLoader(reg)
         with pytest.raises(LoaderError):
-            loader.load_from_module("iios.nonexistent_strategy_module_xyz")
+            loader.load_from_module("enterprise_ai_platform.nonexistent_strategy_module_xyz")
 
     def test_load_from_nonexistent_file_raises(self, tmp_path):
         reg = InstitutionalStrategyRegistry()
@@ -194,16 +194,16 @@ class TestStrategyLoader:
         """Write a valid plugin file and load it from directory."""
         plugin = tmp_path / "my_plugin.py"
         plugin.write_text(
-            "from iios.investment.strategy.core.institutional_base_strategy import "
+            "from enterprise_ai_platform.investment.strategy.core.institutional_base_strategy import "
             "InstitutionalBaseStrategy, ExecutionPlan, Signal\n"
-            "from iios.investment.strategy.core.strategy_configuration import "
+            "from enterprise_ai_platform.investment.strategy.core.strategy_configuration import "
             "StrategyConfiguration\n"
-            "from iios.investment.strategy.core.strategy_context import StrategyContext\n"
-            "from iios.investment.strategy.core.strategy_descriptor import "
+            "from enterprise_ai_platform.investment.strategy.core.strategy_context import StrategyContext\n"
+            "from enterprise_ai_platform.investment.strategy.core.strategy_descriptor import "
             "StrategyDescriptor, StrategyVersion\n"
-            "from iios.investment.strategy.core.asset_support import AssetSupport\n"
-            "from iios.investment.strategy.core.market_support import MarketSupport\n"
-            "from iios.investment.strategy.core.timeframe_support import TimeframeSupport\n\n"
+            "from enterprise_ai_platform.investment.strategy.core.asset_support import AssetSupport\n"
+            "from enterprise_ai_platform.investment.strategy.core.market_support import MarketSupport\n"
+            "from enterprise_ai_platform.investment.strategy.core.timeframe_support import TimeframeSupport\n\n"
             "class PluginStrategy(InstitutionalBaseStrategy):\n"
             "    def initialize(self): pass\n"
             "    def load_configuration(self, c): pass\n"
@@ -251,7 +251,7 @@ class TestInstitutionalStrategyCatalog:
                 tags=("intraday",),
                 capabilities=frozenset({StrategyCapability.REAL_TIME}),
                 timeframe_support=__import__(
-                    "iios.investment.strategy.core", fromlist=["TimeframeSupport"]
+                    "enterprise_ai_platform.investment.strategy.core", fromlist=["TimeframeSupport"]
                 ).TimeframeSupport.intraday(),
             ),
         )

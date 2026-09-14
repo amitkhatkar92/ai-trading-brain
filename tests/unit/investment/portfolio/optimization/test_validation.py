@@ -1,23 +1,23 @@
 """test_validation.py — Tests for OptimizationValidator and OptimizationReadinessValidator."""
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationPlan,
     OptimizedPosition,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ConvergenceStatus,
 )
-from iios.investment.portfolio.optimization.optimization_validator import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_validator import (
     OptimizationValidator,
 )
-from iios.investment.portfolio.optimization.optimization_readiness import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_readiness import (
     OptimizationReadinessValidator,
 )
-from iios.investment.portfolio.optimization.optimization_constraints import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_constraints import (
     default_constraint_set,
 )
-from iios.investment.portfolio.optimization.constraint_validator import (
+from enterprise_ai_platform.investment.portfolio.optimization.constraint_validator import (
     ConstraintValidator,
 )
 
@@ -99,7 +99,7 @@ class TestOptimizationValidator:
 
 class TestOptimizationReadinessValidator:
     def _make_validation_report(self, is_valid=True):
-        from iios.investment.portfolio.optimization.optimization_validator import (
+        from enterprise_ai_platform.investment.portfolio.optimization.optimization_validator import (
             OptimizationValidationReport,
         )
         return OptimizationValidationReport(
@@ -124,11 +124,11 @@ class TestOptimizationReadinessValidator:
         val_rpt  = self._make_validation_report(is_valid=False)
 
         # Inject failures into report
-        from iios.investment.portfolio.optimization.optimization_validator import (
+        from enterprise_ai_platform.investment.portfolio.optimization.optimization_validator import (
             OptimizationValidationReport,
             ValidationFinding,
         )
-        from iios.investment.portfolio.optimization.optimization_types import ConstraintOutcome
+        from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import ConstraintOutcome
         f = ValidationFinding(
             category = "test",
             outcome  = ConstraintOutcome.VIOLATED,

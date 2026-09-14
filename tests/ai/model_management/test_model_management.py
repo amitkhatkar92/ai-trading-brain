@@ -22,12 +22,12 @@ import threading
 import unittest
 from typing import List
 
-from iios.ai.foundation.exceptions import AIException
+from enterprise_ai_platform.ai.foundation.exceptions import AIException
 
-from iios.ai.model_management.capabilities import ModelCapabilities, ModelCapabilityType
-from iios.ai.model_management.configuration import ConfigurationLoader, ModelConfiguration, RuntimeSettings
-from iios.ai.model_management.container import ModelManagementContainer
-from iios.ai.model_management.core import (
+from enterprise_ai_platform.ai.model_management.capabilities import ModelCapabilities, ModelCapabilityType
+from enterprise_ai_platform.ai.model_management.configuration import ConfigurationLoader, ModelConfiguration, RuntimeSettings
+from enterprise_ai_platform.ai.model_management.container import ModelManagementContainer
+from enterprise_ai_platform.ai.model_management.core import (
     AIModel,
     AIModelDescriptor,
     AIModelVersion,
@@ -35,7 +35,7 @@ from iios.ai.model_management.core import (
     ModelMetadata,
     ModelTier,
 )
-from iios.ai.model_management.events import (
+from enterprise_ai_platform.ai.model_management.events import (
     FailoverTriggeredEvent,
     HealthCheckFailedEvent,
     HealthCheckPassedEvent,
@@ -49,7 +49,7 @@ from iios.ai.model_management.events import (
     RoutingCompletedEvent,
     VersionActivatedEvent,
 )
-from iios.ai.model_management.exceptions import (
+from enterprise_ai_platform.ai.model_management.exceptions import (
     AIFailoverExhaustedError,
     AIHealthException,
     AIModelAlreadyExistsError,
@@ -63,9 +63,9 @@ from iios.ai.model_management.exceptions import (
     AINoModelAvailableError,
     AIRoutingException,
 )
-from iios.ai.model_management.gateway import ModelManagementGateway
-from iios.ai.model_management.health import AvailabilityStatus, HealthMonitor, HealthReport, ModelHealth
-from iios.ai.model_management.policy import (
+from enterprise_ai_platform.ai.model_management.gateway import ModelManagementGateway
+from enterprise_ai_platform.ai.model_management.health import AvailabilityStatus, HealthMonitor, HealthReport, ModelHealth
+from enterprise_ai_platform.ai.model_management.policy import (
     AllowAllCostPolicy,
     CapabilityBasedSelectionPolicy,
     FixedPreferredModelPolicy,
@@ -79,8 +79,8 @@ from iios.ai.model_management.policy import (
     StrictModelValidationPolicy,
     TierBudgetCostPolicy,
 )
-from iios.ai.model_management.registry import AIModelRegistry
-from iios.ai.model_management.router import (
+from enterprise_ai_platform.ai.model_management.registry import AIModelRegistry
+from enterprise_ai_platform.ai.model_management.router import (
     CapabilityFirstStrategy,
     ModelRouter,
     RoundRobinStrategy,
@@ -88,7 +88,7 @@ from iios.ai.model_management.router import (
     RoutingDecision,
     TierPreferenceStrategy,
 )
-from iios.ai.model_management.snapshot import ModelManagementSnapshot
+from enterprise_ai_platform.ai.model_management.snapshot import ModelManagementSnapshot
 
 # Capability shortcuts
 CHAT       = ModelCapabilityType.CHAT

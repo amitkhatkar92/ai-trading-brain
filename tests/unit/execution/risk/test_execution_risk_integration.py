@@ -42,7 +42,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.risk.integration import (
+from enterprise_ai_platform.execution.risk.integration import (
     APPROVED_ACTIONS,
     ComponentHealth,
     ComponentRegistry,
@@ -82,11 +82,11 @@ from iios.execution.risk.integration import (
     make_subsystem_stopped_event,
     make_validation_completed_event,
 )
-from iios.execution.risk.integration.execution_risk_health import (
+from enterprise_ai_platform.execution.risk.integration.execution_risk_health import (
     check_component_health,
     make_subsystem_health,
 )
-from iios.execution.risk.integration.execution_risk_integration_snapshot import (
+from enterprise_ai_platform.execution.risk.integration.execution_risk_integration_snapshot import (
     make_integration_snapshot,
 )
 
@@ -127,7 +127,7 @@ def _engine() -> ExecutionRiskIntegrationEngine:
 
 class TestConstants:
     def test_integration_system_id_prefix(self):
-        assert INTEGRATION_SYSTEM_ID.startswith("iios:")
+        assert INTEGRATION_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -167,7 +167,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionRiskIntegrationError, IIOSError)
 
     def test_not_running_no_args(self):
@@ -183,7 +183,7 @@ class TestExceptions:
         assert e.message == "workflow exploded"
 
     def test_all_subclass_base(self):
-        from iios.execution.risk.integration.exceptions import (
+        from enterprise_ai_platform.execution.risk.integration.exceptions import (
             ComponentNotHealthyError, ComponentRegistrationError,
             ContextValidationError, IntegrationHistoryError,
             IntegrationTimeoutError,
@@ -300,7 +300,7 @@ class TestExecutionRiskRequest:
 
 class TestExecutionRiskResponse:
     def _make(self, approved=True, action="ALLOW", **kw):
-        from iios.execution.risk.snapshot import SnapshotFactory
+        from enterprise_ai_platform.execution.risk.snapshot import SnapshotFactory
         snap = SnapshotFactory.create_allow_snapshot()
         return ExecutionRiskResponse(
             response_id=str(uuid.uuid4()),
@@ -424,7 +424,7 @@ class TestComponentRegistry:
         assert reg.get(ComponentType.ENGINE) is obj
 
     def test_require_raises_when_missing(self):
-        from iios.execution.risk.integration.exceptions import ComponentRegistrationError
+        from enterprise_ai_platform.execution.risk.integration.exceptions import ComponentRegistrationError
         reg = ComponentRegistry()
         with pytest.raises(ComponentRegistrationError):
             reg.require(ComponentType.ENGINE)
@@ -529,7 +529,7 @@ class TestIntegrationStatistics:
 
 class TestIntegrationHistory:
     def _response(self, execution_id="E1", order_id="O1", portfolio_id="PORT-1", approved=True):
-        from iios.execution.risk.snapshot import SnapshotFactory
+        from enterprise_ai_platform.execution.risk.snapshot import SnapshotFactory
         snap = SnapshotFactory.create_allow_snapshot()
         return ExecutionRiskResponse(
             response_id=str(uuid.uuid4()),
@@ -648,13 +648,13 @@ class TestIntegrationEvents:
 
 class TestSubsystemHealth:
     def _mock_running_component(self) -> Any:
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         m = MagicMock()
         m.lifecycle_state.return_value = EngineState.RUNNING
         return m
 
     def _mock_stopped_component(self) -> Any:
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         m = MagicMock()
         m.lifecycle_state.return_value = EngineState.STOPPED
         return m
@@ -813,7 +813,7 @@ class TestWorkflow:
         response = manager.evaluate(_req())
         manager.stop()
 
-        from iios.execution.risk.snapshot import ExecutionRiskSnapshot
+        from enterprise_ai_platform.execution.risk.snapshot import ExecutionRiskSnapshot
         assert isinstance(response.snapshot, ExecutionRiskSnapshot)
 
     def test_response_identifiers_match_request(self):
@@ -836,7 +836,7 @@ class TestWorkflow:
         assert response.elapsed_ms > 0
 
     def test_snapshot_published_status(self):
-        from iios.execution.risk.snapshot import SnapshotStatus
+        from enterprise_ai_platform.execution.risk.snapshot import SnapshotStatus
         manager = _manager()
         response = manager.evaluate(_req())
         manager.stop()
@@ -850,14 +850,14 @@ class TestWorkflowBlocked:
 
     def _blocking_rule(self):
         """Minimal M2-compatible blocking rule."""
-        from iios.execution.risk.engine import RuleResult, RuleOutcome
+        from enterprise_ai_platform.execution.risk.engine import RuleResult, RuleOutcome
 
         class _BlockRule:
             rule_name = "always_block"
 
             @property
             def risk_category(self):
-                from iios.execution.risk.lifecycle import RiskCategory
+                from enterprise_ai_platform.execution.risk.lifecycle import RiskCategory
                 return RiskCategory.EXECUTION
 
             def is_applicable(self, request) -> bool:
@@ -1114,7 +1114,7 @@ class TestEventsEmitted:
 
 class TestSnapshotPublication:
     def test_snapshot_published_in_registry(self):
-        from iios.execution.risk.snapshot import SnapshotStatus
+        from enterprise_ai_platform.execution.risk.snapshot import SnapshotStatus
         e = _engine()
         response = e.evaluate(_req())
         e.stop()

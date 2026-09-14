@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.growth.earnings_growth import EarningsGrowthEngine
-from iios.investment.company.growth.eps_growth import compute_eps_cagr_profile
-from iios.investment.company.growth.margin_growth import MarginGrowthEngine
-from iios.investment.company.growth.cashflow_growth import CashflowGrowthEngine
-from iios.investment.company.growth.growth_profile import (
+from enterprise_ai_platform.investment.company.growth.earnings_growth import EarningsGrowthEngine
+from enterprise_ai_platform.investment.company.growth.eps_growth import compute_eps_cagr_profile
+from enterprise_ai_platform.investment.company.growth.margin_growth import MarginGrowthEngine
+from enterprise_ai_platform.investment.company.growth.cashflow_growth import CashflowGrowthEngine
+from enterprise_ai_platform.investment.company.growth.growth_profile import (
     EarningsGrowthProfile, MarginGrowthProfile, CashflowGrowthProfile,
     GrowthTrend, GrowthLabel,
 )

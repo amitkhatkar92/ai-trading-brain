@@ -1,21 +1,21 @@
 """test_engine_integration.py — End-to-end PortfolioOptimizationEngine tests."""
 import pytest
 
-from iios.investment.portfolio.optimization.portfolio_optimization_engine import (
+from enterprise_ai_platform.investment.portfolio.optimization.portfolio_optimization_engine import (
     PortfolioOptimizationEngine,
     OptimizationIntegrationRefs,
 )
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationObjective,
     OptimizationRequest,
 )
-from iios.investment.portfolio.optimization.optimization_policy import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_policy import (
     BALANCED_OPTIMIZATION_POLICY,
     CONSERVATIVE_OPTIMIZATION_POLICY,
     AGGRESSIVE_OPTIMIZATION_POLICY,
     RISK_PARITY_POLICY,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ObjectiveType,
     OptimizationMethod,
     OptimizationRunStatus,

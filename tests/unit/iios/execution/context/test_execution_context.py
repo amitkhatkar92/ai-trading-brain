@@ -1,4 +1,4 @@
-"""tests/unit/iios/execution/context/test_execution_context.py
+"""tests/unit/enterprise_ai_platform/execution/context/test_execution_context.py
 ==================================================
 Comprehensive test suite for C6 Phase 1 Module 4:
 IIOS Execution Context.
@@ -20,7 +20,7 @@ import pytest
 # Imports
 # ─────────────────────────────────────────────────────────────────────────────
 
-from iios.execution.context.constants import (
+from enterprise_ai_platform.execution.context.constants import (
     ContextStatus,
     ContextValidationCode,
     ExecutionEnvironment,
@@ -28,7 +28,7 @@ from iios.execution.context.constants import (
     MarketSession,
     VERSION,
 )
-from iios.execution.context.exceptions import (
+from enterprise_ai_platform.execution.context.exceptions import (
     ContextBuildError,
     ContextCapacityError,
     ContextHistoryError,
@@ -40,36 +40,36 @@ from iios.execution.context.exceptions import (
     DuplicateContextError,
     ExecutionContextError,
 )
-from iios.execution.context.execution_context import ExecutionContext
-from iios.execution.context.execution_metadata import ExecutionMetadata
-from iios.execution.context.execution_environment import ExecutionEnvironmentDescriptor
-from iios.execution.context.execution_session import ExecutionSession
-from iios.execution.context.execution_request_context import (
+from enterprise_ai_platform.execution.context.execution_context import ExecutionContext
+from enterprise_ai_platform.execution.context.execution_metadata import ExecutionMetadata
+from enterprise_ai_platform.execution.context.execution_environment import ExecutionEnvironmentDescriptor
+from enterprise_ai_platform.execution.context.execution_session import ExecutionSession
+from enterprise_ai_platform.execution.context.execution_request_context import (
     BrokerContextRef,
     ExecutionRequestContext,
 )
-from iios.execution.context.execution_bundle import ExecutionBundle
-from iios.execution.context.execution_context_events import (
+from enterprise_ai_platform.execution.context.execution_bundle import ExecutionBundle
+from enterprise_ai_platform.execution.context.execution_context_events import (
     ExecutionContextEvent,
     ExecutionContextEventType,
     make_context_event,
 )
-from iios.execution.context.execution_context_validator import (
+from enterprise_ai_platform.execution.context.execution_context_validator import (
     ContextValidationResult,
     ExecutionContextValidator,
 )
-from iios.execution.context.execution_context_builder import ExecutionContextBuilder
-from iios.execution.context.execution_context_factory import ExecutionContextFactory
-from iios.execution.context.execution_context_registry import (
+from enterprise_ai_platform.execution.context.execution_context_builder import ExecutionContextBuilder
+from enterprise_ai_platform.execution.context.execution_context_factory import ExecutionContextFactory
+from enterprise_ai_platform.execution.context.execution_context_registry import (
     ContextRecord,
     ExecutionContextRegistry,
 )
-from iios.execution.context.execution_context_history import (
+from enterprise_ai_platform.execution.context.execution_context_history import (
     ContextRevision,
     ExecutionContextHistory,
     make_revision,
 )
-from iios.execution.context.execution_context_statistics import (
+from enterprise_ai_platform.execution.context.execution_context_statistics import (
     ContextBuildStatistics,
     ExecutionContextStatistics,
 )
@@ -186,7 +186,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self) -> None:
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionContextError, IIOSError)
         assert issubclass(ContextBuildError,        ExecutionContextError)
         assert issubclass(ContextValidationError,   ExecutionContextError)

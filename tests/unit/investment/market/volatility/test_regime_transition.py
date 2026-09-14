@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility.regime_transition import RegimeTransitionDetector
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.regime_transition import RegimeTransitionDetector
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityEventType,
     VolatilityRegimeType,
 )

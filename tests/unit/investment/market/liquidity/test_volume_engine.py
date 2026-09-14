@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.models import VolumeLevel, VolumeTrend
-from iios.investment.market.liquidity.volume_statistics import VolumeStatistics
-from iios.investment.market.liquidity.volume_history import VolumeHistory
-from iios.investment.market.liquidity.volume_profile import VolumeProfileAnalyzer
-from iios.investment.market.liquidity.volume_engine import VolumeEngine
+from enterprise_ai_platform.investment.market.liquidity.models import VolumeLevel, VolumeTrend
+from enterprise_ai_platform.investment.market.liquidity.volume_statistics import VolumeStatistics
+from enterprise_ai_platform.investment.market.liquidity.volume_history import VolumeHistory
+from enterprise_ai_platform.investment.market.liquidity.volume_profile import VolumeProfileAnalyzer
+from enterprise_ai_platform.investment.market.liquidity.volume_engine import VolumeEngine
 
 from tests.unit.investment.market.liquidity.conftest import (
     make_bar, make_up_bar, make_down_bar, make_bars, make_volume_bar,

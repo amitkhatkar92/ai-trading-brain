@@ -44,25 +44,25 @@ import pytest
 
 # ── IIOS imports ───────────────────────────────────────────────────────────────
 
-from iios.investment.investment_constants import (
+from enterprise_ai_platform.investment.investment_constants import (
     AssetClass, InvestmentObjective, RiskProfile, TimeHorizon,
 )
-from iios.investment.models.investment_request import InvestmentRequest
-from iios.investment.workflow.institutional_investment_workflow import (
+from enterprise_ai_platform.investment.models.investment_request import InvestmentRequest
+from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
     InstitutionalWorkflowOrchestrator,
     WorkflowResult,
 )
-from iios.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
-from iios.investment.workflow.workflow_history import WorkflowHistory
-from iios.investment.workflow.workflow_statistics import WorkflowStatistics
-from iios.investment.workflow.workflow_events import WorkflowEventPublisher
-from iios.investment.workflow.engine_lifecycle import (
+from enterprise_ai_platform.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
+from enterprise_ai_platform.investment.workflow.workflow_history import WorkflowHistory
+from enterprise_ai_platform.investment.workflow.workflow_statistics import WorkflowStatistics
+from enterprise_ai_platform.investment.workflow.workflow_events import WorkflowEventPublisher
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import (
     EngineState, LifecycleAwareMixin,
 )
-from iios.common.async_exec.async_execution_manager import (
+from enterprise_ai_platform.common.async_exec.async_execution_manager import (
     get_execution_manager, reset_execution_manager,
 )
-from iios.common.errors.error_manager import (
+from enterprise_ai_platform.common.errors.error_manager import (
     get_error_manager, reset_error_manager,
 )
 
@@ -986,7 +986,7 @@ class TestPerfPart6FrameworkOverhead:
 
     def test_error_framework_overhead(self):
         """Measure get_error_manager().report_failure() overhead."""
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
 
         emgr   = get_error_manager()
         err    = IIOSError("perf-overhead-test")
@@ -1371,8 +1371,8 @@ class TestPerfPart9Optimization:
                     "event loop thread (e.g. run_coroutine_threadsafe + shared loop). "
                     "Eliminates event loop creation overhead per _on_start/_on_stop call."
                 ),
-                modules      = ["iios/common/async_exec/async_execution_manager.py",
-                                "iios/investment/workflow/engine_lifecycle.py"],
+                modules      = ["enterprise_ai_platform/common/async_exec/async_execution_manager.py",
+                                "enterprise_ai_platform/investment/workflow/engine_lifecycle.py"],
                 effort       = "MEDIUM",
             ))
         elif exec_ms > 10:
@@ -1381,7 +1381,7 @@ class TestPerfPart9Optimization:
                 gain         = "10-20% reduction in lifecycle overhead",
                 finding      = f"execute_sync(null) = {exec_ms:.1f}ms",
                 recommendation = "Consider a reusable event loop thread for execute_sync.",
-                modules      = ["iios/common/async_exec/async_execution_manager.py"],
+                modules      = ["enterprise_ai_platform/common/async_exec/async_execution_manager.py"],
                 effort       = "MEDIUM",
             ))
 
@@ -1398,7 +1398,7 @@ class TestPerfPart9Optimization:
                     "so execute_sync uses run_coroutine_threadsafe() instead of "
                     "asyncio.run() (saves ~loop creation time per call)."
                 ),
-                modules      = ["iios/investment/workflow/engine_lifecycle.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/engine_lifecycle.py"],
                 effort       = "MEDIUM",
             ))
 
@@ -1416,7 +1416,7 @@ class TestPerfPart9Optimization:
                     "(gc.freeze() before run, gc.unfreeze() after) to reduce "
                     "GC-induced jitter in critical sections."
                 ),
-                modules      = ["iios/investment/workflow/institutional_investment_workflow.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/institutional_investment_workflow.py"],
                 effort       = "LOW",
             ))
 
@@ -1436,7 +1436,7 @@ class TestPerfPart9Optimization:
                     f"InstitutionalWorkflowOrchestrator._stage_{slowest}(). "
                     f"Check for redundant attribute access or dict construction."
                 ),
-                modules      = ["iios/investment/workflow/institutional_investment_workflow.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/institutional_investment_workflow.py"],
                 effort       = "LOW",
             ))
 
@@ -1453,7 +1453,7 @@ class TestPerfPart9Optimization:
                     "Consider lazy format strings or isEnabledFor() guards "
                     "around debug/info log calls in hot paths."
                 ),
-                modules      = ["iios/investment/workflow/institutional_investment_workflow.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/institutional_investment_workflow.py"],
                 effort       = "LOW",
             ))
 
@@ -1470,7 +1470,7 @@ class TestPerfPart9Optimization:
                     "serialises one run at a time.  Use independent orchestrator "
                     "instances per logical tenant to avoid cross-tenant contention."
                 ),
-                modules      = ["iios/investment/workflow/institutional_investment_workflow.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/institutional_investment_workflow.py"],
                 effort       = "LOW",
             ))
 
@@ -1485,7 +1485,7 @@ class TestPerfPart9Optimization:
                     "Cache the dict representation in the WorkflowRunRecord "
                     "if to_dict() is called more than once per record."
                 ),
-                modules      = ["iios/investment/workflow/workflow_history.py"],
+                modules      = ["enterprise_ai_platform/investment/workflow/workflow_history.py"],
                 effort       = "LOW",
             ))
 
@@ -1500,7 +1500,7 @@ class TestPerfPart9Optimization:
                 "Consider an object pool for WorkflowState and StageRecord "
                 "instances to reduce allocation rate at high throughput (> 1000 wf/sec)."
             ),
-            modules      = ["iios/investment/workflow/workflow_state.py"],
+            modules      = ["enterprise_ai_platform/investment/workflow/workflow_state.py"],
             effort       = "HIGH",
         ))
 

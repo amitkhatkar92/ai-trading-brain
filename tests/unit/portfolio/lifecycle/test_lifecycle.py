@@ -30,7 +30,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.portfolio.lifecycle import (
+from enterprise_ai_platform.portfolio.lifecycle import (
     # Primary interface
     PortfolioLifecycle,
     # Domain objects
@@ -156,7 +156,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         ex = PortfolioLifecycleError("boom")
         assert isinstance(ex, IIOSError)
         assert ex.error_code == "PL-000"

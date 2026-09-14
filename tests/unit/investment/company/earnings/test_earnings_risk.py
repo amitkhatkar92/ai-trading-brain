@@ -1,10 +1,10 @@
 """tests/unit/investment/company/earnings/test_earnings_risk.py"""
 import pytest
 
-from iios.investment.company.earnings.earnings_volatility import EarningsVolatilityAnalyzer
-from iios.investment.company.earnings.forecast_stability import ForecastStabilityAnalyzer
-from iios.investment.company.earnings.earnings_risk import EarningsRiskAnalyzer
-from iios.investment.company.earnings.earnings_revision import EarningsRevisionTracker
+from enterprise_ai_platform.investment.company.earnings.earnings_volatility import EarningsVolatilityAnalyzer
+from enterprise_ai_platform.investment.company.earnings.forecast_stability import ForecastStabilityAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_risk import EarningsRiskAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_revision import EarningsRevisionTracker
 from tests.unit.investment.company.earnings.conftest import make_report
 
 

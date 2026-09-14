@@ -35,7 +35,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.portfolio.engine import (
+from enterprise_ai_platform.portfolio.engine import (
     # Primary interface
     PortfolioEngine,
     # Request / Response / Snapshot
@@ -173,7 +173,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert isinstance(PortfolioEngineError("x"), IIOSError)
         assert PortfolioEngineError("x").error_code == "PE-000"
 

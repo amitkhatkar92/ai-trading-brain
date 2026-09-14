@@ -4,27 +4,27 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.reasoning.decision_logic import DecisionLogic
-from iios.investment.decision.reasoning.logic_validator import LogicValidator
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.reasoning.decision_logic import DecisionLogic
+from enterprise_ai_platform.investment.decision.reasoning.logic_validator import LogicValidator
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     LogicValidationStatus,
     ReasoningStepType,
 )
-from iios.investment.decision.reasoning.reasoning_pipeline import (
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_pipeline import (
     BaseReasoningModule,
     ReasoningContext,
     ReasoningPipeline,
 )
-from iios.investment.decision.reasoning.reasoning_step import ReasoningStep, make_step
-from iios.investment.decision.reasoning.reasoning_trace import ReasoningTrace
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_step import ReasoningStep, make_step
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_trace import ReasoningTrace
 
 
 # ========================= LogicValidator ================================
 
 class TestLogicValidator:
     def test_valid_when_no_contradictions(self, positive_signals):
-        from iios.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
-        from iios.investment.decision.reasoning.argument_engine import ArgumentEngine
+        from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
+        from enterprise_ai_platform.investment.decision.reasoning.argument_engine import ArgumentEngine
         engine = HypothesisEngine()
         hyps, _ = engine.generate("X", "equity", positive_signals)
         ae = ArgumentEngine()
@@ -40,8 +40,8 @@ class TestLogicValidator:
         assert result.status == LogicValidationStatus.INSUFFICIENT
 
     def test_to_dict(self, positive_signals):
-        from iios.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
-        from iios.investment.decision.reasoning.argument_engine import ArgumentEngine
+        from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
+        from enterprise_ai_platform.investment.decision.reasoning.argument_engine import ArgumentEngine
         engine = HypothesisEngine()
         hyps, _ = engine.generate("X", "equity", positive_signals)
         ae = ArgumentEngine()
@@ -57,10 +57,10 @@ class TestLogicValidator:
 
 class TestDecisionLogic:
     def test_extract_returns_final_conclusion(self, positive_signals):
-        from iios.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
-        from iios.investment.decision.reasoning.argument_engine import ArgumentEngine
-        from iios.investment.decision.reasoning.context_analyzer import ContextAnalyzer
-        from iios.investment.decision.reasoning.signal_interpreter import SignalInterpreter
+        from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
+        from enterprise_ai_platform.investment.decision.reasoning.argument_engine import ArgumentEngine
+        from enterprise_ai_platform.investment.decision.reasoning.context_analyzer import ContextAnalyzer
+        from enterprise_ai_platform.investment.decision.reasoning.signal_interpreter import SignalInterpreter
         interp = SignalInterpreter()
         labelled, _ = interp.interpret_all(positive_signals)
         analyzer = ContextAnalyzer()

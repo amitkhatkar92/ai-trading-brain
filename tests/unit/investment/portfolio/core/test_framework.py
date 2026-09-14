@@ -8,15 +8,15 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.portfolio.core.portfolio_events import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_events import (
     PortfolioEventType,
     PortfolioRegisteredEvent,
 )
-from iios.investment.portfolio.core.portfolio_framework import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_framework import (
     FrameworkStatistics,
     PortfolioFramework,
 )
-from iios.investment.portfolio.core.portfolio_types import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_types import (
     FrameworkStatus,
     PortfolioDomain,
     PortfolioLifecycleState,
@@ -231,7 +231,7 @@ class TestFrameworkEvents:
         assert framework.event_history.count() >= 1
 
     def test_publish_custom_event(self, framework):
-        from iios.investment.portfolio.core.portfolio_events import PortfolioEvent
+        from enterprise_ai_platform.investment.portfolio.core.portfolio_events import PortfolioEvent
         received = []
         framework.subscribe_events(lambda e: received.append(e))
         ev = PortfolioEvent(portfolio_id="P1",
@@ -313,7 +313,7 @@ class TestFrameworkConcurrency:
 
         framework.subscribe_events(handler)
 
-        from iios.investment.portfolio.core.portfolio_events import PortfolioEvent
+        from enterprise_ai_platform.investment.portfolio.core.portfolio_events import PortfolioEvent
 
         def dispatch():
             framework.publish_event(

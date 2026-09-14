@@ -12,7 +12,7 @@ from typing import List, Optional
 
 import pytest
 
-from iios.common.logging.logging_context import (
+from enterprise_ai_platform.common.logging.logging_context import (
     LoggingContext,
     _CTX_WORKFLOW_ID,
     _CTX_CORRELATION_ID,
@@ -95,8 +95,8 @@ class TestBasicGetSet:
         assert LoggingContext.get_strategy_id() == "STR-momentum"
 
     def test_set_engine_id(self):
-        LoggingContext.set_engine_id("iios:market:integration")
-        assert LoggingContext.get_engine_id() == "iios:market:integration"
+        LoggingContext.set_engine_id("enterprise_ai_platform:market:integration")
+        assert LoggingContext.get_engine_id() == "enterprise_ai_platform:market:integration"
 
 
 # ── to_dict ───────────────────────────────────────────────────────────────────

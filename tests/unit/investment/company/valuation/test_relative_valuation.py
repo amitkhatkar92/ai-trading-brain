@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import pytest
-from iios.investment.company.valuation.relative_valuation import RelativeValuationEngine
-from iios.investment.company.valuation.valuation_assumptions import RelativeValuationAssumptions
-from iios.investment.company.valuation.valuation_model import ValuationStatus
+from enterprise_ai_platform.investment.company.valuation.relative_valuation import RelativeValuationEngine
+from enterprise_ai_platform.investment.company.valuation.valuation_assumptions import RelativeValuationAssumptions
+from enterprise_ai_platform.investment.company.valuation.valuation_model import ValuationStatus
 
 
 @pytest.fixture()

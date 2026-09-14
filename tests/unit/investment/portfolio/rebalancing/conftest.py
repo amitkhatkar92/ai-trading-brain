@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     CurrentPosition,
     TargetPosition,
 )

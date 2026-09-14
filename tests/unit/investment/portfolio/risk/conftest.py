@@ -4,7 +4,7 @@ Shared pytest fixtures for Portfolio Risk Engine tests.
 """
 import pytest
 
-from iios.investment.portfolio.risk.risk_types import RiskPosition
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
 
 
 # ---------------------------------------------------------------------------

@@ -6,17 +6,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.integration.coverage_monitor import CoverageMonitor
-from iios.investment.decision.integration.dependency_monitor import DependencyMonitor
-from iios.investment.decision.integration.engine_health import (
+from enterprise_ai_platform.investment.decision.integration.coverage_monitor import CoverageMonitor
+from enterprise_ai_platform.investment.decision.integration.dependency_monitor import DependencyMonitor
+from enterprise_ai_platform.investment.decision.integration.engine_health import (
     EngineHealthMonitor,
     EngineHealthRecord,
 )
-from iios.investment.decision.integration.health_monitor import (
+from enterprise_ai_platform.investment.decision.integration.health_monitor import (
     IntegrationHealthMonitor,
     IntegrationHealthReport,
 )
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     ComponentId,
     HealthStatus,
     IntegrationStatus,
@@ -38,7 +38,7 @@ class TestEngineHealthMonitor:
 
     def test_consecutive_failures_degrade(self):
         m = EngineHealthMonitor()
-        from iios.investment.decision.integration.integration_constants import (
+        from enterprise_ai_platform.investment.decision.integration.integration_constants import (
             HEALTH_CONSECUTIVE_FAIL_DEGRADED,
         )
         for _ in range(HEALTH_CONSECUTIVE_FAIL_DEGRADED):

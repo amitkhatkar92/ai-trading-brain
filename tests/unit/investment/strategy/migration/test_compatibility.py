@@ -1,15 +1,15 @@
 """Tests for compatibility layer and validators."""
 import pytest
 
-from iios.investment.strategy.migration.compatibility_layer import CompatibilityLayer
-from iios.investment.strategy.migration.compatibility_validator import CompatibilityValidator
-from iios.investment.strategy.migration.migration_validator import MigrationValidator
-from iios.investment.strategy.migration.validation_report import (
+from enterprise_ai_platform.investment.strategy.migration.compatibility_layer import CompatibilityLayer
+from enterprise_ai_platform.investment.strategy.migration.compatibility_validator import CompatibilityValidator
+from enterprise_ai_platform.investment.strategy.migration.migration_validator import MigrationValidator
+from enterprise_ai_platform.investment.strategy.migration.validation_report import (
     CheckSeverity,
     ValidationReport,
 )
-from iios.investment.strategy.migration.adapter_factory import AdapterFactory
-from iios.investment.strategy.strategy_constants import (
+from enterprise_ai_platform.investment.strategy.migration.adapter_factory import AdapterFactory
+from enterprise_ai_platform.investment.strategy.strategy_constants import (
     AssetClass,
     MarketRegime,
     StrategyCategory,

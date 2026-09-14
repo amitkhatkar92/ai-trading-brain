@@ -1,9 +1,9 @@
 """tests/unit/investment/portfolio/risk/test_stress_testing.py"""
 import pytest
-from iios.investment.portfolio.risk.scenario_library import SCENARIOS, Scenario
-from iios.investment.portfolio.risk.scenario_engine import ScenarioEngine, ScenarioResult
-from iios.investment.portfolio.risk.stress_testing import StressTestEngine, StressTestReport
-from iios.investment.portfolio.risk.stress_statistics import StressStatistics
+from enterprise_ai_platform.investment.portfolio.risk.scenario_library import SCENARIOS, Scenario
+from enterprise_ai_platform.investment.portfolio.risk.scenario_engine import ScenarioEngine, ScenarioResult
+from enterprise_ai_platform.investment.portfolio.risk.stress_testing import StressTestEngine, StressTestReport
+from enterprise_ai_platform.investment.portfolio.risk.stress_statistics import StressStatistics
 
 
 # ── Scenario library ──────────────────────────────────────────────────────
@@ -20,12 +20,12 @@ def test_scenarios_all_frozen():
 
 
 def test_market_crash_is_severe():
-    from iios.investment.portfolio.risk.risk_types import StressTestSeverity
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import StressTestSeverity
     assert SCENARIOS["market_crash"].severity == StressTestSeverity.SEVERE
 
 
 def test_black_swan_is_black_swan():
-    from iios.investment.portfolio.risk.risk_types import StressTestSeverity
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import StressTestSeverity
     assert SCENARIOS["black_swan"].severity == StressTestSeverity.BLACK_SWAN
 
 

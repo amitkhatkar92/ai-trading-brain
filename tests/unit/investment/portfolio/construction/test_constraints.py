@@ -7,27 +7,27 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.construction.construction_constraints import ConstraintDefinition
-from iios.investment.portfolio.construction.construction_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_constraints import ConstraintDefinition
+from enterprise_ai_platform.investment.portfolio.construction.construction_engine import (
     BlueprintAssembler,
     WeightAssigner,
 )
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     ConstraintOutcome,
     ConstraintSeverity,
     ConstraintType,
     WeightingMethod,
 )
-from iios.investment.portfolio.construction.constraint_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.constraint_engine import (
     ConstraintEngine,
     ConstraintReport,
 )
-from iios.investment.portfolio.construction.constraint_history import ConstraintHistory
-from iios.investment.portfolio.construction.constraint_registry import (
+from enterprise_ai_platform.investment.portfolio.construction.constraint_history import ConstraintHistory
+from enterprise_ai_platform.investment.portfolio.construction.constraint_registry import (
     ConstraintRegistry,
     ConstraintRegistryError,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import ConstructionRequest
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import ConstructionRequest
 from tests.unit.investment.portfolio.construction.conftest import make_recs, _rec
 
 
@@ -109,7 +109,7 @@ class TestConstraintEngine:
         assert report.is_compliant
 
     def test_evaluate_with_constraint_passed(self):
-        from iios.investment.portfolio.construction.construction_constraints import (
+        from enterprise_ai_platform.investment.portfolio.construction.construction_constraints import (
             MaxHoldingsConstraint,
         )
         reg    = ConstraintRegistry()
@@ -141,7 +141,7 @@ class TestConstraintEngine:
         assert report.compliance_rate == 1.0
 
     def test_hard_violation_not_compliant(self):
-        from iios.investment.portfolio.construction.construction_constraints import (
+        from enterprise_ai_platform.investment.portfolio.construction.construction_constraints import (
             MinHoldingsConstraint,
         )
         reg = ConstraintRegistry()
@@ -166,10 +166,10 @@ class TestConstraintHistory:
         assert h.count() == 0
 
     def test_record_and_retrieve(self):
-        from iios.investment.portfolio.construction.constraint_history import (
+        from enterprise_ai_platform.investment.portfolio.construction.constraint_history import (
             ConstraintCheckRecord,
         )
-        from iios.investment.portfolio.construction.construction_types import (
+        from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
             ConstraintOutcome,
         )
         h = ConstraintHistory()
@@ -185,10 +185,10 @@ class TestConstraintHistory:
         assert h.count() == 1
 
     def test_recent_n(self):
-        from iios.investment.portfolio.construction.constraint_history import (
+        from enterprise_ai_platform.investment.portfolio.construction.constraint_history import (
             ConstraintCheckRecord,
         )
-        from iios.investment.portfolio.construction.construction_types import (
+        from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
             ConstraintOutcome,
         )
         h = ConstraintHistory()
@@ -204,10 +204,10 @@ class TestConstraintHistory:
         assert len(h.recent(3)) == 3
 
     def test_violations_filter(self):
-        from iios.investment.portfolio.construction.constraint_history import (
+        from enterprise_ai_platform.investment.portfolio.construction.constraint_history import (
             ConstraintCheckRecord,
         )
-        from iios.investment.portfolio.construction.construction_types import (
+        from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
             ConstraintOutcome,
         )
         h = ConstraintHistory()

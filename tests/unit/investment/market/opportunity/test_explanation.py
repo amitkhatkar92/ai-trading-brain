@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.evidence_collector import collect_evidence
-from iios.investment.market.opportunity.explanation_engine import (
+from enterprise_ai_platform.investment.market.opportunity.evidence_collector import collect_evidence
+from enterprise_ai_platform.investment.market.opportunity.explanation_engine import (
     ExplanationEngine,
     explain as free_explain,
 )
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.models import (
     Evidence,
     IntelligenceContext,
     Opportunity,
     OpportunityCategory,
     OpportunityExplanation,
 )
-from iios.investment.market.opportunity.reason_generator import (
+from enterprise_ai_platform.investment.market.opportunity.reason_generator import (
     generate_reason,
     generate_risk_summary,
     strategy_suitability,

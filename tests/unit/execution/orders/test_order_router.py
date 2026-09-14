@@ -35,7 +35,7 @@ from typing import Any
 
 import pytest
 
-from iios.execution.oms.order_router.constants import (
+from enterprise_ai_platform.execution.oms.order_router.constants import (
     BrokerCapability,
     CandidateScoreField,
     ExecutionMode,
@@ -48,7 +48,7 @@ from iios.execution.oms.order_router.constants import (
     ROUTER_SYSTEM_ID,
     VERSION,
 )
-from iios.execution.oms.order_router.exceptions import (
+from enterprise_ai_platform.execution.oms.order_router.exceptions import (
     DuplicateRoutingError,
     NoCandidatesError,
     OrderRouterError,
@@ -61,10 +61,10 @@ from iios.execution.oms.order_router.exceptions import (
     RoutingStrategyError,
     RoutingValidationError,
 )
-from iios.execution.oms.order_router.routing_candidate import RoutingCandidate
-from iios.execution.oms.order_router.routing_context import BrokerCapabilities, RoutingContext
-from iios.execution.oms.order_router.routing_decision import RoutingDecision
-from iios.execution.oms.order_router.routing_events import (
+from enterprise_ai_platform.execution.oms.order_router.routing_candidate import RoutingCandidate
+from enterprise_ai_platform.execution.oms.order_router.routing_context import BrokerCapabilities, RoutingContext
+from enterprise_ai_platform.execution.oms.order_router.routing_decision import RoutingDecision
+from enterprise_ai_platform.execution.oms.order_router.routing_events import (
     RoutingEvent,
     make_candidate_evaluated,
     make_route_selected,
@@ -72,9 +72,9 @@ from iios.execution.oms.order_router.routing_events import (
     make_routing_rejected,
     make_routing_started,
 )
-from iios.execution.oms.order_router.routing_factory import RoutingFactory
-from iios.execution.oms.order_router.routing_history import RoutingHistory
-from iios.execution.oms.order_router.routing_policy import (
+from enterprise_ai_platform.execution.oms.order_router.routing_factory import RoutingFactory
+from enterprise_ai_platform.execution.oms.order_router.routing_history import RoutingHistory
+from enterprise_ai_platform.execution.oms.order_router.routing_policy import (
     RoutingPolicy,
     get_policy,
     make_backtest_policy,
@@ -85,10 +85,10 @@ from iios.execution.oms.order_router.routing_policy import (
     make_priority_policy,
     make_recovery_policy,
 )
-from iios.execution.oms.order_router.routing_registry import RoutingRegistry
-from iios.execution.oms.order_router.routing_request import RoutingRequest
-from iios.execution.oms.order_router.routing_result import RoutingResult
-from iios.execution.oms.order_router.routing_rule import (
+from enterprise_ai_platform.execution.oms.order_router.routing_registry import RoutingRegistry
+from enterprise_ai_platform.execution.oms.order_router.routing_request import RoutingRequest
+from enterprise_ai_platform.execution.oms.order_router.routing_result import RoutingResult
+from enterprise_ai_platform.execution.oms.order_router.routing_rule import (
     RoutingRule,
     make_availability_rule,
     make_capability_rule,
@@ -97,10 +97,10 @@ from iios.execution.oms.order_router.routing_rule import (
     make_order_type_rule,
     make_priority_rule,
 )
-from iios.execution.oms.order_router.routing_statistics import RoutingStatistics
-from iios.execution.oms.order_router.routing_strategy import RoutingStrategy
-from iios.execution.oms.order_router.routing_validation import RoutingValidator
-from iios.execution.oms.order_router.order_router import OrderRouter
+from enterprise_ai_platform.execution.oms.order_router.routing_statistics import RoutingStatistics
+from enterprise_ai_platform.execution.oms.order_router.routing_strategy import RoutingStrategy
+from enterprise_ai_platform.execution.oms.order_router.routing_validation import RoutingValidator
+from enterprise_ai_platform.execution.oms.order_router.order_router import OrderRouter
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -239,7 +239,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_inherits_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(OrderRouterError, IIOSError)
 
     def test_all_subclass_base(self):
@@ -1252,7 +1252,7 @@ class TestOrderRouter:
             r.route(_request())
 
     def test_start_starts_registry_too(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         r = OrderRouter()
         r.start()
         assert r.lifecycle_state() == EngineState.RUNNING

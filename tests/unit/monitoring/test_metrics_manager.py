@@ -1,7 +1,7 @@
 """
 tests/unit/monitoring/test_metrics_manager.py
 ===============================================
-Tests for iios.monitoring.metrics_manager
+Tests for enterprise_ai_platform.monitoring.metrics_manager
 """
 from __future__ import annotations
 
@@ -9,8 +9,8 @@ import threading
 import time
 import pytest
 
-from iios.monitoring.metrics_manager import MetricsManager, _reset_metrics_manager, get_metrics_manager
-from iios.monitoring.monitoring_constants import MetricType
+from enterprise_ai_platform.monitoring.metrics_manager import MetricsManager, _reset_metrics_manager, get_metrics_manager
+from enterprise_ai_platform.monitoring.monitoring_constants import MetricType
 
 
 @pytest.fixture()

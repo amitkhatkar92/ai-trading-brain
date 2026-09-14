@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.insider_transactions import (
+from enterprise_ai_platform.investment.company.ownership.insider_transactions import (
     InsiderTransaction, InsiderTransactionLog, build_transaction_log,
 )
-from iios.investment.company.ownership.executive_trading import analyze_executive_trading
-from iios.investment.company.ownership.director_trading import analyze_director_trading
-from iios.investment.company.ownership.insider_activity import InsiderActivityEngine
-from iios.investment.company.ownership.ownership_profile import InsiderActivityLabel
+from enterprise_ai_platform.investment.company.ownership.executive_trading import analyze_executive_trading
+from enterprise_ai_platform.investment.company.ownership.director_trading import analyze_director_trading
+from enterprise_ai_platform.investment.company.ownership.insider_activity import InsiderActivityEngine
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import InsiderActivityLabel
 
 
 @pytest.fixture
@@ -104,7 +104,7 @@ class TestDirectorTrading:
 
 class TestInsiderActivityEngine:
     def test_returns_profile(self, engine):
-        from iios.investment.company.ownership.ownership_profile import InsiderActivityProfile
+        from enterprise_ai_platform.investment.company.ownership.ownership_profile import InsiderActivityProfile
         result = engine.compute(None)
         assert isinstance(result, InsiderActivityProfile)
 

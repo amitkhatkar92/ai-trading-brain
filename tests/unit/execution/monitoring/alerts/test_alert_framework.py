@@ -10,7 +10,7 @@ import threading
 import time
 import pytest
 
-from iios.execution.monitoring.alerts import (
+from enterprise_ai_platform.execution.monitoring.alerts import (
     # constants
     AlertCategory, AlertEventType, AlertPolicyType, AlertSeverity,
     AlertStatus, AlertType, ThresholdOperator,

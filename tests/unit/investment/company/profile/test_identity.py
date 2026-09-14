@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.profile.company_aliases import AliasStore, GlobalAliasIndex
-from iios.investment.company.profile.identity_utils import (
+from enterprise_ai_platform.investment.company.profile.company_aliases import AliasStore, GlobalAliasIndex
+from enterprise_ai_platform.investment.company.profile.identity_utils import (
     IdentityDiffer,
     IdentityNormaliser,
     IdentityValidator,
 )
-from iios.investment.company.profile.models import (
+from enterprise_ai_platform.investment.company.profile.models import (
     AliasType,
     CompanyAlias,
     CompanyIdentity,

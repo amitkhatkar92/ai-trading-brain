@@ -22,7 +22,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.market.engine import (
+from enterprise_ai_platform.market.engine import (
     # Primary interface
     MarketEngine,
     # Value objects
@@ -114,7 +114,7 @@ def _full_submit(engine: MarketEngine, analysis_id: str = "MKT-001") -> MarketRe
 
 class TestConstants:
     def test_engine_system_id(self):
-        assert ENGINE_SYSTEM_ID == "iios:market:engine"
+        assert ENGINE_SYSTEM_ID == "enterprise_ai_platform:market:engine"
 
     def test_version_format(self):
         assert len(VERSION.split(".")) == 3
@@ -169,7 +169,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_inherits_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(MarketEngineError, IIOSError)
 
     def test_base_error_code(self):

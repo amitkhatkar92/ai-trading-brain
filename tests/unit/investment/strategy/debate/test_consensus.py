@@ -1,24 +1,24 @@
 """tests/unit/investment/strategy/debate/test_consensus.py"""
 import pytest
-from iios.investment.strategy.debate.debate_constants import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import (
     ConsensusLevel, VoteOutcome, VotingMechanism,
 )
-from iios.investment.strategy.debate.voting_engine import (
+from enterprise_ai_platform.investment.strategy.debate.voting_engine import (
     Vote, VotingEngine, VotingResult, make_vote,
 )
-from iios.investment.strategy.debate.agreement_analysis import (
+from enterprise_ai_platform.investment.strategy.debate.agreement_analysis import (
     AgreementAnalysis, AgreementMetrics,
 )
-from iios.investment.strategy.debate.consensus_engine import (
+from enterprise_ai_platform.investment.strategy.debate.consensus_engine import (
     ConsensusEngine, ConsensusPolicy, ConsensusResult,
 )
-from iios.investment.strategy.debate.consensus_statistics import (
+from enterprise_ai_platform.investment.strategy.debate.consensus_statistics import (
     ConsensusStatistics, ConsensusStatisticsTracker,
 )
-from iios.investment.strategy.debate.participant_profile import (
+from enterprise_ai_platform.investment.strategy.debate.participant_profile import (
     build_profile,
 )
-from iios.investment.strategy.debate.debate_constants import ParticipantRole
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import ParticipantRole
 
 
 class TestVotingEngine:

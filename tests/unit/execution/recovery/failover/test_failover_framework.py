@@ -15,7 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.recovery.failover.constants import (
+from enterprise_ai_platform.execution.recovery.failover.constants import (
     ALWAYS_SUCCEEDS,
     NON_OPERATIONAL_ACTIONS,
     STRATEGY_TO_FAILOVER_MAP,
@@ -27,7 +27,7 @@ from iios.execution.recovery.failover.constants import (
     HealthStatus,
     VerificationStatus,
 )
-from iios.execution.recovery.failover.exceptions import (
+from enterprise_ai_platform.execution.recovery.failover.exceptions import (
     FailoverError,
     FailoverExecutionError,
     FailoverNotRunningError,
@@ -39,15 +39,15 @@ from iios.execution.recovery.failover.exceptions import (
     FailoverValidationError,
     FailoverVerificationError,
 )
-from iios.execution.recovery.failover.failover_context import (
+from enterprise_ai_platform.execution.recovery.failover.failover_context import (
     FailoverContext,
     make_failover_context,
 )
-from iios.execution.recovery.failover.failover_engine import (
+from enterprise_ai_platform.execution.recovery.failover.failover_engine import (
     FailoverEngine,
     _get_strategy_value,
 )
-from iios.execution.recovery.failover.failover_events import (
+from enterprise_ai_platform.execution.recovery.failover.failover_events import (
     FailoverEvent,
     make_failover_completed,
     make_failover_executed,
@@ -58,15 +58,15 @@ from iios.execution.recovery.failover.failover_events import (
     make_fallback_activated,
     make_manual_escalation_requested,
 )
-from iios.execution.recovery.failover.failover_executor import FailoverExecutor
-from iios.execution.recovery.failover.failover_factory import FailoverFactory
-from iios.execution.recovery.failover.failover_health_monitor import (
+from enterprise_ai_platform.execution.recovery.failover.failover_executor import FailoverExecutor
+from enterprise_ai_platform.execution.recovery.failover.failover_factory import FailoverFactory
+from enterprise_ai_platform.execution.recovery.failover.failover_health_monitor import (
     FailoverHealthMonitor,
     ResourceAvailabilityReport,
 )
-from iios.execution.recovery.failover.failover_history import FailoverHistory
-from iios.execution.recovery.failover.failover_manager import FailoverManager
-from iios.execution.recovery.failover.failover_plan import (
+from enterprise_ai_platform.execution.recovery.failover.failover_history import FailoverHistory
+from enterprise_ai_platform.execution.recovery.failover.failover_manager import FailoverManager
+from enterprise_ai_platform.execution.recovery.failover.failover_plan import (
     DEFAULT_PLAN_FACTORIES,
     FailoverPlan,
     make_backup_activation_plan,
@@ -80,12 +80,12 @@ from iios.execution.recovery.failover.failover_plan import (
     make_rollback_plan,
     make_workflow_restart_plan,
 )
-from iios.execution.recovery.failover.failover_registry import FailoverRegistry
-from iios.execution.recovery.failover.failover_request import (
+from enterprise_ai_platform.execution.recovery.failover.failover_registry import FailoverRegistry
+from enterprise_ai_platform.execution.recovery.failover.failover_request import (
     FailoverRequest,
     make_failover_request,
 )
-from iios.execution.recovery.failover.failover_response import (
+from enterprise_ai_platform.execution.recovery.failover.failover_response import (
     FailoverExecutionStep,
     FailoverResponse,
     FailoverResult,
@@ -95,15 +95,15 @@ from iios.execution.recovery.failover.failover_response import (
     make_failover_result,
     make_verification_report,
 )
-from iios.execution.recovery.failover.failover_statistics import FailoverStatistics
-from iios.execution.recovery.failover.failover_strategy_registry import (
+from enterprise_ai_platform.execution.recovery.failover.failover_statistics import FailoverStatistics
+from enterprise_ai_platform.execution.recovery.failover.failover_strategy_registry import (
     FailoverStrategyRegistry,
 )
-from iios.execution.recovery.failover.failover_validation import (
+from enterprise_ai_platform.execution.recovery.failover.failover_validation import (
     FailoverValidationResult,
     FailoverValidator,
 )
-from iios.execution.recovery.failover.failover_verifier import (
+from enterprise_ai_platform.execution.recovery.failover.failover_verifier import (
     CHECK_BROKER_AVAIL,
     CHECK_EXEC_READINESS,
     CHECK_GATEWAY_AVAIL,
@@ -1203,7 +1203,7 @@ class TestFailoverExecutor:
     def test_deactivate_primary_always_succeeds(self):
         ctx = _ctx(primary_action=FailoverAction.DEACTIVATE_PRIMARY,
                    failover_type=FailoverType.COMPONENT)
-        from iios.execution.recovery.failover.failover_plan import make_deactivate_primary_plan
+        from enterprise_ai_platform.execution.recovery.failover.failover_plan import make_deactivate_primary_plan
         plan = make_deactivate_primary_plan()
         r = self.executor.execute(plan, ctx)
         assert r.is_successful
@@ -1500,7 +1500,7 @@ class TestGetStrategyValue:
 
 class TestPublicSurface:
     def test_primary_imports(self):
-        from iios.execution.recovery.failover import (
+        from enterprise_ai_platform.execution.recovery.failover import (
             FailoverEngine,
             FailoverContext,
             FailoverRequest,
@@ -1510,21 +1510,21 @@ class TestPublicSurface:
         )
 
     def test_exception_imports(self):
-        from iios.execution.recovery.failover import (
+        from enterprise_ai_platform.execution.recovery.failover import (
             FailoverError,
             FailoverNotRunningError,
             FailoverValidationError,
         )
 
     def test_plan_imports(self):
-        from iios.execution.recovery.failover import (
+        from enterprise_ai_platform.execution.recovery.failover import (
             FailoverPlan,
             make_retry_plan,
             make_broker_failover_plan,
         )
 
     def test_constant_imports(self):
-        from iios.execution.recovery.failover import (
+        from enterprise_ai_platform.execution.recovery.failover import (
             VERSION, SYSTEM_ID, ENGINE_ID,
         )
         assert VERSION == "1.0.0"

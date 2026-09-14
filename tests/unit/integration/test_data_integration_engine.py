@@ -16,16 +16,16 @@ import pytest
 def _run(coro):
     return asyncio.run(coro)
 
-from iios.integration.cache.cache_key import CacheKey
-from iios.integration.cache.integration_cache import IntegrationCache
-from iios.integration.core.data_record import DataRecord, DataRequest, DataResponse
-from iios.integration.core.integration_result import IntegrationResult, ProviderContract
-from iios.integration.data_integration_engine import (
+from enterprise_ai_platform.integration.cache.cache_key import CacheKey
+from enterprise_ai_platform.integration.cache.integration_cache import IntegrationCache
+from enterprise_ai_platform.integration.core.data_record import DataRecord, DataRequest, DataResponse
+from enterprise_ai_platform.integration.core.integration_result import IntegrationResult, ProviderContract
+from enterprise_ai_platform.integration.data_integration_engine import (
     DataIntegrationEngine,
     get_data_integration_engine,
     reset_data_integration_engine,
 )
-from iios.integration.integration_constants import (
+from enterprise_ai_platform.integration.integration_constants import (
     CircuitBreakerState,
     DataCategory,
     DataFrequency,
@@ -40,11 +40,11 @@ from iios.integration.integration_constants import (
     CANONICAL_SCHEMA_VERSION,
     INTEGRATION_ENGINE_VERSION,
 )
-from iios.integration.integration_context import (
+from enterprise_ai_platform.integration.integration_context import (
     IntegrationContextState,
     integration_operation_context,
 )
-from iios.integration.integration_exceptions import (
+from enterprise_ai_platform.integration.integration_exceptions import (
     AllProvidersFailedError,
     CacheOverflowError,
     CircuitBreakerOpenError,
@@ -64,29 +64,29 @@ from iios.integration.integration_exceptions import (
     UnitConversionError,
     ValidationError,
 )
-from iios.integration.integration_factory import IntegrationFactory
-from iios.integration.integration_registry import (
+from enterprise_ai_platform.integration.integration_factory import IntegrationFactory
+from enterprise_ai_platform.integration.integration_registry import (
     IntegrationRegistry,
     get_integration_registry,
     reset_integration_registry,
 )
-from iios.integration.monitoring.availability_monitor import AvailabilityMonitor
-from iios.integration.monitoring.health_monitor import HealthMonitor
-from iios.integration.monitoring.latency_monitor import LatencyMonitor
-from iios.integration.monitoring.provider_statistics import RollingProviderStats
-from iios.integration.normalization.field_mapper import FieldMapper, FieldMapping
-from iios.integration.normalization.normalization_engine import NormalizationEngine
-from iios.integration.normalization.schema_mapper import (
+from enterprise_ai_platform.integration.monitoring.availability_monitor import AvailabilityMonitor
+from enterprise_ai_platform.integration.monitoring.health_monitor import HealthMonitor
+from enterprise_ai_platform.integration.monitoring.latency_monitor import LatencyMonitor
+from enterprise_ai_platform.integration.monitoring.provider_statistics import RollingProviderStats
+from enterprise_ai_platform.integration.normalization.field_mapper import FieldMapper, FieldMapping
+from enterprise_ai_platform.integration.normalization.normalization_engine import NormalizationEngine
+from enterprise_ai_platform.integration.normalization.schema_mapper import (
     SchemaMapperRegistry,
     SimpleSchemaMapper,
 )
-from iios.integration.normalization.timestamp_normalizer import TimestampNormalizer
-from iios.integration.normalization.unit_converter import UnitConverter
-from iios.integration.pipeline.pipeline_builder import Pipeline, PipelineBuilder
-from iios.integration.pipeline.pipeline_context import PipelineContext
-from iios.integration.pipeline.pipeline_engine import PipelineEngine
-from iios.integration.pipeline.pipeline_executor import PipelineExecutor
-from iios.integration.pipeline.pipeline_stage import (
+from enterprise_ai_platform.integration.normalization.timestamp_normalizer import TimestampNormalizer
+from enterprise_ai_platform.integration.normalization.unit_converter import UnitConverter
+from enterprise_ai_platform.integration.pipeline.pipeline_builder import Pipeline, PipelineBuilder
+from enterprise_ai_platform.integration.pipeline.pipeline_context import PipelineContext
+from enterprise_ai_platform.integration.pipeline.pipeline_engine import PipelineEngine
+from enterprise_ai_platform.integration.pipeline.pipeline_executor import PipelineExecutor
+from enterprise_ai_platform.integration.pipeline.pipeline_stage import (
     CacheStage,
     ExtractionStage,
     NormalizationStage,
@@ -95,18 +95,18 @@ from iios.integration.pipeline.pipeline_stage import (
     TransformationStage,
     ValidationStage,
 )
-from iios.integration.providers.base_provider import BaseProvider
-from iios.integration.providers.provider_capabilities import ProviderCapabilities
-from iios.integration.providers.provider_health import CircuitBreaker, ProviderHealth
-from iios.integration.providers.provider_manager import ProviderManager
-from iios.integration.providers.provider_metadata import ProviderMetadata
-from iios.integration.providers.provider_registry import ProviderRegistry
-from iios.integration.registry.capability_registry import CapabilityRegistry
-from iios.integration.validation.integrity_checker import IntegrityChecker
-from iios.integration.validation.quality_checker import QualityChecker
-from iios.integration.validation.schema_validator import FieldSpec, SchemaValidator
-from iios.integration.validation.validation_engine import ValidationEngine
-from iios.integration.validation.validation_report import ValidationIssue, ValidationReport
+from enterprise_ai_platform.integration.providers.base_provider import BaseProvider
+from enterprise_ai_platform.integration.providers.provider_capabilities import ProviderCapabilities
+from enterprise_ai_platform.integration.providers.provider_health import CircuitBreaker, ProviderHealth
+from enterprise_ai_platform.integration.providers.provider_manager import ProviderManager
+from enterprise_ai_platform.integration.providers.provider_metadata import ProviderMetadata
+from enterprise_ai_platform.integration.providers.provider_registry import ProviderRegistry
+from enterprise_ai_platform.integration.registry.capability_registry import CapabilityRegistry
+from enterprise_ai_platform.integration.validation.integrity_checker import IntegrityChecker
+from enterprise_ai_platform.integration.validation.quality_checker import QualityChecker
+from enterprise_ai_platform.integration.validation.schema_validator import FieldSpec, SchemaValidator
+from enterprise_ai_platform.integration.validation.validation_engine import ValidationEngine
+from enterprise_ai_platform.integration.validation.validation_report import ValidationIssue, ValidationReport
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.governance import (
+from enterprise_ai_platform.supervisor.governance import (
     # --- enumerations ---
     AnomalySeverity,
     AutonomousGovernanceEventType,
@@ -200,7 +200,7 @@ class TestConstants:
             assert d.value in DOMAIN_SNAPSHOT_KEY
 
     def test_health_thresholds_ordering(self):
-        from iios.supervisor.governance import (
+        from enterprise_ai_platform.supervisor.governance import (
             HEALTH_OPTIMAL_THRESHOLD, HEALTH_NORMAL_THRESHOLD,
             HEALTH_DEGRADED_THRESHOLD, HEALTH_CRITICAL_THRESHOLD,
         )
@@ -219,7 +219,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(AutonomousGovernanceError, IIOSError)
 
     def test_not_running_subclass(self):
@@ -1602,16 +1602,16 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_present(self):
-        import iios.supervisor.governance as module
+        import enterprise_ai_platform.supervisor.governance as module
         for name in module.__all__:
             assert hasattr(module, name), f"Missing export: {name}"
 
     def test_engine_in_all(self):
-        import iios.supervisor.governance as module
+        import enterprise_ai_platform.supervisor.governance as module
         assert "AutonomousGovernanceEngine" in module.__all__
 
     def test_manager_in_all(self):
-        import iios.supervisor.governance as module
+        import enterprise_ai_platform.supervisor.governance as module
         assert "AutonomousGovernanceManager" in module.__all__
 
 

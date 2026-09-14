@@ -1,10 +1,10 @@
 """tests/unit/investment/portfolio/risk/test_exposure_analysis.py"""
 import pytest
-from iios.investment.portfolio.risk.asset_exposure import analyze_asset_exposure
-from iios.investment.portfolio.risk.factor_exposure import analyze_factor_exposure
-from iios.investment.portfolio.risk.style_exposure import analyze_style_exposure
-from iios.investment.portfolio.risk.exposure_statistics import compute_exposure_statistics
-from iios.investment.portfolio.risk.portfolio_exposure import (
+from enterprise_ai_platform.investment.portfolio.risk.asset_exposure import analyze_asset_exposure
+from enterprise_ai_platform.investment.portfolio.risk.factor_exposure import analyze_factor_exposure
+from enterprise_ai_platform.investment.portfolio.risk.style_exposure import analyze_style_exposure
+from enterprise_ai_platform.investment.portfolio.risk.exposure_statistics import compute_exposure_statistics
+from enterprise_ai_platform.investment.portfolio.risk.portfolio_exposure import (
     PortfolioExposureAnalyzer, PortfolioExposureReport,
 )
 

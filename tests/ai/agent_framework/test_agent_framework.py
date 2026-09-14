@@ -32,75 +32,75 @@ from typing import Any
 import pytest
 
 # ── Core imports ──────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.core.agent_identity    import AgentIdentity, AgentMetadata
-from iios.ai.agent_framework.core.agent_capabilities import (
+from enterprise_ai_platform.ai.agent_framework.core.agent_identity    import AgentIdentity, AgentMetadata
+from enterprise_ai_platform.ai.agent_framework.core.agent_capabilities import (
     CapabilityType, AgentCapability, AgentCapabilities,
 )
-from iios.ai.agent_framework.core.agent_config       import AgentConfiguration
-from iios.ai.agent_framework.core.agent_permissions  import (
+from enterprise_ai_platform.ai.agent_framework.core.agent_config       import AgentConfiguration
+from enterprise_ai_platform.ai.agent_framework.core.agent_permissions  import (
     PermissionLevel, AgentPermission, AgentPermissions,
 )
-from iios.ai.agent_framework.core.agent_health       import HealthStatus, AgentHealth
-from iios.ai.agent_framework.core.agent_metrics      import MetricRecord, AgentMetrics
-from iios.ai.agent_framework.core.agent_spec         import AgentSpec
+from enterprise_ai_platform.ai.agent_framework.core.agent_health       import HealthStatus, AgentHealth
+from enterprise_ai_platform.ai.agent_framework.core.agent_metrics      import MetricRecord, AgentMetrics
+from enterprise_ai_platform.ai.agent_framework.core.agent_spec         import AgentSpec
 
 # ── Events ────────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.events.agent_events     import (
+from enterprise_ai_platform.ai.agent_framework.events.agent_events     import (
     AgentEventType,
     AgentRegisteredEvent, AgentStartedEvent, AgentStoppedEvent,
     AgentSuspendedEvent, AgentResumedEvent, AgentHealthChangedEvent,
     TaskAssignedEvent, TaskStartedEvent, TaskCompletedEvent, TaskFailedEvent,
     CapabilityAddedEvent, PermissionGrantedEvent, PermissionRevokedEvent,
 )
-from iios.ai.agent_framework.events.agent_event_bus  import AgentEventBus
+from enterprise_ai_platform.ai.agent_framework.events.agent_event_bus  import AgentEventBus
 
 # ── Engine ────────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.engine.agent_task              import (
+from enterprise_ai_platform.ai.agent_framework.engine.agent_task              import (
     TaskStatus, TaskPriority, AgentTask, AgentResult,
 )
-from iios.ai.agent_framework.engine.agent_execution_context import AgentExecutionContext
-from iios.ai.agent_framework.engine.agent_execution_engine  import AgentExecutionEngine
+from enterprise_ai_platform.ai.agent_framework.engine.agent_execution_context import AgentExecutionContext
+from enterprise_ai_platform.ai.agent_framework.engine.agent_execution_engine  import AgentExecutionEngine
 
 # ── Base ──────────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.base.base_agent import BaseAIAgent
+from enterprise_ai_platform.ai.agent_framework.base.base_agent import BaseAIAgent
 
 # ── Registry ──────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.registry.agent_descriptor import AgentDescriptor
-from iios.ai.agent_framework.registry.agent_registry   import AgentRegistry
-from iios.ai.agent_framework.registry.agent_factory    import AgentFactory
+from enterprise_ai_platform.ai.agent_framework.registry.agent_descriptor import AgentDescriptor
+from enterprise_ai_platform.ai.agent_framework.registry.agent_registry   import AgentRegistry
+from enterprise_ai_platform.ai.agent_framework.registry.agent_factory    import AgentFactory
 
 # ── Manager ───────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.manager.agent_manager import AgentManager
+from enterprise_ai_platform.ai.agent_framework.manager.agent_manager import AgentManager
 
 # ── Capabilities ──────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.capabilities.capability_definitions import (
+from enterprise_ai_platform.ai.agent_framework.capabilities.capability_definitions import (
     CapabilityDefinition, CapabilityRegistry,
 )
 
 # ── Roles ─────────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.roles.agent_role          import RoleType, AgentRole
-from iios.ai.agent_framework.roles.capability_profile  import CapabilityProfile
-from iios.ai.agent_framework.roles.permission_profile  import PermissionProfile
-from iios.ai.agent_framework.roles.agent_profile       import AgentProfile
+from enterprise_ai_platform.ai.agent_framework.roles.agent_role          import RoleType, AgentRole
+from enterprise_ai_platform.ai.agent_framework.roles.capability_profile  import CapabilityProfile
+from enterprise_ai_platform.ai.agent_framework.roles.permission_profile  import PermissionProfile
+from enterprise_ai_platform.ai.agent_framework.roles.agent_profile       import AgentProfile
 
 # ── Policy ────────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.policy.execution_policy  import (
+from enterprise_ai_platform.ai.agent_framework.policy.execution_policy  import (
     DefaultExecutionPolicy, ActiveOnlyPolicy, RateLimitPolicy,
 )
-from iios.ai.agent_framework.policy.permission_policy import (
+from enterprise_ai_platform.ai.agent_framework.policy.permission_policy import (
     DefaultPermissionPolicy, StrictPermissionPolicy,
 )
-from iios.ai.agent_framework.policy.capability_policy import (
+from enterprise_ai_platform.ai.agent_framework.policy.capability_policy import (
     DefaultCapabilityPolicy, StrictCapabilityPolicy,
 )
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.snapshot.agent_snapshot import (
+from enterprise_ai_platform.ai.agent_framework.snapshot.agent_snapshot import (
     AgentSnapshot, AgentFrameworkSnapshot,
 )
 
 # ── Specialists ───────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.specialists.specialist_agents import (
+from enterprise_ai_platform.ai.agent_framework.specialists.specialist_agents import (
     MarketAnalystAgent, TechnicalAnalystAgent, FundamentalAnalystAgent,
     MacroAnalystAgent, NewsAnalystAgent, SentimentAnalystAgent,
     RiskAnalystAgent, PortfolioAnalystAgent, ComplianceAnalystAgent,
@@ -109,7 +109,7 @@ from iios.ai.agent_framework.specialists.specialist_agents import (
 )
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.exceptions import (
+from enterprise_ai_platform.ai.agent_framework.exceptions import (
     AIAgentNotFoundError, AIAgentAlreadyExistsError,
     AIAgentNotRunningError, AIAgentAlreadyRunningError,
     AIAgentValidationError,
@@ -122,7 +122,7 @@ from iios.ai.agent_framework.exceptions import (
 )
 
 # ── Gateway ───────────────────────────────────────────────────────────────────
-from iios.ai.agent_framework.gateway.agent_framework_gateway import AgentFrameworkGateway
+from enterprise_ai_platform.ai.agent_framework.gateway.agent_framework_gateway import AgentFrameworkGateway
 
 
 # ===========================================================================
@@ -218,8 +218,8 @@ class TestAgentIdentity:
         assert len(i.agent_id) == 36  # UUID4
 
     def test_qualified_name_format(self):
-        i = AgentIdentity.create("Foo", "FooAgent", namespace="iios:test")
-        assert i.qualified_name == "iios:test:Foo:1.0.0"
+        i = AgentIdentity.create("Foo", "FooAgent", namespace="enterprise_ai_platform:test")
+        assert i.qualified_name == "enterprise_ai_platform:test:Foo:1.0.0"
 
     def test_immutable(self):
         i = AgentIdentity.create("Foo", "FooAgent")
@@ -1157,7 +1157,7 @@ class TestGateway:
         assert gateway.health()["is_running"] is True
 
     def test_gateway_system_id(self, gateway):
-        assert gateway.health()["system_id"] == "iios:ai:agent_framework:gateway"
+        assert gateway.health()["system_id"] == "enterprise_ai_platform:ai:agent_framework:gateway"
 
     def test_gateway_register_agent(self, gateway):
         spec  = _make_spec()

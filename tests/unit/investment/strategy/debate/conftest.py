@@ -5,24 +5,24 @@ import asyncio
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.strategy.debate.debate_constants import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import (
     ArgumentType, EvidenceSource, EvidenceReliability, EvidenceWeight,
     ParticipantRole, VoteOutcome, VotingMechanism, ConsensusLevel,
 )
-from iios.investment.strategy.debate.debate_context import (
+from enterprise_ai_platform.investment.strategy.debate.debate_context import (
     DebateContext, StrategyDebateInput, OpportunityDebateInput, MarketSnapshot,
 )
-from iios.investment.strategy.debate.debate_session import DebateSession
-from iios.investment.strategy.debate.debate_events import DebateEventBus
-from iios.investment.strategy.debate.evidence_registry import EvidenceRegistry, make_evidence
-from iios.investment.strategy.debate.argument_manager import (
+from enterprise_ai_platform.investment.strategy.debate.debate_session import DebateSession
+from enterprise_ai_platform.investment.strategy.debate.debate_events import DebateEventBus
+from enterprise_ai_platform.investment.strategy.debate.evidence_registry import EvidenceRegistry, make_evidence
+from enterprise_ai_platform.investment.strategy.debate.argument_manager import (
     ArgumentManager, make_argument, make_rebuttal,
 )
-from iios.investment.strategy.debate.voting_engine import make_vote
-from iios.investment.strategy.debate.participant_profile import build_profile, DEFAULT_WEIGHTS
-from iios.investment.strategy.debate.agent_registry import create_default_registry
-from iios.investment.strategy.debate.consensus_engine import ConsensusPolicy
-from iios.investment.strategy.debate.debate_orchestrator import OrchestratorConfig
+from enterprise_ai_platform.investment.strategy.debate.voting_engine import make_vote
+from enterprise_ai_platform.investment.strategy.debate.participant_profile import build_profile, DEFAULT_WEIGHTS
+from enterprise_ai_platform.investment.strategy.debate.agent_registry import create_default_registry
+from enterprise_ai_platform.investment.strategy.debate.consensus_engine import ConsensusPolicy
+from enterprise_ai_platform.investment.strategy.debate.debate_orchestrator import OrchestratorConfig
 
 
 # ── Context fixtures ──────────────────────────────────────────────────────────

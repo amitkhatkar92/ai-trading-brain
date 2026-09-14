@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.coverage_monitor import CoverageMonitor
-from iios.investment.strategy.integration.dependency_monitor import DependencyMonitor
-from iios.investment.strategy.integration.engine_health import EngineHealthChecker
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.coverage_monitor import CoverageMonitor
+from enterprise_ai_platform.investment.strategy.integration.dependency_monitor import DependencyMonitor
+from enterprise_ai_platform.investment.strategy.integration.engine_health import EngineHealthChecker
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     HealthStatus,
     IntelligenceSource,
     STALENESS_WARNING_SECONDS,
 )
-from iios.investment.strategy.integration.strategy_intelligence_aggregator import (
+from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_aggregator import (
     StrategyIntelligenceAggregator,
 )
 from tests.unit.investment.strategy.integration.conftest import (

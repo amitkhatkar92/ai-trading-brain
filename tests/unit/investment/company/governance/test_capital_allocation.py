@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.capital_allocation import CapitalAllocationEngine
-from iios.investment.company.governance.management_profile import (
+from enterprise_ai_platform.investment.company.governance.capital_allocation import CapitalAllocationEngine
+from enterprise_ai_platform.investment.company.governance.management_profile import (
     CapitalAllocationProfile, CapitalAllocationLabel,
 )
 

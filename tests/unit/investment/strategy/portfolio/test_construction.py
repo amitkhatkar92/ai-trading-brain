@@ -7,18 +7,18 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_allocation import AllocationMethod
-from iios.investment.strategy.portfolio.construction_constraints import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import AllocationMethod
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import (
     ConstructionConstraints, DEFAULT_CONSTRAINTS,
     CONCENTRATED_CONSTRAINTS, DIVERSIFIED_CONSTRAINTS, INSTITUTIONAL_CONSTRAINTS,
 )
-from iios.investment.strategy.portfolio.weight_optimizer import WeightOptimizer
-from iios.investment.strategy.portfolio.allocation_engine import AllocationEngine
-from iios.investment.strategy.portfolio.portfolio_constructor import (
+from enterprise_ai_platform.investment.strategy.portfolio.weight_optimizer import WeightOptimizer
+from enterprise_ai_platform.investment.strategy.portfolio.allocation_engine import AllocationEngine
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_constructor import (
     PortfolioConstructor, PortfolioConstructionError
 )
-from iios.investment.strategy.portfolio.strategy_portfolio import PortfolioType, PortfolioState
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import PortfolioType, PortfolioState
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy
 
 

@@ -1,10 +1,10 @@
 """tests/unit/investment/company/earnings/test_profitability.py"""
 import pytest
 
-from iios.investment.company.earnings.margin_analysis import MarginAnalyzer
-from iios.investment.company.earnings.return_analysis import ReturnAnalyzer
-from iios.investment.company.earnings.cost_efficiency import CostEfficiencyAnalyzer
-from iios.investment.company.earnings.profitability_engine import ProfitabilityEngine
+from enterprise_ai_platform.investment.company.earnings.margin_analysis import MarginAnalyzer
+from enterprise_ai_platform.investment.company.earnings.return_analysis import ReturnAnalyzer
+from enterprise_ai_platform.investment.company.earnings.cost_efficiency import CostEfficiencyAnalyzer
+from enterprise_ai_platform.investment.company.earnings.profitability_engine import ProfitabilityEngine
 from tests.unit.investment.company.earnings.conftest import make_report
 
 

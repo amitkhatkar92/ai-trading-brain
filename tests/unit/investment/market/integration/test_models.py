@@ -5,7 +5,7 @@ import json
 
 import pytest
 
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.models import (
     Conflict,
     ConflictSeverity,
     ConflictSummary,

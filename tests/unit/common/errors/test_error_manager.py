@@ -8,21 +8,21 @@ from typing import List, Optional, Tuple
 
 import pytest
 
-from iios.common.errors.error_context import ErrorContext, clear_error_context
-from iios.common.errors.error_manager import (
+from enterprise_ai_platform.common.errors.error_context import ErrorContext, clear_error_context
+from enterprise_ai_platform.common.errors.error_manager import (
     ErrorManager,
     get_error_manager,
     reset_error_manager,
 )
-from iios.common.errors.exceptions import (
+from enterprise_ai_platform.common.errors.exceptions import (
     EngineError,
     IIOSError,
     IntegrationError,
     ValidationError,
 )
-from iios.common.errors.failure_metrics import FailureTracker
-from iios.common.errors.recovery_engine import RecoveryEngine
-from iios.common.errors.retry_policy import FixedRetry, NoRetry
+from enterprise_ai_platform.common.errors.failure_metrics import FailureTracker
+from enterprise_ai_platform.common.errors.recovery_engine import RecoveryEngine
+from enterprise_ai_platform.common.errors.retry_policy import FixedRetry, NoRetry
 
 
 @pytest.fixture(autouse=True)
@@ -125,7 +125,7 @@ class TestDispatch:
         mgr.dispatch(ValueError("x"), ErrorContext(engine_id="E"))
 
     def test_dispatch_records_failure_in_metrics(self, mgr):
-        mgr.dispatch(ValueError("x"), ErrorContext(engine_id="iios:test"))
+        mgr.dispatch(ValueError("x"), ErrorContext(engine_id="enterprise_ai_platform:test"))
         snap = mgr.statistics()
         assert snap.total_failures >= 1
 
@@ -135,27 +135,27 @@ class TestDispatch:
 class TestRecoveryEngineFactory:
 
     def test_returns_recovery_engine(self, mgr):
-        re = mgr.get_recovery_engine("iios:test")
+        re = mgr.get_recovery_engine("enterprise_ai_platform:test")
         assert isinstance(re, RecoveryEngine)
 
     def test_same_engine_id_returns_same_instance(self, mgr):
-        a = mgr.get_recovery_engine("iios:test")
-        b = mgr.get_recovery_engine("iios:test")
+        a = mgr.get_recovery_engine("enterprise_ai_platform:test")
+        b = mgr.get_recovery_engine("enterprise_ai_platform:test")
         assert a is b
 
     def test_different_engine_ids_different_instances(self, mgr):
-        a = mgr.get_recovery_engine("iios:eng-a")
-        b = mgr.get_recovery_engine("iios:eng-b")
+        a = mgr.get_recovery_engine("enterprise_ai_platform:eng-a")
+        b = mgr.get_recovery_engine("enterprise_ai_platform:eng-b")
         assert a is not b
 
     def test_per_call_policy_returns_uncached_engine(self, mgr):
-        a = mgr.get_recovery_engine("iios:test")
-        b = mgr.get_recovery_engine("iios:test", policy=FixedRetry(max_retries=5))
+        a = mgr.get_recovery_engine("enterprise_ai_platform:test")
+        b = mgr.get_recovery_engine("enterprise_ai_platform:test", policy=FixedRetry(max_retries=5))
         assert a is not b
 
     def test_recovery_engine_has_correct_engine_id(self, mgr):
-        re = mgr.get_recovery_engine("iios:market:integration")
-        assert re.engine_id == "iios:market:integration"
+        re = mgr.get_recovery_engine("enterprise_ai_platform:market:integration")
+        assert re.engine_id == "enterprise_ai_platform:market:integration"
 
 
 # ── report_failure / report_retry ─────────────────────────────────────────────
@@ -163,23 +163,23 @@ class TestRecoveryEngineFactory:
 class TestReporting:
 
     def test_report_failure_increments_metrics(self, mgr):
-        mgr.report_failure("iios:test", ValueError("x"))
+        mgr.report_failure("enterprise_ai_platform:test", ValueError("x"))
         snap = mgr.statistics()
         assert snap.total_failures >= 1
 
     def test_report_retry_increments_retries(self, mgr):
-        mgr.report_retry("iios:test")
-        snap = mgr.engine_statistics("iios:test")
+        mgr.report_retry("enterprise_ai_platform:test")
+        snap = mgr.engine_statistics("enterprise_ai_platform:test")
         assert snap.retries == 1
 
     def test_report_failure_with_recovery_time(self, mgr):
         mgr.report_failure(
-            "iios:test",
+            "enterprise_ai_platform:test",
             ValueError("x"),
             recovery_time_sec  = 1.5,
             recovery_succeeded = True,
         )
-        snap = mgr.engine_statistics("iios:test")
+        snap = mgr.engine_statistics("enterprise_ai_platform:test")
         assert snap.recoveries          == 1
         assert snap.recovery_successes  == 1
         assert snap.mean_time_to_recovery == pytest.approx(1.5)
@@ -197,10 +197,10 @@ class TestStatistics:
         assert mgr.engine_statistics("nonexistent") is None
 
     def test_engine_statistics_returns_snapshot(self, mgr):
-        mgr.report_failure("iios:known", ValueError("x"))
-        snap = mgr.engine_statistics("iios:known")
+        mgr.report_failure("enterprise_ai_platform:known", ValueError("x"))
+        snap = mgr.engine_statistics("enterprise_ai_platform:known")
         assert snap is not None
-        assert snap.engine_id == "iios:known"
+        assert snap.engine_id == "enterprise_ai_platform:known"
 
 
 # ── reset ─────────────────────────────────────────────────────────────────────
@@ -215,13 +215,13 @@ class TestReset:
         assert not called
 
     def test_reset_clears_recovery_cache(self, mgr):
-        re1 = mgr.get_recovery_engine("iios:test")
+        re1 = mgr.get_recovery_engine("enterprise_ai_platform:test")
         mgr.reset()
-        re2 = mgr.get_recovery_engine("iios:test")
+        re2 = mgr.get_recovery_engine("enterprise_ai_platform:test")
         assert re1 is not re2
 
     def test_reset_clears_metrics(self, mgr):
-        mgr.report_failure("iios:test", ValueError("x"))
+        mgr.report_failure("enterprise_ai_platform:test", ValueError("x"))
         mgr.reset()
         snap = mgr.statistics()
         assert snap.total_failures == 0

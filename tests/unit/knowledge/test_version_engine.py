@@ -34,9 +34,9 @@ from typing import Any
 
 import pytest
 
-from iios.knowledge.knowledge_constants import VersionBump
-from iios.knowledge.models.knowledge_record import KnowledgeRecord
-from iios.knowledge.versioning.version_constants import (
+from enterprise_ai_platform.knowledge.knowledge_constants import VersionBump
+from enterprise_ai_platform.knowledge.models.knowledge_record import KnowledgeRecord
+from enterprise_ai_platform.knowledge.versioning.version_constants import (
     BranchStatus,
     ChangeType,
     LineageRelationType,
@@ -49,7 +49,7 @@ from iios.knowledge.versioning.version_constants import (
     MAX_LINEAGE_DEPTH,
     DIFF_SKIP_FIELDS,
 )
-from iios.knowledge.versioning.version_exceptions import (
+from enterprise_ai_platform.knowledge.versioning.version_exceptions import (
     AuditError,
     BranchAlreadyExistsError,
     BranchConflictError,
@@ -66,50 +66,50 @@ from iios.knowledge.versioning.version_exceptions import (
     VersionRollbackError,
     VersionValidationError,
 )
-from iios.knowledge.versioning.models.knowledge_version import (
+from enterprise_ai_platform.knowledge.versioning.models.knowledge_version import (
     KnowledgeVersion, VersionStatus,
 )
-from iios.knowledge.versioning.models.version_history import VersionHistory
-from iios.knowledge.versioning.models.version_branch import (
+from enterprise_ai_platform.knowledge.versioning.models.version_history import VersionHistory
+from enterprise_ai_platform.knowledge.versioning.models.version_branch import (
     ConflictInfo, MergeResult, VersionBranch,
 )
-from iios.knowledge.versioning.models.version_diff import FieldChange, RecordDiff
-from iios.knowledge.versioning.models.version_audit import AuditEntry
-from iios.knowledge.versioning.models.provenance_record import ProvenanceRecord
-from iios.knowledge.versioning.models.lineage_graph import (
+from enterprise_ai_platform.knowledge.versioning.models.version_diff import FieldChange, RecordDiff
+from enterprise_ai_platform.knowledge.versioning.models.version_audit import AuditEntry
+from enterprise_ai_platform.knowledge.versioning.models.provenance_record import ProvenanceRecord
+from enterprise_ai_platform.knowledge.versioning.models.lineage_graph import (
     LineageEdge, LineageGraph, LineageNode,
 )
-from iios.knowledge.versioning.version_manager import (
+from enterprise_ai_platform.knowledge.versioning.version_manager import (
     VersionManager, get_version_manager, reset_version_manager,
 )
-from iios.knowledge.versioning.branch_manager import (
+from enterprise_ai_platform.knowledge.versioning.branch_manager import (
     BranchManager, get_branch_manager, reset_branch_manager,
 )
-from iios.knowledge.versioning.diff_engine import (
+from enterprise_ai_platform.knowledge.versioning.diff_engine import (
     DiffEngine, get_diff_engine, reset_diff_engine,
 )
-from iios.knowledge.versioning.audit_log import (
+from enterprise_ai_platform.knowledge.versioning.audit_log import (
     AuditLog, get_audit_log, reset_audit_log,
 )
-from iios.knowledge.versioning.provenance_tracker import (
+from enterprise_ai_platform.knowledge.versioning.provenance_tracker import (
     ProvenanceTracker, get_provenance_tracker, reset_provenance_tracker,
 )
-from iios.knowledge.versioning.lineage_manager import (
+from enterprise_ai_platform.knowledge.versioning.lineage_manager import (
     DependencyTracker, LineageManager,
     get_dependency_tracker, get_lineage_manager,
     reset_dependency_tracker, reset_lineage_manager,
 )
-from iios.knowledge.versioning.version_context import (
+from enterprise_ai_platform.knowledge.versioning.version_context import (
     VersionContext, current_version_actor, current_version_operation_id,
     get_version_context, reset_version_context, version_operation,
 )
-from iios.knowledge.versioning.version_factory import (
+from enterprise_ai_platform.knowledge.versioning.version_factory import (
     VersionFactory, get_version_factory, reset_version_factory,
 )
-from iios.knowledge.versioning.version_engine import (
+from enterprise_ai_platform.knowledge.versioning.version_engine import (
     VersionEngine, get_version_engine, reset_version_engine,
 )
-from iios.knowledge.versioning.version_registry import (
+from enterprise_ai_platform.knowledge.versioning.version_registry import (
     VersionRegistry, get_version_registry, reset_version_registry,
 )
 
@@ -143,10 +143,10 @@ class TestVersionConstants:
         assert DEFAULT_BRANCH == "main"
 
     def test_system_actor(self):
-        assert SYSTEM_VERSIONING_ACTOR == "iios:system"
+        assert SYSTEM_VERSIONING_ACTOR == "enterprise_ai_platform:system"
 
     def test_versioning_namespace(self):
-        assert VERSIONING_NAMESPACE == "iios.versioning"
+        assert VERSIONING_NAMESPACE == "enterprise_ai_platform.versioning"
 
     def test_branch_status_enum_values(self):
         assert BranchStatus.OPEN.value == "open"
@@ -189,7 +189,7 @@ class TestVersionConstants:
 class TestVersionExceptions:
     def test_version_error_is_base(self):
         e = VersionError("test")
-        from iios.knowledge.knowledge_exceptions import KnowledgeVersionError
+        from enterprise_ai_platform.knowledge.knowledge_exceptions import KnowledgeVersionError
         assert isinstance(e, KnowledgeVersionError)
 
     def test_version_not_found_error(self):

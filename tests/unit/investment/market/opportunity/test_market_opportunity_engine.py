@@ -8,8 +8,8 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.opportunity import InstitutionalMarketOpportunityEngine
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity import InstitutionalMarketOpportunityEngine
+from enterprise_ai_platform.investment.market.opportunity.models import (
     AssetObservation,
     IntelligenceContext,
     Opportunity,
@@ -19,7 +19,7 @@ from iios.investment.market.opportunity.models import (
     OpportunitySnapshotData,
     ScanScope,
 )
-from iios.investment.market.opportunity.universe_scanner import Universe
+from enterprise_ai_platform.investment.market.opportunity.universe_scanner import Universe
 
 
 def _make_obs_series(n: int, symbol: str = "AAPL", score: float = 75.0) -> List[List[AssetObservation]]:

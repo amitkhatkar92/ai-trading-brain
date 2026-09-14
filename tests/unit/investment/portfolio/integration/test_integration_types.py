@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     ALL_ENGINE_IDS,
     REQUIRED_ENGINES,
     AggregationStatus,

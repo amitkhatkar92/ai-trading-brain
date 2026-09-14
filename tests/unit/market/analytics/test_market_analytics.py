@@ -1,7 +1,7 @@
 """
 test_market_analytics.py — tests/unit/market/analytics
 ========================================================
-Comprehensive test suite for iios.market.analytics (C12 M4).
+Comprehensive test suite for enterprise_ai_platform.market.analytics (C12 M4).
 
 Coverage targets: ≥ 95%
 """
@@ -18,7 +18,7 @@ import pytest
 # ---------------------------------------------------------------------------
 # Import the public API
 # ---------------------------------------------------------------------------
-from iios.market.analytics import (
+from enterprise_ai_platform.market.analytics import (
     # Engine
     MarketAnalyticsEngine,
     # Artefacts
@@ -84,36 +84,36 @@ from iios.market.analytics import (
     ValidationCode,
     VolatilityRegime,
 )
-from iios.market.analytics.constants import (
+from enterprise_ai_platform.market.analytics.constants import (
     VERSION,
     BREADTH_HEALTHY,
     REGIME_BASE_SCORES,
     VOLATILITY_SCORE_PENALTY,
 )
-from iios.market.analytics.market_regime_classifier import (
+from enterprise_ai_platform.market.analytics.market_regime_classifier import (
     classify_regime,
     classify_trend_direction,
     classify_trend_strength,
 )
-from iios.market.analytics.market_breadth_engine   import MarketBreadthEngine
-from iios.market.analytics.market_sector_engine    import MarketSectorEngine
-from iios.market.analytics.market_rotation_engine  import MarketRotationEngine
-from iios.market.analytics.market_index_engine     import MarketIndexEngine
-from iios.market.analytics.market_volatility_engine import MarketVolatilityEngine
-from iios.market.analytics.market_correlation_engine import MarketCorrelationEngine
-from iios.market.analytics.market_sentiment_engine  import MarketSentimentEngine
-from iios.market.analytics.market_liquidity_engine  import MarketLiquidityEngine
-from iios.market.analytics.market_momentum_engine   import MarketMomentumEngine
-from iios.market.analytics.market_forecasting_engine import MarketForecastingEngine
-from iios.market.analytics.market_pattern_engine    import MarketPatternEngine
-from iios.market.analytics.market_scoring_engine    import MarketScoringEngine
-from iios.market.analytics.market_strength_engine   import compute_market_strength_score
-from iios.market.analytics.market_intelligence_engine import (
+from enterprise_ai_platform.market.analytics.market_breadth_engine   import MarketBreadthEngine
+from enterprise_ai_platform.market.analytics.market_sector_engine    import MarketSectorEngine
+from enterprise_ai_platform.market.analytics.market_rotation_engine  import MarketRotationEngine
+from enterprise_ai_platform.market.analytics.market_index_engine     import MarketIndexEngine
+from enterprise_ai_platform.market.analytics.market_volatility_engine import MarketVolatilityEngine
+from enterprise_ai_platform.market.analytics.market_correlation_engine import MarketCorrelationEngine
+from enterprise_ai_platform.market.analytics.market_sentiment_engine  import MarketSentimentEngine
+from enterprise_ai_platform.market.analytics.market_liquidity_engine  import MarketLiquidityEngine
+from enterprise_ai_platform.market.analytics.market_momentum_engine   import MarketMomentumEngine
+from enterprise_ai_platform.market.analytics.market_forecasting_engine import MarketForecastingEngine
+from enterprise_ai_platform.market.analytics.market_pattern_engine    import MarketPatternEngine
+from enterprise_ai_platform.market.analytics.market_scoring_engine    import MarketScoringEngine
+from enterprise_ai_platform.market.analytics.market_strength_engine   import compute_market_strength_score
+from enterprise_ai_platform.market.analytics.market_intelligence_engine import (
     generate_intelligence_summary,
     _key_risks,
     _key_opportunities,
 )
-from iios.market.analytics.market_analytics_manager import MarketAnalyticsManager
+from enterprise_ai_platform.market.analytics.market_analytics_manager import MarketAnalyticsManager
 
 
 # ===========================================================================
@@ -208,7 +208,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(MarketAnalyticsError, IIOSError)
 
     def test_engine_not_running_error(self):
@@ -762,7 +762,7 @@ class TestRegimeClassifier:
 
 class TestMarketRegimeEngine:
     def setup_method(self):
-        from iios.market.analytics.market_regime_engine import MarketRegimeEngine
+        from enterprise_ai_platform.market.analytics.market_regime_engine import MarketRegimeEngine
         self.engine = MarketRegimeEngine()
         self.ctx    = _make_context()
 
@@ -1432,14 +1432,14 @@ class TestMarketAnalyticsEngine:
 
 class TestPublicSurface:
     def test_all_exported_names_importable(self):
-        import iios.market.analytics as pkg
+        import enterprise_ai_platform.market.analytics as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
     def test_version_exported(self):
-        from iios.market.analytics import VERSION
+        from enterprise_ai_platform.market.analytics import VERSION
         assert VERSION == "1.0.0"
 
     def test_analytics_system_id_exported(self):
-        from iios.market.analytics import ANALYTICS_SYSTEM_ID
+        from enterprise_ai_platform.market.analytics import ANALYTICS_SYSTEM_ID
         assert "analytics" in ANALYTICS_SYSTEM_ID

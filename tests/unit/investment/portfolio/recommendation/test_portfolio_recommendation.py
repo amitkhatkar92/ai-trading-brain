@@ -6,15 +6,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.portfolio_recommendation import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_recommendation import (
     PortfolioRecommendation,
     RecommendationCandidate,
     build_recommendation,
 )
-from iios.investment.portfolio.recommendation.recommendation_score import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_score import (
     RecommendationScoreCalculator,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     LifecycleState,
     RecommendationAction,
     RecommendationGrade,

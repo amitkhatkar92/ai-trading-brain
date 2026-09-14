@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.models import EffortResultType
-from iios.investment.market.liquidity.effort_result import EffortResultAnalyzer
-from iios.investment.market.liquidity.confirmation_engine import ConfirmationEngine
-from iios.investment.market.liquidity.absorption_detector import AbsorptionDetector
-from iios.investment.market.liquidity.volume_price_engine import VolumePriceEngine
+from enterprise_ai_platform.investment.market.liquidity.models import EffortResultType
+from enterprise_ai_platform.investment.market.liquidity.effort_result import EffortResultAnalyzer
+from enterprise_ai_platform.investment.market.liquidity.confirmation_engine import ConfirmationEngine
+from enterprise_ai_platform.investment.market.liquidity.absorption_detector import AbsorptionDetector
+from enterprise_ai_platform.investment.market.liquidity.volume_price_engine import VolumePriceEngine
 
 from tests.unit.investment.market.liquidity.conftest import make_volume_bar
 
@@ -153,7 +153,7 @@ class TestAbsorptionDetector:
         self.detector = AbsorptionDetector(window=5)
 
     def _make_absorption_bar(self, index: int = 0) -> tuple:
-        from iios.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
+        from enterprise_ai_platform.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
         vbar = make_volume_bar(index=index)
         er = EffortResultAnalysis(
             effort=0.8, result=0.2, ratio=0.25,
@@ -167,7 +167,7 @@ class TestAbsorptionDetector:
         return vbar, er
 
     def _make_climax_buy_bar(self, index: int = 0) -> tuple:
-        from iios.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
+        from enterprise_ai_platform.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
         vbar = make_volume_bar(index=index, is_up=True, close_position=0.85)
         er = EffortResultAnalysis(
             effort=0.9, result=0.2, ratio=0.22,
@@ -199,7 +199,7 @@ class TestAbsorptionDetector:
         vbar0, er0 = self._make_climax_buy_bar(0)
         # Next bar: close_position drops
         vbar1 = make_volume_bar(index=1, close_position=0.3)
-        from iios.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
+        from enterprise_ai_platform.investment.market.liquidity.models import EffortResultType, EffortResultAnalysis
         er1 = EffortResultAnalysis(
             effort=0.4, result=0.3, ratio=0.75,
             effort_result_type=EffortResultType.NEUTRAL,

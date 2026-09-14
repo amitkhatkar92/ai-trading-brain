@@ -10,8 +10,8 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.common.logging.logging_context import LoggingContext
-from iios.common.logging.structured_logger import JsonFormatter, StructuredLogger, TextFormatter
+from enterprise_ai_platform.common.logging.logging_context import LoggingContext
+from enterprise_ai_platform.common.logging.structured_logger import JsonFormatter, StructuredLogger, TextFormatter
 
 
 @pytest.fixture(autouse=True)
@@ -52,8 +52,8 @@ class TestConstruction:
         assert sl.name == "test.module"
 
     def test_engine_id_attribute(self):
-        sl = StructuredLogger("test.module", engine_id="iios:test:engine")
-        assert sl.engine_id == "iios:test:engine"
+        sl = StructuredLogger("test.module", engine_id="enterprise_ai_platform:test:engine")
+        assert sl.engine_id == "enterprise_ai_platform:test:engine"
 
     def test_get_factory(self):
         sl = StructuredLogger.get("test.factory", engine_id="E", component="C")
@@ -185,11 +185,11 @@ class TestJsonFields:
         assert record["elapsed_ms"] == 42.5
 
     def test_engine_id_injected(self):
-        sl = StructuredLogger("test.engine", engine_id="iios:test")
+        sl = StructuredLogger("test.engine", engine_id="enterprise_ai_platform:test")
         buf, _ = _capture_json(sl)
         sl.info("engine id test")
         record = _parse_first_record(buf)
-        assert record.get("engine_id") == "iios:test"
+        assert record.get("engine_id") == "enterprise_ai_platform:test"
 
     def test_context_dict_injected(self):
         sl = StructuredLogger("test.ctx")

@@ -10,18 +10,18 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.aggregation_history import AggregationHistory
-from iios.investment.strategy.integration.aggregation_state import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.aggregation_history import AggregationHistory
+from enterprise_ai_platform.investment.strategy.integration.aggregation_state import (
     IntelligenceUpdate,
     StrategyAggregationState,
     make_update,
 )
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     IntelligenceSource,
     UpdateType,
 )
-from iios.investment.strategy.integration.strategy_intelligence_aggregator import (
+from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_aggregator import (
     StrategyIntelligenceAggregator,
 )
 from tests.unit.investment.strategy.integration.conftest import (

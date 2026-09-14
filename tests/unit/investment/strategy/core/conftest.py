@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from typing import Any, Dict, List, Optional
 
-from iios.investment.strategy.core import (
+from enterprise_ai_platform.investment.strategy.core import (
     AssetSupport, Candidate, ConfigurationError, ExecutionPlan,
     InstitutionalBaseStrategy, InstitutionalStrategyRegistry,
     MarketSupport, ParameterSpec, RiskValidationError, Signal,

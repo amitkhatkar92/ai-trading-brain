@@ -9,26 +9,26 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.investment.market.market_constants import MarketRegime
-from iios.investment.market.regime.models import (
+from enterprise_ai_platform.investment.market.market_constants import MarketRegime
+from enterprise_ai_platform.investment.market.regime.models import (
     RegimeSnapshot,
     RegimeType,
     TransitionEvent,
     StrategyCompatibility,
 )
-from iios.investment.market.regime.market_regime_engine import (
+from enterprise_ai_platform.investment.market.regime.market_regime_engine import (
     InstitutionalMarketRegimeEngine,
     MarketRegimeEngine,
 )
-from iios.investment.market.regime.regime_history import RegimeHistory
-from iios.investment.market.regime.strategy_permissions import StrategyType
+from enterprise_ai_platform.investment.market.regime.regime_history import RegimeHistory
+from enterprise_ai_platform.investment.market.regime.strategy_permissions import StrategyType
 
 from tests.unit.investment.market.regime.conftest import (
     make_structure_snapshot,
     make_market_snapshot,
 )
-from iios.investment.market.market_constants import TrendDirection, VolatilityLevel
-from iios.investment.market.structure.models import StructurePhase
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection, VolatilityLevel
+from enterprise_ai_platform.investment.market.structure.models import StructurePhase
 
 
 def make_engine(symbol: str = "TEST") -> InstitutionalMarketRegimeEngine:
@@ -268,7 +268,7 @@ class TestBackwardCompatMarketRegimeEngine:
         assert isinstance(engine.regime_history(), RegimeHistory)
 
     def test_set_classifier(self):
-        from iios.investment.market.regime.regime_classifier import DefaultRegimeClassifier
+        from enterprise_ai_platform.investment.market.regime.regime_classifier import DefaultRegimeClassifier
         engine = MarketRegimeEngine()
         engine.set_classifier(DefaultRegimeClassifier())
         ms = make_market_snapshot()

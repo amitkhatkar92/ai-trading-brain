@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     CorrelationMatrix,
     CorrelationMethod,
     DiversificationLevel,
     DiversificationMetrics,
 )
-from iios.investment.market.correlation.diversification_engine import DiversificationScorer
-from iios.investment.market.correlation import portfolio_correlation as pc
-from iios.investment.market.correlation import hedging_analysis as ha
+from enterprise_ai_platform.investment.market.correlation.diversification_engine import DiversificationScorer
+from enterprise_ai_platform.investment.market.correlation import portfolio_correlation as pc
+from enterprise_ai_platform.investment.market.correlation import hedging_analysis as ha
 
 
 def _matrix(syms, data):

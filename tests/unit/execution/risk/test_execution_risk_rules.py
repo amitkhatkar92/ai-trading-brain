@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ── Framework imports ─────────────────────────────────────────────────────────
-from iios.execution.risk.rules import (
+from enterprise_ai_platform.execution.risk.rules import (
     # enumerations
     ExecutionMode,
     RuleCategory,
@@ -67,7 +67,7 @@ from iios.execution.risk.rules import (
     PriceDeviationRule,
     SessionRule,
 )
-from iios.execution.risk.rules.constants import (
+from enterprise_ai_platform.execution.risk.rules.constants import (
     BLOCKING_OUTCOMES,
     PASSING_OUTCOMES,
     VERSION,

@@ -3,21 +3,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     RelativeStrengthScore,
     SectorEventType,
     SectorPerformance,
     SectorStage,
 )
-from iios.investment.market.sector_rotation.sector_lifecycle import SectorLifecycleEngine
-from iios.investment.market.sector_rotation.sector_quality import (
+from enterprise_ai_platform.investment.market.sector_rotation.sector_lifecycle import SectorLifecycleEngine
+from enterprise_ai_platform.investment.market.sector_rotation.sector_quality import (
     overall_snapshot_quality,
     sector_data_quality,
     security_quality,
     snapshot_quality,
 )
-from iios.investment.market.sector_rotation.sector_stage import classify_stage
-from iios.investment.market.sector_rotation.sector_transition import (
+from enterprise_ai_platform.investment.market.sector_rotation.sector_stage import classify_stage
+from enterprise_ai_platform.investment.market.sector_rotation.sector_transition import (
     TransitionTracker,
     stage_confidence,
     transition_probability,
@@ -147,9 +147,9 @@ class TestTransitionTracker:
 
 class TestSectorLifecycleEngine:
     def test_update_returns_profiles(self, multi_snapshot_series):
-        from iios.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
-        from iios.investment.market.sector_rotation.relative_strength_engine import RelativeStrengthEngine
-        from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+        from enterprise_ai_platform.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
+        from enterprise_ai_platform.investment.market.sector_rotation.relative_strength_engine import RelativeStrengthEngine
+        from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
         taxonomy = SectorTaxonomy()
         builder  = SectorSnapshotBuilder(taxonomy)
@@ -166,9 +166,9 @@ class TestSectorLifecycleEngine:
         assert all(isinstance(p.stage, SectorStage) for p in profiles.values())
 
     def test_stage_query_methods(self, multi_snapshot_series):
-        from iios.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
-        from iios.investment.market.sector_rotation.relative_strength_engine import RelativeStrengthEngine
-        from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+        from enterprise_ai_platform.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
+        from enterprise_ai_platform.investment.market.sector_rotation.relative_strength_engine import RelativeStrengthEngine
+        from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
         taxonomy = SectorTaxonomy()
         builder  = SectorSnapshotBuilder(taxonomy)
@@ -196,7 +196,7 @@ class TestSectorQuality:
         assert q == pytest.approx(1.0)
 
     def test_security_quality_missing_data(self):
-        from iios.investment.market.sector_rotation.models import SecurityData
+        from enterprise_ai_platform.investment.market.sector_rotation.models import SecurityData
         s = SecurityData(symbol="X", return_pct=0.0, sector="IT", industry="S")
         q = security_quality(s)
         assert q < 1.0

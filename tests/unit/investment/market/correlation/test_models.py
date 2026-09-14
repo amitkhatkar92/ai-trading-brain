@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationConfidenceScore,
     CorrelationEvent,

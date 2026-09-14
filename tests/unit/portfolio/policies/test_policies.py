@@ -38,7 +38,7 @@ from typing import List
 
 import pytest
 
-from iios.portfolio.policies import (
+from enterprise_ai_platform.portfolio.policies import (
     # Engine / primary interface
     PortfolioPolicyEngine,
     PolicyEngineStatus,
@@ -234,7 +234,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert isinstance(PortfolioPolicyError("x"), IIOSError)
         assert PortfolioPolicyError("x").error_code == "PP-000"
 
@@ -555,7 +555,7 @@ class TestPolicyPriorityResolver:
         """Helper that builds a real PolicyOutcome without going through evaluate()."""
         p = PortfolioPolicy(policy_id, "p", PolicyType.RISK, priority, [])
         # Patch: return a synthesized outcome with the desired action
-        from iios.portfolio.policies.portfolio_policy import PolicyOutcome
+        from enterprise_ai_platform.portfolio.policies.portfolio_policy import PolicyOutcome
         import time
         return PolicyOutcome(
             policy_id=policy_id, policy_name="p",
@@ -716,7 +716,7 @@ class TestPortfolioPolicyResponse:
         assert not r.has_result
 
     def test_requires_escalation(self):
-        from iios.portfolio.policies.portfolio_policy_result import _build_summary
+        from enterprise_ai_platform.portfolio.policies.portfolio_policy_result import _build_summary
         import uuid, time as _time
         outcomes = []
         summary = _build_summary("ev", "pf", PolicyAction.ESCALATE, outcomes, 0.1)
@@ -729,7 +729,7 @@ class TestPortfolioPolicyResponse:
         assert r.requires_escalation
 
     def test_requires_manual_review(self):
-        from iios.portfolio.policies.portfolio_policy_result import _build_summary
+        from enterprise_ai_platform.portfolio.policies.portfolio_policy_result import _build_summary
         import time as _time
         summary = _build_summary("ev", "pf", PolicyAction.REQUIRE_MANUAL_REVIEW, [], 0.0)
         result  = PortfolioPolicyResult(

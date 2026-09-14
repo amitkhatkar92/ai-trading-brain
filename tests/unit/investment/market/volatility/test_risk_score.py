@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility import risk_score as rs
-from iios.investment.market.volatility.risk_profile import RiskProfileBuilder
-from iios.investment.market.volatility.risk_statistics import RiskStatistics, RiskStats
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility import risk_score as rs
+from enterprise_ai_platform.investment.market.volatility.risk_profile import RiskProfileBuilder
+from enterprise_ai_platform.investment.market.volatility.risk_statistics import RiskStatistics, RiskStats
+from enterprise_ai_platform.investment.market.volatility.models import (
     RiskLevel,
     RiskProfile,
     VolatilityRegimeType,
@@ -24,7 +24,7 @@ def _state(normalized: float = 0.50, persistence: float = 0.60, stability: float
 
 
 def _beh(expansion: float = 0.0, acceleration: float = 0.0):
-    from iios.investment.market.volatility.models import VolatilityBehaviour
+    from enterprise_ai_platform.investment.market.volatility.models import VolatilityBehaviour
     return make_behaviour(
         expansion_score=expansion,
         acceleration=acceleration,

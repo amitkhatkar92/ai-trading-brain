@@ -5,23 +5,23 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.aggregation_state import make_update
-from iios.investment.strategy.integration.consistency_rules import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+from enterprise_ai_platform.investment.strategy.integration.consistency_rules import (
     ConsistencyRule,
     RuleCheckResult,
     RuleRegistry,
     create_default_rule_registry,
 )
-from iios.investment.strategy.integration.conflict_detector import ConflictDetector
-from iios.investment.strategy.integration.consistency_validator import ConsistencyValidator
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.conflict_detector import ConflictDetector
+from enterprise_ai_platform.investment.strategy.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     ConflictSeverity,
     ConflictType,
     IntelligenceSource,
     ValidationStatus,
 )
-from iios.investment.strategy.integration.validation_report import (
+from enterprise_ai_platform.investment.strategy.integration.validation_report import (
     ValidationReport,
     build_validation_report,
 )
@@ -181,7 +181,7 @@ class TestValidationReport:
 
     def test_failed_on_critical(self):
         from datetime import datetime, timezone
-        from iios.investment.strategy.integration.consistency_rules import RuleCheckResult
+        from enterprise_ai_platform.investment.strategy.integration.consistency_rules import RuleCheckResult
         crit = RuleCheckResult(
             rule_id="R001",
             rule_name="eval_vs_risk",
@@ -200,7 +200,7 @@ class TestValidationReport:
 
     def test_consistency_score_decreases_with_conflicts(self):
         from datetime import datetime, timezone
-        from iios.investment.strategy.integration.consistency_rules import RuleCheckResult
+        from enterprise_ai_platform.investment.strategy.integration.consistency_rules import RuleCheckResult
         med = RuleCheckResult(
             rule_id="R003",
             rule_name="learning_vs_eval",

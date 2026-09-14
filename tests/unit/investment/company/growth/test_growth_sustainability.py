@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.growth.growth_sustainability import GrowthSustainabilityEngine
-from iios.investment.company.growth.growth_consistency import compute_consistency_score
-from iios.investment.company.growth.growth_resilience import compute_resilience_score
-from iios.investment.company.growth.growth_risk import assess_growth_risk
-from iios.investment.company.growth.growth_profile import GrowthSustainabilityProfile
+from enterprise_ai_platform.investment.company.growth.growth_sustainability import GrowthSustainabilityEngine
+from enterprise_ai_platform.investment.company.growth.growth_consistency import compute_consistency_score
+from enterprise_ai_platform.investment.company.growth.growth_resilience import compute_resilience_score
+from enterprise_ai_platform.investment.company.growth.growth_risk import assess_growth_risk
+from enterprise_ai_platform.investment.company.growth.growth_profile import GrowthSustainabilityProfile
 
 
 @pytest.fixture

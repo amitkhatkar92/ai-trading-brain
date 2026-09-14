@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     SpecialistType,
     VoteType,
 )
-from iios.investment.decision.committee.committee_member import (
+from enterprise_ai_platform.investment.decision.committee.committee_member import (
     CommitteeMember,
     ComplianceMember,
     MarketIntelligenceMember,
@@ -17,12 +17,12 @@ from iios.investment.decision.committee.committee_member import (
     RiskIntelligenceMember,
     create_member,
 )
-from iios.investment.decision.committee.member_profiles import (
+from enterprise_ai_platform.investment.decision.committee.member_profiles import (
     SPECIALIST_PROFILES,
     get_profile,
 )
-from iios.investment.decision.committee.member_registry import MemberRegistry
-from iios.investment.decision.committee.member_roles import (
+from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
+from enterprise_ai_platform.investment.decision.committee.member_roles import (
     DEFAULT_SPECIALIST_ROLES,
     MemberRole,
     ROLE_POLICIES,

@@ -1,6 +1,6 @@
-"""Tests for iios.common.async_exec.execution_classifier"""
+"""Tests for enterprise_ai_platform.common.async_exec.execution_classifier"""
 import asyncio
-from iios.common.async_exec.execution_classifier import (
+from enterprise_ai_platform.common.async_exec.execution_classifier import (
     ClassificationResult,
     ExecutionClassifier,
     WorkloadType,
@@ -195,7 +195,7 @@ class TestClassifyAsDecorator:
         @classify_as(WorkloadType.CPU_BOUND)
         def my_fn():
             pass
-        from iios.common.async_exec.execution_classifier import _ANNOTATION_ATTR
+        from enterprise_ai_platform.common.async_exec.execution_classifier import _ANNOTATION_ATTR
         assert getattr(my_fn, _ANNOTATION_ATTR) == WorkloadType.CPU_BOUND
 
     def test_decorated_fn_still_callable(self):

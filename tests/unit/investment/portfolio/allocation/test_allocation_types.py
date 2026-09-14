@@ -1,6 +1,6 @@
 """test_allocation_types.py — Enums and constants."""
 import pytest
-from iios.investment.portfolio.allocation.allocation_types import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import (
     AllocationDirection,
     AllocationMethod,
     AllocationQualityGrade,

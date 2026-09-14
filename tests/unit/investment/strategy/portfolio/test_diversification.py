@@ -7,21 +7,21 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_correlation import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_correlation import (
     CorrelationMatrix, StrategyCorrelation
 )
-from iios.investment.strategy.portfolio.overlap_analysis import OverlapAnalysis
-from iios.investment.strategy.portfolio.redundancy_detector import (
+from enterprise_ai_platform.investment.strategy.portfolio.overlap_analysis import OverlapAnalysis
+from enterprise_ai_platform.investment.strategy.portfolio.redundancy_detector import (
     RedundancyDetector, RedundancyReport
 )
-from iios.investment.strategy.portfolio.diversification_engine import (
+from enterprise_ai_platform.investment.strategy.portfolio.diversification_engine import (
     DiversificationEngine, DiversificationReport
 )
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType
 )
-from iios.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy
 
 

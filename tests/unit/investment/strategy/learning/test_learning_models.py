@@ -6,8 +6,8 @@ import pytest
 from datetime import datetime, timezone
 
 from tests.unit.investment.strategy.learning.conftest import make_observation
-from iios.investment.strategy.learning.learning_input import LearningObservation
-from iios.investment.strategy.learning.learning_statistics import (
+from enterprise_ai_platform.investment.strategy.learning.learning_input import LearningObservation
+from enterprise_ai_platform.investment.strategy.learning.learning_statistics import (
     clamp, safe_div, ewma, rolling_mean, linear_trend, normalised_trend,
     drift_magnitude, drift_score, z_score, coefficient_of_variation,
     consistency_score, improvement_rate, last_n, split_baseline_recent,

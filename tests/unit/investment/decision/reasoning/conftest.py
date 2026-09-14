@@ -9,14 +9,14 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory, EvidencePriority, EvidenceSourceType, EvidenceValidationStatus,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.evidence.evidence_package import EvidencePackage
-from iios.investment.decision.evidence.evidence_snapshot import build_snapshot, EvidenceSnapshot
-from iios.investment.decision.reasoning.evidence_interpreter import InterpretedSignal
-from iios.investment.decision.reasoning.reasoning_constants import SignalDirection
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot, EvidenceSnapshot
+from enterprise_ai_platform.investment.decision.reasoning.evidence_interpreter import InterpretedSignal
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import SignalDirection
 
 
 # ------------------------------------------------------------------ helpers
@@ -44,7 +44,7 @@ def _signal(
     src=EvidenceSourceType.MARKET, confidence=80.0,
 ) -> InterpretedSignal:
     import uuid
-    from iios.investment.decision.evidence.evidence_constants import EvidenceCategory
+    from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceCategory
     return InterpretedSignal(
         signal_id=str(uuid.uuid4()),
         evidence_id=str(uuid.uuid4()),

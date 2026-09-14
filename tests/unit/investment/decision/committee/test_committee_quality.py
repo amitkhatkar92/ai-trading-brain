@@ -6,25 +6,25 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.committee_confidence import (
+from enterprise_ai_platform.investment.decision.committee.committee_confidence import (
     CommitteeConfidenceCalculator,
 )
-from iios.investment.decision.committee.committee_constants import CommitteeStatus
-from iios.investment.decision.committee.committee_health import CommitteeHealthMonitor
-from iios.investment.decision.committee.committee_quality import CommitteeQualityEvaluator
-from iios.investment.decision.committee.committee_session import CommitteeSession
-from iios.investment.decision.committee.committee_statistics import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteeStatus
+from enterprise_ai_platform.investment.decision.committee.committee_health import CommitteeHealthMonitor
+from enterprise_ai_platform.investment.decision.committee.committee_quality import CommitteeQualityEvaluator
+from enterprise_ai_platform.investment.decision.committee.committee_session import CommitteeSession
+from enterprise_ai_platform.investment.decision.committee.committee_statistics import (
     CommitteeStatisticsTracker,
 )
 
 
 def _make_vote_summary(opinions):
-    from iios.investment.decision.committee.voting_engine import VotingEngine
-    from iios.investment.decision.committee.member_registry import MemberRegistry
+    from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
+    from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
     # Create minimal members matching the opinions
-    from iios.investment.decision.committee.committee_constants import SpecialistType
-    from iios.investment.decision.committee.member_roles import MemberRole
-    from iios.investment.decision.committee.committee_member import create_member
+    from enterprise_ai_platform.investment.decision.committee.committee_constants import SpecialistType
+    from enterprise_ai_platform.investment.decision.committee.member_roles import MemberRole
+    from enterprise_ai_platform.investment.decision.committee.committee_member import create_member
     members = [create_member(op.member_id, op.specialist_type, op.role) for op in opinions]
     ve = VotingEngine()
     return ve.conduct_vote(members, list(opinions))
@@ -32,8 +32,8 @@ def _make_vote_summary(opinions):
 
 class TestCommitteeQualityEvaluator:
     def test_returns_float_in_range(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
-        from iios.investment.decision.committee.voting_engine import VotingEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)
@@ -51,10 +51,10 @@ class TestCommitteeQualityEvaluator:
         assert 0.0 <= score <= 100.0
 
     def test_more_members_higher_participation(self, rich_context):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
-        from iios.investment.decision.committee.member_registry import MemberRegistry
-        from iios.investment.decision.committee.committee_constants import SpecialistType
-        from iios.investment.decision.committee.voting_engine import VotingEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import SpecialistType
+        from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
         ev        = CommitteeQualityEvaluator()
         members12 = MemberRegistry.default_committee().all_members()
         engine    = DiscussionEngine()
@@ -75,8 +75,8 @@ class TestCommitteeQualityEvaluator:
         assert 0.0 <= sc5  <= 100.0
 
     def test_resolved_challenges_improve_score(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
-        from iios.investment.decision.committee.voting_engine import VotingEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)
@@ -90,8 +90,8 @@ class TestCommitteeQualityEvaluator:
 
 class TestCommitteeConfidenceCalculator:
     def test_returns_float_in_range(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
-        from iios.investment.decision.committee.voting_engine import VotingEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)
@@ -103,12 +103,12 @@ class TestCommitteeConfidenceCalculator:
         assert 0.0 <= conf <= 100.0
 
     def test_higher_consensus_higher_confidence(self, rich_context):
-        from iios.investment.decision.committee.vote_registry import CastVote
-        from iios.investment.decision.committee.committee_constants import VoteType
-        from iios.investment.decision.committee.weighted_voting import WeightedVoting
-        from iios.investment.decision.committee.committee_member import MemberOpinion
-        from iios.investment.decision.committee.committee_constants import SpecialistType
-        from iios.investment.decision.committee.member_roles import MemberRole
+        from enterprise_ai_platform.investment.decision.committee.vote_registry import CastVote
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import VoteType
+        from enterprise_ai_platform.investment.decision.committee.weighted_voting import WeightedVoting
+        from enterprise_ai_platform.investment.decision.committee.committee_member import MemberOpinion
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import SpecialistType
+        from enterprise_ai_platform.investment.decision.committee.member_roles import MemberRole
 
         wv   = WeightedVoting()
         calc = CommitteeConfidenceCalculator()
@@ -142,7 +142,7 @@ class TestCommitteeStatisticsTracker:
         assert s.success_rate   == 0.0
 
     def test_record_success(self):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         t = CommitteeStatisticsTracker()
         t.record_success(CommitteePosition.PROCEED_TO_RECOMMENDATION, 75.0, 200)
         s = t.summary()
@@ -158,7 +158,7 @@ class TestCommitteeStatisticsTracker:
         assert s.failed         == 1
 
     def test_block_rate(self):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         t = CommitteeStatisticsTracker()
         t.record_success(CommitteePosition.BLOCKED, 30.0, 150)
         t.record_success(CommitteePosition.PROCEED_TO_RECOMMENDATION, 80.0, 200)
@@ -166,7 +166,7 @@ class TestCommitteeStatisticsTracker:
         assert s.block_rate == pytest.approx(0.5, abs=0.01)
 
     def test_avg_score(self):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         t = CommitteeStatisticsTracker()
         t.record_success(CommitteePosition.PROCEED_TO_RECOMMENDATION, 60.0, 100)
         t.record_success(CommitteePosition.PROCEED_TO_RECOMMENDATION, 80.0, 100)
@@ -174,7 +174,7 @@ class TestCommitteeStatisticsTracker:
         assert s.avg_score == pytest.approx(70.0, abs=0.5)
 
     def test_reset(self):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         t = CommitteeStatisticsTracker()
         t.record_success(CommitteePosition.PROCEED_TO_RECOMMENDATION, 70.0, 100)
         t.reset()

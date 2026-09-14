@@ -2,7 +2,7 @@
 import math
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_engine import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_engine import (
     AssetProxy,
     EqualWeightOptimizer,
     MinimumVarianceOptimizer,
@@ -18,7 +18,7 @@ from iios.investment.portfolio.optimization.optimization_engine import (
     BlackLittermanOptimizer,
     HierarchicalRiskParityOptimizer,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ConvergenceStatus,
     OptimizationMethod,
 )

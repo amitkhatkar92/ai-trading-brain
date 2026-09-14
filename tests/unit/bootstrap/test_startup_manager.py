@@ -11,9 +11,9 @@ from unittest.mock import MagicMock, call
 
 import pytest
 
-from iios.bootstrap.startup_context import StartupContext
-from iios.bootstrap.startup_manager import StartupManager, StartupManagerConfig
-from iios.bootstrap.startup_state import (
+from enterprise_ai_platform.bootstrap.startup_context import StartupContext
+from enterprise_ai_platform.bootstrap.startup_manager import StartupManager, StartupManagerConfig
+from enterprise_ai_platform.bootstrap.startup_state import (
     BootstrapError,
     BootstrapStage,
     StageStatus,

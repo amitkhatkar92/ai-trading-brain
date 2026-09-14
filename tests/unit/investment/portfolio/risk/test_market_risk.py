@@ -2,8 +2,8 @@
 import math
 import pytest
 
-from iios.investment.portfolio.risk.market_risk import analyze_market_risk, MarketRiskResult
-from iios.investment.portfolio.risk.risk_types import RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.market_risk import analyze_market_risk, MarketRiskResult
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel
 
 
 def test_market_risk_empty():
@@ -65,7 +65,7 @@ def test_market_risk_risk_level_valid(positions_5_diverse):
 
 
 def test_market_risk_high_risk_positions():
-    from iios.investment.portfolio.risk.risk_types import RiskPosition
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
     high = [
         RiskPosition(
             symbol="HIGH1", weight=0.5, sector="tech", industry="startup",

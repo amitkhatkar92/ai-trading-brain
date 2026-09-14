@@ -28,11 +28,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 import pytest_asyncio
 
-from iios.common.async_exec.async_execution_manager import (
+from enterprise_ai_platform.common.async_exec.async_execution_manager import (
     get_execution_manager,
     reset_execution_manager,
 )
-from iios.common.async_exec.migration_analysis import (
+from enterprise_ai_platform.common.async_exec.migration_analysis import (
     PLATFORM_ASYNC_PROFILES,
     engines_needing_standardization,
 )
@@ -44,9 +44,9 @@ from iios.common.async_exec.migration_analysis import (
 
 _WORKSPACE = Path(__file__).parent.parent.parent.parent.parent
 
-_C1_PATH = _WORKSPACE / "iios/investment/market/integration/market_intelligence_integration_engine.py"
-_C3_PATH = _WORKSPACE / "iios/investment/strategy/integration/strategy_intelligence_integration_engine.py"
-_C4_PATH = _WORKSPACE / "iios/investment/decision/integration/decision_intelligence_integration_engine.py"
+_C1_PATH = _WORKSPACE / "enterprise_ai_platform/investment/market/integration/market_intelligence_integration_engine.py"
+_C3_PATH = _WORKSPACE / "enterprise_ai_platform/investment/strategy/integration/strategy_intelligence_integration_engine.py"
+_C4_PATH = _WORKSPACE / "enterprise_ai_platform/investment/decision/integration/decision_intelligence_integration_engine.py"
 
 
 def _source(path: Path) -> str:
@@ -218,37 +218,37 @@ class TestTD001Part3MigrationProfilesUpdated:
     """Verify PLATFORM_ASYNC_PROFILES reflects the completed migration."""
 
     def test_c1_no_longer_needs_standardization(self):
-        profile = PLATFORM_ASYNC_PROFILES["iios:market:intelligence:integration"]
+        profile = PLATFORM_ASYNC_PROFILES["enterprise_ai_platform:market:intelligence:integration"]
         assert profile.recommended_action == "no_change", (
             "C1 profile must be 'no_change' after TD-001"
         )
         assert profile.migration_complexity == "none"
 
     def test_c1_has_own_executor_false(self):
-        profile = PLATFORM_ASYNC_PROFILES["iios:market:intelligence:integration"]
+        profile = PLATFORM_ASYNC_PROFILES["enterprise_ai_platform:market:intelligence:integration"]
         assert profile.has_own_executor is False, (
             "C1: has_own_executor must be False after removing ThreadPoolExecutor"
         )
 
     def test_c3_no_longer_needs_standardization(self):
-        profile = PLATFORM_ASYNC_PROFILES["iios:strategy:intelligence:integration"]
+        profile = PLATFORM_ASYNC_PROFILES["enterprise_ai_platform:strategy:intelligence:integration"]
         assert profile.recommended_action == "no_change"
         assert profile.migration_complexity == "none"
 
     def test_c3_has_own_executor_false(self):
-        profile = PLATFORM_ASYNC_PROFILES["iios:strategy:intelligence:integration"]
+        profile = PLATFORM_ASYNC_PROFILES["enterprise_ai_platform:strategy:intelligence:integration"]
         assert profile.has_own_executor is False
 
     def test_c4_no_longer_needs_standardization(self):
-        profile = PLATFORM_ASYNC_PROFILES["iios:decision:intelligence:integration"]
+        profile = PLATFORM_ASYNC_PROFILES["enterprise_ai_platform:decision:intelligence:integration"]
         assert profile.recommended_action == "no_change"
         assert profile.migration_complexity == "none"
 
     def test_engines_needing_standardization_excludes_c1_c3_c4(self):
         pending = dict(engines_needing_standardization())
-        assert "iios:market:intelligence:integration" not in pending
-        assert "iios:strategy:intelligence:integration" not in pending
-        assert "iios:decision:intelligence:integration" not in pending
+        assert "enterprise_ai_platform:market:intelligence:integration" not in pending
+        assert "enterprise_ai_platform:strategy:intelligence:integration" not in pending
+        assert "enterprise_ai_platform:decision:intelligence:integration" not in pending
 
 
 # ---------------------------------------------------------------------------
@@ -265,14 +265,14 @@ class TestTD001Part4MetricsRecorded:
         reset_execution_manager()
 
     def test_c1_async_update_records_metric(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
         engine.start()
 
         # build a minimal bundle
-        from iios.investment.market.integration.models import IntelligenceBundle
+        from enterprise_ai_platform.investment.market.integration.models import IntelligenceBundle
         bundle = IntelligenceBundle(bar_index=1, timestamp=time.time())
 
         mgr = get_execution_manager()
@@ -285,11 +285,11 @@ class TestTD001Part4MetricsRecorded:
         engine.stop()
 
     def test_c3_submit_update_sync_records_metric(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        from iios.investment.strategy.integration.aggregation_state import make_update
-        from iios.investment.strategy.integration.integration_constants import IntelligenceSource
+        from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+        from enterprise_ai_platform.investment.strategy.integration.integration_constants import IntelligenceSource
 
         engine = StrategyIntelligenceIntegrationEngine()
         engine.start()
@@ -310,7 +310,7 @@ class TestTD001Part4MetricsRecorded:
         engine.stop()
 
     def test_c3_get_snapshot_sync_records_metric(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
 
@@ -328,7 +328,7 @@ class TestTD001Part4MetricsRecorded:
         engine.stop()
 
     def test_c4_integrate_records_metric(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
 
@@ -353,7 +353,7 @@ class TestTD001Part5PublicAPIsUnchanged:
     """Migration must not change any public method signature."""
 
     def test_c1_async_update_signature(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         sig = inspect.signature(MarketIntelligenceIntegrationEngine.async_update)
@@ -363,7 +363,7 @@ class TestTD001Part5PublicAPIsUnchanged:
         )
 
     def test_c1_async_update_is_coroutine(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         assert inspect.iscoroutinefunction(
@@ -371,7 +371,7 @@ class TestTD001Part5PublicAPIsUnchanged:
         ), "C1.async_update must remain an async def"
 
     def test_c3_submit_update_sync_signature(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         sig = inspect.signature(StrategyIntelligenceIntegrationEngine.submit_update_sync)
@@ -381,7 +381,7 @@ class TestTD001Part5PublicAPIsUnchanged:
         )
 
     def test_c3_get_snapshot_sync_signature(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         sig = inspect.signature(StrategyIntelligenceIntegrationEngine.get_snapshot_sync)
@@ -391,7 +391,7 @@ class TestTD001Part5PublicAPIsUnchanged:
         )
 
     def test_c4_integrate_sync_signature_unchanged(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         sig = inspect.signature(DecisionIntelligenceIntegrationEngine.integrate_sync)
@@ -401,7 +401,7 @@ class TestTD001Part5PublicAPIsUnchanged:
         assert "recommendation" in params
 
     def test_c4_integrate_is_coroutine(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         assert inspect.iscoroutinefunction(
@@ -423,11 +423,11 @@ class TestTD001Part6ThreadSafety:
         reset_execution_manager()
 
     def test_c3_concurrent_submit_update_sync(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        from iios.investment.strategy.integration.aggregation_state import make_update
-        from iios.investment.strategy.integration.integration_constants import IntelligenceSource
+        from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+        from enterprise_ai_platform.investment.strategy.integration.integration_constants import IntelligenceSource
 
         engine = StrategyIntelligenceIntegrationEngine()
         engine.start()
@@ -455,7 +455,7 @@ class TestTD001Part6ThreadSafety:
         engine.stop()
 
     def test_c4_concurrent_integrate_sync(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
 

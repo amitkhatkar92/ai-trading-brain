@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.models import (
     AlertType,
     AssetObservation,
     Evidence,

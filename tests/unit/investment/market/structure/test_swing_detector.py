@@ -5,13 +5,13 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.structure.models import (
     Bar,
     SwingRelation,
     SwingStrength,
     SwingType,
 )
-from iios.investment.market.structure.swing_detector import SwingDetector
+from enterprise_ai_platform.investment.market.structure.swing_detector import SwingDetector
 from tests.unit.investment.market.structure.conftest import (
     make_downtrend_bars,
     make_uptrend_bars,

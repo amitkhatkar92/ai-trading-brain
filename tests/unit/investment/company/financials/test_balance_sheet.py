@@ -3,11 +3,11 @@ Tests for BalanceSheetEngine, AssetAnalyzer, LiabilityAnalyzer, EquityAnalyzer.
 """
 import pytest
 
-from iios.investment.company.financials.asset_analyzer import AssetAnalyzer
-from iios.investment.company.financials.liability_analyzer import LiabilityAnalyzer
-from iios.investment.company.financials.equity_analyzer import EquityAnalyzer
-from iios.investment.company.financials.balance_sheet_engine import BalanceSheetEngine
-from iios.investment.company.financials.balance_sheet import BalanceSheet
+from enterprise_ai_platform.investment.company.financials.asset_analyzer import AssetAnalyzer
+from enterprise_ai_platform.investment.company.financials.liability_analyzer import LiabilityAnalyzer
+from enterprise_ai_platform.investment.company.financials.equity_analyzer import EquityAnalyzer
+from enterprise_ai_platform.investment.company.financials.balance_sheet_engine import BalanceSheetEngine
+from enterprise_ai_platform.investment.company.financials.balance_sheet import BalanceSheet
 
 
 class TestAssetAnalyzer:

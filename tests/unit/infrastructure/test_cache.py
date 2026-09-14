@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_cache.py
 ========================================
-Tests for the iios.infrastructure.cache subpackage.
+Tests for the enterprise_ai_platform.infrastructure.cache subpackage.
 """
 
 from __future__ import annotations
@@ -9,12 +9,12 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.infrastructure.cache import (
+from enterprise_ai_platform.infrastructure.cache import (
     MemoryCache, CacheManager, get_cache_manager, reset_cache_manager,
     LRUPolicy, LFUPolicy, FIFOPolicy,
 )
-from iios.infrastructure.infrastructure_constants import CachePolicy
-from iios.infrastructure.infrastructure_exceptions import CacheError
+from enterprise_ai_platform.infrastructure.infrastructure_constants import CachePolicy
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import CacheError
 
 
 class TestLRUPolicy:

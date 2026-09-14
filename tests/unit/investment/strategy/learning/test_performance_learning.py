@@ -8,10 +8,10 @@ from typing import List
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.success_pattern import SuccessPatternExtractor, SuccessPattern
-from iios.investment.strategy.learning.failure_pattern import FailurePatternExtractor, FailurePattern
-from iios.investment.strategy.learning.performance_drift import PerformanceDriftAnalyzer, PerformanceDrift
-from iios.investment.strategy.learning.performance_learning import PerformanceLearner
+from enterprise_ai_platform.investment.strategy.learning.success_pattern import SuccessPatternExtractor, SuccessPattern
+from enterprise_ai_platform.investment.strategy.learning.failure_pattern import FailurePatternExtractor, FailurePattern
+from enterprise_ai_platform.investment.strategy.learning.performance_drift import PerformanceDriftAnalyzer, PerformanceDrift
+from enterprise_ai_platform.investment.strategy.learning.performance_learning import PerformanceLearner
 
 
 class TestSuccessPatternExtractor:

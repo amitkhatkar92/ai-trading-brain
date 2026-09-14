@@ -3,7 +3,7 @@ tests/unit/integration/test_integration_engine_m2.py
 -----------------------------------------------------
 C15 M2 — Integration Engine test suite.
 
-Covers all 23 source files in iios/integration/engine/.
+Covers all 23 source files in enterprise_ai_platform/integration/engine/.
 Target: 95%+ coverage.
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import pytest
 
 
 def _make_engine(started: bool = True):
-    from iios.integration.engine import (
+    from enterprise_ai_platform.integration.engine import (
         AdapterDescriptor, AdapterType,
         ConnectorDescriptor, ConnectorType,
         IntegrationEngine,
@@ -43,7 +43,7 @@ def _make_engine(started: bool = True):
 
 
 def _make_request(connector_type=None, protocol_type=None):
-    from iios.integration.engine import (
+    from enterprise_ai_platform.integration.engine import (
         ConnectorType, IntegrationRequest, ProtocolType,
     )
     return IntegrationRequest.create(
@@ -53,7 +53,7 @@ def _make_request(connector_type=None, protocol_type=None):
 
 
 def _make_manager(started: bool = True):
-    from iios.integration.engine import IntegrationManager
+    from enterprise_ai_platform.integration.engine import IntegrationManager
     mgr = IntegrationManager()
     if started:
         mgr.start()
@@ -67,47 +67,47 @@ def _make_manager(started: bool = True):
 
 class TestConstants:
     def test_engine_state_count(self):
-        from iios.integration.engine import IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngineState
         assert len(IntegrationEngineState) == 11
 
     def test_connector_type_count(self):
-        from iios.integration.engine import ConnectorType
+        from enterprise_ai_platform.integration.engine import ConnectorType
         assert len(ConnectorType) == 18
 
     def test_adapter_type_count(self):
-        from iios.integration.engine import AdapterType
+        from enterprise_ai_platform.integration.engine import AdapterType
         assert len(AdapterType) == 17
 
     def test_protocol_type_count(self):
-        from iios.integration.engine import ProtocolType
+        from enterprise_ai_platform.integration.engine import ProtocolType
         assert len(ProtocolType) == 13
 
     def test_dispatch_mode_count(self):
-        from iios.integration.engine import DispatchMode
+        from enterprise_ai_platform.integration.engine import DispatchMode
         assert len(DispatchMode) == 7
 
     def test_event_type_count(self):
-        from iios.integration.engine import IntegrationEngineEventType
+        from enterprise_ai_platform.integration.engine import IntegrationEngineEventType
         assert len(IntegrationEngineEventType) == 9
 
     def test_validation_check_count(self):
-        from iios.integration.engine import EngineValidationCheck
+        from enterprise_ai_platform.integration.engine import EngineValidationCheck
         assert len(EngineValidationCheck) == 7
 
     def test_pipeline_stage_count(self):
-        from iios.integration.engine import PipelineStage
+        from enterprise_ai_platform.integration.engine import PipelineStage
         assert len(PipelineStage) == 10
 
     def test_pipeline_stage_order_length(self):
-        from iios.integration.engine import PIPELINE_STAGE_ORDER
+        from enterprise_ai_platform.integration.engine import PIPELINE_STAGE_ORDER
         assert len(PIPELINE_STAGE_ORDER) == 10
 
     def test_system_id(self):
-        from iios.integration.engine import ENGINE_SYSTEM_ID
+        from enterprise_ai_platform.integration.engine import ENGINE_SYSTEM_ID
         assert "integration" in ENGINE_SYSTEM_ID
 
     def test_default_limits(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             DEFAULT_MAX_CONNECTORS,
             DEFAULT_MAX_ADAPTERS,
             DEFAULT_MAX_PROTOCOLS,
@@ -126,54 +126,54 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_ien_000(self):
-        from iios.integration.engine import IntegrationEngineError
+        from enterprise_ai_platform.integration.engine import IntegrationEngineError
         exc = IntegrationEngineError("test")
         assert "IEN-000" in exc.error_code
 
     def test_not_ready_ien_001(self):
-        from iios.integration.engine import IntegrationEngineNotReadyError
+        from enterprise_ai_platform.integration.engine import IntegrationEngineNotReadyError
         exc = IntegrationEngineNotReadyError()
         assert "IEN-001" in exc.error_code
 
     def test_connector_not_found_ien_002(self):
-        from iios.integration.engine import ConnectorNotFoundError
+        from enterprise_ai_platform.integration.engine import ConnectorNotFoundError
         exc = ConnectorNotFoundError("rest_api")
         assert exc.connector_id == "rest_api"
         assert "IEN-002" in exc.error_code
 
     def test_adapter_not_found_ien_003(self):
-        from iios.integration.engine import AdapterNotFoundError
+        from enterprise_ai_platform.integration.engine import AdapterNotFoundError
         exc = AdapterNotFoundError("rest")
         assert exc.adapter_id == "rest"
         assert "IEN-003" in exc.error_code
 
     def test_protocol_not_registered_ien_004(self):
-        from iios.integration.engine import ProtocolNotRegisteredError
+        from enterprise_ai_platform.integration.engine import ProtocolNotRegisteredError
         exc = ProtocolNotRegisteredError("https")
         assert exc.protocol_type == "https"
         assert "IEN-004" in exc.error_code
 
     def test_request_validation_ien_005(self):
-        from iios.integration.engine import IntegrationRequestValidationError
+        from enterprise_ai_platform.integration.engine import IntegrationRequestValidationError
         exc = IntegrationRequestValidationError("bad", failed_checks=["connector_validity"])
         assert "connector_validity" in exc.failed_checks
 
     def test_dispatch_error_ien_006(self):
-        from iios.integration.engine import IntegrationDispatchError
+        from enterprise_ai_platform.integration.engine import IntegrationDispatchError
         exc = IntegrationDispatchError("dispatch failed", request_id="req-001")
         assert exc.request_id == "req-001"
 
     def test_session_error_ien_007(self):
-        from iios.integration.engine import IntegrationSessionError
+        from enterprise_ai_platform.integration.engine import IntegrationSessionError
         exc = IntegrationSessionError("session error")
         assert "IEN-007" in exc.error_code
 
     def test_hierarchy(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineError,
             ConnectorNotFoundError,
         )
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ConnectorNotFoundError, IntegrationEngineError)
         assert issubclass(IntegrationEngineError, IIOSError)
 
@@ -185,7 +185,7 @@ class TestExceptions:
 
 class TestIntegrationRequest:
     def test_create(self):
-        from iios.integration.engine import ConnectorType, IntegrationRequest
+        from enterprise_ai_platform.integration.engine import ConnectorType, IntegrationRequest
         req = IntegrationRequest.create(ConnectorType.REST_API, endpoint="https://x.com")
         assert req.connector_type == ConnectorType.REST_API
         assert req.endpoint       == "https://x.com"
@@ -197,7 +197,7 @@ class TestIntegrationRequest:
             req.endpoint = "changed"  # type: ignore
 
     def test_to_dict_from_dict(self):
-        from iios.integration.engine import IntegrationRequest
+        from enterprise_ai_platform.integration.engine import IntegrationRequest
         req  = _make_request()
         req2 = IntegrationRequest.from_dict(req.to_dict())
         assert req2.request_id    == req.request_id
@@ -209,7 +209,7 @@ class TestIntegrationRequest:
         assert req.trace_id
 
     def test_priority_default(self):
-        from iios.integration.engine import DEFAULT_PRIORITY
+        from enterprise_ai_platform.integration.engine import DEFAULT_PRIORITY
         req = _make_request()
         assert req.priority == DEFAULT_PRIORITY
 
@@ -221,9 +221,9 @@ class TestIntegrationRequest:
 
 class TestIntegrationResponse:
     def test_success_for(self):
-        from iios.integration.engine import IntegrationResponseStatus
+        from enterprise_ai_platform.integration.engine import IntegrationResponseStatus
         req  = _make_request()
-        resp = __import__("iios.integration.engine", fromlist=["IntegrationResponse"]).IntegrationResponse.success_for(
+        resp = __import__("enterprise_ai_platform.integration.engine", fromlist=["IntegrationResponse"]).IntegrationResponse.success_for(
             req, "s-001", {"key": "val"}, 50.0
         )
         assert resp.is_success
@@ -231,21 +231,21 @@ class TestIntegrationResponse:
 
     def test_failure_for(self):
         req  = _make_request()
-        from iios.integration.engine import IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationResponse
         resp = IntegrationResponse.failure_for(req, "s-001", "something broke", 10.0)
         assert resp.is_failure
         assert "something broke" in resp.error_message
 
     def test_frozen(self):
         req  = _make_request()
-        from iios.integration.engine import IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationResponse
         resp = IntegrationResponse.success_for(req, "s-001")
         with pytest.raises((AttributeError, TypeError)):
             resp.session_id = "other"  # type: ignore
 
     def test_to_dict(self):
         req  = _make_request()
-        from iios.integration.engine import IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationResponse
         resp = IntegrationResponse.success_for(req, "s-001")
         d    = resp.to_dict()
         assert "response_id" in d
@@ -259,7 +259,7 @@ class TestIntegrationResponse:
 
 class TestIntegrationContext:
     def test_create(self):
-        from iios.integration.engine import IntegrationEngineContext
+        from enterprise_ai_platform.integration.engine import IntegrationEngineContext
         req = _make_request()
         ctx = IntegrationEngineContext.create(req, "s-001")
         assert ctx.request_id  == req.request_id
@@ -267,14 +267,14 @@ class TestIntegrationContext:
         assert ctx.context_id.startswith("ectx-")
 
     def test_frozen(self):
-        from iios.integration.engine import IntegrationEngineContext
+        from enterprise_ai_platform.integration.engine import IntegrationEngineContext
         req = _make_request()
         ctx = IntegrationEngineContext.create(req, "s-001")
         with pytest.raises((AttributeError, TypeError)):
             ctx.session_id = "x"  # type: ignore
 
     def test_to_dict(self):
-        from iios.integration.engine import IntegrationEngineContext
+        from enterprise_ai_platform.integration.engine import IntegrationEngineContext
         req = _make_request()
         ctx = IntegrationEngineContext.create(req, "s-001")
         d   = ctx.to_dict()
@@ -289,20 +289,20 @@ class TestIntegrationContext:
 
 class TestEngineLifecycle:
     def test_initial_state_idle_after_initialize(self):
-        from iios.integration.engine import IntegrationEngine, IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngine, IntegrationEngineState
         eng = IntegrationEngine()
         eng.initialize()
         assert eng.state == IntegrationEngineState.IDLE
 
     def test_stop_transitions_to_stopped(self):
-        from iios.integration.engine import IntegrationEngine, IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngine, IntegrationEngineState
         eng = IntegrationEngine()
         eng.initialize()
         eng.stop()
         assert eng.state == IntegrationEngineState.STOPPED
 
     def test_dispatch_on_stopped_raises(self):
-        from iios.integration.engine import IntegrationEngineNotReadyError
+        from enterprise_ai_platform.integration.engine import IntegrationEngineNotReadyError
         eng = _make_engine()
         eng.stop()
         with pytest.raises(IntegrationEngineNotReadyError):
@@ -321,7 +321,7 @@ class TestEngineLifecycle:
         eng.disconnect()   # should not raise
 
     def test_manager_start_stop(self):
-        from iios.integration.engine import IntegrationManager
+        from enterprise_ai_platform.integration.engine import IntegrationManager
         mgr = IntegrationManager()
         mgr.start()
         assert mgr.is_started
@@ -329,7 +329,7 @@ class TestEngineLifecycle:
         assert not mgr.is_started
 
     def test_manager_double_start(self):
-        from iios.integration.engine import IntegrationManager
+        from enterprise_ai_platform.integration.engine import IntegrationManager
         mgr = IntegrationManager()
         mgr.start()
         mgr.start()   # should not raise or error
@@ -343,7 +343,7 @@ class TestEngineLifecycle:
 
 class TestConnectorManagement:
     def test_register_and_get(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr  = ConnectorManager()
@@ -352,7 +352,7 @@ class TestConnectorManagement:
         assert mgr.get(desc.connector_id) is desc
 
     def test_first_by_type(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr  = ConnectorManager()
@@ -362,7 +362,7 @@ class TestConnectorManagement:
         assert found is desc
 
     def test_supports(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr  = ConnectorManager()
@@ -372,7 +372,7 @@ class TestConnectorManagement:
         assert not mgr.supports(ConnectorType.GRPC)
 
     def test_deregister(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr  = ConnectorManager()
@@ -382,7 +382,7 @@ class TestConnectorManagement:
         assert mgr.get(desc.connector_id) is None
 
     def test_capacity_error(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
             ConnectorRegistrationError,
         )
@@ -393,7 +393,7 @@ class TestConnectorManagement:
             mgr.register(ConnectorDescriptor.create(ConnectorType.KAFKA, "R3"))
 
     def test_get_or_raise(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorManager, ConnectorNotFoundError,
         )
         mgr = ConnectorManager()
@@ -401,20 +401,20 @@ class TestConnectorManagement:
             mgr.get_or_raise("nonexistent")
 
     def test_descriptor_frozen(self):
-        from iios.integration.engine import ConnectorDescriptor, ConnectorType
+        from enterprise_ai_platform.integration.engine import ConnectorDescriptor, ConnectorType
         desc = ConnectorDescriptor.create(ConnectorType.REST_API, "R")
         with pytest.raises((AttributeError, TypeError)):
             desc.name = "X"  # type: ignore
 
     def test_descriptor_to_dict(self):
-        from iios.integration.engine import ConnectorDescriptor, ConnectorType
+        from enterprise_ai_platform.integration.engine import ConnectorDescriptor, ConnectorType
         desc = ConnectorDescriptor.create(ConnectorType.KAFKA, "K", capabilities=["publish"])
         d    = desc.to_dict()
         assert d["connector_type"] == "kafka"
         assert "publish" in d["capabilities"]
 
     def test_count_and_clear(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr = ConnectorManager()
@@ -431,7 +431,7 @@ class TestConnectorManagement:
 
 class TestAdapterManagement:
     def test_register_and_for_connector(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterManager, AdapterType, ConnectorType,
         )
         mgr  = AdapterManager()
@@ -441,7 +441,7 @@ class TestAdapterManagement:
         assert found is desc
 
     def test_by_type(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterManager, AdapterType, ConnectorType,
         )
         mgr  = AdapterManager()
@@ -451,7 +451,7 @@ class TestAdapterManagement:
         assert desc in by_type
 
     def test_deregister(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterManager, AdapterType, ConnectorType,
         )
         mgr  = AdapterManager()
@@ -461,7 +461,7 @@ class TestAdapterManagement:
         assert mgr.get(desc.adapter_id) is None
 
     def test_supports_connector(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterManager, AdapterType, ConnectorType,
         )
         mgr  = AdapterManager()
@@ -472,19 +472,19 @@ class TestAdapterManagement:
         assert not mgr.supports_connector(ConnectorType.KAFKA)
 
     def test_get_or_raise(self):
-        from iios.integration.engine import AdapterManager, AdapterNotFoundError
+        from enterprise_ai_platform.integration.engine import AdapterManager, AdapterNotFoundError
         mgr = AdapterManager()
         with pytest.raises(AdapterNotFoundError):
             mgr.get_or_raise("nonexistent")
 
     def test_descriptor_frozen(self):
-        from iios.integration.engine import AdapterDescriptor, AdapterType, ConnectorType
+        from enterprise_ai_platform.integration.engine import AdapterDescriptor, AdapterType, ConnectorType
         desc = AdapterDescriptor.create(AdapterType.REST, ConnectorType.REST_API, "R")
         with pytest.raises((AttributeError, TypeError)):
             desc.name = "X"  # type: ignore
 
     def test_count_clear(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterManager, AdapterType, ConnectorType,
         )
         mgr = AdapterManager()
@@ -503,7 +503,7 @@ class TestAdapterManagement:
 
 class TestProtocolValidation:
     def test_register_and_lookup(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ProtocolDescriptor, ProtocolRegistry, ProtocolType,
         )
         reg  = ProtocolRegistry()
@@ -512,7 +512,7 @@ class TestProtocolValidation:
         assert reg.is_registered(ProtocolType.HTTPS)
 
     def test_first_by_type(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ProtocolDescriptor, ProtocolRegistry, ProtocolType,
         )
         reg  = ProtocolRegistry()
@@ -522,7 +522,7 @@ class TestProtocolValidation:
         assert found is desc
 
     def test_supports_connector(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorType, ProtocolDescriptor, ProtocolRegistry, ProtocolType,
         )
         reg  = ProtocolRegistry()
@@ -535,7 +535,7 @@ class TestProtocolValidation:
         assert not reg.supports_connector(ProtocolType.AMQP, ConnectorType.KAFKA)
 
     def test_protocol_supports_all_when_empty(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorType, ProtocolDescriptor, ProtocolType,
         )
         desc = ProtocolDescriptor.create(ProtocolType.INTERNAL, "Internal")
@@ -544,7 +544,7 @@ class TestProtocolValidation:
         assert desc.supports_connector(ConnectorType.KAFKA)
 
     def test_deregister(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ProtocolDescriptor, ProtocolRegistry, ProtocolType,
         )
         reg  = ProtocolRegistry()
@@ -554,13 +554,13 @@ class TestProtocolValidation:
         assert not reg.is_registered(ProtocolType.JDBC)
 
     def test_descriptor_frozen(self):
-        from iios.integration.engine import ProtocolDescriptor, ProtocolType
+        from enterprise_ai_platform.integration.engine import ProtocolDescriptor, ProtocolType
         desc = ProtocolDescriptor.create(ProtocolType.HTTP, "HTTP")
         with pytest.raises((AttributeError, TypeError)):
             desc.name = "X"  # type: ignore
 
     def test_descriptor_to_dict(self):
-        from iios.integration.engine import ProtocolDescriptor, ProtocolType, ConnectorType
+        from enterprise_ai_platform.integration.engine import ProtocolDescriptor, ProtocolType, ConnectorType
         desc = ProtocolDescriptor.create(
             ProtocolType.HTTPS, "HTTPS",
             supported_connector_types=[ConnectorType.REST_API],
@@ -576,7 +576,7 @@ class TestProtocolValidation:
 
 class TestIntegrationRegistry:
     def test_summary(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterType,
             ConnectorDescriptor, ConnectorType,
             IntegrationEngineRegistry,
@@ -598,7 +598,7 @@ class TestIntegrationRegistry:
         assert s["protocol_count"]  == 1
 
     def test_has_methods(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorType,
             IntegrationEngineRegistry,
         )
@@ -610,12 +610,12 @@ class TestIntegrationRegistry:
         assert reg.has_connector(ConnectorType.KAFKA)
 
     def test_get_connector_none_when_not_registered(self):
-        from iios.integration.engine import IntegrationEngineRegistry, ConnectorType
+        from enterprise_ai_platform.integration.engine import IntegrationEngineRegistry, ConnectorType
         reg = IntegrationEngineRegistry()
         assert reg.get_connector(ConnectorType.REST_API) is None
 
     def test_clear(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorType,
             IntegrationEngineRegistry,
         )
@@ -653,7 +653,7 @@ class TestWorkflowOrchestration:
         assert resp.latency_ms >= 0
 
     def test_dispatch_without_connector_returns_failure(self):
-        from iios.integration.engine import IntegrationEngine, ConnectorType
+        from enterprise_ai_platform.integration.engine import IntegrationEngine, ConnectorType
         eng = IntegrationEngine()
         eng.initialize()
         # No connectors/adapters/protocols registered
@@ -696,7 +696,7 @@ class TestWorkflowOrchestration:
 
     def test_manager_submit_request(self):
         mgr  = _make_manager(started=False)
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterType,
             ConnectorDescriptor, ConnectorType,
             ProtocolDescriptor, ProtocolType,
@@ -724,7 +724,7 @@ class TestWorkflowOrchestration:
 
 class TestScheduler:
     def test_submit_and_dequeue(self):
-        from iios.integration.engine import IntegrationScheduler, SchedulerMode
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler, SchedulerMode
         sched = IntegrationScheduler()
         req   = _make_request()
         job_id = sched.submit(req, mode=SchedulerMode.IMMEDIATE, priority=5)
@@ -734,7 +734,7 @@ class TestScheduler:
         assert job.request.request_id == req.request_id
 
     def test_priority_ordering(self):
-        from iios.integration.engine import IntegrationScheduler, SchedulerMode
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler, SchedulerMode
         sched = IntegrationScheduler()
         r_low  = _make_request()
         r_high = _make_request()
@@ -744,7 +744,7 @@ class TestScheduler:
         assert job.request.request_id == r_high.request_id  # priority 1 wins
 
     def test_cancel_skips_job(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched  = IntegrationScheduler()
         req    = _make_request()
         job_id = sched.submit(req, priority=5)
@@ -753,14 +753,14 @@ class TestScheduler:
         assert job is None   # cancelled job is skipped
 
     def test_queue_size(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched = IntegrationScheduler()
         for _ in range(3):
             sched.submit(_make_request())
         assert sched.queue_size() == 3
 
     def test_peek(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched = IntegrationScheduler()
         req   = _make_request()
         sched.submit(req)
@@ -770,7 +770,7 @@ class TestScheduler:
         assert sched.queue_size() == 1
 
     def test_clear(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched = IntegrationScheduler()
         sched.submit(_make_request())
         sched.clear()
@@ -789,7 +789,7 @@ class TestScheduler:
         assert eng.process_scheduled() is None
 
     def test_scheduled_job_to_dict(self):
-        from iios.integration.engine import IntegrationScheduler, SchedulerMode
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler, SchedulerMode
         sched  = IntegrationScheduler()
         job_id = sched.submit(_make_request(), mode=SchedulerMode.BATCH)
         job    = sched.next()
@@ -798,7 +798,7 @@ class TestScheduler:
         assert d["mode"]   == "batch"
 
     def test_all_scheduler_modes(self):
-        from iios.integration.engine import IntegrationScheduler, SchedulerMode
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler, SchedulerMode
         sched = IntegrationScheduler()
         for mode in SchedulerMode:
             jid = sched.submit(_make_request(), mode=mode)
@@ -813,7 +813,7 @@ class TestScheduler:
 
 class TestValidation:
     def _registry_with_all(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterDescriptor, AdapterType,
             ConnectorDescriptor, ConnectorType,
             IntegrationEngineRegistry,
@@ -826,7 +826,7 @@ class TestValidation:
         return reg
 
     def test_all_checks_pass(self):
-        from iios.integration.engine import IntegrationEngineValidator
+        from enterprise_ai_platform.integration.engine import IntegrationEngineValidator
         v    = IntegrationEngineValidator()
         reg  = self._registry_with_all()
         req  = _make_request()
@@ -835,7 +835,7 @@ class TestValidation:
         assert rpt.failed_checks == []
 
     def test_connector_validity_fails(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineValidator, IntegrationEngineRegistry,
             ConnectorType, EngineValidationCheck,
         )
@@ -848,7 +848,7 @@ class TestValidation:
         assert EngineValidationCheck.CONNECTOR_VALIDITY.value in rpt.failed_checks
 
     def test_adapter_compatibility_fails(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineValidator,
             IntegrationEngineRegistry,
             ConnectorDescriptor, ConnectorType,
@@ -865,7 +865,7 @@ class TestValidation:
         assert EngineValidationCheck.ADAPTER_COMPATIBILITY.value in rpt.failed_checks
 
     def test_protocol_compatibility_fails(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineValidator,
             IntegrationEngineRegistry,
             ConnectorDescriptor, ConnectorType,
@@ -882,7 +882,7 @@ class TestValidation:
         assert EngineValidationCheck.PROTOCOL_COMPATIBILITY.value in rpt.failed_checks
 
     def test_lifecycle_consistency_priority_out_of_range(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineValidator, IntegrationRequest, ConnectorType,
             EngineValidationCheck,
         )
@@ -894,7 +894,7 @@ class TestValidation:
         assert EngineValidationCheck.LIFECYCLE_CONSISTENCY.value in rpt.failed_checks
 
     def test_validation_report_to_dict(self):
-        from iios.integration.engine import IntegrationEngineValidator
+        from enterprise_ai_platform.integration.engine import IntegrationEngineValidator
         v   = IntegrationEngineValidator()
         reg = self._registry_with_all()
         req = _make_request()
@@ -904,7 +904,7 @@ class TestValidation:
         assert "results"  in d
 
     def test_engine_validate_method(self):
-        from iios.integration.engine import IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngineState
         eng = _make_engine()
         req = _make_request()
         rpt = eng.validate(req)
@@ -920,7 +920,7 @@ class TestValidation:
 
 class TestStatistics:
     def test_all_nine_counters(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         stats.record_session()
         stats.record_connector_loaded()
@@ -944,7 +944,7 @@ class TestStatistics:
         assert r.integration_availability   == 1.0
 
     def test_availability_degraded(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         stats.record_availability_tick(True)
         stats.record_availability_tick(False)
@@ -952,7 +952,7 @@ class TestStatistics:
         assert r.integration_availability == 0.5
 
     def test_reset(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         stats.record_session()
         stats.reset()
@@ -960,7 +960,7 @@ class TestStatistics:
         assert r.integration_sessions == 0
 
     def test_report_to_dict(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         d = stats.report().to_dict()
         assert "integration_sessions"       in d
@@ -968,14 +968,14 @@ class TestStatistics:
         assert "average_response_time_ms"   in d
 
     def test_no_responses_avg_is_zero(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         r = stats.report()
         assert r.average_response_time_ms   == 0.0
         assert r.average_processing_time_ms == 0.0
 
     def test_availability_defaults_one_when_no_ticks(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
         r = stats.report()
         assert r.integration_availability == 1.0
@@ -988,14 +988,14 @@ class TestStatistics:
 
 class TestHistory:
     def test_record_and_retrieve_request(self):
-        from iios.integration.engine import IntegrationEngineHistory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory
         h   = IntegrationEngineHistory()
         req = _make_request()
         h.record_request(req)
         assert h.get_request(req.request_id) is req
 
     def test_record_and_retrieve_response(self):
-        from iios.integration.engine import IntegrationEngineHistory, IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory, IntegrationResponse
         h    = IntegrationEngineHistory()
         req  = _make_request()
         resp = IntegrationResponse.success_for(req, "s-001")
@@ -1003,7 +1003,7 @@ class TestHistory:
         assert h.get_response(resp.response_id) is resp
 
     def test_by_session(self):
-        from iios.integration.engine import IntegrationEngineHistory, IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory, IntegrationResponse
         h    = IntegrationEngineHistory()
         req  = _make_request()
         resp = IntegrationResponse.success_for(req, "s-xyz")
@@ -1012,7 +1012,7 @@ class TestHistory:
         assert resp in found
 
     def test_recent_requests(self):
-        from iios.integration.engine import IntegrationEngineHistory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory
         h = IntegrationEngineHistory()
         for _ in range(30):
             h.record_request(_make_request())
@@ -1020,14 +1020,14 @@ class TestHistory:
         assert len(recent) == 10
 
     def test_bounded(self):
-        from iios.integration.engine import IntegrationEngineHistory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory
         h = IntegrationEngineHistory(max_history=3)
         for _ in range(5):
             h.record_request(_make_request())
         assert h.request_count() == 3
 
     def test_response_for_request(self):
-        from iios.integration.engine import IntegrationEngineHistory, IntegrationResponse
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory, IntegrationResponse
         h    = IntegrationEngineHistory()
         req  = _make_request()
         resp = IntegrationResponse.success_for(req, "s-001")
@@ -1036,7 +1036,7 @@ class TestHistory:
         assert found is resp
 
     def test_clear(self):
-        from iios.integration.engine import IntegrationEngineHistory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory
         h = IntegrationEngineHistory()
         h.record_request(_make_request())
         h.clear()
@@ -1051,7 +1051,7 @@ class TestHistory:
 
 class TestEvents:
     def test_event_create(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEvent, IntegrationEngineEventType,
         )
         evt = IntegrationEngineEvent.create(
@@ -1062,7 +1062,7 @@ class TestEvents:
         assert evt.engine_id  == "eng-001"
 
     def test_event_frozen(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEvent, IntegrationEngineEventType,
         )
         evt = IntegrationEngineEvent.create(
@@ -1073,7 +1073,7 @@ class TestEvents:
             evt.session_id = "x"  # type: ignore
 
     def test_all_9_events_emittable(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEventBus, IntegrationEngineEventType,
         )
         bus      = IntegrationEngineEventBus()
@@ -1084,7 +1084,7 @@ class TestEvents:
         assert len(received) == 9
 
     def test_listener_exception_suppressed(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEventBus, IntegrationEngineEventType,
         )
         bus = IntegrationEngineEventBus()
@@ -1093,7 +1093,7 @@ class TestEvents:
         bus.emit(IntegrationEngineEventType.INTEGRATION_FAILED, "e", "r", "s")
 
     def test_remove_listener(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEventBus, IntegrationEngineEventType,
         )
         received = []
@@ -1105,14 +1105,14 @@ class TestEvents:
         assert len(received) == 0
 
     def test_listener_count(self):
-        from iios.integration.engine import IntegrationEngineEventBus
+        from enterprise_ai_platform.integration.engine import IntegrationEngineEventBus
         bus = IntegrationEngineEventBus()
         assert bus.listener_count() == 0
         bus.add_listener(lambda e: None)
         assert bus.listener_count() == 1
 
     def test_dispatch_emits_events(self):
-        from iios.integration.engine import IntegrationEngineEventType
+        from enterprise_ai_platform.integration.engine import IntegrationEngineEventType
         eng      = _make_engine()
         received = []
         eng.event_bus.add_listener(received.append)
@@ -1121,7 +1121,7 @@ class TestEvents:
         assert IntegrationEngineEventType.INTEGRATION_COMPLETED in event_types
 
     def test_event_to_dict(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEvent, IntegrationEngineEventType,
         )
         evt = IntegrationEngineEvent.create(
@@ -1140,7 +1140,7 @@ class TestEvents:
 
 class TestPipeline:
     def test_pipeline_executes_all_stages(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineContext, IntegrationPipeline, PIPELINE_STAGE_ORDER,
         )
         pipeline = IntegrationPipeline()
@@ -1151,7 +1151,7 @@ class TestPipeline:
         assert len(execution.completed_stages) == len(PIPELINE_STAGE_ORDER)
 
     def test_execution_tracking(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineContext, IntegrationPipeline,
         )
         pipeline  = IntegrationPipeline()
@@ -1162,7 +1162,7 @@ class TestPipeline:
         assert execution.completed_at is not None
 
     def test_execution_to_dict(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineContext, IntegrationPipeline,
         )
         pipeline  = IntegrationPipeline()
@@ -1182,7 +1182,7 @@ class TestPipeline:
 
 class TestDispatcher:
     def test_dispatch_single(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationDispatcher, IntegrationEngineContext,
         )
         d   = IntegrationDispatcher()
@@ -1192,7 +1192,7 @@ class TestDispatcher:
         assert ex.success
 
     def test_dispatch_batch(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationDispatcher, IntegrationEngineContext,
         )
         d    = IntegrationDispatcher()
@@ -1215,14 +1215,14 @@ class TestHealthAndStatus:
         assert h.status == "healthy"
 
     def test_health_degraded_no_connectors(self):
-        from iios.integration.engine import IntegrationEngine
+        from enterprise_ai_platform.integration.engine import IntegrationEngine
         eng = IntegrationEngine()
         eng.initialize()
         h = eng.health()
         assert h.status in ("degraded", "unhealthy")
 
     def test_health_stopped(self):
-        from iios.integration.engine import IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngineState
         eng = _make_engine()
         eng.stop()
         h = eng.health()
@@ -1235,7 +1235,7 @@ class TestHealthAndStatus:
         assert "uptime_seconds" in d
 
     def test_status_snapshot(self):
-        from iios.integration.engine import IntegrationEngineState
+        from enterprise_ai_platform.integration.engine import IntegrationEngineState
         eng = _make_engine()
         s   = eng.status()
         assert s.state == IntegrationEngineState.IDLE
@@ -1248,7 +1248,7 @@ class TestHealthAndStatus:
         assert "state"     in d
 
     def test_monitor_returns_health(self):
-        from iios.integration.engine import EngineHealthReport
+        from enterprise_ai_platform.integration.engine import EngineHealthReport
         eng = _make_engine()
         h   = eng.monitor()
         assert isinstance(h, EngineHealthReport)
@@ -1261,20 +1261,20 @@ class TestHealthAndStatus:
 
 class TestFactory:
     def test_create_request(self):
-        from iios.integration.engine import ConnectorType, IntegrationEngineFactory
+        from enterprise_ai_platform.integration.engine import ConnectorType, IntegrationEngineFactory
         f   = IntegrationEngineFactory()
         req = f.create_request(ConnectorType.KAFKA)
         assert req.connector_type == ConnectorType.KAFKA
 
     def test_create_context(self):
-        from iios.integration.engine import IntegrationEngineFactory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineFactory
         f   = IntegrationEngineFactory()
         req = _make_request()
         ctx = f.create_context(req, "s-001")
         assert ctx.session_id == "s-001"
 
     def test_create_success_response(self):
-        from iios.integration.engine import IntegrationEngineFactory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineFactory
         f    = IntegrationEngineFactory()
         req  = _make_request()
         resp = f.create_success_response(req, "s-001", {"k": "v"}, 42.0)
@@ -1282,20 +1282,20 @@ class TestFactory:
         assert resp.latency_ms == 42.0
 
     def test_create_failure_response(self):
-        from iios.integration.engine import IntegrationEngineFactory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineFactory
         f    = IntegrationEngineFactory()
         req  = _make_request()
         resp = f.create_failure_response(req, "s-001", "something broke")
         assert resp.is_failure
 
     def test_create_connector_descriptor(self):
-        from iios.integration.engine import ConnectorType, IntegrationEngineFactory
+        from enterprise_ai_platform.integration.engine import ConnectorType, IntegrationEngineFactory
         f    = IntegrationEngineFactory()
         desc = f.create_connector_descriptor(ConnectorType.WEBSOCKET, "WS Conn")
         assert desc.connector_type == ConnectorType.WEBSOCKET
 
     def test_create_adapter_descriptor(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             AdapterType, ConnectorType, IntegrationEngineFactory,
         )
         f    = IntegrationEngineFactory()
@@ -1303,7 +1303,7 @@ class TestFactory:
         assert desc.adapter_type == AdapterType.KAFKA
 
     def test_create_protocol_descriptor(self):
-        from iios.integration.engine import IntegrationEngineFactory, ProtocolType
+        from enterprise_ai_platform.integration.engine import IntegrationEngineFactory, ProtocolType
         f    = IntegrationEngineFactory()
         desc = f.create_protocol_descriptor(ProtocolType.AMQP, "AMQP Protocol")
         assert desc.protocol_type == ProtocolType.AMQP
@@ -1316,26 +1316,26 @@ class TestFactory:
 
 class TestSessionManager:
     def test_create_session(self):
-        from iios.integration.engine import IntegrationSessionManager
+        from enterprise_ai_platform.integration.engine import IntegrationSessionManager
         sm  = IntegrationSessionManager()
         sid = sm.create_session("wf-test")
         assert sid
         assert sm.active_count() == 1
 
     def test_create_and_initialize(self):
-        from iios.integration.engine import IntegrationSessionManager
+        from enterprise_ai_platform.integration.engine import IntegrationSessionManager
         sm  = IntegrationSessionManager()
         sid = sm.create_and_initialize("wf-test")
         assert sm.get_session(sid) is not None
 
     def test_fail_session_doesnt_raise(self):
-        from iios.integration.engine import IntegrationSessionManager
+        from enterprise_ai_platform.integration.engine import IntegrationSessionManager
         sm  = IntegrationSessionManager()
         sid = sm.create_session("wf-test")
         sm.fail_session(sid, reason="test failure")   # should not raise
 
     def test_archive_decrements_active(self):
-        from iios.integration.engine import IntegrationSessionManager
+        from enterprise_ai_platform.integration.engine import IntegrationSessionManager
         sm  = IntegrationSessionManager()
         sid = sm.create_and_initialize("wf-x")
         sm.complete_session(sid)
@@ -1372,7 +1372,7 @@ class TestConcurrency:
         assert all(r.is_success for r in results)
 
     def test_concurrent_connector_registration(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             ConnectorDescriptor, ConnectorManager, ConnectorType,
         )
         mgr    = ConnectorManager(max_connectors=100)
@@ -1395,7 +1395,7 @@ class TestConcurrency:
         assert errors == []
 
     def test_concurrent_statistics(self):
-        from iios.integration.engine import IntegrationEngineStatistics
+        from enterprise_ai_platform.integration.engine import IntegrationEngineStatistics
         stats = IntegrationEngineStatistics()
 
         def increment():
@@ -1411,7 +1411,7 @@ class TestConcurrency:
         assert stats.report().integration_sessions == 2000
 
     def test_concurrent_scheduler_submit(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched  = IntegrationScheduler(max_queue=10_000)
         errors = []
 
@@ -1449,7 +1449,7 @@ class TestStressTesting:
         assert r.integration_sessions >= 1000
 
     def test_scheduler_1000_submissions(self):
-        from iios.integration.engine import IntegrationScheduler
+        from enterprise_ai_platform.integration.engine import IntegrationScheduler
         sched = IntegrationScheduler(max_queue=10_000)
         for i in range(1000):
             sched.submit(_make_request(), priority=i % 10)
@@ -1460,14 +1460,14 @@ class TestStressTesting:
         assert dequeued == 1000
 
     def test_history_bounded_under_load(self):
-        from iios.integration.engine import IntegrationEngineHistory
+        from enterprise_ai_platform.integration.engine import IntegrationEngineHistory
         h = IntegrationEngineHistory(max_history=100)
         for _ in range(500):
             h.record_request(_make_request())
         assert h.request_count() == 100   # bounded
 
     def test_event_bus_high_throughput(self):
-        from iios.integration.engine import (
+        from enterprise_ai_platform.integration.engine import (
             IntegrationEngineEventBus, IntegrationEngineEventType,
         )
         bus      = IntegrationEngineEventBus()
@@ -1488,37 +1488,37 @@ class TestStressTesting:
 
 class TestRegression:
     def test_engine_module_importable(self):
-        import iios.integration.engine as m
+        import enterprise_ai_platform.integration.engine as m
         assert hasattr(m, "IntegrationEngine")
         assert hasattr(m, "IntegrationManager")
 
     def test_lifecycle_module_still_importable(self):
-        import iios.integration.lifecycle as m
+        import enterprise_ai_platform.integration.lifecycle as m
         assert hasattr(m, "IntegrationLifecycle")
 
     def test_knowledge_modules_importable(self):
-        import iios.knowledge
-        assert iios.knowledge is not None
+        import enterprise_ai_platform.knowledge
+        assert enterprise_ai_platform.knowledge is not None
 
     def test_supervisor_importable(self):
-        import iios.supervisor
-        assert iios.supervisor is not None
+        import enterprise_ai_platform.supervisor
+        assert enterprise_ai_platform.supervisor is not None
 
     def test_all_exports_present(self):
-        from iios.integration.engine import __all__
-        import iios.integration.engine as m
+        from enterprise_ai_platform.integration.engine import __all__
+        import enterprise_ai_platform.integration.engine as m
         for name in __all__:
             assert hasattr(m, name), f"Missing export: {name!r}"
 
     def test_no_protocol_specific_code_imported(self):
         """Engine must not import any vendor/protocol clients."""
-        import iios.integration.engine.integration_engine as mod
+        import enterprise_ai_platform.integration.engine.integration_engine as mod
         src = __import__("inspect").getsource(mod)
         for forbidden in ("requests.get", "httpx", "aiohttp", "kafka", "pika"):
             assert forbidden not in src, f"Forbidden import found: {forbidden!r}"
 
     def test_session_manager_uses_m1_lifecycle(self):
-        from iios.integration.engine import IntegrationSessionManager
-        from iios.integration.lifecycle import IntegrationLifecycle
+        from enterprise_ai_platform.integration.engine import IntegrationSessionManager
+        from enterprise_ai_platform.integration.lifecycle import IntegrationLifecycle
         sm = IntegrationSessionManager()
         assert isinstance(sm.lifecycle, IntegrationLifecycle)

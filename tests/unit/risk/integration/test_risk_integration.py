@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.risk.integration import (
+from enterprise_ai_platform.risk.integration import (
     # Engine
     RiskIntegrationEngine,
     # Request / Response / Context
@@ -105,7 +105,7 @@ def _started_engine(**kwargs) -> RiskIntegrationEngine:
 
 class TestConstants:
     def test_integration_system_id(self):
-        assert INTEGRATION_SYSTEM_ID == "iios:risk:integration"
+        assert INTEGRATION_SYSTEM_ID == "enterprise_ai_platform:risk:integration"
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -146,7 +146,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_error_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(RiskIntegrationError, IIOSError)
 
     def test_not_running_error_code(self):
@@ -170,7 +170,7 @@ class TestExceptions:
         assert exc.error_code == "RI-007"
 
     def test_all_are_subclass_of_base(self):
-        from iios.risk.integration.exceptions import (
+        from enterprise_ai_platform.risk.integration.exceptions import (
             RiskIntegrationSnapshotError,
             RiskIntegrationTimeoutError,
             RiskIntegrationConfigurationError,

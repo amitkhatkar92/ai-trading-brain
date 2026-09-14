@@ -9,27 +9,27 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.decision.confidence.decision_confidence_engine import (
+from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import (
     DecisionConfidenceEngine,
 )
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory,
     EvidenceSourceType,
     EvidenceValidationStatus,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.evidence.evidence_package import EvidencePackage
-from iios.investment.decision.evidence.evidence_snapshot import build_snapshot
-from iios.investment.decision.explainability.decision_explainability_engine import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot
+from enterprise_ai_platform.investment.decision.explainability.decision_explainability_engine import (
     DecisionExplainabilityEngine,
 )
-from iios.investment.decision.reasoning.decision_reasoning_engine import (
+from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import (
     DecisionReasoningEngine,
 )
-from iios.investment.decision.risk.decision_risk_engine import DecisionRiskEngine
+from enterprise_ai_platform.investment.decision.risk.decision_risk_engine import DecisionRiskEngine
 
-from iios.investment.decision.committee.committee_session import CommitteeSession
-from iios.investment.decision.committee.committee_context import CommitteeContext
+from enterprise_ai_platform.investment.decision.committee.committee_session import CommitteeSession
+from enterprise_ai_platform.investment.decision.committee.committee_context import CommitteeContext
 
 
 def _item(key, value, src, cat, conf, did, sid, freshness=0.9):

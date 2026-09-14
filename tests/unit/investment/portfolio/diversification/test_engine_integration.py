@@ -2,11 +2,11 @@
 import threading
 import pytest
 
-from iios.investment.portfolio.diversification.portfolio_diversification_engine import (
+from enterprise_ai_platform.investment.portfolio.diversification.portfolio_diversification_engine import (
     DiversificationIntegrationRefs,
     PortfolioDiversificationEngine,
 )
-from iios.investment.portfolio.diversification.diversification_types import DiversificationGrade
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import DiversificationGrade
 
 
 class TestEngineLifecycle:
@@ -94,7 +94,7 @@ class TestEvaluate:
     def test_10_balanced_acceptable(self, plan_10_balanced):
         e = PortfolioDiversificationEngine(
             quality_assessor=__import__(
-                "iios.investment.portfolio.diversification.diversification_quality",
+                "enterprise_ai_platform.investment.portfolio.diversification.diversification_quality",
                 fromlist=["DiversificationQualityAssessor"]
             ).DiversificationQualityAssessor(acceptable_threshold=0.40)
         )

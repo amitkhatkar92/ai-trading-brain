@@ -3,12 +3,12 @@ Tests for CashFlowEngine and all sub-analyzers.
 """
 import pytest
 
-from iios.investment.company.financials.operating_cashflow import OperatingCashFlowAnalyzer
-from iios.investment.company.financials.investing_cashflow import InvestingCashFlowAnalyzer
-from iios.investment.company.financials.financing_cashflow import FinancingCashFlowAnalyzer
-from iios.investment.company.financials.free_cashflow import FreeCashFlowAnalyzer
-from iios.investment.company.financials.cashflow_engine import CashFlowEngine
-from iios.investment.company.financials.cash_flow_statement import CashFlowStatement
+from enterprise_ai_platform.investment.company.financials.operating_cashflow import OperatingCashFlowAnalyzer
+from enterprise_ai_platform.investment.company.financials.investing_cashflow import InvestingCashFlowAnalyzer
+from enterprise_ai_platform.investment.company.financials.financing_cashflow import FinancingCashFlowAnalyzer
+from enterprise_ai_platform.investment.company.financials.free_cashflow import FreeCashFlowAnalyzer
+from enterprise_ai_platform.investment.company.financials.cashflow_engine import CashFlowEngine
+from enterprise_ai_platform.investment.company.financials.cash_flow_statement import CashFlowStatement
 
 
 class TestOperatingCashFlow:

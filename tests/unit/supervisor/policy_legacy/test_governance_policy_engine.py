@@ -35,7 +35,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.policy_legacy import (
+from enterprise_ai_platform.supervisor.policy_legacy import (
     # enumerations
     ConditionOperator,
     ConflictResolutionStrategy,
@@ -233,7 +233,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(GovernancePolicyError, IIOSError)
 
     def test_engine_not_running_subclass(self):
@@ -1385,16 +1385,16 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_importable(self):
-        import iios.supervisor.policy_legacy as module
+        import enterprise_ai_platform.supervisor.policy_legacy as module
         for name in module.__all__:
             assert hasattr(module, name), f"Missing export: {name}"
 
     def test_engine_in_all(self):
-        import iios.supervisor.policy_legacy as module
+        import enterprise_ai_platform.supervisor.policy_legacy as module
         assert "GovernancePolicyEngine" in module.__all__
 
     def test_factory_in_all(self):
-        import iios.supervisor.policy_legacy as module
+        import enterprise_ai_platform.supervisor.policy_legacy as module
         assert "GovernancePolicyFactory" in module.__all__
 
 

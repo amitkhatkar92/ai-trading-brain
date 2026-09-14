@@ -2,7 +2,7 @@
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.business_quality.assessment_context import AssessmentContext
+from enterprise_ai_platform.investment.company.business_quality.assessment_context import AssessmentContext
 
 
 def make_financial_snapshot(
@@ -125,7 +125,7 @@ def make_earnings_snapshot(
     snap.risk = risk
 
     # trend
-    from iios.investment.company.earnings.earnings_report import TrendDirection
+    from enterprise_ai_platform.investment.company.earnings.earnings_report import TrendDirection
     trend = MagicMock()
     trend.eps_direction     = TrendDirection.ACCELERATING
     trend.revenue_direction = TrendDirection.STABLE

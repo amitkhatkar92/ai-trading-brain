@@ -7,17 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     ConstructionDirection,
     SelectionCriterion,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import (
     ConstructionRequest,
     InvestmentRecommendation,
 )
-from iios.investment.portfolio.construction.security_selector import SecuritySelector
-from iios.investment.portfolio.construction.selection_history import SelectionHistory
-from iios.investment.portfolio.construction.selection_policy import (
+from enterprise_ai_platform.investment.portfolio.construction.security_selector import SecuritySelector
+from enterprise_ai_platform.investment.portfolio.construction.selection_history import SelectionHistory
+from enterprise_ai_platform.investment.portfolio.construction.selection_policy import (
     BALANCED_POLICY,
     SelectionPolicy,
 )
@@ -147,7 +147,7 @@ class TestSelectionHistory:
         assert h.latest() is None
 
     def test_record_and_retrieve(self, recs_5, long_only_request):
-        from iios.investment.portfolio.construction.selection_history import SelectionRecord
+        from enterprise_ai_platform.investment.portfolio.construction.selection_history import SelectionRecord
         h = SelectionHistory()
         r = SelectionRecord(
             portfolio_id="PF",
@@ -160,14 +160,14 @@ class TestSelectionHistory:
         assert h.latest() is not None
 
     def test_recent_n(self, recs_5, long_only_request):
-        from iios.investment.portfolio.construction.selection_history import SelectionRecord
+        from enterprise_ai_platform.investment.portfolio.construction.selection_history import SelectionRecord
         h = SelectionHistory()
         for i in range(5):
             h.add(SelectionRecord(portfolio_id="PF", recommendations_in=i, recommendations_out=i))
         assert len(h.recent(3)) == 3
 
     def test_for_portfolio(self):
-        from iios.investment.portfolio.construction.selection_history import SelectionRecord
+        from enterprise_ai_platform.investment.portfolio.construction.selection_history import SelectionRecord
         h = SelectionHistory()
         h.add(SelectionRecord(portfolio_id="PF-A", recommendations_in=5, recommendations_out=5))
         h.add(SelectionRecord(portfolio_id="PF-B", recommendations_in=3, recommendations_out=3))

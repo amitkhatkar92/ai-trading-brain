@@ -3,13 +3,13 @@ Tests for RiskScore, RiskConfidence, RiskQuality, RiskHealth, RiskEvents.
 """
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.risk_score import RiskScore, RiskScoreCalculator
-from iios.investment.strategy.risk.risk_confidence import RiskConfidence
-from iios.investment.strategy.risk.risk_quality import RiskQuality
-from iios.investment.strategy.risk.risk_health import RiskHealth, RiskHealthStatus
-from iios.investment.strategy.risk.risk_constraints import RiskConstraints
-from iios.investment.strategy.risk.risk_limits import DEFAULT_LIMITS
-from iios.investment.strategy.risk.risk_events import (
+from enterprise_ai_platform.investment.strategy.risk.risk_score import RiskScore, RiskScoreCalculator
+from enterprise_ai_platform.investment.strategy.risk.risk_confidence import RiskConfidence
+from enterprise_ai_platform.investment.strategy.risk.risk_quality import RiskQuality
+from enterprise_ai_platform.investment.strategy.risk.risk_health import RiskHealth, RiskHealthStatus
+from enterprise_ai_platform.investment.strategy.risk.risk_constraints import RiskConstraints
+from enterprise_ai_platform.investment.strategy.risk.risk_limits import DEFAULT_LIMITS
+from enterprise_ai_platform.investment.strategy.risk.risk_events import (
     RiskEventBus, RiskEvent, RiskEventType
 )
 

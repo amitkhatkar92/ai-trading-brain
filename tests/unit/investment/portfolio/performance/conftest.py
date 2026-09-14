@@ -2,7 +2,7 @@
 import pytest
 from typing import List
 
-from iios.investment.portfolio.performance.performance_types import PerformancePosition
+from enterprise_ai_platform.investment.portfolio.performance.performance_types import PerformancePosition
 
 
 # ---------------------------------------------------------------------------

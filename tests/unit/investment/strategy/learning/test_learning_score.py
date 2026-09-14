@@ -7,14 +7,14 @@ from datetime import datetime, timezone, timedelta
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.learning_profile import StrategyLearningProfile
-from iios.investment.strategy.learning.learning_policy import DEFAULT_POLICY
-from iios.investment.strategy.learning.learning_confidence import LearningConfidence
-from iios.investment.strategy.learning.strategy_maturity import (
+from enterprise_ai_platform.investment.strategy.learning.learning_profile import StrategyLearningProfile
+from enterprise_ai_platform.investment.strategy.learning.learning_policy import DEFAULT_POLICY
+from enterprise_ai_platform.investment.strategy.learning.learning_confidence import LearningConfidence
+from enterprise_ai_platform.investment.strategy.learning.strategy_maturity import (
     StrategyMaturity, MaturityAssessor, MaturityLevel
 )
-from iios.investment.strategy.learning.learning_quality import LearningQuality
-from iios.investment.strategy.learning.learning_score import LearningScore, LearningScoreCalculator
+from enterprise_ai_platform.investment.strategy.learning.learning_quality import LearningQuality
+from enterprise_ai_platform.investment.strategy.learning.learning_score import LearningScore, LearningScoreCalculator
 
 
 def _build_profile(n_obs: int, score: float = 70.0, sid: str = "s1") -> StrategyLearningProfile:

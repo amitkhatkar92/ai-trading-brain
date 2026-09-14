@@ -6,8 +6,8 @@ from __future__ import annotations
 import uuid
 import pytest
 
-from iios.investment.workflow.workflow_history import WorkflowHistory, WorkflowRunRecord
-from iios.investment.workflow.workflow_types import WorkflowStage
+from enterprise_ai_platform.investment.workflow.workflow_history import WorkflowHistory, WorkflowRunRecord
+from enterprise_ai_platform.investment.workflow.workflow_types import WorkflowStage
 
 
 def _make_record(

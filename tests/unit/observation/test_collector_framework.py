@@ -13,52 +13,52 @@ import time
 from typing import Any
 import pytest
 
-from iios.observation.collectors.collector_constants import (
+from enterprise_ai_platform.observation.collectors.collector_constants import (
     CircuitBreakerState, CollectorCategory, CollectorStatus,
     ExecutionMode, LifecycleStage, RetryStrategy, ScheduleType,
 )
-from iios.observation.collectors.collector_exceptions import (
+from enterprise_ai_platform.observation.collectors.collector_exceptions import (
     CollectorAlreadyRegisteredError, CollectorCircuitOpenError,
     CollectorConfigError, CollectorError, CollectorNotFoundError,
     CollectorRateLimitError, CollectorRetryExhaustedError,
     CollectorShutdownError, CollectorValidationError,
 )
-from iios.observation.collectors.base_collector import (
+from enterprise_ai_platform.observation.collectors.base_collector import (
     BaseCollector, CircuitBreaker, CollectorConfig, CollectorStats,
     RateLimiter, RetryPolicy,
 )
-from iios.observation.collectors.sync_collector      import SyncCollector
-from iios.observation.collectors.async_collector     import AsyncCollector
-from iios.observation.collectors.stream_collector    import StreamCollector
-from iios.observation.collectors.batch_collector     import BatchCollector, BatchCheckpoint
-from iios.observation.collectors.scheduled_collector import ScheduledCollector, ScheduleConfig
-from iios.observation.collectors.event_collector     import EventCollector
-from iios.observation.collectors.collector_context   import (
+from enterprise_ai_platform.observation.collectors.sync_collector      import SyncCollector
+from enterprise_ai_platform.observation.collectors.async_collector     import AsyncCollector
+from enterprise_ai_platform.observation.collectors.stream_collector    import StreamCollector
+from enterprise_ai_platform.observation.collectors.batch_collector     import BatchCollector, BatchCheckpoint
+from enterprise_ai_platform.observation.collectors.scheduled_collector import ScheduledCollector, ScheduleConfig
+from enterprise_ai_platform.observation.collectors.event_collector     import EventCollector
+from enterprise_ai_platform.observation.collectors.collector_context   import (
     CollectorContext, collector_operation, current_collector_name, current_run_id,
     get_collector_context,
 )
-from iios.observation.collectors.collector_metrics   import CollectorMetrics, RunRecord
-from iios.observation.collectors.collector_registry  import CollectorRegistry
-from iios.observation.collectors.collector_factory   import CollectorFactory
-from iios.observation.collectors.collector_scheduler import CollectorScheduler
-from iios.observation.collectors.collector_executor  import CollectorExecutor, ExecutionResult
-from iios.observation.collectors.collector_monitor   import CollectorMonitor
-from iios.observation.collectors.collector_manager   import CollectorManager
-from iios.observation.observation_constants import ObservationSource, ObservationType
-from iios.observation.models.observation import Observation
+from enterprise_ai_platform.observation.collectors.collector_metrics   import CollectorMetrics, RunRecord
+from enterprise_ai_platform.observation.collectors.collector_registry  import CollectorRegistry
+from enterprise_ai_platform.observation.collectors.collector_factory   import CollectorFactory
+from enterprise_ai_platform.observation.collectors.collector_scheduler import CollectorScheduler
+from enterprise_ai_platform.observation.collectors.collector_executor  import CollectorExecutor, ExecutionResult
+from enterprise_ai_platform.observation.collectors.collector_monitor   import CollectorMonitor
+from enterprise_ai_platform.observation.collectors.collector_manager   import CollectorManager
+from enterprise_ai_platform.observation.observation_constants import ObservationSource, ObservationType
+from enterprise_ai_platform.observation.models.observation import Observation
 
 
 # ─────────────────────────── Fixtures & Helpers ───────────────────────────────
 
 def _reset_all() -> None:
-    from iios.observation.collectors.collector_context  import reset_collector_context
-    from iios.observation.collectors.collector_metrics  import reset_collector_metrics
-    from iios.observation.collectors.collector_registry import reset_collector_registry
-    from iios.observation.collectors.collector_factory  import reset_collector_factory
-    from iios.observation.collectors.collector_scheduler import reset_collector_scheduler
-    from iios.observation.collectors.collector_executor import reset_collector_executor
-    from iios.observation.collectors.collector_monitor  import reset_collector_monitor
-    from iios.observation.collectors.collector_manager  import reset_collector_manager
+    from enterprise_ai_platform.observation.collectors.collector_context  import reset_collector_context
+    from enterprise_ai_platform.observation.collectors.collector_metrics  import reset_collector_metrics
+    from enterprise_ai_platform.observation.collectors.collector_registry import reset_collector_registry
+    from enterprise_ai_platform.observation.collectors.collector_factory  import reset_collector_factory
+    from enterprise_ai_platform.observation.collectors.collector_scheduler import reset_collector_scheduler
+    from enterprise_ai_platform.observation.collectors.collector_executor import reset_collector_executor
+    from enterprise_ai_platform.observation.collectors.collector_monitor  import reset_collector_monitor
+    from enterprise_ai_platform.observation.collectors.collector_manager  import reset_collector_manager
     reset_collector_context()
     reset_collector_metrics()
     reset_collector_registry()
@@ -116,7 +116,7 @@ class FailingCollector(SyncCollector):
 
 
 def _make_obs():
-    from iios.observation.observation_factory import get_observation_factory
+    from enterprise_ai_platform.observation.observation_factory import get_observation_factory
     return get_observation_factory().create(content={"x": 1}, title="t")
 
 
@@ -680,7 +680,7 @@ class TestEventCollector:
 
 class TestCollectorContext:
     def test_default_name(self):
-        from iios.observation.collectors.collector_constants import SYSTEM_COLLECTOR
+        from enterprise_ai_platform.observation.collectors.collector_constants import SYSTEM_COLLECTOR
         ctx = CollectorContext()
         assert ctx.collector_name == SYSTEM_COLLECTOR
 
@@ -688,7 +688,7 @@ class TestCollectorContext:
         ctx = CollectorContext()
         with ctx.running("my_collector"):
             assert ctx.collector_name == "my_collector"
-        from iios.observation.collectors.collector_constants import SYSTEM_COLLECTOR
+        from enterprise_ai_platform.observation.collectors.collector_constants import SYSTEM_COLLECTOR
         assert ctx.collector_name == SYSTEM_COLLECTOR
 
     def test_nested_contexts(self):
@@ -720,7 +720,7 @@ class TestCollectorContext:
         t = threading.Thread(target=worker)
         t.start(); t.join()
         assert results == ["thread_col"]
-        from iios.observation.collectors.collector_constants import SYSTEM_COLLECTOR
+        from enterprise_ai_platform.observation.collectors.collector_constants import SYSTEM_COLLECTOR
         assert current_collector_name() == SYSTEM_COLLECTOR
 
 
@@ -1252,7 +1252,7 @@ class TestCollectorManager:
 
 class TestCategoryCollectors:
     def test_market_data_category(self):
-        from iios.observation.collectors.categories import MarketDataCollector
+        from enterprise_ai_platform.observation.collectors.categories import MarketDataCollector
         class MyMDC(MarketDataCollector):
             def _do_collect(self): return []
             def _do_normalise(self, r): return []
@@ -1260,7 +1260,7 @@ class TestCategoryCollectors:
         assert c.config.category == CollectorCategory.MARKET_DATA
 
     def test_news_category(self):
-        from iios.observation.collectors.categories import NewsCollector
+        from enterprise_ai_platform.observation.collectors.categories import NewsCollector
         class MyNC(NewsCollector):
             def _do_collect(self): return []
             def _do_normalise(self, r): return []
@@ -1269,7 +1269,7 @@ class TestCategoryCollectors:
         assert c.config.obs_type == ObservationType.NEWS
 
     def test_plugin_collector_info(self):
-        from iios.observation.collectors.categories import PluginCollector
+        from enterprise_ai_platform.observation.collectors.categories import PluginCollector
         class MyPlugin(PluginCollector):
             PLUGIN_NAME    = "test_plugin"
             PLUGIN_VERSION = "2.0.0"
@@ -1282,7 +1282,7 @@ class TestCategoryCollectors:
         assert c.config.category == CollectorCategory.PLUGIN
 
     def test_internal_system_source(self):
-        from iios.observation.collectors.categories import InternalSystemCollector
+        from enterprise_ai_platform.observation.collectors.categories import InternalSystemCollector
         class MyISC(InternalSystemCollector):
             def _do_collect(self): return []
             def _do_normalise(self, r): return []
@@ -1290,7 +1290,7 @@ class TestCategoryCollectors:
         assert c.config.source == ObservationSource.INTERNAL_AGENT
 
     def test_all_categories_importable(self):
-        from iios.observation.collectors.categories import (
+        from enterprise_ai_platform.observation.collectors.categories import (
             MacroCollector, CorporateActionCollector,
             FinancialStatementCollector, ExchangeCollector,
             BrokerCollector, AlternativeDataCollector,

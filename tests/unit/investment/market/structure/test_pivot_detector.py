@@ -5,8 +5,8 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.structure.models import Bar
-from iios.investment.market.structure.pivot_detector import (
+from enterprise_ai_platform.investment.market.structure.models import Bar
+from enterprise_ai_platform.investment.market.structure.pivot_detector import (
     detect_pivots,
     is_pivot_high,
     is_pivot_low,

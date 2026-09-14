@@ -1,7 +1,7 @@
 """
 tests/unit/knowledge/test_knowledge_lifecycle.py
 --------------------------------------------------
-Comprehensive test suite for iios.knowledge.lifecycle (C14 M1).
+Comprehensive test suite for enterprise_ai_platform.knowledge.lifecycle (C14 M1).
 
 Coverage targets: ≥ 95 %
 Test classes   : 17
@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.knowledge.lifecycle import (
+from enterprise_ai_platform.knowledge.lifecycle import (
     ACTIVE_STATES,
     ACTOR_LIFECYCLE,
     ACTOR_OPERATOR,
@@ -60,7 +60,7 @@ from iios.knowledge.lifecycle import (
     KnowledgeValidator,
     SUCCESS_STATES,
 )
-from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
 
 
 # ===========================================================================
@@ -161,7 +161,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(KnowledgeLifecycleError, IIOSError)
 
     def test_error_codes_unique(self):
@@ -1281,15 +1281,15 @@ class TestRegression:
     """Smoke-test that importing knowledge.lifecycle does not pollute supervisor."""
 
     def test_supervisor_lifecycle_import_still_works(self):
-        from iios.supervisor.lifecycle import SupervisorLifecycle  # noqa: F401
-        from iios.supervisor.lifecycle import SupervisorState       # noqa: F401
+        from enterprise_ai_platform.supervisor.lifecycle import SupervisorLifecycle  # noqa: F401
+        from enterprise_ai_platform.supervisor.lifecycle import SupervisorState       # noqa: F401
         # Both imports must succeed without error
 
     def test_knowledge_lifecycle_does_not_overlap_supervisor_errors(self):
-        from iios.supervisor.lifecycle.exceptions import SupervisorLifecycleError
+        from enterprise_ai_platform.supervisor.lifecycle.exceptions import SupervisorLifecycleError
         # Different base paths — no name collision
         assert SupervisorLifecycleError.__name__ != KnowledgeLifecycleError.__name__
 
     def test_knowledge_lifecycle_state_distinct_from_supervisor_state(self):
-        from iios.supervisor.lifecycle.constants import SupervisorState
+        from enterprise_ai_platform.supervisor.lifecycle.constants import SupervisorState
         assert KnowledgeLifecycleState.__name__ != SupervisorState.__name__

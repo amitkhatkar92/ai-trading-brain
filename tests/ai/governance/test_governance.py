@@ -27,7 +27,7 @@ import pytest
 
 # ── imports ───────────────────────────────────────────────────────────────────
 
-from iios.ai.governance.exceptions.governance_exceptions import (
+from enterprise_ai_platform.ai.governance.exceptions.governance_exceptions import (
     AIGovernanceException,
     AIPolicyException, AIPolicyNotFoundError, AIPolicyAlreadyExistsError,
     AIPolicyViolationError, AIPolicyEvaluationError, AIPolicyConflictError,
@@ -42,14 +42,14 @@ from iios.ai.governance.exceptions.governance_exceptions import (
     AIGovernancePolicyException, AIGovernancePolicyViolationError,
 )
 
-from iios.ai.governance.core import (
+from enterprise_ai_platform.ai.governance.core import (
     GovernanceStatus, GovernanceSeverity, GovernanceDomain, GovernanceMetadata,
     GovernanceContext,
     GovernanceDecisionType, GovernanceDecision,
     PolicyEffect, PolicyScope, GovernancePolicy,
 )
 
-from iios.ai.governance.events import (
+from enterprise_ai_platform.ai.governance.events import (
     GovernanceEventType, GovernanceEvent,
     PolicyEvaluatedEvent, PolicyViolatedEvent, PolicyRegisteredEvent,
     PermissionGrantedEvent, PermissionDeniedEvent,
@@ -61,39 +61,39 @@ from iios.ai.governance.events import (
     GovernanceEventBus,
 )
 
-from iios.ai.governance.policy import (
+from enterprise_ai_platform.ai.governance.policy import (
     RuleOperator, PolicyRule, PolicyEvaluation, PolicyViolation,
     PolicyRegistry,
     PolicyEngine,
 )
 
-from iios.ai.governance.permissions import (
+from enterprise_ai_platform.ai.governance.permissions import (
     RolePolicy, CapabilityRestriction, AccessControl,
     PermissionManager,
 )
 
-from iios.ai.governance.audit import (
+from enterprise_ai_platform.ai.governance.audit import (
     AuditEventType, AuditRecord, AuditEvent,
     AuditHistory, AuditReport, AuditManager,
 )
 
-from iios.ai.governance.explainability import (
+from enterprise_ai_platform.ai.governance.explainability import (
     EvidenceReference, DecisionTrace, Explanation, ExplainabilityManager,
 )
 
-from iios.ai.governance.compliance import (
+from enterprise_ai_platform.ai.governance.compliance import (
     ComplianceFramework, ComplianceRule, ComplianceResult,
     ComplianceReport, ComplianceManager,
 )
 
-from iios.ai.governance.risk import (
+from enterprise_ai_platform.ai.governance.risk import (
     RiskCategory, RiskThreshold, RiskPolicy, RiskViolation,
     GovernanceRiskManager,
 )
 
-from iios.ai.governance.snapshot import PolicySnapshot, GovernanceFrameworkSnapshot
-from iios.ai.governance.container import GovernanceContainer
-from iios.ai.governance.gateway   import GovernanceGateway
+from enterprise_ai_platform.ai.governance.snapshot import PolicySnapshot, GovernanceFrameworkSnapshot
+from enterprise_ai_platform.ai.governance.container import GovernanceContainer
+from enterprise_ai_platform.ai.governance.gateway   import GovernanceGateway
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -1002,7 +1002,7 @@ class TestGateway:
 
     def test_system_id_version(self):
         gw = GovernanceGateway()
-        assert gw.SYSTEM_ID == "iios:ai:governance:gateway"
+        assert gw.SYSTEM_ID == "enterprise_ai_platform:ai:governance:gateway"
         assert gw.VERSION   == "1.0.0"
 
     def test_evaluate_policy_allow(self):

@@ -13,14 +13,14 @@ import threading
 from pathlib import Path
 import pytest
 
-from iios.configuration.configuration_manager import (
+from enterprise_ai_platform.configuration.configuration_manager import (
     ConfigurationManager,
     _reset_singleton,
     get_configuration_manager,
 )
-from iios.configuration.configuration_models import IIOSConfiguration, RiskConfiguration
-from iios.configuration.configuration_provider import DictionaryProvider
-from iios.configuration.configuration_exception import (
+from enterprise_ai_platform.configuration.configuration_models import IIOSConfiguration, RiskConfiguration
+from enterprise_ai_platform.configuration.configuration_provider import DictionaryProvider
+from enterprise_ai_platform.configuration.configuration_exception import (
     ConfigurationNotFoundError,
     ConfigurationReloadError,
 )
@@ -265,7 +265,7 @@ class TestExport:
 
     def test_export_unknown_format_raises(self, manager: ConfigurationManager):
         manager.initialize()
-        from iios.configuration.configuration_exception import ConfigurationError
+        from enterprise_ai_platform.configuration.configuration_exception import ConfigurationError
         with pytest.raises(ConfigurationError):
             manager.export("xml")
 

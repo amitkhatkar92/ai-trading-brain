@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.recovery.policies.constants import (
+from enterprise_ai_platform.execution.recovery.policies.constants import (
     CONFIDENCE_EMERGENCY_SHUTDOWN,
     CONFIDENCE_FAILOVER,
     CONFIDENCE_MANUAL,
@@ -36,7 +36,7 @@ from iios.execution.recovery.policies.constants import (
     RecoveryStrategyType,
     RuleConditionOperator,
 )
-from iios.execution.recovery.policies.exceptions import (
+from enterprise_ai_platform.execution.recovery.policies.exceptions import (
     RecoveryPolicyConflictError,
     RecoveryPolicyError,
     RecoveryPolicyEvaluationError,
@@ -47,11 +47,11 @@ from iios.execution.recovery.policies.exceptions import (
     RecoveryRuleValidationError,
     RecoveryStrategyNotFoundError,
 )
-from iios.execution.recovery.policies.recovery_context import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_context import (
     PolicyEvaluationContext,
     make_policy_evaluation_context,
 )
-from iios.execution.recovery.policies.recovery_events import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_events import (
     RecoveryPolicyEvent,
     make_decision_published,
     make_engine_started,
@@ -62,9 +62,9 @@ from iios.execution.recovery.policies.recovery_events import (
     make_policy_evaluation_started,
     make_strategy_selected,
 )
-from iios.execution.recovery.policies.recovery_factory import RecoveryPolicyFactory
-from iios.execution.recovery.policies.recovery_history import RecoveryPolicyHistory
-from iios.execution.recovery.policies.recovery_policy import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_factory import RecoveryPolicyFactory
+from enterprise_ai_platform.execution.recovery.policies.recovery_history import RecoveryPolicyHistory
+from enterprise_ai_platform.execution.recovery.policies.recovery_policy import (
     CompositePolicy,
     EmergencyShutdownPolicy,
     FailoverPolicy,
@@ -76,40 +76,40 @@ from iios.execution.recovery.policies.recovery_policy import (
     RetryPolicy,
     RollbackPolicy,
 )
-from iios.execution.recovery.policies.recovery_policy_engine import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_policy_engine import (
     RecoveryPolicyEngine,
     RecoveryPolicyEngineAdapter,
     _map_failure_type_to_category,
     _map_severity_str,
 )
-from iios.execution.recovery.policies.recovery_policy_manager import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_policy_manager import (
     RecoveryPolicyManager,
 )
-from iios.execution.recovery.policies.recovery_policy_registry import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_policy_registry import (
     RecoveryPolicyRegistry,
 )
-from iios.execution.recovery.policies.recovery_priority import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_priority import (
     PriorityScore,
     RecoveryPriorityEvaluator,
 )
-from iios.execution.recovery.policies.recovery_request import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_request import (
     PolicyEvaluationRequest,
     make_policy_evaluation_request,
 )
-from iios.execution.recovery.policies.recovery_response import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_response import (
     PolicyEvaluationReport,
     RecoveryPolicyDecision,
     make_policy_decision,
 )
-from iios.execution.recovery.policies.recovery_rule import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_rule import (
     RecoveryRule,
     RuleCondition,
     make_rule,
 )
-from iios.execution.recovery.policies.recovery_statistics import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_statistics import (
     RecoveryPolicyStatistics,
 )
-from iios.execution.recovery.policies.recovery_strategy import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_strategy import (
     RecoveryStrategy,
     make_emergency_shutdown_strategy,
     make_failover_strategy,
@@ -121,7 +121,7 @@ from iios.execution.recovery.policies.recovery_strategy import (
     make_strategy,
     STRATEGY_FACTORY_MAP,
 )
-from iios.execution.recovery.policies.recovery_validation import (
+from enterprise_ai_platform.execution.recovery.policies.recovery_validation import (
     PolicyEvaluationValidator,
     PolicyValidationResult,
 )
@@ -1837,7 +1837,7 @@ class TestRecoveryPolicyEngineAdapter:
         m2_context.risk_snapshot = None
 
         with patch(
-            "iios.execution.recovery.policies.recovery_policy_engine.RecoveryPolicyEngineAdapter.invoke"
+            "enterprise_ai_platform.execution.recovery.policies.recovery_policy_engine.RecoveryPolicyEngineAdapter.invoke"
         ) as mock_invoke:
             mock_invoke.return_value = MagicMock(
                 approved=True, plan_id="plan-1", instructions=(), requires_failover=False
@@ -1852,7 +1852,7 @@ class TestRecoveryPolicyEngineAdapter:
 
 class TestPublicSurface:
     def test_primary_imports(self):
-        from iios.execution.recovery.policies import (
+        from enterprise_ai_platform.execution.recovery.policies import (
             RecoveryPolicyEngine,
             RecoveryPolicyEngineAdapter,
             PolicyEvaluationContext,
@@ -1863,21 +1863,21 @@ class TestPublicSurface:
         )
 
     def test_policy_classes_importable(self):
-        from iios.execution.recovery.policies import (
+        from enterprise_ai_platform.execution.recovery.policies import (
             RetryPolicy, ResumePolicy, RollbackPolicy, RestartPolicy,
             FailoverPolicy, ManualInterventionPolicy, EmergencyShutdownPolicy,
             CompositePolicy,
         )
 
     def test_exception_classes_importable(self):
-        from iios.execution.recovery.policies import (
+        from enterprise_ai_platform.execution.recovery.policies import (
             RecoveryPolicyError,
             RecoveryPolicyNotRunningError,
             RecoveryPolicyNotFoundError,
         )
 
     def test_constants_importable(self):
-        from iios.execution.recovery.policies import (
+        from enterprise_ai_platform.execution.recovery.policies import (
             VERSION, SYSTEM_ID, ENGINE_ID,
             CONFIDENCE_EMERGENCY_SHUTDOWN,
         )

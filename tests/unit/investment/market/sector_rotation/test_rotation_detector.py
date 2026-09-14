@@ -3,22 +3,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     RotationStrength,
     RotationType,
     SectorPerformance,
 )
-from iios.investment.market.sector_rotation.rotation_classifier import classify_rotation
-from iios.investment.market.sector_rotation.rotation_detector import RotationDetector
-from iios.investment.market.sector_rotation.rotation_history import RotationHistory
-from iios.investment.market.sector_rotation.rotation_statistics import (
+from enterprise_ai_platform.investment.market.sector_rotation.rotation_classifier import classify_rotation
+from enterprise_ai_platform.investment.market.sector_rotation.rotation_detector import RotationDetector
+from enterprise_ai_platform.investment.market.sector_rotation.rotation_history import RotationHistory
+from enterprise_ai_platform.investment.market.sector_rotation.rotation_statistics import (
     avg_confidence,
     dominant_rotation_type,
     rotation_frequency,
     sectors_most_often_falling,
     sectors_most_often_rising,
 )
-from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
 
 def _make_perf(sector: str, momentum: float) -> SectorPerformance:
@@ -144,7 +144,7 @@ class TestRotationDetector:
 class TestRotationHistory:
     def test_append_and_len(self):
         h = RotationHistory(maxlen=10)
-        from iios.investment.market.sector_rotation.models import RotationSignal
+        from enterprise_ai_platform.investment.market.sector_rotation.models import RotationSignal
         sig = RotationSignal(RotationType.INTO_DEFENSIVES, RotationStrength.MODERATE,
                              ["IT"], ["Utilities"], 0.7, 3, True)
         h.append(sig)
@@ -153,7 +153,7 @@ class TestRotationHistory:
 
     def test_maxlen_respected(self):
         h = RotationHistory(maxlen=5)
-        from iios.investment.market.sector_rotation.models import RotationSignal
+        from enterprise_ai_platform.investment.market.sector_rotation.models import RotationSignal
         for i in range(10):
             sig = RotationSignal(RotationType.NO_ROTATION, RotationStrength.WEAK,
                                  [], [], 0.1, 1, False)
@@ -162,7 +162,7 @@ class TestRotationHistory:
 
     def test_by_type(self):
         h = RotationHistory()
-        from iios.investment.market.sector_rotation.models import RotationSignal
+        from enterprise_ai_platform.investment.market.sector_rotation.models import RotationSignal
         s1 = RotationSignal(RotationType.INTO_DEFENSIVES, RotationStrength.WEAK, [], [], 0.5, 1, False)
         s2 = RotationSignal(RotationType.INTO_CYCLICALS,  RotationStrength.MODERATE, [], [], 0.5, 2, True)
         h.append(s1)
@@ -172,7 +172,7 @@ class TestRotationHistory:
 
     def test_confirmed_signals(self):
         h = RotationHistory()
-        from iios.investment.market.sector_rotation.models import RotationSignal
+        from enterprise_ai_platform.investment.market.sector_rotation.models import RotationSignal
         s1 = RotationSignal(RotationType.NO_ROTATION, RotationStrength.WEAK, [], [], 0.1, 1, False)
         s2 = RotationSignal(RotationType.INTO_DEFENSIVES, RotationStrength.STRONG, [], [], 0.8, 5, True)
         h.append(s1)
@@ -184,7 +184,7 @@ class TestRotationHistory:
 
 class TestRotationStatistics:
     def _make_history_with_signals(self) -> RotationHistory:
-        from iios.investment.market.sector_rotation.models import RotationSignal
+        from enterprise_ai_platform.investment.market.sector_rotation.models import RotationSignal
         h = RotationHistory()
         for i in range(5):
             sig = RotationSignal(

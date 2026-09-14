@@ -3,17 +3,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationMatrix,
     CorrelationMethod,
     DependencyGraph,
     DependencyType,
 )
-from iios.investment.market.correlation.rolling_correlation import RollingCorrelationCalculator
-from iios.investment.market.correlation.pearson_estimator import PearsonEstimator
-from iios.investment.market.correlation.dependency_engine import DependencyEngine
-from iios.investment.market.correlation.dependency_graph import build_dependency_graph
+from enterprise_ai_platform.investment.market.correlation.rolling_correlation import RollingCorrelationCalculator
+from enterprise_ai_platform.investment.market.correlation.pearson_estimator import PearsonEstimator
+from enterprise_ai_platform.investment.market.correlation.dependency_engine import DependencyEngine
+from enterprise_ai_platform.investment.market.correlation.dependency_graph import build_dependency_graph
 
 from tests.unit.investment.market.correlation.conftest import (
     make_snapshot,
@@ -45,7 +45,7 @@ class TestDependencyGraph:
         assert g.n_edges if hasattr(g, "n_edges") else len(g.edges) == 0
 
     def test_leading_assets(self):
-        from iios.investment.market.correlation.models import DependencyEdge
+        from enterprise_ai_platform.investment.market.correlation.models import DependencyEdge
         e = DependencyEdge(
             source="SPY", target="QQQ", lag_bars=1,
             correlation=0.85, dependency_type=DependencyType.LEADING, confidence=0.8,
@@ -59,7 +59,7 @@ class TestDependencyGraph:
         assert g.influence_score("SPY") == 0.0
 
     def test_get_leaders_of(self):
-        from iios.investment.market.correlation.models import DependencyEdge
+        from enterprise_ai_platform.investment.market.correlation.models import DependencyEdge
         e = DependencyEdge("SPY", "QQQ", 1, 0.80, DependencyType.LEADING, 0.9)
         g = DependencyGraph(edges=[e], bar_index=0, timestamp=0.0)
         leaders = g.get_leaders_of("QQQ")

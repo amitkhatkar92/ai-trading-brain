@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from iios.decision_governance import (
+from enterprise_ai_platform.decision_governance import (
     # constants
     AlertSeverity, ApprovalLevel, ApprovalMode, ApprovalStatus,
     AuditEventType, GovernanceMode, GovernanceStatus,
@@ -1199,7 +1199,7 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.decision_governance as pkg
+        import enterprise_ai_platform.decision_governance as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
@@ -1209,5 +1209,5 @@ class TestPackageImports:
         assert issubclass(CertificationRevokedError,  GovernanceEngineError)
 
     def test_version(self):
-        import iios.decision_governance as pkg
+        import enterprise_ai_platform.decision_governance as pkg
         assert pkg.__version__ == "1.0.0"

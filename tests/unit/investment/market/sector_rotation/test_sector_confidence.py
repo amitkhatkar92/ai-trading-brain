@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     CapitalFlowProfile,
     FlowType,
     RotationSignal,
@@ -15,9 +15,9 @@ from iios.investment.market.sector_rotation.models import (
     SectorRankEntry,
     SectorStage,
 )
-from iios.investment.market.sector_rotation.sector_confidence import compute_confidence
-from iios.investment.market.sector_rotation.sector_score import compute_composite_score
-from iios.investment.market.sector_rotation.models import RelativeStrengthScore
+from enterprise_ai_platform.investment.market.sector_rotation.sector_confidence import compute_confidence
+from enterprise_ai_platform.investment.market.sector_rotation.sector_score import compute_composite_score
+from enterprise_ai_platform.investment.market.sector_rotation.models import RelativeStrengthScore
 
 
 def _rs(composite: float) -> RelativeStrengthScore:

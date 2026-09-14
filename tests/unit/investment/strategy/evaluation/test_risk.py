@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.strategy.evaluation.drawdown_analysis import DrawdownAnalyzer
-from iios.investment.strategy.evaluation.volatility_analysis import VolatilityAnalyzer
-from iios.investment.strategy.evaluation.tail_risk import TailRiskAnalyzer
-from iios.investment.strategy.evaluation.risk_evaluation import RiskEvaluator
+from enterprise_ai_platform.investment.strategy.evaluation.drawdown_analysis import DrawdownAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.volatility_analysis import VolatilityAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.tail_risk import TailRiskAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.risk_evaluation import RiskEvaluator
 from tests.unit.investment.strategy.evaluation.conftest import (
     make_equity_curve, make_evaluation_input
 )
@@ -38,7 +38,7 @@ class TestDrawdownAnalyzer:
         assert dm.ulcer_index > 0.0
 
     def test_empty_curve(self):
-        from iios.investment.strategy.evaluation.equity_curve import EquityCurve
+        from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve
         dm = DrawdownAnalyzer().analyze(EquityCurve([]))
         assert dm.max_drawdown == 0.0
 
@@ -72,7 +72,7 @@ class TestVolatilityAnalyzer:
         assert math.isfinite(vm.skewness)
 
     def test_empty_curve(self):
-        from iios.investment.strategy.evaluation.equity_curve import EquityCurve
+        from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve
         vm = VolatilityAnalyzer().analyze(EquityCurve([]), ann_return=0.0)
         assert vm.annualized_volatility == 0.0
 
@@ -102,7 +102,7 @@ class TestTailRiskAnalyzer:
         assert 0.0 <= tr.pct_negative_periods <= 1.0
 
     def test_empty_curve(self):
-        from iios.investment.strategy.evaluation.equity_curve import EquityCurve
+        from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve
         tr = TailRiskAnalyzer().analyze(EquityCurve([]))
         assert tr.var_95 == 0.0
 

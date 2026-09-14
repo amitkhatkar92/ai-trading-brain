@@ -6,7 +6,7 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.models import (
     AssetObservation,
     IntelligenceContext,
     Opportunity,

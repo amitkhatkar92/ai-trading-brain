@@ -20,7 +20,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.lifecycle import (
+from enterprise_ai_platform.supervisor.lifecycle import (
     # Primary interface
     SupervisorLifecycle,
     # Session
@@ -182,7 +182,7 @@ class TestConstants:
         assert len(SupervisorValidationCode) == 5
 
     def test_lifecycle_system_id(self):
-        assert LIFECYCLE_SYSTEM_ID == "iios:supervisor:lifecycle"
+        assert LIFECYCLE_SYSTEM_ID == "enterprise_ai_platform:supervisor:lifecycle"
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -194,7 +194,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         err = SupervisorLifecycleError("test")
         assert isinstance(err, IIOSError)
 
@@ -1335,8 +1335,8 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_importable(self):
-        from iios.supervisor.lifecycle import __all__ as all_names
-        import iios.supervisor.lifecycle as mod
+        from enterprise_ai_platform.supervisor.lifecycle import __all__ as all_names
+        import enterprise_ai_platform.supervisor.lifecycle as mod
         for name in all_names:
             assert hasattr(mod, name), f"Missing: {name}"
 

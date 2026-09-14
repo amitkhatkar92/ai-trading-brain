@@ -8,8 +8,8 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.structure.models import Bar
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.structure.models import Bar
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityState,
     BehaviourSnapshot,
     VolatilityBehaviour,
@@ -17,7 +17,7 @@ from iios.investment.market.volatility.models import (
     VolatilityRegimeSnapshot,
     VolatilityTransitionType,
 )
-from iios.investment.market.volatility.volatility_statistics import VolatilityStatistics
+from enterprise_ai_platform.investment.market.volatility.volatility_statistics import VolatilityStatistics
 
 
 # ── Bar helpers ───────────────────────────────────────────────────────────

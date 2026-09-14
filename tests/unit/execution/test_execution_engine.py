@@ -14,7 +14,7 @@ import uuid
 import pytest
 
 # ── Constants ────────────────────────────────────────────────────────────────
-from iios.execution.execution_constants import (
+from enterprise_ai_platform.execution.execution_constants import (
     ACTIVE_STATUSES,
     EXECUTION_ENGINE_SYSTEM_ID,
     EXECUTION_ENGINE_VERSION,
@@ -31,7 +31,7 @@ from iios.execution.execution_constants import (
 )
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
-from iios.execution.execution_exceptions import (
+from enterprise_ai_platform.execution.execution_exceptions import (
     EngineAlreadyRunningError,
     EngineNotInitializedError,
     EngineShutdownError,
@@ -46,31 +46,31 @@ from iios.execution.execution_exceptions import (
 )
 
 # ── Core models ───────────────────────────────────────────────────────────────
-from iios.execution.core.execution_request    import ExecutionRequest
-from iios.execution.core.execution_state      import ExecutionState, StatusTransition
-from iios.execution.core.execution_plan       import ExecutionPlan
-from iios.execution.core.execution_result     import ExecutionResult
-from iios.execution.core.execution_session    import ExecutionSession
-from iios.execution.core.execution_statistics import ExecutionStatistics
-from iios.execution.core.execution_metadata   import ExecutionMetadata
-from iios.execution.core.execution_history    import ExecutionHistory
+from enterprise_ai_platform.execution.core.execution_request    import ExecutionRequest
+from enterprise_ai_platform.execution.core.execution_state      import ExecutionState, StatusTransition
+from enterprise_ai_platform.execution.core.execution_plan       import ExecutionPlan
+from enterprise_ai_platform.execution.core.execution_result     import ExecutionResult
+from enterprise_ai_platform.execution.core.execution_session    import ExecutionSession
+from enterprise_ai_platform.execution.core.execution_statistics import ExecutionStatistics
+from enterprise_ai_platform.execution.core.execution_metadata   import ExecutionMetadata
+from enterprise_ai_platform.execution.core.execution_history    import ExecutionHistory
 
 # ── Events ────────────────────────────────────────────────────────────────────
-from iios.execution.events.execution_event import ExecutionEvent
-from iios.execution.events.event_bus       import ExecutionEventBus
+from enterprise_ai_platform.execution.events.execution_event import ExecutionEvent
+from enterprise_ai_platform.execution.events.event_bus       import ExecutionEventBus
 
 # ── Monitoring ────────────────────────────────────────────────────────────────
-from iios.execution.monitoring.execution_metrics import ExecutionMetrics
-from iios.execution.monitoring.execution_monitor import ExecutionMonitor
+from enterprise_ai_platform.execution.monitoring.execution_metrics import ExecutionMetrics
+from enterprise_ai_platform.execution.monitoring.execution_monitor import ExecutionMonitor
 
 # ── Sessions ──────────────────────────────────────────────────────────────────
-from iios.execution.sessions.session_store   import SessionStore
-from iios.execution.sessions.session_manager import SessionManager
+from enterprise_ai_platform.execution.sessions.session_store   import SessionStore
+from enterprise_ai_platform.execution.sessions.session_manager import SessionManager
 
 # ── Workflow ──────────────────────────────────────────────────────────────────
-from iios.execution.workflow.execution_workflow import StepResult, WorkflowContext, WorkflowStep
-from iios.execution.workflow.workflow_validator import WorkflowValidator
-from iios.execution.workflow.workflow_steps     import (
+from enterprise_ai_platform.execution.workflow.execution_workflow import StepResult, WorkflowContext, WorkflowStep
+from enterprise_ai_platform.execution.workflow.workflow_validator import WorkflowValidator
+from enterprise_ai_platform.execution.workflow.workflow_steps     import (
     DEFAULT_WORKFLOW_STEPS,
     ExecuteStep,
     FinalizeStep,
@@ -79,25 +79,25 @@ from iios.execution.workflow.workflow_steps     import (
     RiskCheckStep,
     ValidateStep,
 )
-from iios.execution.workflow.workflow_engine import WorkflowEngine
+from enterprise_ai_platform.execution.workflow.workflow_engine import WorkflowEngine
 
 # ── Higher-level ──────────────────────────────────────────────────────────────
-from iios.execution.execution_context  import (
+from enterprise_ai_platform.execution.execution_context  import (
     ExecutionContextState,
     execution_session,
     execution_stage_scope,
     get_execution_context,
     reset_execution_context,
 )
-from iios.execution.execution_factory  import ExecutionFactory
-from iios.execution.execution_registry import (
+from enterprise_ai_platform.execution.execution_factory  import ExecutionFactory
+from enterprise_ai_platform.execution.execution_registry import (
     ExecutionRegistry,
     get_execution_registry,
     reset_execution_registry,
 )
-from iios.execution.services.execution_service import ExecutionService
-from iios.execution.execution_manager          import ExecutionManager
-from iios.execution.execution_engine           import (
+from enterprise_ai_platform.execution.services.execution_service import ExecutionService
+from enterprise_ai_platform.execution.execution_manager          import ExecutionManager
+from enterprise_ai_platform.execution.execution_engine           import (
     ExecutionEngine,
     get_execution_engine,
     reset_execution_engine,
@@ -165,7 +165,7 @@ class TestConstants:
         assert EXECUTION_ENGINE_VERSION == "1.0.0"
 
     def test_system_id(self):
-        assert EXECUTION_ENGINE_SYSTEM_ID == "iios:execution:engine"
+        assert EXECUTION_ENGINE_SYSTEM_ID == "enterprise_ai_platform:execution:engine"
 
     def test_execution_status_values(self):
         expected = {
@@ -232,7 +232,7 @@ class TestExceptions:
         assert exc.code == "EX-031"
 
     def test_engine_not_initialized_code(self):
-        from iios.execution.execution_exceptions import EngineNotInitializedError
+        from enterprise_ai_platform.execution.execution_exceptions import EngineNotInitializedError
         assert EngineNotInitializedError().code == "EX-041"
 
     def test_workflow_validation_error_stores_errors(self):
@@ -1397,17 +1397,17 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_top_level_import(self):
-        import iios.execution as ex
+        import enterprise_ai_platform.execution as ex
         assert hasattr(ex, "ExecutionEngine")
         assert hasattr(ex, "ExecutionRequest")
         assert hasattr(ex, "ExecutionResult")
 
     def test_models_subpackage(self):
-        from iios.execution.models import ExecutionRequest, ExecutionResult
+        from enterprise_ai_platform.execution.models import ExecutionRequest, ExecutionResult
         assert ExecutionRequest is not None
         assert ExecutionResult  is not None
 
     def test_workflow_subpackage(self):
-        from iios.execution.workflow import WorkflowEngine, WorkflowValidator
+        from enterprise_ai_platform.execution.workflow import WorkflowEngine, WorkflowValidator
         assert WorkflowEngine   is not None
         assert WorkflowValidator is not None

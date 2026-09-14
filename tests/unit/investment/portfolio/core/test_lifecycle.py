@@ -7,21 +7,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.core.portfolio_lifecycle import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_lifecycle import (
     LifecycleError,
     LifecycleTransition,
     PortfolioLifecycle,
 )
-from iios.investment.portfolio.core.portfolio_session import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_session import (
     PortfolioSession,
     SessionManager,
     SessionState,
 )
-from iios.investment.portfolio.core.portfolio_state import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_state import (
     PortfolioStateSnapshot,
     PortfolioStateStore,
 )
-from iios.investment.portfolio.core.portfolio_types import PortfolioLifecycleState
+from enterprise_ai_platform.investment.portfolio.core.portfolio_types import PortfolioLifecycleState
 
 
 class TestPortfolioLifecycle:

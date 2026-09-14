@@ -6,11 +6,11 @@ from __future__ import annotations
 import asyncio
 import pytest
 
-from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
     DecisionIntelligenceIntegrationEngine,
 )
-from iios.investment.decision.integration.decision_snapshot import DecisionIntelligenceSnapshot
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.decision_snapshot import DecisionIntelligenceSnapshot
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     IntegrationStatus,
     SnapshotStatus,
 )
@@ -35,7 +35,7 @@ class TestEngineLifecycle:
 
     def test_double_start_raises(self):
         """Lifecycle framework raises on duplicate start."""
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         eng = DecisionIntelligenceIntegrationEngine()
         eng.start()
         with pytest.raises(EngineAlreadyRunningError):
@@ -44,7 +44,7 @@ class TestEngineLifecycle:
 
     def test_stop_without_start_raises(self):
         """Lifecycle framework raises when stopping a non-running engine."""
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         eng = DecisionIntelligenceIntegrationEngine()
         with pytest.raises(EngineNotRunningError):
             eng.stop()

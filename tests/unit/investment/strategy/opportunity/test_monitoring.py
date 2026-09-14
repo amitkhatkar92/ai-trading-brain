@@ -4,16 +4,16 @@ from __future__ import annotations
 import pytest
 from datetime import datetime, timedelta, timezone
 
-from iios.investment.strategy.opportunity.change_detector import ChangeDetector
-from iios.investment.strategy.opportunity.strategy_alerts import (
+from enterprise_ai_platform.investment.strategy.opportunity.change_detector import ChangeDetector
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_alerts import (
     AlertRegistry, AlertSeverity, AlertType, StrategyAlert
 )
-from iios.investment.strategy.opportunity.priority_monitor import PriorityMonitor
-from iios.investment.strategy.opportunity.opportunity_monitor import OpportunityMonitor
-from iios.investment.strategy.opportunity.strategy_opportunity import (
+from enterprise_ai_platform.investment.strategy.opportunity.priority_monitor import PriorityMonitor
+from enterprise_ai_platform.investment.strategy.opportunity.opportunity_monitor import OpportunityMonitor
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_opportunity import (
     StrategyOpportunity, OpportunityState
 )
-from iios.investment.strategy.opportunity.market_opportunity import (
+from enterprise_ai_platform.investment.strategy.opportunity.market_opportunity import (
     MarketRegime, VolatilityRegime
 )
 from tests.unit.investment.strategy.opportunity.conftest import (

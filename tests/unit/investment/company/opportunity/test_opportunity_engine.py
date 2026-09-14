@@ -7,7 +7,7 @@ import threading
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.opportunity import (
+from enterprise_ai_platform.investment.company.opportunity import (
     CompanyOpportunityEngine, OpportunitySnapshot,
     OpportunityPlugin, OpportunityPluginRegistry,
     OpportunityCategory, OpportunityLifecycle, OpportunityPriority,
@@ -113,7 +113,7 @@ class TestSnapshotFields:
         assert 0.0 <= snapshot.overall_score <= 100.0
 
     def test_strength_type(self, snapshot):
-        from iios.investment.company.opportunity.opportunity_profile import OpportunityStrength
+        from enterprise_ai_platform.investment.company.opportunity.opportunity_profile import OpportunityStrength
         assert isinstance(snapshot.strength, OpportunityStrength)
 
     def test_confidence_range(self, snapshot):
@@ -136,7 +136,7 @@ class TestSnapshotFields:
         assert snapshot.opportunity_id and len(snapshot.opportunity_id) > 5
 
     def test_thesis_exists(self, snapshot):
-        from iios.investment.company.opportunity.investment_thesis import InvestmentThesis
+        from enterprise_ai_platform.investment.company.opportunity.investment_thesis import InvestmentThesis
         assert isinstance(snapshot.thesis, InvestmentThesis)
 
     def test_alerts_list(self, snapshot):

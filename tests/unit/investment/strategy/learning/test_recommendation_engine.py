@@ -6,16 +6,16 @@ import pytest
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.learning_profile import StrategyLearningProfile
-from iios.investment.strategy.learning.recommendation_engine import (
+from enterprise_ai_platform.investment.strategy.learning.learning_profile import StrategyLearningProfile
+from enterprise_ai_platform.investment.strategy.learning.recommendation_engine import (
     RecommendationEngine, RecommendationType, Recommendation
 )
-from iios.investment.strategy.learning.improvement_engine import ImprovementEngine
-from iios.investment.strategy.learning.recommendation_history import (
+from enterprise_ai_platform.investment.strategy.learning.improvement_engine import ImprovementEngine
+from enterprise_ai_platform.investment.strategy.learning.recommendation_history import (
     RecommendationHistory, RecommendationRecord,
 )
-from iios.investment.strategy.learning.recommendation_score import score_recommendation
-from iios.investment.strategy.learning.degradation_detector import (
+from enterprise_ai_platform.investment.strategy.learning.recommendation_score import score_recommendation
+from enterprise_ai_platform.investment.strategy.learning.degradation_detector import (
     DegradationDetector, DegradationLevel,
 )
 
@@ -107,7 +107,7 @@ class TestImprovementEngine:
         assert "lifecycle" in cats
 
     def test_critical_degradation_gets_suspension_suggestion(self, degraded_obs_series):
-        from iios.investment.strategy.learning.degradation_detector import DegradationDetector
+        from enterprise_ai_platform.investment.strategy.learning.degradation_detector import DegradationDetector
         detector = DegradationDetector(
             mild_threshold=0.01,
             moderate_threshold=0.05,
@@ -153,7 +153,7 @@ class TestRecommendationEngine:
 
     def test_critical_deg_gets_retirement(self, degraded_obs_series):
         # Force critical degradation via very low thresholds
-        from iios.investment.strategy.learning.degradation_detector import DegradationDetector
+        from enterprise_ai_platform.investment.strategy.learning.degradation_detector import DegradationDetector
         detector = DegradationDetector(
             mild_threshold=0.01,
             moderate_threshold=0.03,

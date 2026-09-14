@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
 
 
 def make_strategy(

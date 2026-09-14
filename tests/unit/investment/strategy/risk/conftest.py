@@ -3,7 +3,7 @@ Shared fixtures for the Strategy Risk Engine test suite.
 """
 import pytest
 
-from iios.investment.strategy.risk.risk_input import StrategyRiskInput
+from enterprise_ai_platform.investment.strategy.risk.risk_input import StrategyRiskInput
 
 
 def make_risk_input(

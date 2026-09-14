@@ -1,18 +1,18 @@
 """Tests for signal comparator and equivalence checker."""
 import pytest
 
-from iios.investment.strategy.migration.signal_comparator import (
+from enterprise_ai_platform.investment.strategy.migration.signal_comparator import (
     SignalComparator,
     SignalField,
     FieldComparison,
     SignalComparison,
 )
-from iios.investment.strategy.migration.signal_equivalence import (
+from enterprise_ai_platform.investment.strategy.migration.signal_equivalence import (
     SignalEquivalenceChecker,
     EquivalenceResult,
 )
-from iios.investment.strategy.migration.adapter_factory import AdapterFactory
-from iios.investment.strategy.migration.behavior_validator import (
+from enterprise_ai_platform.investment.strategy.migration.adapter_factory import AdapterFactory
+from enterprise_ai_platform.investment.strategy.migration.behavior_validator import (
     BehaviorValidator,
     BehaviorTestCase,
     BehaviorReport,

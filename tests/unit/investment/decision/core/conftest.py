@@ -5,17 +5,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     ApprovalStatus,
     DecisionType,
     EnvironmentProfile,
     RecommendationType,
     RiskReviewStatus,
 )
-from iios.investment.decision.core.decision_configuration import DecisionConfiguration
-from iios.investment.decision.core.decision_context import make_context
-from iios.investment.decision.core.decision_events import EventDispatcher
-from iios.investment.decision.core.base_decision import BaseDecision
+from enterprise_ai_platform.investment.decision.core.decision_configuration import DecisionConfiguration
+from enterprise_ai_platform.investment.decision.core.decision_context import make_context
+from enterprise_ai_platform.investment.decision.core.decision_events import EventDispatcher
+from enterprise_ai_platform.investment.decision.core.base_decision import BaseDecision
 
 
 # ---------------------------------------------------------------------------

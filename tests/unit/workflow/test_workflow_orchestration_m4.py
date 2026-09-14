@@ -2,7 +2,7 @@
 test_workflow_orchestration_m4.py
 ----------------------------------
 Unit-tests for C16 M4: Workflow Orchestration Framework
-iios.workflow.orchestration
+enterprise_ai_platform.workflow.orchestration
 
 Coverage targets: ≥ 95 %
 """
@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.workflow.orchestration import (
+from enterprise_ai_platform.workflow.orchestration import (
     # constants
     WorkflowType, StepType, WorkflowStatus, StepStatus,
     ExecutionMode, OrchestrationEventType,
@@ -1315,9 +1315,9 @@ class TestOrchestrationEngine:
         with pytest.raises((WorkflowValidationError, Exception)):
             # try to create a def with empty steps — factory prevents it;
             # we test via validator directly
-            from iios.workflow.orchestration import WorkflowValidator, WorkflowDefinition
+            from enterprise_ai_platform.workflow.orchestration import WorkflowValidator, WorkflowDefinition
             import uuid, datetime, timezone
-            from iios.workflow.orchestration.constants import WorkflowType as WT
+            from enterprise_ai_platform.workflow.orchestration.constants import WorkflowType as WT
             bad = WorkflowDefinition(
                 definition_id = "wdef-bad",
                 name          = "",

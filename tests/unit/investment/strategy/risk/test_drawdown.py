@@ -4,7 +4,7 @@ Tests for drawdown statistics, DrawdownProfile, RecoveryAnalysis, DrawdownEngine
 import math
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.drawdown_statistics import (
+from enterprise_ai_platform.investment.strategy.risk.drawdown_statistics import (
     calmar_ratio,
     ulcer_index,
     pain_index,
@@ -14,11 +14,11 @@ from iios.investment.strategy.risk.drawdown_statistics import (
     recovery_probability,
     drawdown_risk_score,
 )
-from iios.investment.strategy.risk.drawdown_profile import DrawdownProfile
-from iios.investment.strategy.risk.recovery_analysis import (
+from enterprise_ai_platform.investment.strategy.risk.drawdown_profile import DrawdownProfile
+from enterprise_ai_platform.investment.strategy.risk.recovery_analysis import (
     RecoveryAnalysis, RecoveryCategory, RecoveryReport
 )
-from iios.investment.strategy.risk.drawdown_engine import DrawdownEngine, DrawdownReport
+from enterprise_ai_platform.investment.strategy.risk.drawdown_engine import DrawdownEngine, DrawdownReport
 
 
 class TestDrawdownStatistics:

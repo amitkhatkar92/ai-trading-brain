@@ -8,12 +8,12 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.structure.models import Bar
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.structure.models import Bar
+from enterprise_ai_platform.investment.market.liquidity.models import (
     VolumeBar, VolumeLevel,
 )
-from iios.investment.market.liquidity.volume_statistics import VolumeStatistics
-from iios.investment.market.liquidity.volume_engine import VolumeEngine
+from enterprise_ai_platform.investment.market.liquidity.volume_statistics import VolumeStatistics
+from enterprise_ai_platform.investment.market.liquidity.volume_engine import VolumeEngine
 
 
 # ── Bar factories ──────────────────────────────────────────────────────────

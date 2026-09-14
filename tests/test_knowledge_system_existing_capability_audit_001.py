@@ -563,14 +563,14 @@ def test_T068_mop_rc001_dir_does_not_exist():
 
 
 def test_T069_iios_db_has_only_bootstrap_data():
-    """data/iios.db is the live bootstrap DB; signal_births is not present (OIOS runs on study002_replay.db)."""
-    con = sqlite3.connect(str(ROOT / "data/iios.db"))
+    """data/enterprise_ai_platform.db is the live bootstrap DB; signal_births is not present (OIOS runs on study002_replay.db)."""
+    con = sqlite3.connect(str(ROOT / "data/enterprise_ai_platform.db"))
     tables = [r[0] for r in con.execute(
         "SELECT name FROM sqlite_master WHERE type='table'"
     ).fetchall()]
     con.close()
     assert "signal_births" not in tables, (
-        "signal_births appeared in data/iios.db — update capability matrix for live OIOS"
+        "signal_births appeared in data/enterprise_ai_platform.db — update capability matrix for live OIOS"
     )
 
 

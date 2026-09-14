@@ -1,10 +1,10 @@
 """tests/unit/investment/portfolio/risk/test_drawdown.py"""
 import pytest
-from iios.investment.portfolio.risk.drawdown_analysis import analyze_drawdown, DrawdownAnalysisResult
-from iios.investment.portfolio.risk.drawdown_statistics import compute_drawdown_distribution
-from iios.investment.portfolio.risk.drawdown_forecast import forecast_drawdown
-from iios.investment.portfolio.risk.recovery_analysis import analyze_recovery
-from iios.investment.portfolio.risk.risk_types import DrawdownLevel
+from enterprise_ai_platform.investment.portfolio.risk.drawdown_analysis import analyze_drawdown, DrawdownAnalysisResult
+from enterprise_ai_platform.investment.portfolio.risk.drawdown_statistics import compute_drawdown_distribution
+from enterprise_ai_platform.investment.portfolio.risk.drawdown_forecast import forecast_drawdown
+from enterprise_ai_platform.investment.portfolio.risk.recovery_analysis import analyze_recovery
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import DrawdownLevel
 
 
 # ── DrawdownAnalysisResult ────────────────────────────────────────────────
@@ -46,7 +46,7 @@ def test_drawdown_level_valid(positions_5_diverse):
 
 
 def test_high_risk_higher_dd():
-    from iios.investment.portfolio.risk.risk_types import RiskPosition
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
     high_risk = [
         RiskPosition(
             symbol="H", weight=1.0, sector="tech", industry="startup",

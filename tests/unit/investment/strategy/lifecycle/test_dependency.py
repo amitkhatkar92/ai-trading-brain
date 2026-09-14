@@ -5,21 +5,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.lifecycle.dependency_graph import (
+from enterprise_ai_platform.investment.strategy.lifecycle.dependency_graph import (
     CyclicDependencyError,
     DependencyGraph,
     DependencyNode,
 )
-from iios.investment.strategy.lifecycle.dependency_validator import (
+from enterprise_ai_platform.investment.strategy.lifecycle.dependency_validator import (
     DependencyValidationResult,
     DependencyValidator,
 )
-from iios.investment.strategy.lifecycle.dependency_registry import (
+from enterprise_ai_platform.investment.strategy.lifecycle.dependency_registry import (
     DependencyDeclaration,
     DependencyRegistry,
     DependencyType,
 )
-from iios.investment.strategy.lifecycle.dependency_engine import (
+from enterprise_ai_platform.investment.strategy.lifecycle.dependency_engine import (
     DependencyEngine,
 )
 

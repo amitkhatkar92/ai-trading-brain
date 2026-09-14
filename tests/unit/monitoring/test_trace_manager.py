@@ -1,7 +1,7 @@
 """
 tests/unit/monitoring/test_trace_manager.py
 ============================================
-Tests for iios.monitoring.trace_manager
+Tests for enterprise_ai_platform.monitoring.trace_manager
 """
 from __future__ import annotations
 
@@ -9,14 +9,14 @@ import threading
 import time
 import pytest
 
-from iios.monitoring.trace_manager import (
+from enterprise_ai_platform.monitoring.trace_manager import (
     TraceManager,
     _reset_trace_manager,
     get_trace_manager,
     current_trace,
     current_span,
 )
-from iios.monitoring.monitoring_constants import TraceStatus
+from enterprise_ai_platform.monitoring.monitoring_constants import TraceStatus
 
 
 @pytest.fixture()

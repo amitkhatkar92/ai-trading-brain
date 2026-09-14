@@ -1,11 +1,11 @@
 """test_engine_integration.py — End-to-end PortfolioAllocationEngine tests."""
 import pytest
-from iios.investment.portfolio.allocation.portfolio_allocation_engine import (
+from enterprise_ai_platform.investment.portfolio.allocation.portfolio_allocation_engine import (
     AllocationIntegrationRefs,
     PortfolioAllocationEngine,
 )
-from iios.investment.portfolio.allocation.allocation_plan import AllocationRequest
-from iios.investment.portfolio.allocation.allocation_types import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import AllocationRequest
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import (
     AllocationMethod,
     AllocationRunStatus,
     CapitalDistributionStatus,

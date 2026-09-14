@@ -4,8 +4,8 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.investment.market.market_constants import MarketRegime, TrendDirection, VolatilityLevel
-from iios.investment.market.regime.models import (
+from enterprise_ai_platform.investment.market.market_constants import MarketRegime, TrendDirection, VolatilityLevel
+from enterprise_ai_platform.investment.market.regime.models import (
     RegimeObservation,
     RegimeSnapshot,
     RegimeType,

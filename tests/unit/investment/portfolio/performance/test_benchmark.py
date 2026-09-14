@@ -1,16 +1,16 @@
 """Tests for benchmark registry, engine, comparison, statistics."""
 import pytest
-from iios.investment.portfolio.performance.benchmark_registry import (
+from enterprise_ai_platform.investment.portfolio.performance.benchmark_registry import (
     Benchmark, BenchmarkRegistry, BENCHMARKS,
 )
-from iios.investment.portfolio.performance.benchmark_engine import BenchmarkEngine
-from iios.investment.portfolio.performance.benchmark_comparison import (
+from enterprise_ai_platform.investment.portfolio.performance.benchmark_engine import BenchmarkEngine
+from enterprise_ai_platform.investment.portfolio.performance.benchmark_comparison import (
     compare_to_benchmark, BenchmarkComparison,
 )
-from iios.investment.portfolio.performance.benchmark_statistics import (
+from enterprise_ai_platform.investment.portfolio.performance.benchmark_statistics import (
     BenchmarkStatistics,
 )
-from iios.investment.portfolio.performance.performance_types import BenchmarkType
+from enterprise_ai_platform.investment.portfolio.performance.performance_types import BenchmarkType
 
 
 class TestBenchmarkRegistry:

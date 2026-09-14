@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.growth.revenue_growth import RevenueGrowthEngine
-from iios.investment.company.growth.growth_profile import GrowthTrend
+from enterprise_ai_platform.investment.company.growth.revenue_growth import RevenueGrowthEngine
+from enterprise_ai_platform.investment.company.growth.growth_profile import GrowthTrend
 
 
 @pytest.fixture
@@ -80,6 +80,6 @@ class TestRevenueGrowthFromAggregates:
         assert result.cagr.best_available > 0
 
     def test_result_type(self, engine):
-        from iios.investment.company.growth.growth_profile import RevenueGrowthProfile
+        from enterprise_ai_platform.investment.company.growth.growth_profile import RevenueGrowthProfile
         result = engine.compute(revenue_direction="stable")
         assert isinstance(result, RevenueGrowthProfile)

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.portfolio_rules import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_rules import (
     evaluate_aggressive_signal,
     evaluate_calmar_deterioration,
     evaluate_cash_deficiency,
@@ -29,7 +29,7 @@ from iios.investment.portfolio.recommendation.portfolio_rules import (
     evaluate_sharpe_deterioration,
     evaluate_var_breach,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     EQUITY_OVERWEIGHT_THRESHOLD,
     EQUITY_UNDERWEIGHT_THRESHOLD,
     RISK_BUDGET_HIGH_THRESHOLD,

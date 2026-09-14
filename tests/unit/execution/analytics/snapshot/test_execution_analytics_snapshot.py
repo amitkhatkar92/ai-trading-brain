@@ -30,7 +30,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.execution.analytics.snapshot import (
+from enterprise_ai_platform.execution.analytics.snapshot import (
     AnalyticsHealth,
     AnalyticsMetadata,
     AnalyticsMode,
@@ -481,7 +481,7 @@ class TestFactory:
 
     def test_create_with_m3(self, factory):
         """Build snapshot using a real M3 PerformanceAnalyticsEngine report."""
-        from iios.execution.analytics.performance import PerformanceAnalyticsEngine
+        from enterprise_ai_platform.execution.analytics.performance import PerformanceAnalyticsEngine
         pae = PerformanceAnalyticsEngine()
         pae.start()
         pr = pae.process("ses-test-m3")
@@ -496,7 +496,7 @@ class TestFactory:
 
     def test_create_with_m4(self, factory):
         """Build snapshot using a real M4 PredictiveIntelligenceEngine report."""
-        from iios.execution.analytics.predictive import (
+        from enterprise_ai_platform.execution.analytics.predictive import (
             ForecastHorizon,
             PredictionDomain,
             PredictiveIntelligenceEngine,
@@ -515,8 +515,8 @@ class TestFactory:
 
     def test_create_with_m3_and_m4(self, factory):
         """Build snapshot from both M3 and M4."""
-        from iios.execution.analytics.performance import PerformanceAnalyticsEngine
-        from iios.execution.analytics.predictive import (
+        from enterprise_ai_platform.execution.analytics.performance import PerformanceAnalyticsEngine
+        from enterprise_ai_platform.execution.analytics.predictive import (
             ForecastHorizon,
             PredictionDomain,
             PredictiveIntelligenceEngine,

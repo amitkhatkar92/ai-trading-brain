@@ -6,22 +6,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.core.base_portfolio import BasePortfolio
-from iios.investment.portfolio.core.configuration_engine import ConfigurationEngine
-from iios.investment.portfolio.core.framework_context import (
+from enterprise_ai_platform.investment.portfolio.core.base_portfolio import BasePortfolio
+from enterprise_ai_platform.investment.portfolio.core.configuration_engine import ConfigurationEngine
+from enterprise_ai_platform.investment.portfolio.core.framework_context import (
     IntegrationRefs,
     PortfolioRuntimeContext,
 )
-from iios.investment.portfolio.core.portfolio_configuration import PortfolioConfiguration
-from iios.investment.portfolio.core.portfolio_events import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_configuration import PortfolioConfiguration
+from enterprise_ai_platform.investment.portfolio.core.portfolio_events import (
     EventPriority,
     PortfolioEvent,
     PortfolioEventType,
 )
-from iios.investment.portfolio.core.portfolio_framework import PortfolioFramework
-from iios.investment.portfolio.core.portfolio_metadata import build_metadata
-from iios.investment.portfolio.core.portfolio_registry import PortfolioClassRegistry
-from iios.investment.portfolio.core.portfolio_types import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_framework import PortfolioFramework
+from enterprise_ai_platform.investment.portfolio.core.portfolio_metadata import build_metadata
+from enterprise_ai_platform.investment.portfolio.core.portfolio_registry import PortfolioClassRegistry
+from enterprise_ai_platform.investment.portfolio.core.portfolio_types import (
     PortfolioCapability,
     PortfolioDomain,
 )

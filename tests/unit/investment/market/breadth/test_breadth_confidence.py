@@ -5,12 +5,12 @@ import time
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthData,
     BreadthTrend,
 )
-from iios.investment.market.breadth.breadth_statistics import BreadthStatistics
-from iios.investment.market.breadth.breadth_history import BreadthHistory
+from enterprise_ai_platform.investment.market.breadth.breadth_statistics import BreadthStatistics
+from enterprise_ai_platform.investment.market.breadth.breadth_history import BreadthHistory
 
 from tests.unit.investment.market.breadth.conftest import make_bull_universe
 
@@ -33,7 +33,7 @@ class TestBreadthStatistics:
         stats = BreadthStatistics(window=20)
         for i in range(25):
             stats.update(0.60, 1.5, 0.60, 65.0)
-        from iios.investment.market.breadth.models import BreadthTrend
+        from enterprise_ai_platform.investment.market.breadth.models import BreadthTrend
         trend = stats.breadth_trend()
         assert trend in (BreadthTrend.STABLE, BreadthTrend.RISING)
 
@@ -41,7 +41,7 @@ class TestBreadthStatistics:
         stats = BreadthStatistics(window=20)
         for i in range(25):
             stats.update(0.40 + i * 0.02, 1.0 + i * 0.05, 0.40 + i * 0.02, 50.0)
-        from iios.investment.market.breadth.models import BreadthTrend
+        from enterprise_ai_platform.investment.market.breadth.models import BreadthTrend
         trend = stats.breadth_trend()
         assert trend in (BreadthTrend.RISING, BreadthTrend.SURGING)
 
@@ -49,7 +49,7 @@ class TestBreadthStatistics:
         stats = BreadthStatistics(window=20)
         for i in range(25):
             stats.update(0.80 - i * 0.02, 4.0 - i * 0.05, 0.80 - i * 0.02, 80.0)
-        from iios.investment.market.breadth.models import BreadthTrend
+        from enterprise_ai_platform.investment.market.breadth.models import BreadthTrend
         trend = stats.breadth_trend()
         assert trend in (BreadthTrend.FALLING, BreadthTrend.COLLAPSING)
 
@@ -91,7 +91,7 @@ class TestBreadthStatistics:
 
 class TestBreadthHistory:
     def _snap(self, bar_index: int):
-        from iios.investment.market.breadth.models import (
+        from enterprise_ai_platform.investment.market.breadth.models import (
             BreadthConfidenceScore, BreadthIntelligenceSnapshot,
             BreadthRegimeSnapshot, BreadthRegimeType, HealthTrend,
             MarketHealthSnapshot, ParticipationSnapshot,

@@ -3,13 +3,13 @@ Tests for FinancialPeriod, BalanceSheet, IncomeStatement, CashFlowStatement, Fin
 """
 import pytest
 
-from iios.investment.company.financials.financial_period import (
+from enterprise_ai_platform.investment.company.financials.financial_period import (
     FinancialPeriod, PeriodType, AccountingStandard,
 )
-from iios.investment.company.financials.balance_sheet import BalanceSheet
-from iios.investment.company.financials.income_statement import IncomeStatement
-from iios.investment.company.financials.cash_flow_statement import CashFlowStatement
-from iios.investment.company.financials.financial_statement import FinancialStatement
+from enterprise_ai_platform.investment.company.financials.balance_sheet import BalanceSheet
+from enterprise_ai_platform.investment.company.financials.income_statement import IncomeStatement
+from enterprise_ai_platform.investment.company.financials.cash_flow_statement import CashFlowStatement
+from enterprise_ai_platform.investment.company.financials.financial_statement import FinancialStatement
 
 
 class TestFinancialPeriod:

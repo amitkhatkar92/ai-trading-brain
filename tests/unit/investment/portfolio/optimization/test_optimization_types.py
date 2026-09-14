@@ -1,7 +1,7 @@
 """test_optimization_types.py — Tests for enums, constants, and types."""
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ConvergenceStatus,
     ObjectiveType,
     OptimizationMethod,

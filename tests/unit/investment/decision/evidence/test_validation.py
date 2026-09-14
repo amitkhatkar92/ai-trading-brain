@@ -5,14 +5,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory, EvidencePriority, EvidenceSourceType, EvidenceValidationStatus,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.evidence.freshness_validator import FreshnessValidator
-from iios.investment.decision.evidence.consistency_checker import ConsistencyChecker
-from iios.investment.decision.evidence.coverage_validator import CoverageValidator
-from iios.investment.decision.evidence.evidence_validator import EvidenceValidator
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.freshness_validator import FreshnessValidator
+from enterprise_ai_platform.investment.decision.evidence.consistency_checker import ConsistencyChecker
+from enterprise_ai_platform.investment.decision.evidence.coverage_validator import CoverageValidator
+from enterprise_ai_platform.investment.decision.evidence.evidence_validator import EvidenceValidator
 
 
 def _ev_item(key="price", value=100.0, src=EvidenceSourceType.MARKET,

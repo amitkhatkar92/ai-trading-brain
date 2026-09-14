@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.profile.corporate_events import CorporateEventStore
-from iios.investment.company.profile.models import CorporateEvent, CorporateEventType
-from iios.investment.company.profile.timeline import Timeline
+from enterprise_ai_platform.investment.company.profile.corporate_events import CorporateEventStore
+from enterprise_ai_platform.investment.company.profile.models import CorporateEvent, CorporateEventType
+from enterprise_ai_platform.investment.company.profile.timeline import Timeline
 
 
 class TestCorporateEventStore:

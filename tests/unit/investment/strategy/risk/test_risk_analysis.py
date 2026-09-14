@@ -3,11 +3,11 @@ Tests for the four risk analyzers and RiskAnalysis orchestrator.
 """
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.market_risk import MarketRiskAnalyzer
-from iios.investment.strategy.risk.execution_risk import ExecutionRiskAnalyzer
-from iios.investment.strategy.risk.liquidity_risk import LiquidityRiskAnalyzer
-from iios.investment.strategy.risk.model_risk import ModelRiskAnalyzer
-from iios.investment.strategy.risk.risk_analysis import RiskAnalysis
+from enterprise_ai_platform.investment.strategy.risk.market_risk import MarketRiskAnalyzer
+from enterprise_ai_platform.investment.strategy.risk.execution_risk import ExecutionRiskAnalyzer
+from enterprise_ai_platform.investment.strategy.risk.liquidity_risk import LiquidityRiskAnalyzer
+from enterprise_ai_platform.investment.strategy.risk.model_risk import ModelRiskAnalyzer
+from enterprise_ai_platform.investment.strategy.risk.risk_analysis import RiskAnalysis
 
 
 class TestMarketRiskAnalyzer:

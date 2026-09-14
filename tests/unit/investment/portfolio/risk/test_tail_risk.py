@@ -1,7 +1,7 @@
 """tests/unit/investment/portfolio/risk/test_tail_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.tail_risk import analyze_tail_risk, TailRiskResult
-from iios.investment.portfolio.risk.risk_types import RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.tail_risk import analyze_tail_risk, TailRiskResult
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel
 
 
 def test_tail_risk_empty():
@@ -30,7 +30,7 @@ def test_cvar99_gt_cvar95(positions_5_diverse):
 
 
 def test_skewness_negative_for_risky():
-    from iios.investment.portfolio.risk.risk_types import RiskPosition
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
     risky = [
         RiskPosition(
             symbol="R1", weight=0.5, sector="tech", industry="startup",

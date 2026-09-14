@@ -6,23 +6,23 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.explainability.counterfactual_engine import (
+from enterprise_ai_platform.investment.decision.explainability.counterfactual_engine import (
     CounterfactualEngine,
     CounterfactualReport,
 )
-from iios.investment.decision.explainability.decision_sensitivity import (
+from enterprise_ai_platform.investment.decision.explainability.decision_sensitivity import (
     DecisionSensitivityAnalyzer,
     SensitivityReport,
 )
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
-from iios.investment.decision.explainability.threshold_analysis import (
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.threshold_analysis import (
     ThresholdAnalyzer,
     ThresholdReport,
 )
-from iios.investment.decision.explainability.what_if_analysis import (
+from enterprise_ai_platform.investment.decision.explainability.what_if_analysis import (
     WhatIfAnalyzer,
     WhatIfReport,
 )

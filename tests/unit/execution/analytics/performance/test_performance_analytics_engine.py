@@ -26,7 +26,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.execution.analytics.performance import (
+from enterprise_ai_platform.execution.analytics.performance import (
     # Engine
     PerformanceAnalyticsEngine,
     # Types
@@ -218,7 +218,7 @@ class TestEngineLifecycle:
         assert engine.system_id == ENGINE_SYSTEM_ID
 
     def test_double_start_is_idempotent(self):
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         e = PerformanceAnalyticsEngine()
         e.start()
         with pytest.raises(EngineAlreadyRunningError):
@@ -1342,7 +1342,7 @@ class TestEngineEndToEnd:
         assert report.error_message  # non-empty
 
     def test_get_registry(self, engine):
-        from iios.execution.analytics.performance import PerformanceAnalyticsRegistry
+        from enterprise_ai_platform.execution.analytics.performance import PerformanceAnalyticsRegistry
         reg = engine.get_registry()
         assert isinstance(reg, PerformanceAnalyticsRegistry)
 

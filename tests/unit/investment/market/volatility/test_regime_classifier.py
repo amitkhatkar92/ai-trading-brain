@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility.regime_classifier import RegimeClassifier
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.regime_classifier import RegimeClassifier
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityBehaviour,
     VolatilityRegimeType,
     VolatilityRegimeSnapshot,

@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.liquidity.models import (
     LiquidityEventType, VolumeTrend, EffortResultType, EffortResultAnalysis,
     ParticipationSnapshot, ParticipationBias, VolumeProfile,
 )
-from iios.investment.market.liquidity.liquidity_event import LiquidityEventDetector
-from iios.investment.market.liquidity.liquidity_transition import (
+from enterprise_ai_platform.investment.market.liquidity.liquidity_event import LiquidityEventDetector
+from enterprise_ai_platform.investment.market.liquidity.liquidity_transition import (
     LiquidityTransitionType, LiquidityTransitionDetector, LiquidityTransition,
 )
-from iios.investment.market.liquidity.liquidity_alerts import (
+from enterprise_ai_platform.investment.market.liquidity.liquidity_alerts import (
     AlertSeverity, LiquidityAlertGenerator,
 )
-from iios.investment.market.liquidity.models import LiquidityEvent, LiquidityProfile
+from enterprise_ai_platform.investment.market.liquidity.models import LiquidityEvent, LiquidityProfile
 
 from tests.unit.investment.market.liquidity.conftest import make_volume_bar
 

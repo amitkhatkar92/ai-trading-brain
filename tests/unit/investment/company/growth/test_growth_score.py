@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.growth.growth_score import compute_growth_score
-from iios.investment.company.growth.growth_quality import assess_growth_quality
-from iios.investment.company.growth.growth_confidence import compute_overall_confidence
-from iios.investment.company.growth.forecast_engine import ForecastEngine
-from iios.investment.company.growth.forecast_assumptions import ForecastAssumptions
-from iios.investment.company.growth.growth_profile import GrowthIntelligenceScore, GrowthForecastProfile
+from enterprise_ai_platform.investment.company.growth.growth_score import compute_growth_score
+from enterprise_ai_platform.investment.company.growth.growth_quality import assess_growth_quality
+from enterprise_ai_platform.investment.company.growth.growth_confidence import compute_overall_confidence
+from enterprise_ai_platform.investment.company.growth.forecast_engine import ForecastEngine
+from enterprise_ai_platform.investment.company.growth.forecast_assumptions import ForecastAssumptions
+from enterprise_ai_platform.investment.company.growth.growth_profile import GrowthIntelligenceScore, GrowthForecastProfile
 
 
 # ── GrowthScore ────────────────────────────────────────────────────────────────

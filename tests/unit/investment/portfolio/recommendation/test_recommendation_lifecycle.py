@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.portfolio_recommendation import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_recommendation import (
     build_recommendation, RecommendationCandidate,
 )
-from iios.investment.portfolio.recommendation.recommendation_lifecycle import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_lifecycle import (
     LifecycleManager,
     get_allowed_transitions,
     is_active,
@@ -17,7 +17,7 @@ from iios.investment.portfolio.recommendation.recommendation_lifecycle import (
     is_valid_transition,
     state_to_status,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     LifecycleState,
     RecommendationAction,
     RecommendationPriority,

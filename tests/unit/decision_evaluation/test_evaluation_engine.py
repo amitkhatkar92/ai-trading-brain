@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from iios.decision_evaluation import (
+from enterprise_ai_platform.decision_evaluation import (
     # Constants
     CriterionDirection, CriterionType, EvaluationMode, NormalizationMethod,
     RankingMethod, ScoringMethod, WeightingStrategy,
@@ -1330,7 +1330,7 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.decision_evaluation as pkg
+        import enterprise_ai_platform.decision_evaluation as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing symbol: {name}"
 
@@ -1340,7 +1340,7 @@ class TestPackageImports:
         assert issubclass(InvalidWeightError,       EvaluationEngineError)
 
     def test_version_accessible(self):
-        import iios.decision_evaluation as pkg
+        import enterprise_ai_platform.decision_evaluation as pkg
         assert pkg.__version__ == "1.0.0"
 
 

@@ -1,16 +1,16 @@
 """test_capital_allocation.py — PositionAllocator, CashManager, rules."""
 import pytest
-from iios.investment.portfolio.allocation.position_allocator import PositionAllocator
-from iios.investment.portfolio.allocation.cash_manager import CashManager
-from iios.investment.portfolio.allocation.allocation_rules import (
+from enterprise_ai_platform.investment.portfolio.allocation.position_allocator import PositionAllocator
+from enterprise_ai_platform.investment.portfolio.allocation.cash_manager import CashManager
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_rules import (
     CashReserveRule,
     MaxPositionCapRule,
     MinPositionSizeRule,
     NegativeLongBlockRule,
     default_rule_chain,
 )
-from iios.investment.portfolio.allocation.allocation_plan import AllocationRequest
-from iios.investment.portfolio.allocation.allocation_types import AllocationMethod
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import AllocationRequest
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import AllocationMethod
 
 
 # ---------------------------------------------------------------------------

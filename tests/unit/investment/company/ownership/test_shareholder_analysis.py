@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.shareholder_analysis import ShareholderAnalysisEngine
-from iios.investment.company.ownership.shareholder_registry import build_shareholder_registry
-from iios.investment.company.ownership.ownership_profile import (
+from enterprise_ai_platform.investment.company.ownership.shareholder_analysis import ShareholderAnalysisEngine
+from enterprise_ai_platform.investment.company.ownership.shareholder_registry import build_shareholder_registry
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import (
     OwnershipStructureProfile, ConcentrationLevel, PromoterStabilityLabel,
     InstitutionalParticipationLabel,
 )
-from iios.investment.company.ownership.ownership_concentration import classify_concentration_level
-from iios.investment.company.ownership.ownership_stability import classify_promoter_stability
-from iios.investment.company.ownership.ownership_distribution import score_distribution_quality
+from enterprise_ai_platform.investment.company.ownership.ownership_concentration import classify_concentration_level
+from enterprise_ai_platform.investment.company.ownership.ownership_stability import classify_promoter_stability
+from enterprise_ai_platform.investment.company.ownership.ownership_distribution import score_distribution_quality
 
 
 @pytest.fixture

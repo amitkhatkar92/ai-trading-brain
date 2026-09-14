@@ -6,19 +6,19 @@ from __future__ import annotations
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.company.opportunity.alert_engine import generate_opportunity_alerts
-from iios.investment.company.opportunity.change_detector import (
+from enterprise_ai_platform.investment.company.opportunity.alert_engine import generate_opportunity_alerts
+from enterprise_ai_platform.investment.company.opportunity.change_detector import (
     ChangeRecord, detect_category_change, detect_changes, detect_lifecycle_change,
     score_dict_from_breakdown,
 )
-from iios.investment.company.opportunity.lifecycle_tracker import LifecycleTracker
-from iios.investment.company.opportunity.lifecycle_history import LifecycleHistory
-from iios.investment.company.opportunity.opportunity_monitor import OpportunityMonitor
-from iios.investment.company.opportunity.opportunity_profile import (
+from enterprise_ai_platform.investment.company.opportunity.lifecycle_tracker import LifecycleTracker
+from enterprise_ai_platform.investment.company.opportunity.lifecycle_history import LifecycleHistory
+from enterprise_ai_platform.investment.company.opportunity.opportunity_monitor import OpportunityMonitor
+from enterprise_ai_platform.investment.company.opportunity.opportunity_profile import (
     AlertSeverity, OpportunityAlert, OpportunityCategory, OpportunityLifecycle,
     OpportunityPriority,
 )
-from iios.investment.company.opportunity.priority_monitor import PriorityMonitor
+from enterprise_ai_platform.investment.company.opportunity.priority_monitor import PriorityMonitor
 
 
 class TestChangeDetector:
@@ -176,7 +176,7 @@ class TestLifecycleTracker:
 
 class TestLifecycleHistory:
     def test_record_and_retrieve(self):
-        from iios.investment.company.opportunity.opportunity_lifecycle import LifecycleChange
+        from enterprise_ai_platform.investment.company.opportunity.opportunity_lifecycle import LifecycleChange
         history = LifecycleHistory()
         change = LifecycleChange(
             from_state=OpportunityLifecycle.MONITORING,
@@ -189,7 +189,7 @@ class TestLifecycleHistory:
         assert len(records) == 1
 
     def test_count_transitions(self):
-        from iios.investment.company.opportunity.opportunity_lifecycle import LifecycleChange
+        from enterprise_ai_platform.investment.company.opportunity.opportunity_lifecycle import LifecycleChange
         history = LifecycleHistory()
         for i in range(3):
             change = LifecycleChange(

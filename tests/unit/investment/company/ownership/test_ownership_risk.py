@@ -3,20 +3,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.ownership_risk import OwnershipRiskEngine
-from iios.investment.company.ownership.ownership_profile import (
+from enterprise_ai_platform.investment.company.ownership.ownership_risk import OwnershipRiskEngine
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import (
     OwnershipRiskProfile, OwnershipRiskLabel,
 )
-from iios.investment.company.ownership.shareholder_registry import build_shareholder_registry
-from iios.investment.company.ownership.control_risk import (
+from enterprise_ai_platform.investment.company.ownership.shareholder_registry import build_shareholder_registry
+from enterprise_ai_platform.investment.company.ownership.control_risk import (
     score_control_risk,
     score_minority_protection,
     score_hostile_takeover_exposure,
 )
-from iios.investment.company.ownership.dilution_analysis import (
+from enterprise_ai_platform.investment.company.ownership.dilution_analysis import (
     score_esop_dilution, score_total_dilution_risk,
 )
-from iios.investment.company.ownership.ownership_alerts import generate_ownership_alerts
+from enterprise_ai_platform.investment.company.ownership.ownership_alerts import generate_ownership_alerts
 
 
 @pytest.fixture

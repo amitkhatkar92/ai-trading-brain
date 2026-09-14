@@ -36,7 +36,7 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     Position,
     PositionDirection,
     PositionFactory,
@@ -44,7 +44,7 @@ from iios.execution.positions.lifecycle import (
     PositionState,
 )
 
-from iios.execution.positions.snapshot import (
+from enterprise_ai_platform.execution.positions.snapshot import (
     # constants
     SNAPSHOT_SYSTEM_ID,
     STORE_SYSTEM_ID,
@@ -1468,17 +1468,17 @@ class TestRegressionGuards:
             snap.position_id = "mutated"  # type: ignore[misc]
 
     def test_snapshot_not_lifecycle_aware(self):
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         snap = _make_snapshot()
         assert not isinstance(snap, LifecycleAwareMixin)
 
     def test_builder_not_lifecycle_aware(self):
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         b = PositionSnapshotBuilder()
         assert not isinstance(b, LifecycleAwareMixin)
 
     def test_validator_not_lifecycle_aware(self):
-        from iios.investment.workflow.engine_lifecycle import LifecycleAwareMixin
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import LifecycleAwareMixin
         v = SnapshotValidator()
         assert not isinstance(v, LifecycleAwareMixin)
 

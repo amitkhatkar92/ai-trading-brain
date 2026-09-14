@@ -1,4 +1,4 @@
-"""tests/unit/iios/execution/snapshot/test_execution_snapshot.py
+"""tests/unit/enterprise_ai_platform/execution/snapshot/test_execution_snapshot.py
 ==================================================
 Comprehensive test suite for C6 Phase 1 Module 5:
 IIOS Execution Snapshot.
@@ -20,7 +20,7 @@ import pytest
 # Imports
 # ─────────────────────────────────────────────────────────────────────────────
 
-from iios.execution.snapshot.constants import (
+from enterprise_ai_platform.execution.snapshot.constants import (
     DEFAULT_CACHE_SIZE,
     DEFAULT_MAX_SNAPSHOTS,
     SnapshotFormat,
@@ -29,7 +29,7 @@ from iios.execution.snapshot.constants import (
     SnapshotValidationCode,
     VERSION,
 )
-from iios.execution.snapshot.exceptions import (
+from enterprise_ai_platform.execution.snapshot.exceptions import (
     DuplicateSnapshotError,
     ExecutionSnapshotError,
     SnapshotBuildError,
@@ -41,35 +41,35 @@ from iios.execution.snapshot.exceptions import (
     SnapshotValidationError,
     SnapshotVersionError,
 )
-from iios.execution.snapshot.execution_snapshot import ExecutionSnapshot
-from iios.execution.snapshot.execution_snapshot_metadata import SnapshotAuditMetadata
-from iios.execution.snapshot.execution_snapshot_bundle import ExecutionSnapshotBundle
-from iios.execution.snapshot.execution_snapshot_events import (
+from enterprise_ai_platform.execution.snapshot.execution_snapshot import ExecutionSnapshot
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_metadata import SnapshotAuditMetadata
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_bundle import ExecutionSnapshotBundle
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_events import (
     SnapshotEvent,
     SnapshotEventType,
     make_snapshot_event,
 )
-from iios.execution.snapshot.execution_snapshot_validator import (
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_validator import (
     ExecutionSnapshotValidator,
     SnapshotValidationResult,
 )
-from iios.execution.snapshot.execution_snapshot_builder import ExecutionSnapshotBuilder
-from iios.execution.snapshot.execution_snapshot_factory import ExecutionSnapshotFactory
-from iios.execution.snapshot.execution_snapshot_registry import (
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_builder import ExecutionSnapshotBuilder
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_factory import ExecutionSnapshotFactory
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_registry import (
     ExecutionSnapshotRegistry,
     SnapshotRecord,
 )
-from iios.execution.snapshot.execution_snapshot_history import (
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_history import (
     ExecutionSnapshotHistory,
     SnapshotRevision,
     make_snapshot_revision,
 )
-from iios.execution.snapshot.execution_snapshot_statistics import (
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_statistics import (
     ExecutionSnapshotStats,
     SnapshotBuildStats,
 )
-from iios.execution.snapshot.execution_snapshot_store import ExecutionSnapshotStore
-from iios.execution.snapshot.execution_snapshot_cache import ExecutionSnapshotCache
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_store import ExecutionSnapshotStore
+from enterprise_ai_platform.execution.snapshot.execution_snapshot_cache import ExecutionSnapshotCache
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self) -> None:
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionSnapshotError,  IIOSError)
         assert issubclass(SnapshotBuildError,      ExecutionSnapshotError)
         assert issubclass(SnapshotValidationError, ExecutionSnapshotError)

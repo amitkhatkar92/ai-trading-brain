@@ -6,19 +6,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.risk.decision_risk import DecisionRisk, build_decision_risk
-from iios.investment.decision.risk.decision_risk_score import (
+from enterprise_ai_platform.investment.decision.risk.decision_risk import DecisionRisk, build_decision_risk
+from enterprise_ai_platform.investment.decision.risk.decision_risk_score import (
     DecisionRiskScore,
     compute_risk_score,
 )
-from iios.investment.decision.risk.risk_confidence import RiskConfidenceEstimator
-from iios.investment.decision.risk.risk_constants import (
+from enterprise_ai_platform.investment.decision.risk.risk_confidence import RiskConfidenceEstimator
+from enterprise_ai_platform.investment.decision.risk.risk_constants import (
     RiskEngineStatus,
     RiskLevel,
     RiskQualityGrade,
 )
-from iios.investment.decision.risk.risk_health import RiskHealthMonitor
-from iios.investment.decision.risk.risk_statistics import RiskStatisticsTracker
+from enterprise_ai_platform.investment.decision.risk.risk_health import RiskHealthMonitor
+from enterprise_ai_platform.investment.decision.risk.risk_statistics import RiskStatisticsTracker
 
 
 # ─── compute_risk_score ───────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ class TestBuildDecisionRisk:
         assert dr.blocks_execution
 
     def test_dimension_risk_accessor(self):
-        from iios.investment.decision.risk.risk_constants import RiskDimension
+        from enterprise_ai_platform.investment.decision.risk.risk_constants import RiskDimension
         dr = build_decision_risk(
             decision_id="D1", subject_id="INFY", subject_type="equity",
             market_risk=40.0, company_risk=30.0, strategy_risk=35.0,

@@ -7,8 +7,8 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.sector_rotation import InstitutionalSectorRotationEngine
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation import InstitutionalSectorRotationEngine
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     CapitalFlowProfile,
     MarketSnapshot,
     RelativeStrengthScore,
@@ -20,7 +20,7 @@ from iios.investment.market.sector_rotation.models import (
     SectorRankEntry,
     SecurityData,
 )
-from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -182,7 +182,7 @@ class TestLifecycleQuery:
     def test_profiles_populated_after_warmup(self, warmed_engine):
         profiles = warmed_engine.latest().lifecycle_profiles
         assert len(profiles) > 0
-        from iios.investment.market.sector_rotation.models import SectorStage
+        from enterprise_ai_platform.investment.market.sector_rotation.models import SectorStage
         for p in profiles.values():
             assert isinstance(p.stage, SectorStage)
 
@@ -291,7 +291,7 @@ class TestAsyncUpdate:
 
 class TestTaxonomySwitch:
     def test_nse_taxonomy(self):
-        from iios.investment.market.sector_rotation.models import MarketSnapshot, SecurityData
+        from enterprise_ai_platform.investment.market.sector_rotation.models import MarketSnapshot, SecurityData
         taxonomy = SectorTaxonomy(taxonomy_type="NSE")
         eng = InstitutionalSectorRotationEngine(taxonomy=taxonomy)
         secs = [

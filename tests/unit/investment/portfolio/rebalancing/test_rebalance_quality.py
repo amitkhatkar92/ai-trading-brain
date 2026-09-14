@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     DriftLevel,
     PolicyRegistry,
     PortfolioRebalanceHistory,
@@ -230,7 +230,7 @@ class TestRebalanceForecast:
 
 class TestRebalanceHistory:
     def _make_record(self, pid: str = "PF"):
-        from iios.investment.portfolio.rebalancing import RebalanceRecord, RebalanceTrigger
+        from enterprise_ai_platform.investment.portfolio.rebalancing import RebalanceRecord, RebalanceTrigger
         return RebalanceRecord(portfolio_id=pid)
 
     def test_add_and_latest(self):

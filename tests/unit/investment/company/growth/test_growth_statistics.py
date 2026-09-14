@@ -4,13 +4,13 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.company.growth.growth_statistics import (
+from enterprise_ai_platform.investment.company.growth.growth_statistics import (
     cagr, cagr_from_series, yoy_growth, growth_rates_from_series,
     trend_from_growth_rates, trend_from_direction_string,
     score_from_cagr, mean_reversion_estimate,
     clamp, safe_mean, safe_median, safe_stdev, coefficient_of_variation,
 )
-from iios.investment.company.growth.growth_profile import GrowthTrend
+from enterprise_ai_platform.investment.company.growth.growth_profile import GrowthTrend
 
 
 class TestCagr:

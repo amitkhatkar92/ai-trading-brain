@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationMatrix,
     CorrelationMethod,
@@ -11,9 +11,9 @@ from iios.investment.market.correlation.models import (
     RiskLevel,
     SystemicRiskMetrics,
 )
-from iios.investment.market.correlation.systemic_risk import SystemicRiskCalculator
-from iios.investment.market.correlation.contagion_engine import ContagionEngine
-from iios.investment.market.correlation.shock_propagation import ShockPropagationAnalyzer
+from enterprise_ai_platform.investment.market.correlation.systemic_risk import SystemicRiskCalculator
+from enterprise_ai_platform.investment.market.correlation.contagion_engine import ContagionEngine
+from enterprise_ai_platform.investment.market.correlation.shock_propagation import ShockPropagationAnalyzer
 
 from tests.unit.investment.market.correlation.conftest import (
     make_snapshot,

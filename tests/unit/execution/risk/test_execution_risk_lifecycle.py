@@ -30,7 +30,7 @@ from typing import List
 
 import pytest
 
-from iios.execution.risk.lifecycle import (
+from enterprise_ai_platform.execution.risk.lifecycle import (
     ACTIVE_STATES,
     ACTOR_FACTORY,
     ACTOR_LIFECYCLE,

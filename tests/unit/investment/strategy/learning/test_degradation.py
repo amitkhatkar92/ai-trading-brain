@@ -7,14 +7,14 @@ from datetime import datetime, timezone, timedelta
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.degradation_statistics import (
+from enterprise_ai_platform.investment.strategy.learning.degradation_statistics import (
     degradation_score, improvement_score, rolling_z_scores, cumulative_drift,
     max_drawdown_from_scores, drift_acceleration, signal_to_noise_ratio,
     is_statistically_significant,
 )
-from iios.investment.strategy.learning.drift_detector import DriftDetector, DriftType, DriftSignal
-from iios.investment.strategy.learning.performance_monitor import StrategyPerformanceMonitor
-from iios.investment.strategy.learning.degradation_detector import (
+from enterprise_ai_platform.investment.strategy.learning.drift_detector import DriftDetector, DriftType, DriftSignal
+from enterprise_ai_platform.investment.strategy.learning.performance_monitor import StrategyPerformanceMonitor
+from enterprise_ai_platform.investment.strategy.learning.degradation_detector import (
     DegradationDetector, DegradationLevel, DegradationReport
 )
 

@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.profile.classification_engine import ClassificationEngine
-from iios.investment.company.profile.industry_mapper import IndustryMapper
-from iios.investment.company.profile.taxonomy_mapper import TaxonomyMapper
-from iios.investment.company.profile.theme_mapper import ThemeMapper
-from iios.investment.company.profile.models import TaxonomyType
+from enterprise_ai_platform.investment.company.profile.classification_engine import ClassificationEngine
+from enterprise_ai_platform.investment.company.profile.industry_mapper import IndustryMapper
+from enterprise_ai_platform.investment.company.profile.taxonomy_mapper import TaxonomyMapper
+from enterprise_ai_platform.investment.company.profile.theme_mapper import ThemeMapper
+from enterprise_ai_platform.investment.company.profile.models import TaxonomyType
 
 
 class TestTaxonomyMapper:

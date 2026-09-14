@@ -7,17 +7,17 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-from iios.investment.company.integration.aggregation_state import (
+from enterprise_ai_platform.investment.company.integration.aggregation_state import (
     AggregationState, EngineUpdate,
 )
-from iios.investment.company.integration.aggregation_history import AggregationHistory
-from iios.investment.company.integration.company_intelligence_aggregator import (
+from enterprise_ai_platform.investment.company.integration.aggregation_history import AggregationHistory
+from enterprise_ai_platform.investment.company.integration.company_intelligence_aggregator import (
     AggregatedIntelligence, aggregate_intelligence,
 )
-from iios.investment.company.integration.aggregation_engine import (
+from enterprise_ai_platform.investment.company.integration.aggregation_engine import (
     AggregationEngine, compute_overall_score,
 )
-from iios.investment.company.integration.company_state import SCORED_ENGINES
+from enterprise_ai_platform.investment.company.integration.company_state import SCORED_ENGINES
 
 
 class TestAggregationState:
@@ -268,7 +268,7 @@ class TestAggregationEngine:
         assert 0.0 <= score <= 100.0
 
     def test_build_summary(self, mock_financial, mock_earnings, mock_bq):
-        from iios.investment.company.integration.company_summary import CompanySummary
+        from enterprise_ai_platform.investment.company.integration.company_summary import CompanySummary
         engine = AggregationEngine()
         intel  = engine.aggregate("X", {
             "financials": mock_financial,

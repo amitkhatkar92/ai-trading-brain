@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     AssetClass,
     ConstructionStatus,
     ConstructionType,
@@ -20,14 +20,14 @@ from iios.investment.portfolio.construction.construction_types import (
     ValidationOutcome,
     WeightingMethod,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import (
     ConstructionRequest,
     ConstructionResult,
     InvestmentRecommendation,
     PortfolioBlueprint,
     PortfolioSlot,
 )
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     ConstructionDirection,
     SelectionCriterion,
 )

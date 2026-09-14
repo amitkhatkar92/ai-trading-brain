@@ -37,7 +37,7 @@ from typing import List, Optional
 
 import pytest
 
-from iios.risk.lifecycle import (
+from enterprise_ai_platform.risk.lifecycle import (
     # constants
     LIFECYCLE_SYSTEM_ID,
     VERSION,
@@ -172,7 +172,7 @@ def factory() -> RiskFactory:
 
 class TestConstants:
     def test_system_id_starts_with_iios(self):
-        assert LIFECYCLE_SYSTEM_ID.startswith("iios:")
+        assert LIFECYCLE_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -224,7 +224,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(RiskLifecycleError, IIOSError)
 
     def test_all_are_subclasses_of_base(self):

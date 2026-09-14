@@ -3,20 +3,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.reasoning.reasoning_chain import build_chain
-from iios.investment.decision.reasoning.reasoning_confidence import ReasoningConfidence
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_chain import build_chain
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_confidence import ReasoningConfidence
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     LogicValidationStatus,
     ReasoningQualityDimension,
     ReasoningStepType,
 )
-from iios.investment.decision.reasoning.reasoning_health import ReasoningHealth
-from iios.investment.decision.reasoning.reasoning_quality import ReasoningQuality
-from iios.investment.decision.reasoning.reasoning_score import (
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_health import ReasoningHealth
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_quality import ReasoningQuality
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_score import (
     ReasoningQualityScore,
     compute_reasoning_score,
 )
-from iios.investment.decision.reasoning.reasoning_step import make_step
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_step import make_step
 
 
 def _full_chain(decision_id="D1"):
@@ -36,7 +36,7 @@ def _partial_chain(decision_id="D1"):
 
 
 def _logic_result(status=LogicValidationStatus.VALID):
-    from iios.investment.decision.reasoning.logic_validator import LogicValidationResult
+    from enterprise_ai_platform.investment.decision.reasoning.logic_validator import LogicValidationResult
     return LogicValidationResult(
         status=status,
         hypothesis_issues=0,

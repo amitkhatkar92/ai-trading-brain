@@ -1,13 +1,13 @@
 """test_allocation_plan.py — AllocationPlan, AllocationRequest, AllocationResult."""
 import pytest
-from iios.investment.portfolio.allocation.allocation_plan import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import (
     AllocationPlan,
     AllocationRequest,
     AllocationResult,
     CashAllocation,
     PositionAllocation,
 )
-from iios.investment.portfolio.allocation.allocation_types import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import (
     AllocationDirection,
     AllocationMethod,
     AllocationRunStatus,

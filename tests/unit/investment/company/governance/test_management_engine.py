@@ -7,7 +7,7 @@ import threading
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.governance import (
+from enterprise_ai_platform.investment.company.governance import (
     ManagementGovernanceEngine, ManagementSnapshot,
     GovernancePlugin, GovernancePluginRegistry,
 )

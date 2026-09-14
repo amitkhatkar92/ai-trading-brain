@@ -1,7 +1,7 @@
 """
 test_market_snapshot.py — tests/unit/market/snapshot
 ======================================================
-Comprehensive test suite for iios.market.snapshot (C12 M5).
+Comprehensive test suite for enterprise_ai_platform.market.snapshot (C12 M5).
 
 Coverage targets: ≥ 95%
 """
@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.market.snapshot import (
+from enterprise_ai_platform.market.snapshot import (
     # Primary object
     MarketSnapshot,
     # Sections
@@ -222,7 +222,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(MarketSnapshotError, IIOSError)
 
     def test_not_found_error(self):
@@ -1280,16 +1280,16 @@ class TestIntegrityProperty:
 
 class TestPublicSurface:
     def test_all_exports_importable(self):
-        import iios.market.snapshot as pkg
+        import enterprise_ai_platform.market.snapshot as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
     def test_version_exported(self):
-        from iios.market.snapshot import VERSION
+        from enterprise_ai_platform.market.snapshot import VERSION
         assert VERSION == "1.0.0"
 
     def test_snapshot_system_id(self):
-        from iios.market.snapshot import SNAPSHOT_SYSTEM_ID
+        from enterprise_ai_platform.market.snapshot import SNAPSHOT_SYSTEM_ID
         assert "snapshot" in SNAPSHOT_SYSTEM_ID
 
 
@@ -1304,9 +1304,9 @@ class TestNoAnalytics:
         import sys
         import importlib
         # Importing the snapshot package must NOT import M4 analytics
-        import iios.market.snapshot as snap_pkg
+        import enterprise_ai_platform.market.snapshot as snap_pkg
         # The analytics submodule should NOT be required by snapshot
-        assert "iios.market.analytics" not in [
+        assert "enterprise_ai_platform.market.analytics" not in [
             m for m in sys.modules
             if "analytics" in m and "market.analytics" in m
             and not m.endswith("_analytics")

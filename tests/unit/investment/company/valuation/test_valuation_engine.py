@@ -7,14 +7,14 @@ import threading
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.valuation.valuation_intelligence_engine import (
+from enterprise_ai_platform.investment.company.valuation.valuation_intelligence_engine import (
     ValuationIntelligenceEngine,
 )
-from iios.investment.company.valuation.valuation_model import (
+from enterprise_ai_platform.investment.company.valuation.valuation_model import (
     ValuationBand, ValuationModelPlugin, ValuationModelType,
     ValuationResult, ValuationStatus,
 )
-from iios.investment.company.valuation.valuation_assumptions import ValuationAssumptions
+from enterprise_ai_platform.investment.company.valuation.valuation_assumptions import ValuationAssumptions
 
 from tests.unit.investment.company.valuation.conftest import (
     make_financial_snapshot,

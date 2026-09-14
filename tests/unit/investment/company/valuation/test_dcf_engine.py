@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from iios.investment.company.valuation.dcf_engine import DCFEngine
-from iios.investment.company.valuation.valuation_assumptions import (
+from enterprise_ai_platform.investment.company.valuation.dcf_engine import DCFEngine
+from enterprise_ai_platform.investment.company.valuation.valuation_assumptions import (
     DCFAssumptions, WACCAssumptions,
 )
-from iios.investment.company.valuation.valuation_model import ValuationStatus
+from enterprise_ai_platform.investment.company.valuation.valuation_model import ValuationStatus
 
 
 @pytest.fixture()

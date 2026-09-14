@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from iios.investment.company import (
+from enterprise_ai_platform.investment.company import (
     # Engine
     CompanyIntelligenceEngine,
     get_company_engine,
@@ -97,7 +97,7 @@ from iios.investment.company import (
     ValuationDataMissingError,
     ValuationInvalidError,
 )
-from iios.investment.company.company_constants import (
+from enterprise_ai_platform.investment.company.company_constants import (
     COMPANY_ENGINE_VERSION,
     COMPANY_ENGINE_SYSTEM_ID,
 )
@@ -1159,15 +1159,15 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_exports_importable(self):
-        import iios.investment.company as pkg
+        import enterprise_ai_platform.investment.company as pkg
         assert hasattr(pkg, "__all__")
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing export: {name}"
 
     def test_version_in_package(self):
-        import iios.investment.company as pkg
+        import enterprise_ai_platform.investment.company as pkg
         assert pkg.__version__ == COMPANY_ENGINE_VERSION
 
     def test_system_id_in_package(self):
-        import iios.investment.company as pkg
+        import enterprise_ai_platform.investment.company as pkg
         assert "company" in pkg.__system_id__

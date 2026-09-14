@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.confidence.contradiction_analysis import (
+from enterprise_ai_platform.investment.decision.confidence.contradiction_analysis import (
     ContradictionAnalyzer,
 )
-from iios.investment.decision.confidence.logic_strength import LogicStrengthAnalyzer
-from iios.investment.decision.confidence.reasoning_confidence import (
+from enterprise_ai_platform.investment.decision.confidence.logic_strength import LogicStrengthAnalyzer
+from enterprise_ai_platform.investment.decision.confidence.reasoning_confidence import (
     ReasoningConfidenceEstimator,
     ReasoningConfidenceResult,
 )
-from iios.investment.decision.confidence.reasoning_consistency import (
+from enterprise_ai_platform.investment.decision.confidence.reasoning_consistency import (
     ReasoningConsistencyAnalyzer,
 )
-from iios.investment.decision.reasoning.reasoning_constants import LogicValidationStatus
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import LogicValidationStatus
 
 
 # ========================= ReasoningConsistencyAnalyzer ==================

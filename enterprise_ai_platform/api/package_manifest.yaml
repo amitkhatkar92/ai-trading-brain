@@ -1,0 +1,25 @@
+﻿# Package Manifest: enterprise_ai_platform.api
+# IIOS-FCR-001 Foundation Certified
+
+package_name: "enterprise_ai_platform.api"
+version: "0.1.0"
+purpose: "External REST/WebSocket API -- institutional client access, trade data export, regulatory reporting (Wave 18+)"
+architecture_reference: "IIOS-IMP-001 Wave 18"
+layer: "API"
+owner: "Platform"
+wave: 18
+status: PLACEHOLDER
+certification_status: FOUNDATION_CERTIFIED
+foundation_reference: "IIOS-FCR-001"
+submodules:
+  - "rest_api"
+  - "websocket_api"
+  - "api_auth"
+  - "api_schemas"
+  - "api_handlers"
+  - "rate_limiter"
+dependencies:
+  - "enterprise_ai_platform.core"
+  - "enterprise_ai_platform.security"
+  - "enterprise_ai_platform.dashboard"
+  - "enterprise_ai_platform.infrastructure"

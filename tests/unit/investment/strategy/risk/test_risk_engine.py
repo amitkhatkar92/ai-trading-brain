@@ -3,13 +3,13 @@ Integration tests for StrategyRiskEngine.
 """
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.strategy_risk_engine import StrategyRiskEngine
-from iios.investment.strategy.risk.strategy_risk_profile import StrategyRiskProfile
-from iios.investment.strategy.risk.strategy_risk_snapshot import StrategyRiskSnapshot
-from iios.investment.strategy.risk.risk_score import RiskScore
-from iios.investment.strategy.risk.risk_health import RiskHealth, RiskHealthStatus
-from iios.investment.strategy.risk.risk_events import RiskEventBus, RiskEventType
-from iios.investment.strategy.risk.risk_policy import DEFAULT_POLICY
+from enterprise_ai_platform.investment.strategy.risk.strategy_risk_engine import StrategyRiskEngine
+from enterprise_ai_platform.investment.strategy.risk.strategy_risk_profile import StrategyRiskProfile
+from enterprise_ai_platform.investment.strategy.risk.strategy_risk_snapshot import StrategyRiskSnapshot
+from enterprise_ai_platform.investment.strategy.risk.risk_score import RiskScore
+from enterprise_ai_platform.investment.strategy.risk.risk_health import RiskHealth, RiskHealthStatus
+from enterprise_ai_platform.investment.strategy.risk.risk_events import RiskEventBus, RiskEventType
+from enterprise_ai_platform.investment.strategy.risk.risk_policy import DEFAULT_POLICY
 
 
 @pytest.fixture()

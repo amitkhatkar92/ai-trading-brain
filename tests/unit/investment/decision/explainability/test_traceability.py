@@ -5,15 +5,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.explainability.decision_trace import DecisionTrace
-from iios.investment.decision.explainability.evidence_mapper import EvidenceMapper
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.decision_trace import DecisionTrace
+from enterprise_ai_platform.investment.decision.explainability.evidence_mapper import EvidenceMapper
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
     TraceabilityLevel,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
-from iios.investment.decision.explainability.reasoning_mapper import ReasoningMapper
-from iios.investment.decision.explainability.traceability_engine import TraceabilityEngine
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.reasoning_mapper import ReasoningMapper
+from enterprise_ai_platform.investment.decision.explainability.traceability_engine import TraceabilityEngine
 
 
 class TestEvidenceMapper:

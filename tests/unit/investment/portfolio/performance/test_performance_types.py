@@ -1,6 +1,6 @@
 """Tests for performance_types.py"""
 import pytest
-from iios.investment.portfolio.performance.performance_types import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_types import (
     PerformanceGrade, PerformanceLevel, PerformanceTrend,
     ReturnPeriod, AttributionMethod, BenchmarkType, RunStatus,
     PerformancePosition, positions_from_plan,
@@ -86,7 +86,7 @@ class TestPerformancePosition:
     def test_expected_return_from_conviction(self):
         # expected_return_annual is a stored field (defaults 0.0); the
         # _estimate_expected_return helper is used in positions_from_plan.
-        from iios.investment.portfolio.performance.performance_types import _estimate_expected_return
+        from enterprise_ai_platform.investment.portfolio.performance.performance_types import _estimate_expected_return
         neutral_est = _estimate_expected_return(0.5, 0.25)
         assert abs(neutral_est - RISK_FREE_RATE_ANNUAL) < 1e-9
 

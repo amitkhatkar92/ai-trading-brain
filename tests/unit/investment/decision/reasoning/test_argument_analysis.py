@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.reasoning.argument_engine import ArgumentEngine, ArgumentReport
-from iios.investment.decision.reasoning.argument_strength import ArgumentStrength
-from iios.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
-from iios.investment.decision.reasoning.opposing_arguments import OpposingArguments
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.reasoning.argument_engine import ArgumentEngine, ArgumentReport
+from enterprise_ai_platform.investment.decision.reasoning.argument_strength import ArgumentStrength
+from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import HypothesisEngine
+from enterprise_ai_platform.investment.decision.reasoning.opposing_arguments import OpposingArguments
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     ArgumentStrengthLevel,
     ArgumentType,
     SignalDirection,
 )
-from iios.investment.decision.reasoning.supporting_arguments import Argument, SupportingArguments
+from enterprise_ai_platform.investment.decision.reasoning.supporting_arguments import Argument, SupportingArguments
 
 
 # ========================= SupportingArguments ===========================
@@ -64,7 +64,7 @@ class TestArgumentStrength:
     def _make_arg(self, atype: ArgumentType, score: float) -> Argument:
         from datetime import datetime, timezone
         import uuid
-        from iios.investment.decision.reasoning.reasoning_constants import ArgumentStrengthLevel
+        from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import ArgumentStrengthLevel
         return Argument(
             argument_id=str(uuid.uuid4()),
             hypothesis_id="H1",
@@ -122,7 +122,7 @@ class TestArgumentEngine:
         ae = ArgumentEngine()
         reports, step = ae.evaluate_all(hyps, mixed_signals)
         assert len(reports) == len(hyps)
-        from iios.investment.decision.reasoning.reasoning_constants import ReasoningStepType
+        from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import ReasoningStepType
         assert step.step_type == ReasoningStepType.ARGUMENT_EVALUATION
 
     def test_bullish_report_has_supporting_args(self, positive_signals):

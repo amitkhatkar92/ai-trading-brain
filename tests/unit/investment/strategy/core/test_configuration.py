@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.core import (
+from enterprise_ai_platform.investment.strategy.core import (
     ConfigurationError, ConfigurationEngine, ConfigVersion,
     ConfigurationVersionStore, ParameterRegistry, ParameterSpec,
     ParameterValidator, StrategyConfiguration, ValidationResult,

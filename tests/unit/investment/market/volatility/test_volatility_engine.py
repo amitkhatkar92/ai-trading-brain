@@ -7,15 +7,15 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.market.volatility.close_to_close_estimator import CloseToCloseEstimator
-from iios.investment.market.volatility.high_low_estimator import HighLowEstimator
-from iios.investment.market.volatility.ohlc_estimator import OHLCEstimator
-from iios.investment.market.volatility.estimator_registry import EstimatorRegistry
-from iios.investment.market.volatility.volatility_statistics import VolatilityStatistics
-from iios.investment.market.volatility.volatility_state import VolatilityStateTracker
-from iios.investment.market.volatility.volatility_profile import VolatilityProfileAnalyzer
-from iios.investment.market.volatility.volatility_engine import VolatilityEngine
-from iios.investment.market.volatility.models import VolatilityProfile
+from enterprise_ai_platform.investment.market.volatility.close_to_close_estimator import CloseToCloseEstimator
+from enterprise_ai_platform.investment.market.volatility.high_low_estimator import HighLowEstimator
+from enterprise_ai_platform.investment.market.volatility.ohlc_estimator import OHLCEstimator
+from enterprise_ai_platform.investment.market.volatility.estimator_registry import EstimatorRegistry
+from enterprise_ai_platform.investment.market.volatility.volatility_statistics import VolatilityStatistics
+from enterprise_ai_platform.investment.market.volatility.volatility_state import VolatilityStateTracker
+from enterprise_ai_platform.investment.market.volatility.volatility_profile import VolatilityProfileAnalyzer
+from enterprise_ai_platform.investment.market.volatility.volatility_engine import VolatilityEngine
+from enterprise_ai_platform.investment.market.volatility.models import VolatilityProfile
 from tests.unit.investment.market.volatility.conftest import (
     make_bar, make_bars, make_volatile_bars, make_quiet_bars,
 )

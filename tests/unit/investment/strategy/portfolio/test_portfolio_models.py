@@ -7,17 +7,17 @@ from __future__ import annotations
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_allocation import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import (
     StrategyAllocation, AllocationStatus, AllocationMethod
 )
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.portfolio_snapshot import PortfolioSnapshot
-from iios.investment.strategy.portfolio.portfolio_history import PortfolioHistory
-from iios.investment.strategy.portfolio.portfolio_registry import PortfolioRegistry
-from iios.investment.strategy.portfolio.portfolio_statistics import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_snapshot import PortfolioSnapshot
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_history import PortfolioHistory
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_registry import PortfolioRegistry
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_statistics import (
     project_weights, normalize_weights, jaccard, herfindahl_index,
     effective_n, gini_coefficient, weighted_average
 )

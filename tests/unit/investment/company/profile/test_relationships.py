@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.profile.models import RelatedEntity, RelationshipType, Subsidiary
-from iios.investment.company.profile.ownership_tree import OwnershipNode, OwnershipTree
-from iios.investment.company.profile.parent_company import ParentRelationship
-from iios.investment.company.profile.related_entities import RelatedEntityStore
-from iios.investment.company.profile.subsidiaries import SubsidiaryStore
+from enterprise_ai_platform.investment.company.profile.models import RelatedEntity, RelationshipType, Subsidiary
+from enterprise_ai_platform.investment.company.profile.ownership_tree import OwnershipNode, OwnershipTree
+from enterprise_ai_platform.investment.company.profile.parent_company import ParentRelationship
+from enterprise_ai_platform.investment.company.profile.related_entities import RelatedEntityStore
+from enterprise_ai_platform.investment.company.profile.subsidiaries import SubsidiaryStore
 
 
 class TestSubsidiaryStore:

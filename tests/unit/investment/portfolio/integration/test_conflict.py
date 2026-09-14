@@ -7,20 +7,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.conflict_classifier import (
+from enterprise_ai_platform.investment.portfolio.integration.conflict_classifier import (
     ConflictClassifier,
 )
-from iios.investment.portfolio.integration.conflict_detector import (
+from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import (
     ConflictDetector, DetectedConflict,
 )
-from iios.investment.portfolio.integration.conflict_engine import (
+from enterprise_ai_platform.investment.portfolio.integration.conflict_engine import (
     ConflictEngine, ConflictReport,
 )
-from iios.investment.portfolio.integration.conflict_history import ConflictHistory
-from iios.investment.portfolio.integration.conflict_resolution import (
+from enterprise_ai_platform.investment.portfolio.integration.conflict_history import ConflictHistory
+from enterprise_ai_platform.investment.portfolio.integration.conflict_resolution import (
     ConflictResolver, ConflictResolutionResult,
 )
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     ConflictResolutionStatus, ConflictSeverity, now_utc,
 )
 
@@ -116,7 +116,7 @@ class TestConflictClassifier:
                 assert a <= b
 
     def test_critical_requires_action(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
         dc = DetectedConflict(
             conflict_id="x", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.CRITICAL, engine_pair="risk:rec",
@@ -127,7 +127,7 @@ class TestConflictClassifier:
         assert classified[0].action_required is True
 
     def test_info_no_action_required(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
         dc = DetectedConflict(
             conflict_id="y", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.INFO, engine_pair="misc",
@@ -140,8 +140,8 @@ class TestConflictClassifier:
 
 class TestConflictResolver:
     def test_resolves_critical_as_escalated(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
-        from iios.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
         dc = DetectedConflict(
             conflict_id="z", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.CRITICAL, engine_pair="risk:recommendation",
@@ -153,8 +153,8 @@ class TestConflictResolver:
         assert result.status == ConflictResolutionStatus.ESCALATED
 
     def test_resolves_internal_inconsistency(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
-        from iios.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
         dc = DetectedConflict(
             conflict_id="q", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.HIGH, engine_pair="risk",
@@ -166,8 +166,8 @@ class TestConflictResolver:
         assert result.status == ConflictResolutionStatus.RESOLVED
 
     def test_resolves_value_mismatch(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
-        from iios.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
         dc = DetectedConflict(
             conflict_id="r", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.MEDIUM, engine_pair="performance:risk",
@@ -179,8 +179,8 @@ class TestConflictResolver:
         assert result.status == ConflictResolutionStatus.RESOLVED
 
     def test_resolution_has_rationale(self):
-        from iios.investment.portfolio.integration.conflict_detector import DetectedConflict
-        from iios.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_detector import DetectedConflict
+        from enterprise_ai_platform.investment.portfolio.integration.conflict_classifier import ClassifiedConflict
         dc = DetectedConflict(
             conflict_id="s", portfolio_id="P", detected_at=now_utc(),
             severity=ConflictSeverity.LOW, engine_pair="misc",

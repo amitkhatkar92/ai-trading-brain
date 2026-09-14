@@ -4,9 +4,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from iios.investment.market.correlation.rolling_correlation import RollingCorrelationCalculator
-from iios.investment.market.correlation.pearson_estimator import PearsonEstimator
-from iios.investment.market.correlation.models import CorrelationMethod
+from enterprise_ai_platform.investment.market.correlation.rolling_correlation import RollingCorrelationCalculator
+from enterprise_ai_platform.investment.market.correlation.pearson_estimator import PearsonEstimator
+from enterprise_ai_platform.investment.market.correlation.models import CorrelationMethod
 
 from tests.unit.investment.market.correlation.conftest import (
     make_correlated_snapshots,

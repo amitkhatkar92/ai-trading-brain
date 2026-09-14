@@ -7,12 +7,12 @@ import asyncio
 
 import pytest
 
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     CommitteePosition,
     CommitteeStatus,
 )
-from iios.investment.decision.committee.committee_report import CommitteeReport
-from iios.investment.decision.committee.decision_committee_engine import (
+from enterprise_ai_platform.investment.decision.committee.committee_report import CommitteeReport
+from enterprise_ai_platform.investment.decision.committee.decision_committee_engine import (
     DecisionCommitteeEngine,
 )
 

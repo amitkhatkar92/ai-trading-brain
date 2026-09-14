@@ -26,7 +26,7 @@ import pytest
 
 # ── imports ───────────────────────────────────────────────────────────────────
 
-from iios.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
+from enterprise_ai_platform.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
     AIBenchmarkAlreadyRunningError,
     AIBenchmarkNotFoundError,
     AIBenchmarkScenarioError,
@@ -51,7 +51,7 @@ from iios.ai.learning_evaluation.exceptions.learning_evaluation_exceptions impor
     AIValidationException,
 )
 
-from iios.ai.learning_evaluation.core import (
+from enterprise_ai_platform.ai.learning_evaluation.core import (
     BenchmarkMetadata,
     BenchmarkOutcome,
     BenchmarkResult,
@@ -79,7 +79,7 @@ from iios.ai.learning_evaluation.core import (
     ScenarioType,
 )
 
-from iios.ai.learning_evaluation.metrics import (
+from enterprise_ai_platform.ai.learning_evaluation.metrics import (
     AccuracyMetrics,
     ConfidenceMetrics,
     CostMetrics,
@@ -88,7 +88,7 @@ from iios.ai.learning_evaluation.metrics import (
     ReliabilityMetrics,
 )
 
-from iios.ai.learning_evaluation.events import (
+from enterprise_ai_platform.ai.learning_evaluation.events import (
     BenchmarkCompletedEvent,
     BenchmarkStartedEvent,
     EvaluationResultAddedEvent,
@@ -103,12 +103,12 @@ from iios.ai.learning_evaluation.events import (
     QualityAssessedEvent,
 )
 
-from iios.ai.learning_evaluation.evaluation import EvaluationManager, EvaluationSession
-from iios.ai.learning_evaluation.benchmark  import BenchmarkManager, BenchmarkReport, BenchmarkSuite
-from iios.ai.learning_evaluation.learning   import FeedbackCollector, LearningHistory, LearningManager
-from iios.ai.learning_evaluation.quality    import QualityManager, QualityRule, RuleCategory, ValidationReport
+from enterprise_ai_platform.ai.learning_evaluation.evaluation import EvaluationManager, EvaluationSession
+from enterprise_ai_platform.ai.learning_evaluation.benchmark  import BenchmarkManager, BenchmarkReport, BenchmarkSuite
+from enterprise_ai_platform.ai.learning_evaluation.learning   import FeedbackCollector, LearningHistory, LearningManager
+from enterprise_ai_platform.ai.learning_evaluation.quality    import QualityManager, QualityRule, RuleCategory, ValidationReport
 
-from iios.ai.learning_evaluation.policy import (
+from enterprise_ai_platform.ai.learning_evaluation.policy import (
     AcceptancePolicy,
     BenchmarkPolicy,
     DefaultAcceptancePolicy,
@@ -121,12 +121,12 @@ from iios.ai.learning_evaluation.policy import (
     QualityPolicy,
 )
 
-from iios.ai.learning_evaluation.snapshot import (
+from enterprise_ai_platform.ai.learning_evaluation.snapshot import (
     EvaluationSessionSnapshot,
     LearningEvaluationFrameworkSnapshot,
 )
-from iios.ai.learning_evaluation.container import LearningEvaluationContainer
-from iios.ai.learning_evaluation.gateway   import LearningEvaluationGateway
+from enterprise_ai_platform.ai.learning_evaluation.container import LearningEvaluationContainer
+from enterprise_ai_platform.ai.learning_evaluation.gateway   import LearningEvaluationGateway
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1115,7 +1115,7 @@ class TestGateway:
         assert not gw.is_ai_running
 
     def test_double_start(self):
-        from iios.ai.foundation.lifecycle.exceptions import AIModuleAlreadyRunningError
+        from enterprise_ai_platform.ai.foundation.lifecycle.exceptions import AIModuleAlreadyRunningError
         gw = LearningEvaluationGateway()
         gw.start()
         with pytest.raises(AIModuleAlreadyRunningError):
@@ -1123,7 +1123,7 @@ class TestGateway:
         gw.stop()
 
     def test_call_without_start_raises(self):
-        from iios.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
+        from enterprise_ai_platform.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
             AILearningEvaluationException,
         )
         gw = LearningEvaluationGateway()
@@ -1262,5 +1262,5 @@ class TestGateway:
 
     def test_system_id_and_version(self):
         gw = LearningEvaluationGateway()
-        assert gw.SYSTEM_ID == "iios:ai:learning_evaluation:gateway"
+        assert gw.SYSTEM_ID == "enterprise_ai_platform:ai:learning_evaluation:gateway"
         assert gw.VERSION   == "1.0.0"

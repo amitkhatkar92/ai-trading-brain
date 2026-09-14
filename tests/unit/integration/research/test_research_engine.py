@@ -1,6 +1,6 @@
 """tests/unit/integration/research/test_research_engine.py
 
-Comprehensive test suite for iios/integration/research/
+Comprehensive test suite for enterprise_ai_platform/integration/research/
 
 Run with:
     python -m pytest tests/unit/integration/research/ -q
@@ -21,7 +21,7 @@ import pytest
 def _run(coro): return asyncio.run(coro)
 
 # ── Imports ───────────────────────────────────────────────────────────────────
-from iios.integration.research.research_constants import (
+from enterprise_ai_platform.integration.research.research_constants import (
     CheckpointStatus,
     DatasetSourceType,
     ExperimentPriority,
@@ -39,7 +39,7 @@ from iios.integration.research.research_constants import (
     DEFAULT_MAX_DATASETS,
     DEFAULT_EXPERIMENT_TIMEOUT_SEC,
 )
-from iios.integration.research.research_exceptions import (
+from enterprise_ai_platform.integration.research.research_exceptions import (
     CheckpointError,
     DatasetLineageError,
     ExperimentAlreadyRunningError,
@@ -64,27 +64,27 @@ from iios.integration.research.research_exceptions import (
     WorkflowStepNotFoundError,
     WorkflowValidationError,
 )
-from iios.integration.research.core.research_metadata   import ResearchMetadata
-from iios.integration.research.core.research_project    import ResearchProject
-from iios.integration.research.core.research_experiment import ResearchExperiment
-from iios.integration.research.core.research_dataset    import ResearchDataset, DatasetSnapshot
-from iios.integration.research.core.research_session    import ResearchSession
-from iios.integration.research.core.research_result     import ResearchResult
-from iios.integration.research.core.research_statistics import ResearchStatistics
-from iios.integration.research.core.research_history    import ResearchHistory, ResearchHistoryEntry
-from iios.integration.research.experiments.experiment_lifecycle import ExperimentLifecycle
-from iios.integration.research.experiments.experiment_runner    import ExperimentRunner
-from iios.integration.research.projects.project_manager  import ProjectManager
-from iios.integration.research.registry.experiment_registry import ExperimentRegistry
-from iios.integration.research.workflow.research_workflow import ResearchWorkflow, WorkflowStep
-from iios.integration.research.datasets.dataset_manager  import DatasetManager
-from iios.integration.research.tracking.execution_tracker import ExecutionTracker, ExecutionCheckpoint
-from iios.integration.research.monitoring.research_monitor import ResearchMonitor
-from iios.integration.research.research_context          import ResearchContext
-from iios.integration.research.research_registry         import ResearchRegistry
-from iios.integration.research.research_factory          import ResearchFactory
-from iios.integration.research.research_manager          import ResearchManager
-from iios.integration.research.research_engine           import (
+from enterprise_ai_platform.integration.research.core.research_metadata   import ResearchMetadata
+from enterprise_ai_platform.integration.research.core.research_project    import ResearchProject
+from enterprise_ai_platform.integration.research.core.research_experiment import ResearchExperiment
+from enterprise_ai_platform.integration.research.core.research_dataset    import ResearchDataset, DatasetSnapshot
+from enterprise_ai_platform.integration.research.core.research_session    import ResearchSession
+from enterprise_ai_platform.integration.research.core.research_result     import ResearchResult
+from enterprise_ai_platform.integration.research.core.research_statistics import ResearchStatistics
+from enterprise_ai_platform.integration.research.core.research_history    import ResearchHistory, ResearchHistoryEntry
+from enterprise_ai_platform.integration.research.experiments.experiment_lifecycle import ExperimentLifecycle
+from enterprise_ai_platform.integration.research.experiments.experiment_runner    import ExperimentRunner
+from enterprise_ai_platform.integration.research.projects.project_manager  import ProjectManager
+from enterprise_ai_platform.integration.research.registry.experiment_registry import ExperimentRegistry
+from enterprise_ai_platform.integration.research.workflow.research_workflow import ResearchWorkflow, WorkflowStep
+from enterprise_ai_platform.integration.research.datasets.dataset_manager  import DatasetManager
+from enterprise_ai_platform.integration.research.tracking.execution_tracker import ExecutionTracker, ExecutionCheckpoint
+from enterprise_ai_platform.integration.research.monitoring.research_monitor import ResearchMonitor
+from enterprise_ai_platform.integration.research.research_context          import ResearchContext
+from enterprise_ai_platform.integration.research.research_registry         import ResearchRegistry
+from enterprise_ai_platform.integration.research.research_factory          import ResearchFactory
+from enterprise_ai_platform.integration.research.research_manager          import ResearchManager
+from enterprise_ai_platform.integration.research.research_engine           import (
     ResearchEngine,
     get_research_engine,
     reset_research_engine,

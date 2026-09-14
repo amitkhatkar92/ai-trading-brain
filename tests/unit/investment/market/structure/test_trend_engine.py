@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.structure.models import TrendPhase
-from iios.investment.market.structure.swing_history import SwingHistory
-from iios.investment.market.structure.trend_classifier import TrendClassifier
-from iios.investment.market.structure.trend_engine import TrendEngine
-from iios.investment.market.structure.trend_strength import TrendStrengthAnalyzer
-from iios.investment.market.structure.trend_transition import TrendTransitionDetector
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.structure.models import TrendPhase
+from enterprise_ai_platform.investment.market.structure.swing_history import SwingHistory
+from enterprise_ai_platform.investment.market.structure.trend_classifier import TrendClassifier
+from enterprise_ai_platform.investment.market.structure.trend_engine import TrendEngine
+from enterprise_ai_platform.investment.market.structure.trend_strength import TrendStrengthAnalyzer
+from enterprise_ai_platform.investment.market.structure.trend_transition import TrendTransitionDetector
 from tests.unit.investment.market.structure.conftest import (
     make_downtrend_bars,
     make_range_bars,

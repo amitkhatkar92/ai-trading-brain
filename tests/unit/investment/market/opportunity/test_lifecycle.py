@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.lifecycle_history import LifecycleHistory
-from iios.investment.market.opportunity.lifecycle_tracker import LifecycleTracker
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.lifecycle_history import LifecycleHistory
+from enterprise_ai_platform.investment.market.opportunity.lifecycle_tracker import LifecycleTracker
+from enterprise_ai_platform.investment.market.opportunity.models import (
     Opportunity,
     OpportunityCategory,
     OpportunityEventType,
     OpportunityLifecycleStage,
 )
-from iios.investment.market.opportunity.opportunity_lifecycle import OpportunityLifecycleEngine
+from enterprise_ai_platform.investment.market.opportunity.opportunity_lifecycle import OpportunityLifecycleEngine
 
 
 def _opp(symbol: str = "X", score: float = 70.0) -> Opportunity:
@@ -92,7 +92,7 @@ class TestLifecycleHistory:
         assert hist.confirmations() == []
 
     def test_append_and_retrieve(self):
-        from iios.investment.market.opportunity.models import OpportunityEvent
+        from enterprise_ai_platform.investment.market.opportunity.models import OpportunityEvent
         hist  = LifecycleHistory()
         opp   = _opp("AAPL")
         event = OpportunityEvent(
@@ -105,7 +105,7 @@ class TestLifecycleHistory:
         assert len(hist.for_symbol("AAPL")) == 1
 
     def test_confirmations_filter(self):
-        from iios.investment.market.opportunity.models import OpportunityEvent
+        from enterprise_ai_platform.investment.market.opportunity.models import OpportunityEvent
         hist = LifecycleHistory()
         opp  = _opp()
         for et in (OpportunityEventType.UPGRADED, OpportunityEventType.CONFIRMED):
@@ -120,7 +120,7 @@ class TestLifecycleHistory:
         assert len(confs) >= 1
 
     def test_maxlen_respected(self):
-        from iios.investment.market.opportunity.models import OpportunityEvent
+        from enterprise_ai_platform.investment.market.opportunity.models import OpportunityEvent
         hist = LifecycleHistory(maxlen=3)
         opp  = _opp()
         for i in range(5):

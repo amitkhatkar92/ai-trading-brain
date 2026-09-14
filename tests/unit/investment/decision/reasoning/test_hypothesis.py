@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.reasoning.hypothesis_engine import Hypothesis, HypothesisEngine
-from iios.investment.decision.reasoning.hypothesis_history import HypothesisHistory
-from iios.investment.decision.reasoning.hypothesis_registry import HypothesisRegistry
-from iios.investment.decision.reasoning.hypothesis_validator import HypothesisValidator
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import Hypothesis, HypothesisEngine
+from enterprise_ai_platform.investment.decision.reasoning.hypothesis_history import HypothesisHistory
+from enterprise_ai_platform.investment.decision.reasoning.hypothesis_registry import HypothesisRegistry
+from enterprise_ai_platform.investment.decision.reasoning.hypothesis_validator import HypothesisValidator
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     HypothesisStatus,
     HypothesisType,
     LogicValidationStatus,
@@ -48,7 +48,7 @@ class TestHypothesisEngine:
         assert neutral is not None
 
     def test_step_type(self, positive_signals):
-        from iios.investment.decision.reasoning.reasoning_constants import ReasoningStepType
+        from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import ReasoningStepType
         engine = HypothesisEngine()
         _, step = engine.generate("X", "equity", positive_signals)
         assert step.step_type == ReasoningStepType.HYPOTHESIS_FORMATION
@@ -123,7 +123,7 @@ class TestHypothesisValidator:
         assert r.status.is_usable
 
     def test_contradictory_when_both_supported(self, make_signal):
-        from iios.investment.decision.reasoning.hypothesis_engine import _make_hypothesis
+        from enterprise_ai_platform.investment.decision.reasoning.hypothesis_engine import _make_hypothesis
         bull_sigs = [make_signal(direction=SignalDirection.POSITIVE) for _ in range(4)]
         bear_sigs = [make_signal(direction=SignalDirection.NEGATIVE) for _ in range(4)]
         # Manually create two SUPPORTED hypotheses

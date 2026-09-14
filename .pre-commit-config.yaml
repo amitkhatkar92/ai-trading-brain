@@ -92,18 +92,18 @@ repos:
         name: "FORMAT: ruff-format"
 
   # ===========================================================================
-  # mypy — Type Checking (strict mode for iios/ package)
+  # mypy — Type Checking (strict mode for enterprise_ai_platform/ package)
   # ===========================================================================
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
-        name: "TYPES: mypy (iios/)"
+        name: "TYPES: mypy (enterprise_ai_platform/)"
         args:
           - --strict
           - --python-version=3.12
           - --ignore-missing-imports
-        files: ^iios/
+        files: ^enterprise_ai_platform/
         additional_dependencies:
           - pandas-stubs
           - types-requests
@@ -119,7 +119,7 @@ repos:
       - id: bandit
         name: "SECURITY: bandit"
         args: [-r, --skip=B101, -ll]
-        files: ^iios/
+        files: ^enterprise_ai_platform/
         exclude: ^tests/
 
   # ===========================================================================
@@ -138,36 +138,36 @@ repos:
   # ===========================================================================
   - repo: local
     hooks:
-      - id: iios-no-hardcoded-thresholds
+      - id: enterprise_ai_platform-no-hardcoded-thresholds
         name: "IIOS: no hardcoded decision/kill switch thresholds"
         language: pygrep
         entry: '(?<!#)(?:6\.5|45\.0|0\.02|0\.50|0\.80|0\.15)(?!\s*#)'
         types: [python]
-        files: ^iios/(?!config/)
-        exclude: ^tests/|^iios/core/constants\.py
+        files: ^enterprise_ai_platform/(?!config/)
+        exclude: ^tests/|^enterprise_ai_platform/core/constants\.py
         pass_filenames: true
 
-      - id: iios-no-direct-config-import
+      - id: enterprise_ai_platform-no-direct-config-import
         name: "IIOS: layer boundary check (no cross-layer upward imports)"
         language: pygrep
-        entry: 'from iios\.(risk|execution|decisions|learning)\.'
+        entry: 'from enterprise_ai_platform\.(risk|execution|decisions|learning)\.'
         types: [python]
-        files: ^iios/(core|config|infrastructure|shared|knowledge)/
+        files: ^enterprise_ai_platform/(core|config|infrastructure|shared|knowledge)/
         pass_filenames: true
 
-      - id: iios-no-print-in-library
+      - id: enterprise_ai_platform-no-print-in-library
         name: "IIOS: no print() in library code (use logging)"
         language: pygrep
         entry: '^\s*print\('
         types: [python]
-        files: ^iios/
-        exclude: ^iios/cli/|^iios/tools/|^iios/dashboard/|^tests/
+        files: ^enterprise_ai_platform/
+        exclude: ^enterprise_ai_platform/cli/|^enterprise_ai_platform/tools/|^enterprise_ai_platform/dashboard/|^tests/
         pass_filenames: true
 
   # ===========================================================================
   # OIOS-Specific: duplicate class-name guard (2026-09-14 housekeeping audit)
   # oios/ is the subsystem actually wired into live trading
-  # (orchestrator/master_orchestrator.py) yet, unlike iios/, had zero automated
+  # (orchestrator/master_orchestrator.py) yet, unlike enterprise_ai_platform/, had zero automated
   # protection against the exact class of bug documented in
   # AI_PLATFORM_ARCHITECTURE_AUDIT_V1.md (two classes sharing a name across
   # modules -> silent except/isinstance failures). Baseline file accepts the

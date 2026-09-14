@@ -5,22 +5,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     ConsensusLevel,
     VoteType,
 )
-from iios.investment.decision.committee.committee_member import (
+from enterprise_ai_platform.investment.decision.committee.committee_member import (
     MarketIntelligenceMember,
     MemberOpinion,
     create_member,
     SpecialistType,
 )
-from iios.investment.decision.committee.member_registry import MemberRegistry
-from iios.investment.decision.committee.member_roles import MemberRole
-from iios.investment.decision.committee.minority_reports import MinorityReportBuilder
-from iios.investment.decision.committee.vote_registry import CastVote, VoteRegistry
-from iios.investment.decision.committee.voting_engine import VotingEngine
-from iios.investment.decision.committee.weighted_voting import VoteSummary, WeightedVoting
+from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
+from enterprise_ai_platform.investment.decision.committee.member_roles import MemberRole
+from enterprise_ai_platform.investment.decision.committee.minority_reports import MinorityReportBuilder
+from enterprise_ai_platform.investment.decision.committee.vote_registry import CastVote, VoteRegistry
+from enterprise_ai_platform.investment.decision.committee.voting_engine import VotingEngine
+from enterprise_ai_platform.investment.decision.committee.weighted_voting import VoteSummary, WeightedVoting
 
 
 class TestWeightedVoting:
@@ -150,7 +150,7 @@ class TestVotingEngine:
         assert 0.0 <= vs.support_fraction <= 1.0
 
     def test_observers_excluded_from_vote(self):
-        from iios.investment.decision.committee.committee_member import CustomSpecialistMember
+        from enterprise_ai_platform.investment.decision.committee.committee_member import CustomSpecialistMember
         # Create a registry with one observer
         registry = MemberRegistry()
         registry.add_member(SpecialistType.RESEARCH, MemberRole.OBSERVER, member_id="OBS1")
@@ -173,8 +173,8 @@ class TestVotingEngine:
 
 class TestMinorityReportBuilder:
     def test_no_minority_on_unanimous(self, rich_context):
-        from iios.investment.decision.committee.weighted_voting import WeightedVoting
-        from iios.investment.decision.committee.vote_registry import CastVote
+        from enterprise_ai_platform.investment.decision.committee.weighted_voting import WeightedVoting
+        from enterprise_ai_platform.investment.decision.committee.vote_registry import CastVote
 
         wv    = WeightedVoting()
         votes = [CastVote(f"M{i}", 1.0, VoteType.SUPPORT, 80.0) for i in range(5)]

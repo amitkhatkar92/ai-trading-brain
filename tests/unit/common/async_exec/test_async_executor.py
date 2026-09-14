@@ -1,9 +1,9 @@
-"""Tests for iios.common.async_exec.async_executor"""
+"""Tests for enterprise_ai_platform.common.async_exec.async_executor"""
 import asyncio
 import time
 import threading
-from iios.common.async_exec.async_executor import AsyncExecutor, ExecutorConfig
-from iios.common.async_exec.execution_classifier import WorkloadType
+from enterprise_ai_platform.common.async_exec.async_executor import AsyncExecutor, ExecutorConfig
+from enterprise_ai_platform.common.async_exec.execution_classifier import WorkloadType
 
 
 # ── ExecutorConfig ────────────────────────────────────────────────────────────
@@ -14,7 +14,7 @@ class TestExecutorConfig:
         cfg = ExecutorConfig()
         assert cfg.max_threads == 16
         assert cfg.max_process_workers is None
-        assert cfg.thread_name_prefix == "iios-worker"
+        assert cfg.thread_name_prefix == "enterprise_ai_platform-worker"
 
     def test_custom_values(self):
         cfg = ExecutorConfig(max_threads=4, thread_name_prefix="test")

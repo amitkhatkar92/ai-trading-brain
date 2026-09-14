@@ -6,9 +6,9 @@ import pytest
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.parameter_analysis import ParameterAnalyzer
-from iios.investment.strategy.learning.regime_adaptation import RegimeAdaptationAnalyzer
-from iios.investment.strategy.learning.adaptation_engine import AdaptationEngine
+from enterprise_ai_platform.investment.strategy.learning.parameter_analysis import ParameterAnalyzer
+from enterprise_ai_platform.investment.strategy.learning.regime_adaptation import RegimeAdaptationAnalyzer
+from enterprise_ai_platform.investment.strategy.learning.adaptation_engine import AdaptationEngine
 
 
 class TestParameterAnalyzer:

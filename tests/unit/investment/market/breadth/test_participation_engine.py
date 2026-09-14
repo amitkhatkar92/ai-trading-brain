@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.breadth.participation_profile import ParticipationProfileBuilder
-from iios.investment.market.breadth.participation_engine import ParticipationEngine
+from enterprise_ai_platform.investment.market.breadth.participation_profile import ParticipationProfileBuilder
+from enterprise_ai_platform.investment.market.breadth.participation_engine import ParticipationEngine
 
 from tests.unit.investment.market.breadth.conftest import (
     make_bull_universe,
@@ -37,7 +37,7 @@ class TestParticipationProfileBuilder:
         assert isinstance(ps.sector_participation, dict)
 
     def test_new_highs_count(self):
-        from iios.investment.market.breadth.models import SecurityObservation, UniverseSnapshot
+        from enterprise_ai_platform.investment.market.breadth.models import SecurityObservation, UniverseSnapshot
         import time
         obs = [SecurityObservation(f"A{i}", 0.5, is_new_52w_high=True) for i in range(10)]
         obs += [SecurityObservation(f"D{i}", -0.5) for i in range(90)]

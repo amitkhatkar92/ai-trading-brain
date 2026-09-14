@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility.volatility_expansion import VolatilityExpansionDetector
-from iios.investment.market.volatility.volatility_compression import VolatilityCompressionDetector
-from iios.investment.market.volatility.volatility_cycles import VolatilityCycleAnalyzer
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.volatility_expansion import VolatilityExpansionDetector
+from enterprise_ai_platform.investment.market.volatility.volatility_compression import VolatilityCompressionDetector
+from enterprise_ai_platform.investment.market.volatility.volatility_cycles import VolatilityCycleAnalyzer
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityBehaviour,
     VolatilityEventType,
 )
@@ -16,8 +16,8 @@ from tests.unit.investment.market.volatility.conftest import (
     make_vol_state,
     make_behaviour,
 )
-from iios.investment.market.volatility.volatility_expansion import ExpansionState
-from iios.investment.market.volatility.volatility_compression import CompressionState
+from enterprise_ai_platform.investment.market.volatility.volatility_expansion import ExpansionState
+from enterprise_ai_platform.investment.market.volatility.volatility_compression import CompressionState
 
 
 def _make_expansion_state(

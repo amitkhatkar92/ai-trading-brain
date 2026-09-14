@@ -38,7 +38,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ── Module under test ─────────────────────────────────────────────────────────
-from iios.execution.monitoring.integration.constants import (
+from enterprise_ai_platform.execution.monitoring.integration.constants import (
     ACTOR_ENGINE,
     ACTOR_INTEGRATION,
     ComponentType,
@@ -53,7 +53,7 @@ from iios.execution.monitoring.integration.constants import (
     TERMINAL_INTEGRATION_STATES,
     VERSION,
 )
-from iios.execution.monitoring.integration.exceptions import (
+from enterprise_ai_platform.execution.monitoring.integration.exceptions import (
     IntegrationAlreadyRunningError,
     IntegrationComponentError,
     IntegrationError,
@@ -65,38 +65,38 @@ from iios.execution.monitoring.integration.exceptions import (
     IntegrationValidationError,
     IntegrationWorkflowError,
 )
-from iios.execution.monitoring.integration.monitoring_integration_context import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_context import (
     MonitoringIntegrationContext,
     make_monitoring_integration_context,
 )
-from iios.execution.monitoring.integration.monitoring_integration_request import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_request import (
     MonitoringIntegrationRequest,
     make_monitoring_integration_request,
 )
-from iios.execution.monitoring.integration.monitoring_integration_response import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_response import (
     MonitoringIntegrationResponse,
     make_monitoring_integration_response,
 )
-from iios.execution.monitoring.integration.monitoring_integration_snapshot import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_snapshot import (
     MonitoringIntegrationSnapshot,
     make_integration_snapshot,
 )
-from iios.execution.monitoring.integration.monitoring_integration_health import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_health import (
     ComponentHealth,
     IntegrationHealth,
     compute_integration_health,
     make_component_health,
 )
-from iios.execution.monitoring.integration.monitoring_integration_status import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_status import (
     IntegrationStatusRecord,
 )
-from iios.execution.monitoring.integration.monitoring_integration_statistics import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_statistics import (
     IntegrationStatistics,
 )
-from iios.execution.monitoring.integration.monitoring_integration_history import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_history import (
     IntegrationHistory,
 )
-from iios.execution.monitoring.integration.monitoring_integration_events import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_events import (
     IntegrationEvent,
     make_monitoring_completed,
     make_monitoring_health_changed,
@@ -107,23 +107,23 @@ from iios.execution.monitoring.integration.monitoring_integration_events import 
     make_monitoring_stopped,
     make_monitoring_validated,
 )
-from iios.execution.monitoring.integration.monitoring_integration_registry import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_registry import (
     IntegrationRegistry,
 )
-from iios.execution.monitoring.integration.monitoring_integration_validation import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_validation import (
     IntegrationValidationResult,
     IntegrationValidator,
 )
-from iios.execution.monitoring.integration.monitoring_component_registry import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_component_registry import (
     ComponentRegistry,
 )
-from iios.execution.monitoring.integration.monitoring_component_factory import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_component_factory import (
     ComponentFactory,
 )
-from iios.execution.monitoring.integration.monitoring_integration_manager import (
+from enterprise_ai_platform.execution.monitoring.integration.monitoring_integration_manager import (
     MonitoringIntegrationManager,
 )
-from iios.execution.monitoring.integration.execution_monitoring_integration_engine import (
+from enterprise_ai_platform.execution.monitoring.integration.execution_monitoring_integration_engine import (
     ExecutionMonitoringIntegrationEngine,
 )
 

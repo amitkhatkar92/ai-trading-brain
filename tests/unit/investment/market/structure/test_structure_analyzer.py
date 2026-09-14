@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.structure.market_phase import MarketPhaseDetector
-from iios.investment.market.structure.models import StructurePhase
-from iios.investment.market.structure.structure_analyzer import StructureAnalyzer
-from iios.investment.market.structure.structure_state import StructureState
-from iios.investment.market.structure.swing_detector import SwingDetector
-from iios.investment.market.structure.swing_history import SwingHistory
-from iios.investment.market.structure.trend_classifier import TrendClassifier
-from iios.investment.market.structure.trend_engine import TrendEngine
-from iios.investment.market.structure.trend_strength import TrendStrengthAnalyzer
-from iios.investment.market.structure.trend_transition import TrendTransitionDetector
+from enterprise_ai_platform.investment.market.structure.market_phase import MarketPhaseDetector
+from enterprise_ai_platform.investment.market.structure.models import StructurePhase
+from enterprise_ai_platform.investment.market.structure.structure_analyzer import StructureAnalyzer
+from enterprise_ai_platform.investment.market.structure.structure_state import StructureState
+from enterprise_ai_platform.investment.market.structure.swing_detector import SwingDetector
+from enterprise_ai_platform.investment.market.structure.swing_history import SwingHistory
+from enterprise_ai_platform.investment.market.structure.trend_classifier import TrendClassifier
+from enterprise_ai_platform.investment.market.structure.trend_engine import TrendEngine
+from enterprise_ai_platform.investment.market.structure.trend_strength import TrendStrengthAnalyzer
+from enterprise_ai_platform.investment.market.structure.trend_transition import TrendTransitionDetector
 from tests.unit.investment.market.structure.conftest import (
     make_downtrend_bars,
     make_range_bars,
@@ -107,16 +107,16 @@ class TestMarketPhaseDetector:
     def test_markup_after_uptrend(self):
         bars = make_uptrend_bars(n=60)
         detector = MarketPhaseDetector(lookback=20)
-        from iios.investment.market.structure.swing_history import SwingHistory
-        from iios.investment.market.structure.swing_detector import SwingDetector
+        from enterprise_ai_platform.investment.market.structure.swing_history import SwingHistory
+        from enterprise_ai_platform.investment.market.structure.swing_detector import SwingDetector
         hist = SwingHistory()
         swings = SwingDetector().detect_all(bars)
         for sw in swings:
             hist.add(sw)
-        from iios.investment.market.structure.trend_engine import TrendEngine
-        from iios.investment.market.structure.trend_classifier import TrendClassifier
-        from iios.investment.market.structure.trend_strength import TrendStrengthAnalyzer
-        from iios.investment.market.structure.trend_transition import TrendTransitionDetector
+        from enterprise_ai_platform.investment.market.structure.trend_engine import TrendEngine
+        from enterprise_ai_platform.investment.market.structure.trend_classifier import TrendClassifier
+        from enterprise_ai_platform.investment.market.structure.trend_strength import TrendStrengthAnalyzer
+        from enterprise_ai_platform.investment.market.structure.trend_transition import TrendTransitionDetector
         engine = TrendEngine(hist, TrendClassifier(), TrendStrengthAnalyzer(), TrendTransitionDetector())
         trend = engine.update(bars)
         seq = hist.get_sequence()
@@ -127,8 +127,8 @@ class TestMarketPhaseDetector:
         from tests.unit.investment.market.structure.conftest import make_compression_bars
         bars = make_compression_bars(n=30)
         detector = MarketPhaseDetector(lookback=20)
-        from iios.investment.market.structure.models import TrendState, TrendPhase
-        from iios.investment.market.market_constants import MarketStrength, TrendDirection
+        from enterprise_ai_platform.investment.market.structure.models import TrendState, TrendPhase
+        from enterprise_ai_platform.investment.market.market_constants import MarketStrength, TrendDirection
         trend = TrendState(
             direction=TrendDirection.SIDEWAYS,
             strength=MarketStrength.NEUTRAL,
@@ -137,7 +137,7 @@ class TestMarketPhaseDetector:
             correction_depth=0.0, start_index=0, start_price=100.0,
             last_swing_index=0, last_swing_price=100.0, confirmed=False,
         )
-        from iios.investment.market.structure.models import SwingSequence
+        from enterprise_ai_platform.investment.market.structure.models import SwingSequence
         phase = detector.detect(bars, trend, SwingSequence())
         assert phase in (StructurePhase.COMPRESSION, StructurePhase.ACCUMULATION,
                          StructurePhase.CONTRACTION)

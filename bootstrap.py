@@ -7,7 +7,7 @@ IIOS Bootstrap Verification Script
 Pre-implementation readiness check. Verifies the repository is correctly
 structured and the environment is configured before Wave 1 development begins.
 
-This is NOT the production 45-stage bootstrap (see iios/bootstrap/).
+This is NOT the production 45-stage bootstrap (see enterprise_ai_platform/bootstrap/).
 This is a developer-facing verification tool.
 
 Usage:
@@ -47,9 +47,9 @@ def check_python_version() -> Check:
 
 def check_iios_package() -> Check:
     try:
-        import iios
+        import enterprise_ai_platform
 
-        return Check("iios_package", True, f"v{iios.__version__} status={iios.__status__}")
+        return Check("iios_package", True, f"v{enterprise_ai_platform.__version__} status={enterprise_ai_platform.__status__}")
     except ImportError as exc:
         return Check(
             "iios_package",
@@ -92,13 +92,13 @@ def _try_import(module: str) -> str | None:
 def check_directory_structure() -> Check:
     base = Path(__file__).parent
     required = [
-        "iios",
-        "iios/core",
-        "iios/infrastructure",
-        "iios/knowledge",
-        "iios/reasoning",
-        "iios/risk",
-        "iios/execution",
+        "enterprise_ai_platform",
+        "enterprise_ai_platform/core",
+        "enterprise_ai_platform/infrastructure",
+        "enterprise_ai_platform/knowledge",
+        "enterprise_ai_platform/reasoning",
+        "enterprise_ai_platform/risk",
+        "enterprise_ai_platform/execution",
         "tests",
         "tests/unit",
         "tests/integration",
@@ -113,13 +113,13 @@ def check_directory_structure() -> Check:
 
 
 def check_iios_packages_init() -> Check:
-    """Spot-check that key iios sub-packages have __init__.py."""
+    """Spot-check that key enterprise_ai_platform sub-packages have __init__.py."""
     base = Path(__file__).parent
     packages = [
-        "iios/__init__.py",
-        "iios/core/__init__.py",
-        "iios/infrastructure/__init__.py",
-        "iios/knowledge/__init__.py",
+        "enterprise_ai_platform/__init__.py",
+        "enterprise_ai_platform/core/__init__.py",
+        "enterprise_ai_platform/infrastructure/__init__.py",
+        "enterprise_ai_platform/knowledge/__init__.py",
     ]
     missing = [p for p in packages if not (base / p).exists()]
     if missing:

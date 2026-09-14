@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.liquidity_confidence import LiquidityConfidenceCalculator
-from iios.investment.market.liquidity.volume_quality import VolumeQualityScorer
-from iios.investment.market.liquidity.liquidity_statistics import LiquidityStatistics, VolumeLiquidityStats
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.liquidity.liquidity_confidence import LiquidityConfidenceCalculator
+from enterprise_ai_platform.investment.market.liquidity.volume_quality import VolumeQualityScorer
+from enterprise_ai_platform.investment.market.liquidity.liquidity_statistics import LiquidityStatistics, VolumeLiquidityStats
+from enterprise_ai_platform.investment.market.liquidity.models import (
     LiquidityProfile, ParticipationSnapshot, OrderFlowSnapshot, ParticipationBias,
     LiquidityEventType, LiquidityEvent, VolumeLiquiditySnapshot,
     VolumeBar, VolumeProfile, EffortResultAnalysis, EffortResultType,
     VolumeLevel, VolumeTrend,
 )
-from iios.investment.market.liquidity.volume_statistics import VolumeStatistics
+from enterprise_ai_platform.investment.market.liquidity.volume_statistics import VolumeStatistics
 from tests.unit.investment.market.liquidity.conftest import (
     make_bar, make_volume_bar, make_bars,
 )
@@ -220,7 +220,7 @@ class TestLiquidityStatistics:
             recent_avg=100_000.0, volume_trend=VolumeTrend.STABLE,
             up_volume=50_000.0, down_volume=50_000.0, up_down_ratio=1.0,
         )
-        from iios.investment.market.regime.models import RegimeType
+        from enterprise_ai_platform.investment.market.regime.models import RegimeType
         return VolumeLiquiditySnapshot(
             symbol="TEST", timeframe="1d", bar_index=0,
             volume_bar=vbar, volume_profile=vp,

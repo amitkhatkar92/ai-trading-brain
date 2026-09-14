@@ -7,17 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.coverage_monitor import (
+from enterprise_ai_platform.investment.portfolio.integration.coverage_monitor import (
     CoverageMonitor,
 )
-from iios.investment.portfolio.integration.dependency_monitor import DependencyMonitor
-from iios.investment.portfolio.integration.engine_health import EngineHealthMonitor
-from iios.investment.portfolio.integration.health_monitor import IntegrationHealthMonitor
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.dependency_monitor import DependencyMonitor
+from enterprise_ai_platform.investment.portfolio.integration.engine_health import EngineHealthMonitor
+from enterprise_ai_platform.investment.portfolio.integration.health_monitor import IntegrationHealthMonitor
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     EngineId, HealthStatus, REQUIRED_ENGINES,
 )
-from iios.investment.portfolio.integration.quality_history import QualityHistory
-from iios.investment.portfolio.integration.quality_statistics import (
+from enterprise_ai_platform.investment.portfolio.integration.quality_history import QualityHistory
+from enterprise_ai_platform.investment.portfolio.integration.quality_statistics import (
     QualityRunMetric, QualityStatistics,
 )
 

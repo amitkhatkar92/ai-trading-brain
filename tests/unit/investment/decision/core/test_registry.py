@@ -5,22 +5,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.core.decision_catalog import CatalogEntry, DecisionCatalog
-from iios.investment.decision.core.decision_configuration import DecisionConfiguration
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_catalog import CatalogEntry, DecisionCatalog
+from enterprise_ai_platform.investment.decision.core.decision_configuration import DecisionConfiguration
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     DecisionType,
     EnvironmentProfile,
 )
-from iios.investment.decision.core.decision_context import make_context
-from iios.investment.decision.core.decision_events import EventDispatcher
-from iios.investment.decision.core.decision_factory import DecisionFactory
-from iios.investment.decision.core.decision_loader import DecisionLoader
-from iios.investment.decision.core.decision_registry import (
+from enterprise_ai_platform.investment.decision.core.decision_context import make_context
+from enterprise_ai_platform.investment.decision.core.decision_events import EventDispatcher
+from enterprise_ai_platform.investment.decision.core.decision_factory import DecisionFactory
+from enterprise_ai_platform.investment.decision.core.decision_loader import DecisionLoader
+from enterprise_ai_platform.investment.decision.core.decision_registry import (
     DecisionRegistry,
     DuplicateDecisionTypeError,
     UnknownDecisionTypeError,
 )
-from iios.investment.decision.core.decision_types import get_descriptor
+from enterprise_ai_platform.investment.decision.core.decision_types import get_descriptor
 from tests.unit.investment.decision.core.conftest import SimpleBuyDecision, RejectedDecision
 
 

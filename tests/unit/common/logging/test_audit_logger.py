@@ -10,14 +10,14 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.common.logging.audit_logger import (
+from enterprise_ai_platform.common.logging.audit_logger import (
     AuditEventType,
     AuditLogger,
     AuditRecord,
     get_audit_logger,
 )
-from iios.common.logging.logging_context import LoggingContext
-from iios.common.logging.structured_logger import JsonFormatter
+from enterprise_ai_platform.common.logging.logging_context import LoggingContext
+from enterprise_ai_platform.common.logging.structured_logger import JsonFormatter
 
 
 @pytest.fixture(autouse=True)
@@ -101,9 +101,9 @@ class TestAuditRecord:
 class TestLifecycleEvent:
 
     def test_emits_lifecycle_event_type(self):
-        al = AuditLogger("test.lifecycle", engine_id="iios:test", component="test")
+        al = AuditLogger("test.lifecycle", engine_id="enterprise_ai_platform:test", component="test")
         buf = _attach_capture(al)
-        al.log_lifecycle_event("iios:test", "INITIALIZED", "RUNNING", "1.0.0")
+        al.log_lifecycle_event("enterprise_ai_platform:test", "INITIALIZED", "RUNNING", "1.0.0")
         records = _records(buf)
         assert records, "No log output"
         ctx = records[0].get("context", {})

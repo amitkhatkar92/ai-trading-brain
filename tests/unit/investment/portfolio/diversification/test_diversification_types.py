@@ -2,7 +2,7 @@
 import math
 import pytest
 
-from iios.investment.portfolio.diversification.diversification_types import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import (
     AlertSeverity, ConcentrationLevel, DiversificationGrade, DiversificationStatus,
     PositionData, TrendDirection,
     compute_entropy, compute_hhi, effective_n, hhi_to_concentration_level,

@@ -6,19 +6,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     ConflictSeverity,
     ConflictType,
     IntelligenceSource,
     QualityDimension,
     ResolutionStrategy,
 )
-from iios.investment.strategy.integration.quality_history import QualityHistory
-from iios.investment.strategy.integration.quality_statistics import QualityStatisticsTracker
-from iios.investment.strategy.integration.strategy_confidence import ConfidenceCalculator
-from iios.investment.strategy.integration.strategy_quality import QualityFramework
-from iios.investment.strategy.integration.conflict_classifier import Conflict
+from enterprise_ai_platform.investment.strategy.integration.quality_history import QualityHistory
+from enterprise_ai_platform.investment.strategy.integration.quality_statistics import QualityStatisticsTracker
+from enterprise_ai_platform.investment.strategy.integration.strategy_confidence import ConfidenceCalculator
+from enterprise_ai_platform.investment.strategy.integration.strategy_quality import QualityFramework
+from enterprise_ai_platform.investment.strategy.integration.conflict_classifier import Conflict
 from tests.unit.investment.strategy.integration.conftest import (
     make_eval_update,
     make_risk_update,

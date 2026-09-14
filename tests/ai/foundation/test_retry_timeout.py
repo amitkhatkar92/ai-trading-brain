@@ -14,7 +14,7 @@ from __future__ import annotations
 import time
 import unittest
 
-from iios.ai.foundation.retry import (
+from enterprise_ai_platform.ai.foundation.retry import (
     RetryClassification,
     RetryPolicy,
     RetryManager,
@@ -22,7 +22,7 @@ from iios.ai.foundation.retry import (
     ExponentialBackoffStrategy,
     FixedDelayStrategy,
 )
-from iios.ai.foundation.timeout import (
+from enterprise_ai_platform.ai.foundation.timeout import (
     TimeoutPolicy,
     ExecutionDeadline,
     TimeoutController,

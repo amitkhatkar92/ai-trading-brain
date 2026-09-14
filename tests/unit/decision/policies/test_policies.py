@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.decision.policies import (
+from enterprise_ai_platform.decision.policies import (
     ConflictResolutionStrategy,
     DecisionPolicy,
     DecisionPolicyChain,
@@ -61,7 +61,7 @@ from iios.decision.policies import (
     make_policy_rejected,
     make_policy_validated,
 )
-from iios.decision.policies.decision_policy_rule import PolicyRule
+from enterprise_ai_platform.decision.policies.decision_policy_rule import PolicyRule
 
 
 # ---------------------------------------------------------------------------
@@ -939,7 +939,7 @@ class TestDecisionPolicyHistory:
         assert h.latest_event() is e
 
     def test_record_and_retrieve_response(self):
-        from iios.decision.policies import DecisionPolicyResponse
+        from enterprise_ai_platform.decision.policies import DecisionPolicyResponse
         h = DecisionPolicyHistory()
         r = DecisionPolicyResponse.failure("r1", "d1", "err")
         h.record_response(r)
@@ -1394,38 +1394,38 @@ class TestRegressionContracts:
         assert len(PolicyValidationCode) == 6
 
     def test_action_precedence_complete(self):
-        from iios.decision.policies import ACTION_PRECEDENCE
+        from enterprise_ai_platform.decision.policies import ACTION_PRECEDENCE
         assert len(ACTION_PRECEDENCE) == 7
         for action in PolicyAction:
             assert action in ACTION_PRECEDENCE
 
     def test_deny_actions_are_block_and_reject(self):
-        from iios.decision.policies import DENY_ACTIONS
+        from enterprise_ai_platform.decision.policies import DENY_ACTIONS
         assert PolicyAction.BLOCK  in DENY_ACTIONS
         assert PolicyAction.REJECT in DENY_ACTIONS
 
     def test_approval_actions_include_conditional(self):
-        from iios.decision.policies import APPROVAL_ACTIONS
+        from enterprise_ai_platform.decision.policies import APPROVAL_ACTIONS
         assert PolicyAction.APPROVE                 in APPROVAL_ACTIONS
         assert PolicyAction.APPROVE_WITH_CONDITIONS in APPROVAL_ACTIONS
 
     def test_escalation_actions_include_manual_review(self):
-        from iios.decision.policies import ESCALATION_ACTIONS
+        from enterprise_ai_platform.decision.policies import ESCALATION_ACTIONS
         assert PolicyAction.ESCALATE               in ESCALATION_ACTIONS
         assert PolicyAction.REQUIRE_MANUAL_REVIEW  in ESCALATION_ACTIONS
 
     def test_engine_system_id(self):
-        assert DecisionPolicyEngine.SYSTEM_ID == "iios:decision:policies"
+        assert DecisionPolicyEngine.SYSTEM_ID == "enterprise_ai_platform:decision:policies"
 
     def test_failure_response_is_blocked(self):
-        from iios.decision.policies import DecisionPolicyResponse
+        from enterprise_ai_platform.decision.policies import DecisionPolicyResponse
         r = DecisionPolicyResponse.failure("r1", "d1", "oops")
         assert r.is_success is False
         assert r.action     == PolicyAction.BLOCK
         assert r.error      == "oops"
 
     def test_summary_properties(self):
-        from iios.decision.policies import APPROVAL_ACTIONS
+        from enterprise_ai_platform.decision.policies import APPROVAL_ACTIONS
         s = PolicyEvaluationSummary(
             summary_id                   = "s1",
             request_id                   = "r1",

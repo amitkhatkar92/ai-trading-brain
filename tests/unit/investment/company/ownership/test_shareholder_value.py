@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.value_creation import ShareholderValueEngine
-from iios.investment.company.ownership.ownership_profile import (
+from enterprise_ai_platform.investment.company.ownership.value_creation import ShareholderValueEngine
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import (
     ShareholderValueProfile, ShareholderValueLabel,
 )
-from iios.investment.company.ownership.economic_return import (
+from enterprise_ai_platform.investment.company.ownership.economic_return import (
     score_economic_value_added,
     score_earnings_power,
     score_growth_value,
 )
-from iios.investment.company.ownership.capital_productivity import (
+from enterprise_ai_platform.investment.company.ownership.capital_productivity import (
     score_capital_productivity, score_reinvestment_effectiveness,
 )
 

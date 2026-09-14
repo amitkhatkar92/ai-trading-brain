@@ -7,7 +7,7 @@ in different files under oios/.
 
 WHY THIS EXISTS
 ----------------
-The sibling platform (iios/) already suffered exactly this bug: two different
+The sibling platform (enterprise_ai_platform/) already suffered exactly this bug: two different
 files each defined a class named `AIPolicyViolationError`, so an
 `except AIPolicyViolationError` in one module silently failed to catch the
 other module's instance (documented in AI_PLATFORM_ARCHITECTURE_AUDIT_V1.md,
@@ -115,7 +115,7 @@ def main() -> int:
     print(
         "\nA class name defined in two different files means `except <Name>` or "
         "`isinstance(x, <Name>)` in one module can silently miss the other "
-        "module's instances (this exact bug already occurred once in iios/ — "
+        "module's instances (this exact bug already occurred once in enterprise_ai_platform/ — "
         "see AI_PLATFORM_ARCHITECTURE_AUDIT_V1.md). Rename one of the classes, "
         "consolidate them with an explicit alias, or add it to "
         "scripts/oios_duplicate_symbols_baseline.json if reviewed and accepted."

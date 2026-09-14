@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.diversification.diversification_types import PositionData
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import PositionData
 
 
 # ---------------------------------------------------------------------------

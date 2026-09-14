@@ -6,18 +6,18 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.core.configuration_engine import ConfigurationEngine
-from iios.investment.decision.core.decision_configuration import DecisionConfiguration
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.configuration_engine import ConfigurationEngine
+from enterprise_ai_platform.investment.decision.core.decision_configuration import DecisionConfiguration
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     DecisionEventType,
     DecisionFrameworkStatus,
     DecisionStatus,
     DecisionType,
     EnvironmentProfile,
 )
-from iios.investment.decision.core.decision_context import make_context
-from iios.investment.decision.core.decision_framework import DecisionFramework
-from iios.investment.decision.core.decision_registry import DecisionRegistry
+from enterprise_ai_platform.investment.decision.core.decision_context import make_context
+from enterprise_ai_platform.investment.decision.core.decision_framework import DecisionFramework
+from enterprise_ai_platform.investment.decision.core.decision_registry import DecisionRegistry
 from tests.unit.investment.decision.core.conftest import (
     FailingDecision,
     RejectedDecision,

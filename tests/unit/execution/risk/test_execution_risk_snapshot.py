@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.risk.snapshot import (
+from enterprise_ai_platform.execution.risk.snapshot import (
     AuditMetadata,
     DuplicateSnapshotError,
     ExecutionRiskSnapshot,
@@ -208,7 +208,7 @@ def _build_snapshot(
 
 class TestConstants:
     def test_snapshot_system_id_prefix(self):
-        assert SNAPSHOT_SYSTEM_ID.startswith("iios:")
+        assert SNAPSHOT_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_snapshot_version(self):
         assert SNAPSHOT_VERSION == "1.0.0"
@@ -252,7 +252,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionRiskSnapshotError, IIOSError)
 
     def test_all_subclass_base(self):

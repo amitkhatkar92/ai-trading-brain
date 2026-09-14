@@ -21,7 +21,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.supervisor.engine import (
+from enterprise_ai_platform.supervisor.engine import (
     # Primary interface
     SupervisorEngine,
     # Value objects
@@ -131,7 +131,7 @@ class TestConstants:
         assert isinstance(SCHEMA_VERSION, str) and SCHEMA_VERSION
 
     def test_engine_system_id(self):
-        assert ENGINE_SYSTEM_ID == "iios:supervisor:engine"
+        assert ENGINE_SYSTEM_ID == "enterprise_ai_platform:supervisor:engine"
 
     def test_engine_state_count(self):
         assert len(EngineState) == 12
@@ -197,7 +197,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(SupervisorEngineError, IIOSError)
 
     def test_not_running_code(self):

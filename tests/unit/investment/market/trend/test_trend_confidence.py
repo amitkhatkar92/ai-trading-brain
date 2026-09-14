@@ -4,9 +4,9 @@ Tests for TrendConfidenceCalculator and TrendScorer.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.trend.trend_confidence import TrendConfidenceCalculator
-from iios.investment.market.trend.trend_score import TrendScorer
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.trend_confidence import TrendConfidenceCalculator
+from enterprise_ai_platform.investment.market.trend.trend_score import TrendScorer
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendQualityMetrics,
     TrendMomentumState,

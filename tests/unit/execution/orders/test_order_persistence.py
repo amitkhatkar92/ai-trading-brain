@@ -34,7 +34,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.oms.persistence import (
+from enterprise_ai_platform.execution.oms.persistence import (
     DEFAULT_MAX_REPOSITORIES,
     DEFAULT_SAVE_TTL_SEC,
     DEFAULT_SEARCH_LIMIT,
@@ -134,7 +134,7 @@ def _ctx(op: OperationType = OperationType.SAVE) -> RepositoryContext:
 
 class TestConstants:
     def test_system_id(self):
-        assert PERSISTENCE_SYSTEM_ID.startswith("iios:")
+        assert PERSISTENCE_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -515,7 +515,7 @@ class TestRepositoryContext:
     def test_defaults(self):
         ctx = RepositoryContext()
         assert ctx.operation == OperationType.SAVE
-        assert ctx.requester == "iios:system"
+        assert ctx.requester == "enterprise_ai_platform:system"
 
     def test_frozen(self):
         ctx = RepositoryContext()
@@ -1644,7 +1644,7 @@ class TestRepositoryManager:
     def test_stop_also_stops_registry(self):
         manager, _, _ = _started_manager()
         manager.stop()
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         assert manager._registry.lifecycle_state() == EngineState.STOPPED
 
 

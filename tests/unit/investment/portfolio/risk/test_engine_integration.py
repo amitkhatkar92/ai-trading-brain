@@ -3,12 +3,12 @@
 End-to-end integration tests for PortfolioRiskEngine.
 """
 import pytest
-from iios.investment.portfolio.risk.portfolio_risk_engine import (
+from enterprise_ai_platform.investment.portfolio.risk.portfolio_risk_engine import (
     MonitoringReport, PortfolioRiskEngine, RiskIntegrationRefs,
 )
-from iios.investment.portfolio.risk.portfolio_risk_profile import PortfolioRiskProfile
-from iios.investment.portfolio.risk.portfolio_risk_score import RiskScoreCalculator
-from iios.investment.portfolio.risk.risk_quality import RiskQualityAssessor
+from enterprise_ai_platform.investment.portfolio.risk.portfolio_risk_profile import PortfolioRiskProfile
+from enterprise_ai_platform.investment.portfolio.risk.portfolio_risk_score import RiskScoreCalculator
+from enterprise_ai_platform.investment.portfolio.risk.risk_quality import RiskQualityAssessor
 
 
 # ── Lifecycle ─────────────────────────────────────────────────────────────
@@ -85,7 +85,7 @@ def test_evaluate_n_positions(mock_plan_diverse, positions_5_diverse):
 
 
 def test_evaluate_risk_grade_valid(mock_plan_diverse):
-    from iios.investment.portfolio.risk.risk_types import RiskGrade
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskGrade
     engine = PortfolioRiskEngine()
     profile = engine.evaluate("p1", mock_plan_diverse)
     assert profile.risk_grade in [g.value for g in RiskGrade]

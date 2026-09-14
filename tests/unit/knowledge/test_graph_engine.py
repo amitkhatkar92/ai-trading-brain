@@ -16,15 +16,15 @@ import pytest
 # ---------------------------------------------------------------------------
 
 def _reset_all() -> None:
-    from iios.knowledge.graph.graph_manager  import reset_graph_manager
-    from iios.knowledge.graph.graph_engine   import reset_graph_engine
-    from iios.knowledge.graph.graph_registry import reset_graph_registry
-    from iios.knowledge.graph.graph_context  import reset_graph_context
-    from iios.knowledge.graph.storage.graph_repository import reset_graph_repository
-    from iios.knowledge.graph.storage.graph_index      import reset_graph_index
-    from iios.knowledge.graph.storage.graph_cache      import reset_graph_cache
-    from iios.knowledge.graph.storage.graph_storage    import reset_graph_storage
-    import iios.knowledge.graph.graph_factory as _f
+    from enterprise_ai_platform.knowledge.graph.graph_manager  import reset_graph_manager
+    from enterprise_ai_platform.knowledge.graph.graph_engine   import reset_graph_engine
+    from enterprise_ai_platform.knowledge.graph.graph_registry import reset_graph_registry
+    from enterprise_ai_platform.knowledge.graph.graph_context  import reset_graph_context
+    from enterprise_ai_platform.knowledge.graph.storage.graph_repository import reset_graph_repository
+    from enterprise_ai_platform.knowledge.graph.storage.graph_index      import reset_graph_index
+    from enterprise_ai_platform.knowledge.graph.storage.graph_cache      import reset_graph_cache
+    from enterprise_ai_platform.knowledge.graph.storage.graph_storage    import reset_graph_storage
+    import enterprise_ai_platform.knowledge.graph.graph_factory as _f
 
     reset_graph_manager()
     reset_graph_engine()
@@ -38,29 +38,29 @@ def _reset_all() -> None:
 
 
 def _gm():
-    from iios.knowledge.graph.graph_manager import get_graph_manager
+    from enterprise_ai_platform.knowledge.graph.graph_manager import get_graph_manager
     return get_graph_manager()
 
 
 def _factory():
-    from iios.knowledge.graph.graph_factory import get_graph_factory
+    from enterprise_ai_platform.knowledge.graph.graph_factory import get_graph_factory
     return get_graph_factory()
 
 
 def _make_node(label: str = "Test Node", **kwargs):
-    from iios.knowledge.graph.graph_constants import GraphNodeType
+    from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
     return _factory().create_node(label=label, node_type=GraphNodeType.ENTITY, **kwargs)
 
 
 def _make_edge(src: str, tgt: str, **kwargs):
-    from iios.knowledge.graph.graph_constants import GraphEdgeType
+    from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
     return _factory().create_edge(source_id=src, target_id=tgt,
                                    edge_type=GraphEdgeType.RELATED_TO, **kwargs)
 
 
 def _add_chain(gm, n: int):
     """Add n nodes in a linear chain and return their IDs in order."""
-    from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+    from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
     nodes = [gm.create_node(f"Node{i}", GraphNodeType.ENTITY) for i in range(n)]
     for i in range(n - 1):
         gm.connect(nodes[i].node_id, nodes[i + 1].node_id, GraphEdgeType.DEPENDS_ON)
@@ -75,20 +75,20 @@ class TestGraphMetadata:
     def setup_method(self): _reset_all()
 
     def test_defaults(self):
-        from iios.knowledge.graph.models.graph_metadata import GraphMetadata
-        from iios.knowledge.graph.graph_constants import SYSTEM_GRAPH_ACTOR
+        from enterprise_ai_platform.knowledge.graph.models.graph_metadata import GraphMetadata
+        from enterprise_ai_platform.knowledge.graph.graph_constants import SYSTEM_GRAPH_ACTOR
         m = GraphMetadata()
         assert m.owner_id == SYSTEM_GRAPH_ACTOR
 
     def test_add_tag(self):
-        from iios.knowledge.graph.models.graph_metadata import GraphMetadata
+        from enterprise_ai_platform.knowledge.graph.models.graph_metadata import GraphMetadata
         m = GraphMetadata()
         m.add_tag("equity")
         assert m.has_tag("equity")
 
     def test_touch_updates_timestamp(self):
         import time
-        from iios.knowledge.graph.models.graph_metadata import GraphMetadata
+        from enterprise_ai_platform.knowledge.graph.models.graph_metadata import GraphMetadata
         m = GraphMetadata()
         before = m.updated_at
         time.sleep(0.001)
@@ -96,7 +96,7 @@ class TestGraphMetadata:
         assert m.updated_at >= before
 
     def test_roundtrip(self):
-        from iios.knowledge.graph.models.graph_metadata import GraphMetadata
+        from enterprise_ai_platform.knowledge.graph.models.graph_metadata import GraphMetadata
         m = GraphMetadata(description="test", tags=["a"])
         m2 = GraphMetadata.from_dict(m.to_dict())
         assert m2.description == "test"
@@ -111,43 +111,43 @@ class TestGraphNode:
     def setup_method(self): _reset_all()
 
     def test_new(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         n = GraphNode.new("NIFTY 50", GraphNodeType.MARKET)
-        assert "iios.graph" in n.node_id
+        assert "enterprise_ai_platform.graph" in n.node_id
         assert n.label == "NIFTY 50"
 
     def test_is_active_default(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         n = GraphNode.new("test", GraphNodeType.ENTITY)
         assert n.is_active
 
     def test_deactivate(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
         n = GraphNode.new("test", GraphNodeType.ENTITY)
         n.deactivate()
         assert n.status == NodeStatus.INACTIVE
         assert not n.is_active
 
     def test_archive(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
         n = GraphNode.new("test", GraphNodeType.ENTITY)
         n.archive()
         assert n.status == NodeStatus.ARCHIVED
 
     def test_merge(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
         n = GraphNode.new("test", GraphNodeType.ENTITY)
         n.merge()
         assert n.status == NodeStatus.MERGED
 
     def test_to_dict_roundtrip(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         n = GraphNode.new("roundtrip", GraphNodeType.KNOWLEDGE)
         d = n.to_dict()
         n2 = GraphNode.from_dict(d)
@@ -155,8 +155,8 @@ class TestGraphNode:
         assert n2.label == n.label
 
     def test_set_get_property(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         n = GraphNode.new("props", GraphNodeType.ENTITY)
         n.set_property("sector", "banking")
         assert n.get_property("sector") == "banking"
@@ -171,30 +171,30 @@ class TestGraphEdge:
     def setup_method(self): _reset_all()
 
     def test_new(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         e = GraphEdge.new("src", "tgt", GraphEdgeType.DEPENDS_ON)
         assert "edge" in e.edge_id
         assert e.is_active
 
     def test_is_active_respects_deleted(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         e = GraphEdge.new("s", "t", GraphEdgeType.SUPPORTS)
         e.is_deleted = True
         assert not e.is_active
 
     def test_expire(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         e = GraphEdge.new("s", "t", GraphEdgeType.TRIGGERS)
         e.expire()
         assert e.is_expired
         assert not e.is_active
 
     def test_set_weight_clamped(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         e = GraphEdge.new("s", "t", GraphEdgeType.RELATED_TO)
         e.set_weight(5.0)
         assert e.weight == 1.0
@@ -202,16 +202,16 @@ class TestGraphEdge:
         assert e.weight == 0.0
 
     def test_to_dict_roundtrip(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         e = GraphEdge.new("s", "t", GraphEdgeType.CAUSES)
         e2 = GraphEdge.from_dict(e.to_dict())
         assert e2.edge_id == e.edge_id
         assert e2.edge_type == e.edge_type
 
     def test_deactivate(self):
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphEdgeType, EdgeStatus
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType, EdgeStatus
         e = GraphEdge.new("s", "t", GraphEdgeType.RELATED_TO)
         e.deactivate()
         assert e.status == EdgeStatus.INACTIVE
@@ -225,7 +225,7 @@ class TestGraphPath:
     def setup_method(self): _reset_all()
 
     def test_node_ids(self):
-        from iios.knowledge.graph.models.graph_path import GraphPath, PathStep
+        from enterprise_ai_platform.knowledge.graph.models.graph_path import GraphPath, PathStep
         p = GraphPath(
             source_id="a", target_id="c",
             steps=[PathStep("a", depth=0), PathStep("b", depth=1), PathStep("c", depth=2)],
@@ -233,7 +233,7 @@ class TestGraphPath:
         assert p.node_ids == ["a", "b", "c"]
 
     def test_total_depth(self):
-        from iios.knowledge.graph.models.graph_path import GraphPath, PathStep
+        from enterprise_ai_platform.knowledge.graph.models.graph_path import GraphPath, PathStep
         p = GraphPath(
             source_id="a", target_id="b",
             steps=[PathStep("a"), PathStep("b")],
@@ -241,7 +241,7 @@ class TestGraphPath:
         assert p.total_depth == 1
 
     def test_is_valid(self):
-        from iios.knowledge.graph.models.graph_path import GraphPath, PathStep
+        from enterprise_ai_platform.knowledge.graph.models.graph_path import GraphPath, PathStep
         p = GraphPath(
             source_id="a", target_id="c",
             steps=[PathStep("a"), PathStep("b"), PathStep("c")],
@@ -249,7 +249,7 @@ class TestGraphPath:
         assert p.is_valid
 
     def test_to_dict(self):
-        from iios.knowledge.graph.models.graph_path import GraphPath, PathStep
+        from enterprise_ai_platform.knowledge.graph.models.graph_path import GraphPath, PathStep
         p = GraphPath(
             source_id="x", target_id="y",
             steps=[PathStep("x"), PathStep("y")],
@@ -268,12 +268,12 @@ class TestGraphCluster:
     def setup_method(self): _reset_all()
 
     def test_new(self):
-        from iios.knowledge.graph.models.graph_cluster import GraphCluster
+        from enterprise_ai_platform.knowledge.graph.models.graph_cluster import GraphCluster
         c = GraphCluster.new("test-cluster", {"a", "b", "c"})
         assert c.size == 3
 
     def test_add_remove_node(self):
-        from iios.knowledge.graph.models.graph_cluster import GraphCluster
+        from enterprise_ai_platform.knowledge.graph.models.graph_cluster import GraphCluster
         c = GraphCluster.new("c")
         c.add_node("x")
         assert c.contains("x")
@@ -281,14 +281,14 @@ class TestGraphCluster:
         assert not c.contains("x")
 
     def test_merge_clusters(self):
-        from iios.knowledge.graph.models.graph_cluster import GraphCluster
+        from enterprise_ai_platform.knowledge.graph.models.graph_cluster import GraphCluster
         c1 = GraphCluster.new("a", {"1", "2"})
         c2 = GraphCluster.new("b", {"3", "4"})
         merged = c1.merge_with(c2)
         assert merged.size == 4
 
     def test_roundtrip(self):
-        from iios.knowledge.graph.models.graph_cluster import GraphCluster
+        from enterprise_ai_platform.knowledge.graph.models.graph_cluster import GraphCluster
         c = GraphCluster.new("cluster", {"n1", "n2"})
         c2 = GraphCluster.from_dict(c.to_dict())
         assert c2.size == 2
@@ -302,15 +302,15 @@ class TestGraphSubgraph:
     def setup_method(self): _reset_all()
 
     def test_new_empty(self):
-        from iios.knowledge.graph.models.graph_subgraph import GraphSubgraph
+        from enterprise_ai_platform.knowledge.graph.models.graph_subgraph import GraphSubgraph
         sg = GraphSubgraph.new("test-sg")
         assert sg.node_count == 0
         assert sg.edge_count == 0
 
     def test_add_node(self):
-        from iios.knowledge.graph.models.graph_subgraph import GraphSubgraph
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_subgraph import GraphSubgraph
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         sg = GraphSubgraph.new("sg")
         n = GraphNode.new("n1", GraphNodeType.ENTITY)
         sg.add_node(n)
@@ -318,10 +318,10 @@ class TestGraphSubgraph:
         assert sg.get_node(n.node_id) is not None
 
     def test_add_edge_and_query(self):
-        from iios.knowledge.graph.models.graph_subgraph import GraphSubgraph
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.models.graph_edge import GraphEdge
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_subgraph import GraphSubgraph
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.models.graph_edge import GraphEdge
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         sg = GraphSubgraph.new("sg")
         n1 = GraphNode.new("a", GraphNodeType.ENTITY)
         n2 = GraphNode.new("b", GraphNodeType.ENTITY)
@@ -332,7 +332,7 @@ class TestGraphSubgraph:
         assert len(sg.get_edges_from(n1.node_id)) == 1
 
     def test_to_dict_has_keys(self):
-        from iios.knowledge.graph.models.graph_subgraph import GraphSubgraph
+        from enterprise_ai_platform.knowledge.graph.models.graph_subgraph import GraphSubgraph
         sg = GraphSubgraph.new("sg-dict")
         d  = sg.to_dict()
         assert "nodes" in d and "edges" in d
@@ -346,18 +346,18 @@ class TestGraphStatistics:
     def setup_method(self): _reset_all()
 
     def test_to_dict(self):
-        from iios.knowledge.graph.models.graph_statistics import GraphStatistics
+        from enterprise_ai_platform.knowledge.graph.models.graph_statistics import GraphStatistics
         s = GraphStatistics(node_count=5, edge_count=3)
         d = s.to_dict()
         assert d["node_count"] == 5
 
     def test_impact_result(self):
-        from iios.knowledge.graph.models.graph_statistics import ImpactResult
+        from enterprise_ai_platform.knowledge.graph.models.graph_statistics import ImpactResult
         r = ImpactResult(node_id="x", direct_dependents=["a", "b"], transitive_dependents=["a", "b", "c"])
         assert r.total_affected == 3
 
     def test_node_statistics_total_degree(self):
-        from iios.knowledge.graph.models.graph_statistics import NodeStatistics
+        from enterprise_ai_platform.knowledge.graph.models.graph_statistics import NodeStatistics
         ns = NodeStatistics(node_id="x", in_degree=3, out_degree=4)
         assert ns.total_degree == 7
 
@@ -370,7 +370,7 @@ class TestGraphStorageNodes:
     def setup_method(self): _reset_all()
 
     def _store(self):
-        from iios.knowledge.graph.storage.graph_storage import get_graph_storage
+        from enterprise_ai_platform.knowledge.graph.storage.graph_storage import get_graph_storage
         return get_graph_storage()
 
     def test_put_and_get(self):
@@ -381,10 +381,10 @@ class TestGraphStorageNodes:
         assert got.node_id == n.node_id
 
     def test_get_missing_raises(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         s = self._store()
         with pytest.raises(GraphNodeNotFoundError):
-            s.get_node("iios.graph/nonexistent")
+            s.get_node("enterprise_ai_platform.graph/nonexistent")
 
     def test_node_exists(self):
         s = self._store()
@@ -402,7 +402,7 @@ class TestGraphStorageNodes:
         assert got.is_deleted
 
     def test_hard_delete(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         s = self._store()
         n = _make_node()
         s.put_node(n)
@@ -439,7 +439,7 @@ class TestGraphStorageEdges:
     def setup_method(self): _reset_all()
 
     def _store(self):
-        from iios.knowledge.graph.storage.graph_storage import get_graph_storage
+        from enterprise_ai_platform.knowledge.graph.storage.graph_storage import get_graph_storage
         return get_graph_storage()
 
     def test_put_and_get_edge(self):
@@ -470,7 +470,7 @@ class TestGraphStorageEdges:
         assert any(ex.edge_id == e.edge_id for ex in edges)
 
     def test_hard_delete_edge(self):
-        from iios.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
         s = self._store()
         n1 = _make_node("a"); n2 = _make_node("b")
         s.put_node(n1); s.put_node(n2)
@@ -497,11 +497,11 @@ class TestGraphIndex:
     def setup_method(self): _reset_all()
 
     def _index(self):
-        from iios.knowledge.graph.storage.graph_index import get_graph_index
+        from enterprise_ai_platform.knowledge.graph.storage.graph_index import get_graph_index
         return get_graph_index()
 
     def test_index_by_type(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         idx = self._index()
         n = _make_node()
         idx.index_node(n)
@@ -509,8 +509,8 @@ class TestGraphIndex:
         assert n.node_id in ids
 
     def test_index_by_keyword(self):
-        from iios.knowledge.graph.models.graph_node import GraphNode
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         idx = self._index()
         n = GraphNode.new("NIFTY 50 index", GraphNodeType.MARKET)
         idx.index_node(n)
@@ -526,7 +526,7 @@ class TestGraphIndex:
         assert n.node_id in ids
 
     def test_deindex_node(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         idx = self._index()
         n = _make_node()
         idx.index_node(n)
@@ -534,7 +534,7 @@ class TestGraphIndex:
         assert n.node_id not in idx.nodes_by_type(n.node_type)
 
     def test_index_edge_by_type(self):
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         idx = self._index()
         e = _make_edge("src", "tgt")
         idx.index_edge(e)
@@ -544,9 +544,9 @@ class TestGraphIndex:
     def test_knowledge_id_lookup(self):
         idx = self._index()
         n = _make_node()
-        n.knowledge_id = "iios.knowledge/test-id"
+        n.knowledge_id = "enterprise_ai_platform.knowledge/test-id"
         idx.index_node(n)
-        result = idx.node_by_knowledge_id("iios.knowledge/test-id")
+        result = idx.node_by_knowledge_id("enterprise_ai_platform.knowledge/test-id")
         assert result == n.node_id
 
 
@@ -558,7 +558,7 @@ class TestGraphRepositoryNodes:
     def setup_method(self): _reset_all()
 
     def _repo(self):
-        from iios.knowledge.graph.storage.graph_repository import get_graph_repository
+        from enterprise_ai_platform.knowledge.graph.storage.graph_repository import get_graph_repository
         return get_graph_repository()
 
     def test_add_and_get(self):
@@ -569,7 +569,7 @@ class TestGraphRepositoryNodes:
         assert got.node_id == n.node_id
 
     def test_duplicate_raises(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeAlreadyExistsError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeAlreadyExistsError
         repo = self._repo()
         n = _make_node()
         repo.add_node(n)
@@ -585,7 +585,7 @@ class TestGraphRepositoryNodes:
         assert repo.get_node(n.node_id).label == "updated"
 
     def test_delete_soft(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         repo = self._repo()
         n = _make_node()
         repo.add_node(n)
@@ -594,7 +594,7 @@ class TestGraphRepositoryNodes:
             repo.get_node(n.node_id)
 
     def test_delete_hard(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         repo = self._repo()
         n = _make_node()
         repo.add_node(n)
@@ -617,10 +617,10 @@ class TestGraphRepositoryNodes:
         assert added == 5
 
     def test_query_nodes_by_type(self):
-        from iios.knowledge.graph.storage.graph_query import NodeQuery, NodeFilter
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.storage.graph_query import NodeQuery, NodeFilter
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         repo = self._repo()
-        from iios.knowledge.graph.models.graph_node import GraphNode
+        from enterprise_ai_platform.knowledge.graph.models.graph_node import GraphNode
         n = GraphNode.new("signal-node", GraphNodeType.SIGNAL)
         repo.add_node(n)
         result = repo.query_nodes(NodeQuery(filter=NodeFilter(node_types=[GraphNodeType.SIGNAL])))
@@ -635,7 +635,7 @@ class TestGraphRepositoryEdges:
     def setup_method(self): _reset_all()
 
     def _repo(self):
-        from iios.knowledge.graph.storage.graph_repository import get_graph_repository
+        from enterprise_ai_platform.knowledge.graph.storage.graph_repository import get_graph_repository
         return get_graph_repository()
 
     def _pair(self, repo):
@@ -652,15 +652,15 @@ class TestGraphRepositoryEdges:
         assert got.edge_id == e.edge_id
 
     def test_missing_endpoint_raises(self):
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         repo = self._repo()
         n1, _ = self._pair(repo)
-        e = _make_edge(n1.node_id, "iios.graph/ghost")
+        e = _make_edge(n1.node_id, "enterprise_ai_platform.graph/ghost")
         with pytest.raises(GraphNodeNotFoundError):
             repo.add_edge(e)
 
     def test_delete_edge(self):
-        from iios.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
         repo = self._repo()
         n1, n2 = self._pair(repo)
         e = _make_edge(n1.node_id, n2.node_id)
@@ -693,7 +693,7 @@ class TestGraphEngineTraversal:
     def setup_method(self): _reset_all()
 
     def _engine(self):
-        from iios.knowledge.graph.graph_engine import get_graph_engine
+        from enterprise_ai_platform.knowledge.graph.graph_engine import get_graph_engine
         return get_graph_engine()
 
     def test_bfs_chain(self):
@@ -736,7 +736,7 @@ class TestGraphEngineTraversal:
 
     def test_shortest_path_same_node(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         n = gm.create_node("single", GraphNodeType.ENTITY)
         engine = self._engine()
         path = engine.shortest_path(n.node_id, n.node_id)
@@ -745,7 +745,7 @@ class TestGraphEngineTraversal:
 
     def test_shortest_path_no_path(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         a = gm.create_node("isolated-a", GraphNodeType.ENTITY)
         b = gm.create_node("isolated-b", GraphNodeType.ENTITY)
         engine = self._engine()
@@ -769,7 +769,7 @@ class TestGraphEngineAdvanced:
     def setup_method(self): _reset_all()
 
     def _engine(self):
-        from iios.knowledge.graph.graph_engine import get_graph_engine
+        from enterprise_ai_platform.knowledge.graph.graph_engine import get_graph_engine
         return get_graph_engine()
 
     def test_multi_hop(self):
@@ -797,7 +797,7 @@ class TestGraphEngineAdvanced:
 
     def test_cycle_detected(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
         c = gm.create_node("c", GraphNodeType.ENTITY)
@@ -815,7 +815,7 @@ class TestGraphEngineAdvanced:
 
     def test_not_reachable(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         a = gm.create_node("iso-a", GraphNodeType.ENTITY)
         b = gm.create_node("iso-b", GraphNodeType.ENTITY)
         engine = self._engine()
@@ -830,12 +830,12 @@ class TestGraphEngineAnalytics:
     def setup_method(self): _reset_all()
 
     def _engine(self):
-        from iios.knowledge.graph.graph_engine import get_graph_engine
+        from enterprise_ai_platform.knowledge.graph.graph_engine import get_graph_engine
         return get_graph_engine()
 
     def test_degree_centrality_star(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         hub  = gm.create_node("hub", GraphNodeType.ENTITY)
         spokes = [gm.create_node(f"spoke{i}", GraphNodeType.ENTITY) for i in range(4)]
         for s in spokes:
@@ -846,7 +846,7 @@ class TestGraphEngineAnalytics:
 
     def test_connected_components_two(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
         gm.connect(a.node_id, b.node_id, GraphEdgeType.RELATED_TO)
@@ -873,7 +873,7 @@ class TestGraphEngineAnalytics:
 
     def test_node_statistics_degrees(self):
         gm = _gm()
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
         c = gm.create_node("c", GraphNodeType.ENTITY)
@@ -916,20 +916,20 @@ class TestGraphManagerNodes:
     def setup_method(self): _reset_all()
 
     def test_create_and_get(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         n = gm.create_node("BANKNIFTY", GraphNodeType.MARKET)
         got = gm.get_node(n.node_id)
         assert got.label == "BANKNIFTY"
 
     def test_node_exists(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         n = gm.create_node("x", GraphNodeType.ENTITY)
         assert gm.node_exists(n.node_id)
 
     def test_update_node(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         n = gm.create_node("original", GraphNodeType.ENTITY)
         n.label = "modified"
@@ -937,8 +937,8 @@ class TestGraphManagerNodes:
         assert gm.get_node(n.node_id).label == "modified"
 
     def test_delete_node(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
-        from iios.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphNodeNotFoundError
         gm = _gm()
         n = gm.create_node("del-me", GraphNodeType.ENTITY)
         gm.delete_node(n.node_id)
@@ -946,7 +946,7 @@ class TestGraphManagerNodes:
             gm.get_node(n.node_id)
 
     def test_find_by_type(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         gm.create_node("sig1", GraphNodeType.SIGNAL)
         gm.create_node("sig2", GraphNodeType.SIGNAL)
@@ -954,7 +954,7 @@ class TestGraphManagerNodes:
         assert len(result) == 2
 
     def test_node_count(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         before = gm.node_count()
         gm.create_node("n", GraphNodeType.ENTITY)
@@ -967,8 +967,8 @@ class TestGraphManagerNodes:
         assert added == 5
 
     def test_query_by_label_keyword(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
-        from iios.knowledge.graph.storage.graph_query import NodeQuery, NodeFilter
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.storage.graph_query import NodeQuery, NodeFilter
         gm = _gm()
         gm.create_node("NIFTY trend analysis", GraphNodeType.CONCEPT)
         result = gm.query_nodes(NodeQuery(filter=NodeFilter(label_contains="nifty")))
@@ -979,7 +979,7 @@ class TestGraphManagerEdges:
     def setup_method(self): _reset_all()
 
     def test_connect_and_get_edge(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -988,7 +988,7 @@ class TestGraphManagerEdges:
         assert got.weight == 0.8
 
     def test_disconnect(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -997,8 +997,8 @@ class TestGraphManagerEdges:
         assert removed == 1
 
     def test_delete_edge(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
-        from iios.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_exceptions import GraphEdgeNotFoundError
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -1008,7 +1008,7 @@ class TestGraphManagerEdges:
             gm.get_edge(e.edge_id)
 
     def test_edge_count(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -1016,7 +1016,7 @@ class TestGraphManagerEdges:
         assert gm.edge_count() >= 1
 
     def test_bulk_create_edges(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         nodes = [gm.create_node(f"n{i}", GraphNodeType.ENTITY) for i in range(4)]
         edges = [_make_edge(nodes[0].node_id, nodes[i].node_id) for i in range(1, 4)]
@@ -1032,7 +1032,7 @@ class TestGraphManagerOperations:
     def setup_method(self): _reset_all()
 
     def test_merge_nodes(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, NodeStatus
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -1042,7 +1042,7 @@ class TestGraphManagerOperations:
         assert gm.get_node(a.node_id).status == NodeStatus.MERGED
 
     def test_split_node(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         n = gm.create_node("original", GraphNodeType.CONCEPT)
         parts = gm.split_node(n.node_id, ["part-a", "part-b"])
@@ -1102,7 +1102,7 @@ class TestGraphManagerAnalytics:
         assert len(impact.transitive_dependents) == 3
 
     def test_connected_components(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         gm = _gm()
         ids = _add_chain(gm, 2)
         gm.create_node("isolated", GraphNodeType.ENTITY)
@@ -1122,7 +1122,7 @@ class TestGraphManagerAnalytics:
         assert not gm.has_cycle()
 
     def test_neighborhood_includes_both_directions(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         gm = _gm()
         a = gm.create_node("a", GraphNodeType.ENTITY)
         b = gm.create_node("b", GraphNodeType.ENTITY)
@@ -1142,7 +1142,7 @@ class TestGraphFactory:
     def setup_method(self): _reset_all()
 
     def test_create_node_all_types(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         f = _factory()
         for ntype in [
             GraphNodeType.KNOWLEDGE, GraphNodeType.STRATEGY,
@@ -1152,21 +1152,21 @@ class TestGraphFactory:
             assert n.node_type == ntype
 
     def test_create_edge(self):
-        from iios.knowledge.graph.graph_constants import GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphEdgeType
         f = _factory()
         e = f.create_edge("src", "tgt", GraphEdgeType.CAUSES, weight=0.7)
         assert e.weight == 0.7
         assert e.edge_type == GraphEdgeType.CAUSES
 
     def test_create_knowledge_node(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType
         f = _factory()
-        n = f.create_knowledge_node("iios.knowledge/abc", "Fact about NIFTY")
-        assert n.knowledge_id == "iios.knowledge/abc"
+        n = f.create_knowledge_node("enterprise_ai_platform.knowledge/abc", "Fact about NIFTY")
+        assert n.knowledge_id == "enterprise_ai_platform.knowledge/abc"
         assert n.node_type == GraphNodeType.KNOWLEDGE
 
     def test_create_subgraph(self):
-        from iios.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
+        from enterprise_ai_platform.knowledge.graph.graph_constants import GraphNodeType, GraphEdgeType
         f = _factory()
         n1 = f.create_node("n1", GraphNodeType.ENTITY)
         n2 = f.create_node("n2", GraphNodeType.ENTITY)
@@ -1184,18 +1184,18 @@ class TestGraphContext:
     def setup_method(self): _reset_all()
 
     def test_default_actor(self):
-        from iios.knowledge.graph.graph_context import current_graph_actor
-        from iios.knowledge.graph.graph_constants import SYSTEM_GRAPH_ACTOR
+        from enterprise_ai_platform.knowledge.graph.graph_context import current_graph_actor
+        from enterprise_ai_platform.knowledge.graph.graph_constants import SYSTEM_GRAPH_ACTOR
         assert current_graph_actor() == SYSTEM_GRAPH_ACTOR
 
     def test_context_sets_actor(self):
-        from iios.knowledge.graph.graph_context import get_graph_context, current_graph_actor
+        from enterprise_ai_platform.knowledge.graph.graph_context import get_graph_context, current_graph_actor
         ctx = get_graph_context()
         with ctx.operation("write", actor_id="user:alice"):
             assert current_graph_actor() == "user:alice"
 
     def test_operation_id_set(self):
-        from iios.knowledge.graph.graph_context import (
+        from enterprise_ai_platform.knowledge.graph.graph_context import (
             get_graph_context, current_graph_operation_id,
         )
         ctx = get_graph_context()
@@ -1204,7 +1204,7 @@ class TestGraphContext:
             assert len(op_id) > 0
 
     def test_graph_operation_shortcut(self):
-        from iios.knowledge.graph.graph_context import graph_operation, current_graph_actor
+        from enterprise_ai_platform.knowledge.graph.graph_context import graph_operation, current_graph_actor
         with graph_operation("test", actor_id="user:bob"):
             assert current_graph_actor() == "user:bob"
 
@@ -1217,27 +1217,27 @@ class TestGraphRegistry:
     def setup_method(self): _reset_all()
 
     def test_has_defaults(self):
-        from iios.knowledge.graph.graph_registry import get_graph_registry
+        from enterprise_ai_platform.knowledge.graph.graph_registry import get_graph_registry
         reg = get_graph_registry()
         for name in ["storage", "cache", "index", "repository", "engine", "manager"]:
             assert reg.has(name), f"Missing: {name}"
 
     def test_resolve_manager(self):
-        from iios.knowledge.graph.graph_registry import get_graph_registry
-        from iios.knowledge.graph.graph_manager import GraphManager
+        from enterprise_ai_platform.knowledge.graph.graph_registry import get_graph_registry
+        from enterprise_ai_platform.knowledge.graph.graph_manager import GraphManager
         reg = get_graph_registry()
         mgr = reg.resolve("manager")
         assert isinstance(mgr, GraphManager)
 
     def test_register_and_resolve_custom(self):
-        from iios.knowledge.graph.graph_registry import get_graph_registry
+        from enterprise_ai_platform.knowledge.graph.graph_registry import get_graph_registry
         reg = get_graph_registry()
         reg.register("custom_component", {"key": "value"})
         val = reg.resolve("custom_component")
         assert val == {"key": "value"}
 
     def test_list_registered(self):
-        from iios.knowledge.graph.graph_registry import get_graph_registry
+        from enterprise_ai_platform.knowledge.graph.graph_registry import get_graph_registry
         reg = get_graph_registry()
         names = reg.list_registered()
         assert "manager" in names

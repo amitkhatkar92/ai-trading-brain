@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.construction.construction_constraints import ConstraintDefinition
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_constraints import ConstraintDefinition
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     AssetClass,
     ConstructionDirection,
     ConstructionType,
@@ -16,15 +16,15 @@ from iios.investment.portfolio.construction.construction_types import (
     MarketCapCategory,
     WeightingMethod,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import (
     ConstructionRequest,
     InvestmentRecommendation,
 )
-from iios.investment.portfolio.construction.portfolio_construction_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_construction_engine import (
     PortfolioConstructionEngine,
 )
-from iios.investment.portfolio.construction.security_selector import SecuritySelector
-from iios.investment.portfolio.construction.selection_policy import SelectionPolicy
+from enterprise_ai_platform.investment.portfolio.construction.security_selector import SecuritySelector
+from enterprise_ai_platform.investment.portfolio.construction.selection_policy import SelectionPolicy
 
 
 # ---------------------------------------------------------------------------
@@ -128,7 +128,7 @@ def registered_engine():
 
 @pytest.fixture
 def max_weight_constraint():
-    from iios.investment.portfolio.construction.construction_constraints import (
+    from enterprise_ai_platform.investment.portfolio.construction.construction_constraints import (
         MaxSingleWeightConstraint,
     )
     return MaxSingleWeightConstraint(

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.integration.aggregation_engine import AggregationEngine
-from iios.investment.market.integration.aggregation_history import AggregationHistory
-from iios.investment.market.integration.aggregation_state import AggregationState
-from iios.investment.market.integration.market_intelligence_aggregator import (
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.market.integration.aggregation_history import AggregationHistory
+from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
+from enterprise_ai_platform.investment.market.integration.market_intelligence_aggregator import (
     MarketIntelligenceAggregator,
 )
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.models import (
     EnginePayload,
     EngineSource,
     IntelligenceBundle,

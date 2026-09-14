@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from iios.investment.company.valuation.margin_of_safety import MarginOfSafetyEngine
-from iios.investment.company.valuation.fair_value_estimate import (
+from enterprise_ai_platform.investment.company.valuation.margin_of_safety import MarginOfSafetyEngine
+from enterprise_ai_platform.investment.company.valuation.fair_value_estimate import (
     FairValueEstimate, ValuationRange, classify_margin_of_safety,
 )
-from iios.investment.company.valuation.valuation_model import ValuationBand
+from enterprise_ai_platform.investment.company.valuation.valuation_model import ValuationBand
 
 
 @pytest.fixture()

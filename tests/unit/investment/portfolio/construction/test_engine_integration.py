@@ -8,16 +8,16 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     ConstructionStatus,
     ConstructionType,
     WeightingMethod,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import (
     ConstructionRequest,
     ConstructionResult,
 )
-from iios.investment.portfolio.construction.portfolio_construction_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_construction_engine import (
     ConstructionIntegrationRefs,
     PortfolioConstructionEngine,
 )

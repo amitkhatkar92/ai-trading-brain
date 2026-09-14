@@ -6,13 +6,13 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.investment.company.integration.company_state import EngineStatus
-from iios.investment.company.integration.coverage_monitor import CoverageMonitor
-from iios.investment.company.integration.dependency_monitor import DependencyMonitor
-from iios.investment.company.integration.engine_health import (
+from enterprise_ai_platform.investment.company.integration.company_state import EngineStatus
+from enterprise_ai_platform.investment.company.integration.coverage_monitor import CoverageMonitor
+from enterprise_ai_platform.investment.company.integration.dependency_monitor import DependencyMonitor
+from enterprise_ai_platform.investment.company.integration.engine_health import (
     EngineHealthRecord, compute_engine_status,
 )
-from iios.investment.company.integration.health_monitor import HealthMonitor
+from enterprise_ai_platform.investment.company.integration.health_monitor import HealthMonitor
 
 
 # ── EngineHealthRecord ────────────────────────────────────────────────────────
@@ -100,7 +100,7 @@ class TestDependencyMonitor:
         assert dm.overall_health_fraction() == pytest.approx(0.0)
 
     def test_health_fraction_after_updates(self):
-        from iios.investment.company.integration.company_state import KNOWN_ENGINES
+        from enterprise_ai_platform.investment.company.integration.company_state import KNOWN_ENGINES
         dm = DependencyMonitor()
         for engine in KNOWN_ENGINES:
             dm.record_update(engine)
@@ -133,7 +133,7 @@ class TestCoverageMonitor:
         assert "financials" not in missing
 
     def test_full_coverage(self):
-        from iios.investment.company.integration.company_state import SCORED_ENGINES
+        from enterprise_ai_platform.investment.company.integration.company_state import SCORED_ENGINES
         cm = CoverageMonitor()
         cm.record_engines("X", list(SCORED_ENGINES))
         assert cm.coverage_fraction("X") == pytest.approx(1.0)
@@ -201,7 +201,7 @@ class TestHealthMonitor:
         assert hm.system_health_fraction() == pytest.approx(0.0)
 
     def test_system_health_after_updates(self):
-        from iios.investment.company.integration.company_state import KNOWN_ENGINES
+        from enterprise_ai_platform.investment.company.integration.company_state import KNOWN_ENGINES
         hm = HealthMonitor()
         for engine in KNOWN_ENGINES:
             hm.on_engine_update(engine)

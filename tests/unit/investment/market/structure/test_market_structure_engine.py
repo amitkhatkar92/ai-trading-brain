@@ -7,9 +7,9 @@ import dataclasses
 
 import pytest
 
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.structure.market_structure_engine import InstitutionalMarketStructureEngine
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.structure.market_structure_engine import InstitutionalMarketStructureEngine
+from enterprise_ai_platform.investment.market.structure.models import (
     MarketStructureSnapshot,
     StructurePhase,
     StructureQualityScore,

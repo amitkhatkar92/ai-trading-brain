@@ -41,7 +41,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.recovery.engine import (
+from enterprise_ai_platform.execution.recovery.engine import (
     ACTOR_MANAGER,
     ACTOR_SYSTEM,
     DEFAULT_MAX_CONCURRENT,
@@ -1360,7 +1360,7 @@ class TestRecoverySessionManager:
         mgr.stop()
 
     def test_initialize(self):
-        from iios.execution.recovery.lifecycle import RecoveryState
+        from enterprise_ai_platform.execution.recovery.lifecycle import RecoveryState
         mgr = self._started()
         req = _req()
         ctx = make_recovery_context(req.request_id, req.execution_session_id,
@@ -1372,7 +1372,7 @@ class TestRecoverySessionManager:
         mgr.stop()
 
     def test_full_happy_path(self):
-        from iios.execution.recovery.lifecycle import RecoveryState
+        from enterprise_ai_platform.execution.recovery.lifecycle import RecoveryState
         mgr = self._started()
         req = _req()
         ctx = make_recovery_context(req.request_id, req.execution_session_id,

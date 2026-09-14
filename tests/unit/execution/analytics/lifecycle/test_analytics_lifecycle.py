@@ -33,7 +33,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.analytics.lifecycle import (
+from enterprise_ai_platform.execution.analytics.lifecycle import (
     ACTIVE_STATES,
     ACTOR_LIFECYCLE,
     ACTOR_SYSTEM,

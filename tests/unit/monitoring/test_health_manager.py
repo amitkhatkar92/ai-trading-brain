@@ -1,21 +1,21 @@
 """
 tests/unit/monitoring/test_health_manager.py
 =============================================
-Tests for iios.monitoring.health_manager and health_checker
+Tests for enterprise_ai_platform.monitoring.health_manager and health_checker
 """
 from __future__ import annotations
 
 import time
 import pytest
 
-from iios.monitoring.health_manager import HealthManager, _reset_health_manager, get_health_manager
-from iios.monitoring.health_checker import (
+from enterprise_ai_platform.monitoring.health_manager import HealthManager, _reset_health_manager, get_health_manager
+from enterprise_ai_platform.monitoring.health_checker import (
     HealthCheck,
     LambdaHealthCheck,
     CallableHealthCheck,
 )
-from iios.monitoring.monitoring_constants import HealthStatus
-from iios.monitoring.monitoring_models import HealthCheckResult
+from enterprise_ai_platform.monitoring.monitoring_constants import HealthStatus
+from enterprise_ai_platform.monitoring.monitoring_models import HealthCheckResult
 
 
 @pytest.fixture()

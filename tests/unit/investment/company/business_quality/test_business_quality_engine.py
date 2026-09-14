@@ -4,9 +4,9 @@ Integration tests for BusinessQualityEngine.
 import threading
 import pytest
 
-from iios.investment.company.business_quality.business_quality_engine import BusinessQualityEngine
-from iios.investment.company.business_quality.economic_moat import MoatStrength
-from iios.investment.company.business_quality.assessment_context import (
+from enterprise_ai_platform.investment.company.business_quality.business_quality_engine import BusinessQualityEngine
+from enterprise_ai_platform.investment.company.business_quality.economic_moat import MoatStrength
+from enterprise_ai_platform.investment.company.business_quality.assessment_context import (
     AssessmentContext, BusinessQualityPlugin, PluginResult,
 )
 from tests.unit.investment.company.business_quality.conftest import make_ctx

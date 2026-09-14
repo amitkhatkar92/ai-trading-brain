@@ -1,7 +1,7 @@
 """tests/unit/investment/company/earnings/conftest.py"""
 import pytest
 
-from iios.investment.company.earnings.earnings_report import EarningsReport
+from enterprise_ai_platform.investment.company.earnings.earnings_report import EarningsReport
 
 
 def make_report(

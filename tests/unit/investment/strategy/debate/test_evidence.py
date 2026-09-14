@@ -2,19 +2,19 @@
 import pytest
 from datetime import datetime, timezone, timedelta
 
-from iios.investment.strategy.debate.debate_constants import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import (
     EvidenceSource, EvidenceReliability, EvidenceWeight,
 )
-from iios.investment.strategy.debate.evidence_registry import (
+from enterprise_ai_platform.investment.strategy.debate.evidence_registry import (
     Evidence, EvidenceRegistry, make_evidence,
 )
-from iios.investment.strategy.debate.evidence_score import (
+from enterprise_ai_platform.investment.strategy.debate.evidence_score import (
     EvidenceScore, compute_evidence_score, _recency_score,
 )
-from iios.investment.strategy.debate.evidence_validator import (
+from enterprise_ai_platform.investment.strategy.debate.evidence_validator import (
     EvidenceValidator, ValidationResult,
 )
-from iios.investment.strategy.debate.evidence_collector import (
+from enterprise_ai_platform.investment.strategy.debate.evidence_collector import (
     EvidenceCollector,
 )
 
@@ -159,7 +159,7 @@ class TestEvidenceValidator:
 
 class TestEvidenceCollector:
     def test_collect_from_context_preloaded(self, debate_context, session_id):
-        from iios.investment.strategy.debate.evidence_registry import EvidenceRegistry
+        from enterprise_ai_platform.investment.strategy.debate.evidence_registry import EvidenceRegistry
         debate_context.pre_loaded_evidence.append({
             "source":      "technical_analysis",
             "category":    "tech",
@@ -176,7 +176,7 @@ class TestEvidenceCollector:
         assert result.collected >= 1
 
     def test_collect_no_adapters(self, debate_context, session_id):
-        from iios.investment.strategy.debate.evidence_registry import EvidenceRegistry
+        from enterprise_ai_platform.investment.strategy.debate.evidence_registry import EvidenceRegistry
         reg = EvidenceRegistry(session_id)
         col = EvidenceCollector()
         result = col.collect(debate_context, reg)
@@ -185,7 +185,7 @@ class TestEvidenceCollector:
         assert isinstance(result.errors, list)
 
     def test_collect_with_market_adapter(self, debate_context, session_id):
-        from iios.investment.strategy.debate.evidence_registry import EvidenceRegistry
+        from enterprise_ai_platform.investment.strategy.debate.evidence_registry import EvidenceRegistry
 
         class MockMarket:
             def get_market_summary(self, symbol):

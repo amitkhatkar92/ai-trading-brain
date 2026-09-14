@@ -13,7 +13,7 @@ from unittest.mock import MagicMock
 import pytest
 
 # ── Framework imports ─────────────────────────────────────────────────────────
-from iios.execution.risk.controls import (
+from enterprise_ai_platform.execution.risk.controls import (
     # enumerations
     ControlAction,
     ControlEventType,
@@ -794,7 +794,7 @@ class TestControlHistory:
             original_action=ControlAction.BLOCK,
             new_action=ControlAction.ALLOW,
         )
-        from iios.execution.risk.controls.risk_control_decision import _base_decision
+        from enterprise_ai_platform.execution.risk.controls.risk_control_decision import _base_decision
         d = _base_decision(
             evaluation_id="", execution_id="", order_id="",
             portfolio_id="", strategy_id="", correlation_id="",

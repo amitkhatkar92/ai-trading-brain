@@ -13,7 +13,7 @@ from typing import Any, Dict, List, Optional
 
 import pytest
 
-from iios.execution.gateway.brokers import (
+from enterprise_ai_platform.execution.gateway.brokers import (
     # Manager
     BrokerManager,
     # Interface
@@ -219,8 +219,8 @@ def _registered_manager(
 
 class TestConstants:
     def test_broker_system_id_format(self):
-        from iios.execution.gateway.brokers.constants import BROKER_SYSTEM_ID
-        assert BROKER_SYSTEM_ID.startswith("iios:")
+        from enterprise_ai_platform.execution.gateway.brokers.constants import BROKER_SYSTEM_ID
+        assert BROKER_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -1523,7 +1523,7 @@ class TestBrokerManagerLifecycle:
             m.register_broker(_broker(), _config())
 
     def test_double_start_raises(self):
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         m = BrokerManager()
         m.start()
         with pytest.raises(EngineAlreadyRunningError):
@@ -1531,7 +1531,7 @@ class TestBrokerManagerLifecycle:
         m.stop()
 
     def test_double_stop_raises(self):
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         m = BrokerManager()
         m.start()
         m.stop()

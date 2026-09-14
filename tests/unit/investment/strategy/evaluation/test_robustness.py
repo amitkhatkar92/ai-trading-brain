@@ -4,10 +4,10 @@ from __future__ import annotations
 import math
 import pytest
 
-from iios.investment.strategy.evaluation.walk_forward_analysis import WalkForwardAnalyzer
-from iios.investment.strategy.evaluation.monte_carlo_analysis import MonteCarloAnalyzer
-from iios.investment.strategy.evaluation.stress_testing import StressTester
-from iios.investment.strategy.evaluation.robustness_engine import RobustnessEngine
+from enterprise_ai_platform.investment.strategy.evaluation.walk_forward_analysis import WalkForwardAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.monte_carlo_analysis import MonteCarloAnalyzer
+from enterprise_ai_platform.investment.strategy.evaluation.stress_testing import StressTester
+from enterprise_ai_platform.investment.strategy.evaluation.robustness_engine import RobustnessEngine
 from tests.unit.investment.strategy.evaluation.conftest import (
     make_trade, make_equity_curve, make_evaluation_input
 )

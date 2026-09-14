@@ -5,20 +5,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.challenge_engine import (
+from enterprise_ai_platform.investment.decision.committee.challenge_engine import (
     Challenge,
     ChallengeEngine,
 )
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     ChallengeType,
     RoundType,
     SessionState,
     VoteType,
 )
-from iios.investment.decision.committee.committee_round import RoundResult
-from iios.investment.decision.committee.committee_session import CommitteeSession
-from iios.investment.decision.committee.discussion_engine import DiscussionEngine
-from iios.investment.decision.committee.member_registry import MemberRegistry
+from enterprise_ai_platform.investment.decision.committee.committee_round import RoundResult
+from enterprise_ai_platform.investment.decision.committee.committee_session import CommitteeSession
+from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
+from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
 
 
 class TestChallengeEngine:
@@ -154,13 +154,13 @@ class TestCommitteeSession:
         assert report.vote_summary.total_votes >= 0
 
     def test_report_position_is_valid(self, rich_context):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         session = CommitteeSession(rich_context.decision_id, rich_context)
         report  = session.run()
         assert report.position in list(CommitteePosition)
 
     def test_minimal_evidence_returns_insufficient(self, minimal_context):
-        from iios.investment.decision.committee.committee_constants import CommitteePosition
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteePosition
         session = CommitteeSession(minimal_context.decision_id, minimal_context)
         report  = session.run()
         assert report.position == CommitteePosition.INSUFFICIENT_EVIDENCE
@@ -191,7 +191,7 @@ class TestCommitteeSession:
         assert "committee_score"   in d
 
     def test_custom_registry(self, rich_context):
-        from iios.investment.decision.committee.committee_constants import SpecialistType as ST
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import SpecialistType as ST
         registry = MemberRegistry()
         for _ in range(6):
             registry.add_member(

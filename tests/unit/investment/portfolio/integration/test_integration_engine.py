@@ -6,13 +6,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     AggregationStatus, EngineId, REQUIRED_ENGINES, SnapshotStatus,
 )
-from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
     PortfolioIntelligenceIntegrationEngine,
 )
-from iios.investment.portfolio.integration.portfolio_snapshot import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_snapshot import (
     PortfolioIntelligenceSnapshot,
 )
 

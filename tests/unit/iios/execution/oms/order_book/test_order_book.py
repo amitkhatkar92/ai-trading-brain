@@ -1,4 +1,4 @@
-"""tests/unit/iios/execution/oms/order_book/test_order_book.py
+"""tests/unit/enterprise_ai_platform/execution/oms/order_book/test_order_book.py
 ==================================================
 Comprehensive test suite for C6 Phase 2 Module 2:
 IIOS Order Book.
@@ -15,40 +15,40 @@ from typing import Any
 
 import pytest
 
-from iios.execution.oms.order_book.constants import (
+from enterprise_ai_platform.execution.oms.order_book.constants import (
     TERMINAL_BOOK_STATUSES, BookEntryStatus, BookEventType,
     BookValidationCode, ORDER_STATE_TO_BOOK_STATUS, QuerySortField,
 )
-from iios.execution.oms.order_book.exceptions import (
+from enterprise_ai_platform.execution.oms.order_book.exceptions import (
     DuplicateEntryError, OrderBookCapacityError, OrderBookError,
     OrderBookNotRunning, OrderBookValidationError, OrderEntryNotFoundError,
 )
-from iios.execution.oms.order_book.order_book_entry import OrderBookEntry
-from iios.execution.oms.order_book.order_book_index import OrderBookIndex
-from iios.execution.oms.order_book.order_book_filter import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_entry import OrderBookEntry
+from enterprise_ai_platform.execution.oms.order_book.order_book_index import OrderBookIndex
+from enterprise_ai_platform.execution.oms.order_book.order_book_filter import (
     OrderBookFilter, active_filter, cancelled_filter, completed_filter,
     instrument_filter, portfolio_filter, rejected_filter, strategy_filter,
 )
-from iios.execution.oms.order_book.order_book_query import OrderBookQuery, QueryResult
-from iios.execution.oms.order_book.order_book_context import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_query import OrderBookQuery, QueryResult
+from enterprise_ai_platform.execution.oms.order_book.order_book_context import (
     OrderAddRequest, OrderUpdateRequest,
 )
-from iios.execution.oms.order_book.order_book_snapshot import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_snapshot import (
     FilteredSnapshot, HistoricalSnapshot, OrderBookSnapshot,
 )
-from iios.execution.oms.order_book.order_book_events import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_events import (
     OrderBookEvent, make_book_event,
 )
-from iios.execution.oms.order_book.order_book_history import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_history import (
     BookHistoryEntry, OrderBookHistory,
 )
-from iios.execution.oms.order_book.order_book_statistics import OrderBookStatistics
-from iios.execution.oms.order_book.order_book_validation import (
+from enterprise_ai_platform.execution.oms.order_book.order_book_statistics import OrderBookStatistics
+from enterprise_ai_platform.execution.oms.order_book.order_book_validation import (
     BookValidationResult, OrderBookValidator,
 )
-from iios.execution.oms.order_book.order_book_factory import OrderBookEntryFactory
-from iios.execution.oms.order_book.order_book_registry import OrderBookRegistry
-from iios.execution.oms.order_book.order_book import OrderBook
+from enterprise_ai_platform.execution.oms.order_book.order_book_factory import OrderBookEntryFactory
+from enterprise_ai_platform.execution.oms.order_book.order_book_registry import OrderBookRegistry
+from enterprise_ai_platform.execution.oms.order_book.order_book import OrderBook
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -150,7 +150,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self) -> None:
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(OrderBookError,          IIOSError)
         assert issubclass(OrderEntryNotFoundError, OrderBookError)
         assert issubclass(DuplicateEntryError,     OrderBookError)

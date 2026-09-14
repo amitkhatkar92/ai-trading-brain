@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.regime.models import RegimeType
-from iios.investment.market.regime.transition_probability import TransitionProbabilityModel
+from enterprise_ai_platform.investment.market.regime.models import RegimeType
+from enterprise_ai_platform.investment.market.regime.transition_probability import TransitionProbabilityModel
 
 
 @pytest.fixture

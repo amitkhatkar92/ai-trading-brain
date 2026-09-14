@@ -5,7 +5,7 @@ import threading
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     PolicyRegistry,
     PortfolioRebalancingEngine,
     RebalancePlan,

@@ -1,7 +1,7 @@
 """
 tests/unit/execution/analytics/integration/test_integration.py
 ================================================================
-Comprehensive test suite for iios.execution.analytics.integration — C8 M6.
+Comprehensive test suite for enterprise_ai_platform.execution.analytics.integration — C8 M6.
 
 Coverage areas
 --------------
@@ -29,7 +29,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.analytics.integration import (
+from enterprise_ai_platform.execution.analytics.integration import (
     AnalyticsComponentFactory,
     AnalyticsComponentRegistry,
     AnalyticsIntegrationEvent,
@@ -68,8 +68,8 @@ from iios.execution.analytics.integration import (
     make_analytics_stopped,
     make_analytics_validated,
 )
-from iios.execution.analytics.lifecycle import AnalyticsScope, AnalyticsMode
-from iios.execution.analytics.snapshot import ExecutionAnalyticsSnapshot
+from enterprise_ai_platform.execution.analytics.lifecycle import AnalyticsScope, AnalyticsMode
+from enterprise_ai_platform.execution.analytics.snapshot import ExecutionAnalyticsSnapshot
 
 
 # ===========================================================================

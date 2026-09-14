@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.consistency_rules import (
+from enterprise_ai_platform.investment.portfolio.integration.consistency_rules import (
     check_allocation_weights_sum,
     check_construction_allocation_position_count,
     check_diversification_hhi,
@@ -15,8 +15,8 @@ from iios.investment.portfolio.integration.consistency_rules import (
     check_recommendation_vs_risk_budget,
     check_risk_performance_drawdown,
 )
-from iios.investment.portfolio.integration.consistency_validator import ConsistencyValidator
-from iios.investment.portfolio.integration.integration_types import ValidationStatus
+from enterprise_ai_platform.investment.portfolio.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import ValidationStatus
 
 
 class TestConsistencyRules:

@@ -5,13 +5,13 @@ import time
 
 import pytest
 
-from iios.investment.market.breadth.models import SecurityObservation, UniverseSnapshot
-from iios.investment.market.breadth.advance_decline_metric import AdvanceDeclineMetric
-from iios.investment.market.breadth.participation_rate_metric import ParticipationRateMetric
-from iios.investment.market.breadth.new_high_low_metric import NewHighLowMetric
-from iios.investment.market.breadth.above_ma_metric import AboveMa20Metric, AboveMa50Metric
-from iios.investment.market.breadth.metric_registry import MetricRegistry
-from iios.investment.market.breadth.breadth_engine import BreadthEngine
+from enterprise_ai_platform.investment.market.breadth.models import SecurityObservation, UniverseSnapshot
+from enterprise_ai_platform.investment.market.breadth.advance_decline_metric import AdvanceDeclineMetric
+from enterprise_ai_platform.investment.market.breadth.participation_rate_metric import ParticipationRateMetric
+from enterprise_ai_platform.investment.market.breadth.new_high_low_metric import NewHighLowMetric
+from enterprise_ai_platform.investment.market.breadth.above_ma_metric import AboveMa20Metric, AboveMa50Metric
+from enterprise_ai_platform.investment.market.breadth.metric_registry import MetricRegistry
+from enterprise_ai_platform.investment.market.breadth.breadth_engine import BreadthEngine
 
 from tests.unit.investment.market.breadth.conftest import (
     make_universe,
@@ -201,5 +201,5 @@ class TestBreadthEngine:
         for i in range(25):
             bd = engine.update(make_bull_universe(bar_index=i),
                                above_ma20_pct=0.65, health_score=0.65)
-        from iios.investment.market.breadth.models import BreadthTrend
+        from enterprise_ai_platform.investment.market.breadth.models import BreadthTrend
         assert bd.breadth_trend in (BreadthTrend.RISING, BreadthTrend.STABLE, BreadthTrend.SURGING)

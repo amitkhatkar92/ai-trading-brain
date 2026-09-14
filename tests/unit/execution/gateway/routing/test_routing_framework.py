@@ -46,9 +46,9 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.gateway.brokers.broker_capabilities import BrokerCapabilities
-from iios.execution.gateway.brokers.constants import BrokerCapability, ProductType
-from iios.execution.gateway.routing import (
+from enterprise_ai_platform.execution.gateway.brokers.broker_capabilities import BrokerCapabilities
+from enterprise_ai_platform.execution.gateway.brokers.constants import BrokerCapability, ProductType
+from enterprise_ai_platform.execution.gateway.routing import (
     FAILED_OUTCOMES,
     ROUTED_OUTCOMES,
     CandidateStatus,
@@ -234,7 +234,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(RoutingFrameworkError, IIOSError)
 
     def test_all_inherit_from_base(self):
@@ -1413,7 +1413,7 @@ class TestRoutingFactory:
         assert isinstance(p, CustomRoutingPolicy)
 
     def test_create_exchange_policy(self):
-        from iios.execution.gateway.routing import ExchangeBasedPolicy
+        from enterprise_ai_platform.execution.gateway.routing import ExchangeBasedPolicy
         p = RoutingFactory.create_exchange_policy("p1")
         assert isinstance(p, ExchangeBasedPolicy)
 
@@ -1553,7 +1553,7 @@ class TestRoutingEngine:
     def test_double_start_raises(self):
         e = RoutingEngine()
         e.start()
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         with pytest.raises(EngineAlreadyRunningError):
             e.start()
         e.stop()
@@ -1562,7 +1562,7 @@ class TestRoutingEngine:
         e = RoutingEngine()
         e.start()
         e.stop()
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         with pytest.raises(EngineNotRunningError):
             e.stop()
 

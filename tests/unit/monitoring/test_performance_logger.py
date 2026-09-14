@@ -1,14 +1,14 @@
 """
 tests/unit/monitoring/test_performance_logger.py
 =================================================
-Tests for iios.monitoring.performance_logger
+Tests for enterprise_ai_platform.monitoring.performance_logger
 """
 from __future__ import annotations
 
 import time
 import pytest
 
-from iios.monitoring.performance_logger import (
+from enterprise_ai_platform.monitoring.performance_logger import (
     PerformanceLogger,
     _reset_performance_logger,
     get_performance_logger,

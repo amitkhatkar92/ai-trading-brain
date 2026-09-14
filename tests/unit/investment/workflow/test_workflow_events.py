@@ -6,8 +6,8 @@ from __future__ import annotations
 from typing import List
 import pytest
 
-from iios.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
-from iios.investment.workflow.workflow_types import PipelineEventType, WorkflowStage
+from enterprise_ai_platform.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
+from enterprise_ai_platform.investment.workflow.workflow_types import PipelineEventType, WorkflowStage
 
 
 class TestWorkflowEvent:

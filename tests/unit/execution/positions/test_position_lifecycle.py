@@ -31,7 +31,7 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     ACTIVE_STATES,
     CLOSED_STATES,
     SUSPENDED_STATES,

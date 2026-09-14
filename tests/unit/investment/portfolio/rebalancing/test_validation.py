@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     CostValidator,
     MasterValidationReport,
     PolicyRegistry,
@@ -15,7 +15,7 @@ from iios.investment.portfolio.rebalancing import (
     ValidationCheck,
     ValidationReport,
 )
-from iios.investment.portfolio.rebalancing.trade_planner import TradePlanner
+from enterprise_ai_platform.investment.portfolio.rebalancing.trade_planner import TradePlanner
 
 
 # ---------------------------------------------------------------------------
@@ -195,7 +195,7 @@ class TestRebalanceValidator:
         assert report.cost_report is not None
 
     def test_invalid_target_weights(self, drifted_current):
-        from iios.investment.portfolio.rebalancing import TargetPosition
+        from enterprise_ai_platform.investment.portfolio.rebalancing import TargetPosition
         bad_target = [
             TargetPosition("RELIANCE", 0.70),  # weights sum to 0.90, not 1.0
             TargetPosition("TCS",      0.20),

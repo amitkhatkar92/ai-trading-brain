@@ -3,22 +3,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.confidence.calibration_engine import (
+from enterprise_ai_platform.investment.decision.confidence.calibration_engine import (
     CalibrationEngine,
     CalibrationResult,
 )
-from iios.investment.decision.confidence.calibration_statistics import (
+from enterprise_ai_platform.investment.decision.confidence.calibration_statistics import (
     CalibrationStatisticsTracker,
 )
-from iios.investment.decision.confidence.confidence_calibrator import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_calibrator import (
     CalibrationRecord,
     ConfidenceCalibrator,
 )
-from iios.investment.decision.confidence.confidence_constants import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_constants import (
     MIN_CALIBRATION_SAMPLES,
     CalibrationStatus,
 )
-from iios.investment.decision.confidence.confidence_validator import ConfidenceValidator
+from enterprise_ai_platform.investment.decision.confidence.confidence_validator import ConfidenceValidator
 
 
 # ========================= ConfidenceCalibrator ==========================

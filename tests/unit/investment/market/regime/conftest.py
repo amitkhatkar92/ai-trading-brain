@@ -6,7 +6,7 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.investment.market.market_constants import (
+from enterprise_ai_platform.investment.market.market_constants import (
     MarketRegime,
     MarketStatus,
     MarketStrength,
@@ -16,8 +16,8 @@ from iios.investment.market.market_constants import (
     BreadthCondition,
     SentimentLevel,
 )
-from iios.investment.market.market_state.market_snapshot import MarketSnapshot
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.market_state.market_snapshot import MarketSnapshot
+from enterprise_ai_platform.investment.market.structure.models import (
     BreakoutEvent,
     BreakoutStatus,
     BreakoutType,
@@ -33,7 +33,7 @@ from iios.investment.market.structure.models import (
     ZoneStrength,
     ZoneType,
 )
-from iios.investment.market.regime.models import (
+from enterprise_ai_platform.investment.market.regime.models import (
     RegimeObservation,
 )
 

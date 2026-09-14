@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.opportunity.market_opportunity import (
+from enterprise_ai_platform.investment.strategy.opportunity.market_opportunity import (
     MarketRegime, VolatilityRegime, Timeframe, OpportunityType
 )
-from iios.investment.strategy.opportunity.strategy_matcher import StrategyMatcher
-from iios.investment.strategy.opportunity.matching_engine import MatchingEngine
-from iios.investment.strategy.opportunity.matching_profile import (
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_matcher import StrategyMatcher
+from enterprise_ai_platform.investment.strategy.opportunity.matching_engine import MatchingEngine
+from enterprise_ai_platform.investment.strategy.opportunity.matching_profile import (
     DEFAULT_PROFILE, CONSERVATIVE_PROFILE, MOMENTUM_PROFILE, MatchingProfile
 )
 from tests.unit.investment.strategy.opportunity.conftest import (

@@ -6,19 +6,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.integration.aggregation_engine import AggregationEngine
-from iios.investment.decision.integration.conflict_engine import ConflictEngine
-from iios.investment.decision.integration.consistency_validator import ConsistencyValidator
-from iios.investment.decision.integration.decision_confidence import (
+from enterprise_ai_platform.investment.decision.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.decision.integration.conflict_engine import ConflictEngine
+from enterprise_ai_platform.investment.decision.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.decision.integration.decision_confidence import (
     IntegrationConfidenceCalculator,
 )
-from iios.investment.decision.integration.decision_quality import DecisionQualityEvaluator
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.decision_quality import DecisionQualityEvaluator
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     ComponentId,
     QualityGrade,
 )
-from iios.investment.decision.integration.quality_history import QualityHistory
-from iios.investment.decision.integration.quality_statistics import QualityStatisticsTracker
+from enterprise_ai_platform.investment.decision.integration.quality_history import QualityHistory
+from enterprise_ai_platform.investment.decision.integration.quality_statistics import QualityStatisticsTracker
 
 
 def _make_snap(pipeline):

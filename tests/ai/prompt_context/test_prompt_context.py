@@ -21,12 +21,12 @@ import threading
 import unittest
 from typing import List
 
-from iios.ai.foundation.exceptions import AIException
+from enterprise_ai_platform.ai.foundation.exceptions import AIException
 
-from iios.ai.prompt_context.composer import PromptComposer, PromptRenderer
-from iios.ai.prompt_context.container import PromptContextContainer
-from iios.ai.prompt_context.context import AssembledContext, ContextAssembler, ContextBuilder
-from iios.ai.prompt_context.core import (
+from enterprise_ai_platform.ai.prompt_context.composer import PromptComposer, PromptRenderer
+from enterprise_ai_platform.ai.prompt_context.container import PromptContextContainer
+from enterprise_ai_platform.ai.prompt_context.context import AssembledContext, ContextAssembler, ContextBuilder
+from enterprise_ai_platform.ai.prompt_context.core import (
     ContextMetadata,
     ContextPriority,
     ContextSegment,
@@ -37,7 +37,7 @@ from iios.ai.prompt_context.core import (
     PromptVersion,
     estimate_tokens,
 )
-from iios.ai.prompt_context.events import (
+from enterprise_ai_platform.ai.prompt_context.events import (
     ContextBuiltEvent,
     PromptEventBus,
     PromptEventType,
@@ -46,7 +46,7 @@ from iios.ai.prompt_context.events import (
     ValidationFailedEvent,
     ValidationSucceededEvent,
 )
-from iios.ai.prompt_context.exceptions import (
+from enterprise_ai_platform.ai.prompt_context.exceptions import (
     AIContextIncompleteError,
     AIMissingVariableError,
     AIPromptAlreadyExistsError,
@@ -56,8 +56,8 @@ from iios.ai.prompt_context.exceptions import (
     AIPromptPolicyViolationError,
     AIPromptVersionError,
 )
-from iios.ai.prompt_context.gateway import PromptContextGateway
-from iios.ai.prompt_context.policy import (
+from enterprise_ai_platform.ai.prompt_context.gateway import PromptContextGateway
+from enterprise_ai_platform.ai.prompt_context.policy import (
     ActiveVersionPolicy,
     DefaultContextPriorityPolicy,
     DefaultPromptSelectionPolicy,
@@ -66,9 +66,9 @@ from iios.ai.prompt_context.policy import (
     PermissiveValidationPolicy,
     StrictValidationPolicy,
 )
-from iios.ai.prompt_context.registry import PromptRegistry
-from iios.ai.prompt_context.validation import ContextValidator, PromptValidator, VariableValidator
-from iios.ai.prompt_context.versioning import PromptHistory, VersionManager
+from enterprise_ai_platform.ai.prompt_context.registry import PromptRegistry
+from enterprise_ai_platform.ai.prompt_context.validation import ContextValidator, PromptValidator, VariableValidator
+from enterprise_ai_platform.ai.prompt_context.versioning import PromptHistory, VersionManager
 
 
 # ---------------------------------------------------------------------------
@@ -448,13 +448,13 @@ class TestPolicyFramework(unittest.TestCase):
         self.assertEqual(policy.resolve(t).version_id, t.active_version.version_id)
 
     def test_strict_validation_policy_raises_on_failure(self):
-        from iios.ai.prompt_context.validation import ValidationResult
+        from enterprise_ai_platform.ai.prompt_context.validation import ValidationResult
         policy = StrictValidationPolicy()
         with self.assertRaises(AIPromptPolicyViolationError):
             policy.enforce(ValidationResult(False, ("bad",)))
 
     def test_permissive_validation_policy_never_raises(self):
-        from iios.ai.prompt_context.validation import ValidationResult
+        from enterprise_ai_platform.ai.prompt_context.validation import ValidationResult
         policy = PermissiveValidationPolicy()
         policy.enforce(ValidationResult(False, ("bad",)))  # must not raise
 

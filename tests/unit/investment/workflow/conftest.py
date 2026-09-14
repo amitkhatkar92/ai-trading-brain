@@ -9,16 +9,16 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.investment.models.investment_request import InvestmentRequest
-from iios.investment.investment_constants import (
+from enterprise_ai_platform.investment.models.investment_request import InvestmentRequest
+from enterprise_ai_platform.investment.investment_constants import (
     AssetClass, InvestmentObjective, RiskProfile, TimeHorizon,
 )
-from iios.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
-from iios.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
-from iios.investment.workflow.workflow_history import WorkflowHistory
-from iios.investment.workflow.workflow_state import WorkflowState
-from iios.investment.workflow.workflow_statistics import WorkflowStatistics
-from iios.investment.workflow.workflow_types import WorkflowStage
+from enterprise_ai_platform.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
+from enterprise_ai_platform.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
+from enterprise_ai_platform.investment.workflow.workflow_history import WorkflowHistory
+from enterprise_ai_platform.investment.workflow.workflow_state import WorkflowState
+from enterprise_ai_platform.investment.workflow.workflow_statistics import WorkflowStatistics
+from enterprise_ai_platform.investment.workflow.workflow_types import WorkflowStage
 
 
 # ── Minimal snapshot stubs ────────────────────────────────────────────────────

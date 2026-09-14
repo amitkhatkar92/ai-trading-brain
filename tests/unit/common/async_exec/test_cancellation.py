@@ -1,8 +1,8 @@
-"""Tests for iios.common.async_exec.cancellation"""
+"""Tests for enterprise_ai_platform.common.async_exec.cancellation"""
 import asyncio
 import threading
 import time
-from iios.common.async_exec.cancellation import (
+from enterprise_ai_platform.common.async_exec.cancellation import (
     CancellationToken,
     CancellationScope,
     LinkedCancellationToken,

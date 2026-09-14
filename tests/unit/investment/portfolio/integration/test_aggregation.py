@@ -7,17 +7,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.integration.aggregation_engine import AggregationEngine
-from iios.investment.portfolio.integration.aggregation_history import (
+from enterprise_ai_platform.investment.portfolio.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.portfolio.integration.aggregation_history import (
     AggregationHistory, AggregationRecord,
 )
-from iios.investment.portfolio.integration.aggregation_state import (
+from enterprise_ai_platform.investment.portfolio.integration.aggregation_state import (
     AggregationState, EngineContribution,
 )
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     AggregationStatus, EngineId, IntegrationParameters, REQUIRED_ENGINES, now_utc,
 )
-from iios.investment.portfolio.integration.portfolio_intelligence_aggregator import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_aggregator import (
     PortfolioIntelligenceAggregator,
 )
 

@@ -5,9 +5,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.opportunity.ranking_engine import RankingEngine
-from iios.investment.company.opportunity.ranking_score import RankingChange, RankingResult
-from iios.investment.company.opportunity.ranking_statistics import (
+from enterprise_ai_platform.investment.company.opportunity.ranking_engine import RankingEngine
+from enterprise_ai_platform.investment.company.opportunity.ranking_score import RankingChange, RankingResult
+from enterprise_ai_platform.investment.company.opportunity.ranking_statistics import (
     compute_score_percentile, normalise_scores, rank_tickers, score_distribution_summary,
     score_momentum, top_n_tickers,
 )

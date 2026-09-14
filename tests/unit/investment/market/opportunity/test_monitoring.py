@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.alert_engine import AlertEngine
-from iios.investment.market.opportunity.change_detector import ChangeDetector
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.alert_engine import AlertEngine
+from enterprise_ai_platform.investment.market.opportunity.change_detector import ChangeDetector
+from enterprise_ai_platform.investment.market.opportunity.models import (
     AlertType,
     Opportunity,
     OpportunityAlert,
@@ -13,8 +13,8 @@ from iios.investment.market.opportunity.models import (
     OpportunityLifecycleStage,
     OpportunityPriority,
 )
-from iios.investment.market.opportunity.opportunity_monitor import OpportunityMonitor
-from iios.investment.market.opportunity.priority_monitor import PriorityMonitor
+from enterprise_ai_platform.investment.market.opportunity.opportunity_monitor import OpportunityMonitor
+from enterprise_ai_platform.investment.market.opportunity.priority_monitor import PriorityMonitor
 
 
 def _opp(

@@ -6,13 +6,13 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     ReasoningEngineStatus,
     ReasoningStatus,
 )
-from iios.investment.decision.reasoning.reasoning_snapshot import ReasoningSnapshot
-from iios.investment.decision.reasoning.reasoning_trace import ReasoningTrace
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_snapshot import ReasoningSnapshot
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_trace import ReasoningTrace
 
 
 # ========================= Lifecycle =====================================

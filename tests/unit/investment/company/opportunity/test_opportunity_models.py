@@ -5,18 +5,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.opportunity.opportunity_profile import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_profile import (
     AlertSeverity, ChangeSignal, ComponentScore, ConfidenceLevel,
     OpportunityAlert, OpportunityCategory, OpportunityLifecycle,
     OpportunityPriority, OpportunityScoreBreakdown, OpportunityStrength,
     WatchlistEntry,
 )
-from iios.investment.company.opportunity.opportunity_statistics import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_statistics import (
     clamp, compute_data_completeness, confidence_to_level,
     moving_average, percentile_rank, safe_average, score_to_priority,
     score_to_strength, trend_slope, weighted_average,
 )
-from iios.investment.company.opportunity.opportunity_category import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_category import (
     ClassificationResult, get_category_description,
 )
 

@@ -9,23 +9,23 @@ import uuid
 
 import pytest
 
-from iios.execution.monitoring.alerts.alert_rule import AlertContext
-from iios.execution.monitoring.alerts.notification_event import Alert
-from iios.execution.monitoring.analytics.execution_analytics import ExecutionAnalytics
-from iios.execution.monitoring.analytics.sla_monitor import SLAMonitor
-from iios.execution.monitoring.audit.audit_event import AuditEvent
-from iios.execution.monitoring.audit.audit_history import AuditHistory
-from iios.execution.monitoring.audit.audit_manager import AuditManager
-from iios.execution.monitoring.audit.audit_registry import AuditRegistry
-from iios.execution.monitoring.audit.execution_audit_engine import ExecutionAuditEngine
-from iios.execution.monitoring.core.execution_record import ExecutionRecord
-from iios.execution.monitoring.execution_monitoring_engine import (
+from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import AlertContext
+from enterprise_ai_platform.execution.monitoring.alerts.notification_event import Alert
+from enterprise_ai_platform.execution.monitoring.analytics.execution_analytics import ExecutionAnalytics
+from enterprise_ai_platform.execution.monitoring.analytics.sla_monitor import SLAMonitor
+from enterprise_ai_platform.execution.monitoring.audit.audit_event import AuditEvent
+from enterprise_ai_platform.execution.monitoring.audit.audit_history import AuditHistory
+from enterprise_ai_platform.execution.monitoring.audit.audit_manager import AuditManager
+from enterprise_ai_platform.execution.monitoring.audit.audit_registry import AuditRegistry
+from enterprise_ai_platform.execution.monitoring.audit.execution_audit_engine import ExecutionAuditEngine
+from enterprise_ai_platform.execution.monitoring.core.execution_record import ExecutionRecord
+from enterprise_ai_platform.execution.monitoring.execution_monitoring_engine import (
     ExecutionMonitoringEngine,
     get_execution_monitoring_engine,
     reset_execution_monitoring_engine,
 )
-from iios.execution.monitoring.history.execution_history import ExecutionHistory
-from iios.execution.monitoring.monitoring_constants import (
+from enterprise_ai_platform.execution.monitoring.history.execution_history import ExecutionHistory
+from enterprise_ai_platform.execution.monitoring.monitoring_constants import (
     AlertSeverity,
     AlertStatus,
     AuditEventType,
@@ -39,11 +39,11 @@ from iios.execution.monitoring.monitoring_constants import (
     SLAStatus,
     TERMINAL_EXECUTION_STATUSES,
 )
-from iios.execution.monitoring.monitoring_context import (
+from enterprise_ai_platform.execution.monitoring.monitoring_context import (
     MonitoringContextState,
     monitoring_operation_context,
 )
-from iios.execution.monitoring.monitoring_exceptions import (
+from enterprise_ai_platform.execution.monitoring.monitoring_exceptions import (
     AlertStorageOverflowError,
     AuditStorageOverflowError,
     AuditTamperingDetectedError,
@@ -55,19 +55,19 @@ from iios.execution.monitoring.monitoring_exceptions import (
     MonitoringRegistryError,
     ReconciliationFailedError,
 )
-from iios.execution.monitoring.monitoring_factory import MonitoringFactory
-from iios.execution.monitoring.monitoring_registry import (
+from enterprise_ai_platform.execution.monitoring.monitoring_factory import MonitoringFactory
+from enterprise_ai_platform.execution.monitoring.monitoring_registry import (
     MonitoringRegistry,
     get_monitoring_registry,
     reset_monitoring_registry,
 )
-from iios.execution.monitoring.reconciliation.discrepancy_detector import DiscrepancyDetector
-from iios.execution.monitoring.reconciliation.reconciliation_engine import ReconciliationEngine
-from iios.execution.monitoring.reconciliation.reconciliation_manager import ReconciliationManager
-from iios.execution.monitoring.tracking.execution_status_tracker import ExecutionStatusTracker
-from iios.execution.monitoring.tracking.execution_tracker import ExecutionTracker
-from iios.execution.monitoring.tracking.fill_tracker import FillRecord, FillTracker
-from iios.execution.monitoring.tracking.latency_tracker import LatencyRecord, LatencyTracker
+from enterprise_ai_platform.execution.monitoring.reconciliation.discrepancy_detector import DiscrepancyDetector
+from enterprise_ai_platform.execution.monitoring.reconciliation.reconciliation_engine import ReconciliationEngine
+from enterprise_ai_platform.execution.monitoring.reconciliation.reconciliation_manager import ReconciliationManager
+from enterprise_ai_platform.execution.monitoring.tracking.execution_status_tracker import ExecutionStatusTracker
+from enterprise_ai_platform.execution.monitoring.tracking.execution_tracker import ExecutionTracker
+from enterprise_ai_platform.execution.monitoring.tracking.fill_tracker import FillRecord, FillTracker
+from enterprise_ai_platform.execution.monitoring.tracking.latency_tracker import LatencyRecord, LatencyTracker
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -632,21 +632,21 @@ class TestAlertLifecycle:
 
 class TestHighLatencyRule:
     def test_triggers_above_threshold(self):
-        from iios.execution.monitoring.alerts.alert_rule import HighLatencyRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import HighLatencyRule
         rule    = HighLatencyRule(threshold_ms=100.0)
         context = AlertContext(latency_values_ms=[200.0, 300.0])
         alerts  = rule.evaluate(context)
         assert len(alerts) == 1
 
     def test_no_trigger_below_threshold(self):
-        from iios.execution.monitoring.alerts.alert_rule import HighLatencyRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import HighLatencyRule
         rule    = HighLatencyRule(threshold_ms=500.0)
         context = AlertContext(latency_values_ms=[10.0, 20.0])
         alerts  = rule.evaluate(context)
         assert len(alerts) == 0
 
     def test_no_trigger_empty(self):
-        from iios.execution.monitoring.alerts.alert_rule import HighLatencyRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import HighLatencyRule
         rule    = HighLatencyRule()
         context = AlertContext()
         assert len(rule.evaluate(context)) == 0
@@ -654,14 +654,14 @@ class TestHighLatencyRule:
 
 class TestOrderRejectedRule:
     def test_triggers_on_rejected(self):
-        from iios.execution.monitoring.alerts.alert_rule import OrderRejectedRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import OrderRejectedRule
         rule = OrderRejectedRule()
         rec  = _make_record(status=ExecutionRecordStatus.REJECTED)
         ctx  = AlertContext(execution_records=[rec])
         assert len(rule.evaluate(ctx)) == 1
 
     def test_no_trigger_on_accepted(self):
-        from iios.execution.monitoring.alerts.alert_rule import OrderRejectedRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import OrderRejectedRule
         rule = OrderRejectedRule()
         ctx  = AlertContext(execution_records=[_make_record()])
         assert len(rule.evaluate(ctx)) == 0
@@ -669,7 +669,7 @@ class TestOrderRejectedRule:
 
 class TestHighRejectionRateRule:
     def test_triggers_above_threshold(self):
-        from iios.execution.monitoring.alerts.alert_rule import HighRejectionRateRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import HighRejectionRateRule
         rule    = HighRejectionRateRule(threshold=0.10)
         records = [
             _make_record(status=ExecutionRecordStatus.REJECTED),
@@ -680,7 +680,7 @@ class TestHighRejectionRateRule:
         assert len(rule.evaluate(ctx)) == 1
 
     def test_no_trigger_below_threshold(self):
-        from iios.execution.monitoring.alerts.alert_rule import HighRejectionRateRule
+        from enterprise_ai_platform.execution.monitoring.alerts.alert_rule import HighRejectionRateRule
         rule    = HighRejectionRateRule(threshold=0.90)
         records = [
             _make_record(status=ExecutionRecordStatus.REJECTED),

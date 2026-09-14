@@ -6,19 +6,19 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
-from iios.investment.strategy.portfolio.portfolio_events import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_events import (
     PortfolioEvent, PortfolioEventType, PortfolioEventBus
 )
-from iios.investment.strategy.portfolio.portfolio_lifecycle import PortfolioLifecycle
-from iios.investment.strategy.portfolio.portfolio_monitor import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_lifecycle import PortfolioLifecycle
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_monitor import (
     PortfolioMonitor, AlertSeverity
 )
-from iios.investment.strategy.portfolio.portfolio_registry import PortfolioRegistry
-from iios.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_registry import PortfolioRegistry
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
 
 
 def _make_portfolio(pid: str = "p1") -> StrategyPortfolio:

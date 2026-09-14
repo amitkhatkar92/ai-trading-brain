@@ -5,14 +5,14 @@ import asyncio
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationEventType,
     CorrelationIntelligenceSnapshot,
     CorrelationRegimeType,
     MultiAssetSnapshot,
 )
-from iios.investment.market.correlation.correlation_intelligence_engine import (
+from enterprise_ai_platform.investment.market.correlation.correlation_intelligence_engine import (
     InstitutionalCorrelationIntelligenceEngine,
 )
 

@@ -2,7 +2,7 @@
 import time
 import pytest
 
-from iios.investment.company.earnings.earnings_report import (
+from enterprise_ai_platform.investment.company.earnings.earnings_report import (
     EarningsReport, TrendDirection, EarningsQualityLabel,
     ProfitCyclePhase, EarningsType, MomentumLabel,
 )

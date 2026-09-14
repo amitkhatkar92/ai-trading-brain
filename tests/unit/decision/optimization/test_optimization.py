@@ -45,7 +45,7 @@ from typing import Any, Dict, List
 import pytest
 
 # ── Package import ────────────────────────────────────────────────────────
-from iios.decision.optimization import (
+from enterprise_ai_platform.decision.optimization import (
     # constants / enums
     OPTIMIZATION_SYSTEM_ID,
     VERSION,
@@ -226,7 +226,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error_subclass(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(DecisionOptimizationError, IIOSError)
 
     def test_engine_not_running(self):
@@ -1733,7 +1733,7 @@ class TestOptimizationFrameworkAdapter:
 
 class TestInit:
     def test_key_symbols_importable(self):
-        import iios.decision.optimization as pkg
+        import enterprise_ai_platform.decision.optimization as pkg
         assert hasattr(pkg, "DecisionOptimizationEngine")
         assert hasattr(pkg, "OptimizationFrameworkAdapter")
         assert hasattr(pkg, "DecisionCandidate")
@@ -1745,6 +1745,6 @@ class TestInit:
         assert hasattr(pkg, "DecisionOptimizer")
 
     def test_version_accessible(self):
-        import iios.decision.optimization as pkg
+        import enterprise_ai_platform.decision.optimization as pkg
         assert hasattr(pkg, "VERSION")
         assert pkg.VERSION

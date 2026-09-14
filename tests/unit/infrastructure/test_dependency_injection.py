@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_dependency_injection.py
 ======================================================
-Tests for the iios.infrastructure.dependency_injection subpackage.
+Tests for the enterprise_ai_platform.infrastructure.dependency_injection subpackage.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.infrastructure.dependency_injection import (
+from enterprise_ai_platform.infrastructure.dependency_injection import (
     Container, get_container, reset_container,
     ServiceLocator,
     DependencyGraph,
@@ -19,7 +19,7 @@ from iios.infrastructure.dependency_injection import (
     ServiceFactory, AbstractFactory, FactoryRegistry,
     SingletonMeta, Singleton, clear_singleton_registry,
 )
-from iios.infrastructure.infrastructure_exceptions import (
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import (
     ServiceNotFoundError, ServiceAlreadyRegisteredError,
     CircularDependencyError, LifecycleScopeError,
 )
@@ -142,8 +142,8 @@ class TestContainer:
         # Use module-level classes so get_type_hints can resolve annotations
         # (local classes inside methods can't be resolved by get_type_hints)
         c = Container()
-        c.singleton("iios.infrastructure.infrastructure_models.ServiceDescriptor",
-                    __import__("iios.infrastructure.infrastructure_models",
+        c.singleton("enterprise_ai_platform.infrastructure.infrastructure_models.ServiceDescriptor",
+                    __import__("enterprise_ai_platform.infrastructure.infrastructure_models",
                                fromlist=["ServiceDescriptor"]).ServiceDescriptor)
         # Simpler: test that auto_factory silently skips unresolvable locals
         # and falls through to normal construction

@@ -1,11 +1,11 @@
 """tests/unit/investment/company/earnings/test_earnings_quality.py"""
 import pytest
 
-from iios.investment.company.earnings.earnings_quality import EarningsQualityAnalyzer, _score_to_label
-from iios.investment.company.earnings.earnings_consistency import EarningsConsistencyChecker
-from iios.investment.company.earnings.earnings_persistence import EarningsPersistenceAnalyzer
-from iios.investment.company.earnings.earnings_reliability import EarningsReliabilityAnalyzer
-from iios.investment.company.earnings.earnings_report import EarningsQualityLabel
+from enterprise_ai_platform.investment.company.earnings.earnings_quality import EarningsQualityAnalyzer, _score_to_label
+from enterprise_ai_platform.investment.company.earnings.earnings_consistency import EarningsConsistencyChecker
+from enterprise_ai_platform.investment.company.earnings.earnings_persistence import EarningsPersistenceAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_reliability import EarningsReliabilityAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_report import EarningsQualityLabel
 from tests.unit.investment.company.earnings.conftest import make_report
 
 

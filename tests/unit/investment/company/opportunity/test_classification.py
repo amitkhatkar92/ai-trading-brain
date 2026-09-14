@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.opportunity.classification_engine import ClassificationEngine
-from iios.investment.company.opportunity.company_classifier import classify_company
-from iios.investment.company.opportunity.opportunity_category import ClassificationResult
-from iios.investment.company.opportunity.opportunity_lifecycle import (
+from enterprise_ai_platform.investment.company.opportunity.classification_engine import ClassificationEngine
+from enterprise_ai_platform.investment.company.opportunity.company_classifier import classify_company
+from enterprise_ai_platform.investment.company.opportunity.opportunity_category import ClassificationResult
+from enterprise_ai_platform.investment.company.opportunity.opportunity_lifecycle import (
     LifecycleChange, determine_lifecycle, is_valid_transition,
 )
-from iios.investment.company.opportunity.opportunity_profile import (
+from enterprise_ai_platform.investment.company.opportunity.opportunity_profile import (
     OpportunityCategory, OpportunityLifecycle,
 )
 

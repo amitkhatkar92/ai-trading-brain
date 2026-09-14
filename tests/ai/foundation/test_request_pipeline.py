@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.ai.foundation.request import (
+from enterprise_ai_platform.ai.foundation.request import (
     RequestMetadata,
     AIRequest,
     AIResponse,
     AIExecutionRequest,
     AIExecutionResult,
 )
-from iios.ai.foundation.pipeline import (
+from enterprise_ai_platform.ai.foundation.pipeline import (
     ExecutionPipeline,
     ValidationStage,
 )
-from iios.ai.foundation.exceptions import AIPipelineStageError
+from enterprise_ai_platform.ai.foundation.exceptions import AIPipelineStageError
 
 
 class TestRequestMetadata:

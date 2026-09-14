@@ -1,15 +1,15 @@
 """Tests for return_analysis, return_statistics, rolling_returns, annualized_returns."""
 import pytest
-from iios.investment.portfolio.performance.return_analysis import (
+from enterprise_ai_platform.investment.portfolio.performance.return_analysis import (
     analyze_returns, total_return_from_nav, period_returns_from_nav,
 )
-from iios.investment.portfolio.performance.return_statistics import (
+from enterprise_ai_platform.investment.portfolio.performance.return_statistics import (
     compute_return_statistics,
 )
-from iios.investment.portfolio.performance.rolling_returns import (
+from enterprise_ai_platform.investment.portfolio.performance.rolling_returns import (
     compute_rolling_returns, _rolling_compound,
 )
-from iios.investment.portfolio.performance.annualized_returns import (
+from enterprise_ai_platform.investment.portfolio.performance.annualized_returns import (
     compute_annualized_returns, _compound, _geo_mean,
 )
 

@@ -5,12 +5,12 @@ import time
 
 import pytest
 
-from iios.investment.market.integration.aggregation_engine import AggregationEngine
-from iios.investment.market.integration.coverage_monitor import CoverageMonitor
-from iios.investment.market.integration.dependency_monitor import DependencyMonitor
-from iios.investment.market.integration.engine_health import EngineHealthTracker
-from iios.investment.market.integration.health_monitor import HealthMonitor
-from iios.investment.market.integration.models import HealthStatus
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.market.integration.coverage_monitor import CoverageMonitor
+from enterprise_ai_platform.investment.market.integration.dependency_monitor import DependencyMonitor
+from enterprise_ai_platform.investment.market.integration.engine_health import EngineHealthTracker
+from enterprise_ai_platform.investment.market.integration.health_monitor import HealthMonitor
+from enterprise_ai_platform.investment.market.integration.models import HealthStatus
 
 
 class TestEngineHealthTracker:
@@ -127,7 +127,7 @@ class TestDependencyMonitor:
         assert affected == {}
 
     def test_reliability_factor_all_healthy(self):
-        from iios.investment.market.integration.models import EngineHealthRecord
+        from enterprise_ai_platform.investment.market.integration.models import EngineHealthRecord
         monitor  = DependencyMonitor()
         records  = {
             "market_regime": EngineHealthRecord(
@@ -142,7 +142,7 @@ class TestDependencyMonitor:
         assert factor < 1.0
 
     def test_reliability_factor_stale_dep(self):
-        from iios.investment.market.integration.models import EngineHealthRecord
+        from enterprise_ai_platform.investment.market.integration.models import EngineHealthRecord
         monitor  = DependencyMonitor()
         records  = {
             "market_regime": EngineHealthRecord(

@@ -1,16 +1,16 @@
 """test_constraint_solver.py — Tests for ConstraintSolver and ConstraintValidator."""
 import pytest
 
-from iios.investment.portfolio.optimization.constraint_solver import ConstraintSolver
-from iios.investment.portfolio.optimization.constraint_validator import ConstraintValidator
-from iios.investment.portfolio.optimization.optimization_constraints import (
+from enterprise_ai_platform.investment.portfolio.optimization.constraint_solver import ConstraintSolver
+from enterprise_ai_platform.investment.portfolio.optimization.constraint_validator import ConstraintValidator
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_constraints import (
     default_constraint_set,
     budget_constraint,
     position_weight_constraint,
     leverage_constraint,
 )
-from iios.investment.portfolio.optimization.optimization_engine import AssetProxy
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_engine import AssetProxy
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationPlan,
     OptimizedPosition,
 )

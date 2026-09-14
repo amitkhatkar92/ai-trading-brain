@@ -1,7 +1,7 @@
 """
 tests/unit/decision/lifecycle/test_lifecycle.py
 ================================================
-Comprehensive test suite for iios.decision.lifecycle — C9 M1.
+Comprehensive test suite for enterprise_ai_platform.decision.lifecycle — C9 M1.
 
 Coverage areas
 --------------
@@ -32,7 +32,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.decision.lifecycle import (
+from enterprise_ai_platform.decision.lifecycle import (
     ACTIVE_STATES,
     IMMUTABLE_STATES,
     TERMINAL_STATES,

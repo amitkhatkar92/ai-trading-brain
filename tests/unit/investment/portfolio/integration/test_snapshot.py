@@ -8,19 +8,19 @@ from __future__ import annotations
 import dataclasses
 import pytest
 
-from iios.investment.portfolio.integration.portfolio_confidence import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_confidence import (
     PortfolioConfidenceCalculator,
 )
-from iios.investment.portfolio.integration.portfolio_quality import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_quality import (
     PortfolioQualityAssessor,
 )
-from iios.investment.portfolio.integration.portfolio_snapshot import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_snapshot import (
     PortfolioIntelligenceSnapshot,
 )
-from iios.investment.portfolio.integration.portfolio_summary import (
+from enterprise_ai_platform.investment.portfolio.integration.portfolio_summary import (
     PortfolioState, PortfolioSummary, build_state, build_summary,
 )
-from iios.investment.portfolio.integration.integration_types import (
+from enterprise_ai_platform.investment.portfolio.integration.integration_types import (
     AggregationStatus, EngineId, QualityGrade, REQUIRED_ENGINES, SnapshotStatus,
 )
 

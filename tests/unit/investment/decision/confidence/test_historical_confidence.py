@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.confidence.confidence_constants import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_constants import (
     DriftSeverity,
     TrendDirection,
 )
-from iios.investment.decision.confidence.confidence_drift import ConfidenceDriftDetector
-from iios.investment.decision.confidence.confidence_evolution import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_drift import ConfidenceDriftDetector
+from enterprise_ai_platform.investment.decision.confidence.confidence_evolution import (
     ConfidenceEvolutionTracker,
 )
-from iios.investment.decision.confidence.confidence_trends import ConfidenceTrendAnalyzer
-from iios.investment.decision.confidence.historical_confidence import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_trends import ConfidenceTrendAnalyzer
+from enterprise_ai_platform.investment.decision.confidence.historical_confidence import (
     HistoricalConfidenceAnalyzer,
 )
 

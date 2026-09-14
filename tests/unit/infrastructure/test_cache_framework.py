@@ -11,7 +11,7 @@ import threading
 import time
 import pytest
 
-from iios.infrastructure.cache import (
+from enterprise_ai_platform.infrastructure.cache import (
     # Constants
     CacheLevel, EvictionPolicy, WritePolicy, ReadPolicy,
     CachePriority, DEFAULT_REGION,
@@ -351,7 +351,7 @@ class TestCacheContext:
             assert current_region() == "outer"
 
     def test_set_region(self):
-        from iios.infrastructure.cache import set_region
+        from enterprise_ai_platform.infrastructure.cache import set_region
         set_region("trades")
         assert current_region() == "trades"
 
@@ -526,7 +526,7 @@ class TestL2SharedProvider:
         assert p.size() <= 3
 
     def test_compression_roundtrip(self):
-        from iios.infrastructure.cache import CompressionAlgo
+        from enterprise_ai_platform.infrastructure.cache import CompressionAlgo
         p = L2SharedProvider(max_size=100, compression=True, compress_algo=CompressionAlgo.ZLIB)
         original = {"symbol": "RELIANCE", "price": 2500, "data": list(range(100))}
         entry = make_entry("k", original)

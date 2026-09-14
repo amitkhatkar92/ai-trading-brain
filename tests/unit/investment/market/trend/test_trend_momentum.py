@@ -5,12 +5,12 @@ TrendAccelerationAnalyzer, TrendDecelerationDetector.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.trend.trend_momentum import TrendMomentumAnalyzer
-from iios.investment.market.trend.trend_velocity import TrendVelocityCalculator
-from iios.investment.market.trend.trend_acceleration import TrendAccelerationAnalyzer
-from iios.investment.market.trend.trend_deceleration import TrendDecelerationDetector
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.trend.trend_momentum import TrendMomentumAnalyzer
+from enterprise_ai_platform.investment.market.trend.trend_velocity import TrendVelocityCalculator
+from enterprise_ai_platform.investment.market.trend.trend_acceleration import TrendAccelerationAnalyzer
+from enterprise_ai_platform.investment.market.trend.trend_deceleration import TrendDecelerationDetector
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendMomentumState,
     TrendLegMetrics,
     ImpulseQuality,

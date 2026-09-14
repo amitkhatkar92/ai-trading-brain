@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_engine import AssetProxy
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_engine import AssetProxy
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationObjective,
     OptimizationRequest,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ObjectiveType,
     OptimizationMethod,
 )

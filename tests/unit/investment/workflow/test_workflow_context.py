@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
+from enterprise_ai_platform.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
 
 
 class TestWorkflowParameters:

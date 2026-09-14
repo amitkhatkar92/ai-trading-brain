@@ -5,20 +5,20 @@ import json
 
 import pytest
 
-from iios.investment.market.integration.aggregation_engine import AggregationEngine
-from iios.investment.market.integration.aggregation_state import AggregationState
-from iios.investment.market.integration.conflict_engine import ConflictEngine
-from iios.investment.market.integration.consistency_validator import ConsistencyValidator
-from iios.investment.market.integration.market_confidence import MarketConfidenceEngine
-from iios.investment.market.integration.market_quality import MarketQualityEngine
-from iios.investment.market.integration.market_snapshot import SnapshotBuilder
-from iios.investment.market.integration.market_state import MarketStateClassifier
-from iios.investment.market.integration.market_statistics import (
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
+from enterprise_ai_platform.investment.market.integration.conflict_engine import ConflictEngine
+from enterprise_ai_platform.investment.market.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.market.integration.market_confidence import MarketConfidenceEngine
+from enterprise_ai_platform.investment.market.integration.market_quality import MarketQualityEngine
+from enterprise_ai_platform.investment.market.integration.market_snapshot import SnapshotBuilder
+from enterprise_ai_platform.investment.market.integration.market_state import MarketStateClassifier
+from enterprise_ai_platform.investment.market.integration.market_statistics import (
     avg_confidence, avg_quality, conflict_rate,
     regime_distribution, state_label_distribution,
 )
-from iios.investment.market.integration.market_summary import MarketSummaryBuilder
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.market_summary import MarketSummaryBuilder
+from enterprise_ai_platform.investment.market.integration.models import (
     ConflictSummary,
     MarketIntelligenceSnapshot,
     MarketStateLabel,
@@ -26,7 +26,7 @@ from iios.investment.market.integration.models import (
     ValidationReport,
     ValidationStatus,
 )
-from iios.investment.market.integration.snapshot_history import SnapshotHistory
+from enterprise_ai_platform.investment.market.integration.snapshot_history import SnapshotHistory
 
 
 def _build_snap(state: AggregationState) -> MarketIntelligenceSnapshot:

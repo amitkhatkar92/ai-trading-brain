@@ -1,7 +1,7 @@
 """tests/unit/investment/portfolio/risk/test_currency_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.currency_risk import analyze_currency_risk, CurrencyRiskResult
-from iios.investment.portfolio.risk.risk_types import RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.currency_risk import analyze_currency_risk, CurrencyRiskResult
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel
 
 
 def test_currency_empty():

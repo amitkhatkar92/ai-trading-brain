@@ -10,18 +10,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.investment.investment_constants import AssetClass, InvestmentObjective
-from iios.investment.models.investment_request import InvestmentRequest
-from iios.investment.workflow.institutional_investment_workflow import (
+from enterprise_ai_platform.investment.investment_constants import AssetClass, InvestmentObjective
+from enterprise_ai_platform.investment.models.investment_request import InvestmentRequest
+from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
     InstitutionalInvestmentWorkflow,
     InstitutionalWorkflowOrchestrator,
     WorkflowResult,
 )
-from iios.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
-from iios.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
-from iios.investment.workflow.workflow_history import WorkflowRunRecord
-from iios.investment.workflow.workflow_statistics import WorkflowStatisticsSnapshot
-from iios.investment.workflow.workflow_types import (
+from enterprise_ai_platform.investment.workflow.workflow_context import WorkflowEngines, WorkflowParameters
+from enterprise_ai_platform.investment.workflow.workflow_events import WorkflowEvent, WorkflowEventPublisher
+from enterprise_ai_platform.investment.workflow.workflow_history import WorkflowRunRecord
+from enterprise_ai_platform.investment.workflow.workflow_statistics import WorkflowStatisticsSnapshot
+from enterprise_ai_platform.investment.workflow.workflow_types import (
     PIPELINE_STAGES, PipelineEventType, WorkflowStage,
 )
 
@@ -493,8 +493,8 @@ class TestInstitutionalInvestmentWorkflow:
         assert wf.priority == 0
 
     def test_execute_returns_analysis(self, engines, params, request_obj):
-        from iios.investment.models.investment_context_model import InvestmentContext
-        from iios.investment.investment_constants import AssetClass
+        from enterprise_ai_platform.investment.models.investment_context_model import InvestmentContext
+        from enterprise_ai_platform.investment.investment_constants import AssetClass
 
         request_obj.metadata["portfolio_id"] = "P-WF"
         ctx = InvestmentContext(
@@ -504,7 +504,7 @@ class TestInstitutionalInvestmentWorkflow:
         )
         # Patch the orchestrator to use mock engines
         with patch(
-            "iios.investment.workflow.institutional_investment_workflow"
+            "enterprise_ai_platform.investment.workflow.institutional_investment_workflow"
             ".InstitutionalWorkflowOrchestrator",
         ) as MockOrch:
             mock_result = MagicMock()
@@ -517,7 +517,7 @@ class TestInstitutionalInvestmentWorkflow:
             wf       = InstitutionalInvestmentWorkflow()
             analysis = wf.execute(request_obj, ctx)
 
-        from iios.investment.investment_constants import AnalysisStatus
+        from enterprise_ai_platform.investment.investment_constants import AnalysisStatus
         assert analysis.status == AnalysisStatus.COMPLETED
         assert analysis.findings["succeeded"] is True
 

@@ -9,12 +9,12 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.volatility.volatility_intelligence_engine import (
+from enterprise_ai_platform.investment.market.volatility.volatility_intelligence_engine import (
     InstitutionalVolatilityIntelligenceEngine,
 )
-from iios.investment.market.volatility.close_to_close_estimator import CloseToCloseEstimator
-from iios.investment.market.volatility.high_low_estimator import HighLowEstimator
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.close_to_close_estimator import CloseToCloseEstimator
+from enterprise_ai_platform.investment.market.volatility.high_low_estimator import HighLowEstimator
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityIntelligenceSnapshot,
     VolatilityRegimeType,
     VolatilityBehaviour,
@@ -118,7 +118,7 @@ class TestRegime:
         for bar in make_volatile_bars(40):
             volatile_snap = volatile_eng.update(bar)
 
-        from iios.investment.market.volatility.volatility_regime import regime_severity
+        from enterprise_ai_platform.investment.market.volatility.volatility_regime import regime_severity
         assert regime_severity(volatile_snap.regime_snapshot.regime) >= regime_severity(
             quiet_snap.regime_snapshot.regime
         )

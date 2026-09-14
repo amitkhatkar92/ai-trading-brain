@@ -10,7 +10,7 @@ import uuid
 
 import pytest
 
-from iios.workflow.snapshot import (
+from enterprise_ai_platform.workflow.snapshot import (
     # Constants
     ExecutionStatus,
     GovernanceDecision,
@@ -100,8 +100,8 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_inherits_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
-        from iios.workflow.snapshot import WorkflowSnapshotError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.workflow.snapshot import WorkflowSnapshotError
         assert issubclass(WorkflowSnapshotError, IIOSError)
 
     def test_not_found_contains_id(self):
@@ -123,7 +123,7 @@ class TestExceptions:
         assert "WSS" in err.code
 
     def test_all_codes_have_wss_prefix(self):
-        from iios.workflow.snapshot.exceptions import (
+        from enterprise_ai_platform.workflow.snapshot.exceptions import (
             WorkflowSnapshotBundleError,
             WorkflowSnapshotCacheError,
             WorkflowSnapshotSerializationError,

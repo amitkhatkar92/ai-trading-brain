@@ -21,7 +21,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.market.lifecycle import (
+from enterprise_ai_platform.market.lifecycle import (
     # Primary interface
     MarketLifecycle,
     # Session
@@ -124,7 +124,7 @@ def _full_session(lc: MarketLifecycle, analysis_id: str = "MKT-001") -> MarketSe
 
 class TestConstants:
     def test_system_id(self):
-        assert LIFECYCLE_SYSTEM_ID == "iios:market:lifecycle"
+        assert LIFECYCLE_SYSTEM_ID == "enterprise_ai_platform:market:lifecycle"
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -181,7 +181,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_error_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(MarketLifecycleError, IIOSError)
 
     def test_base_error_code(self):

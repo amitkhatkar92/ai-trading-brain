@@ -1,13 +1,13 @@
 """Tests for adapters: LegacyStrategyAdapter, AdapterFactory, AdapterRegistry."""
 import pytest
 
-from iios.investment.strategy.migration.adapter_factory import AdapterFactory
-from iios.investment.strategy.migration.adapter_registry import AdapterRegistry
-from iios.investment.strategy.migration.strategy_adapter import (
+from enterprise_ai_platform.investment.strategy.migration.adapter_factory import AdapterFactory
+from enterprise_ai_platform.investment.strategy.migration.adapter_registry import AdapterRegistry
+from enterprise_ai_platform.investment.strategy.migration.strategy_adapter import (
     AdaptationMode,
     LegacyStrategyAdapter,
 )
-from iios.investment.strategy.migration.legacy_metadata import LegacyStrategyType
+from enterprise_ai_platform.investment.strategy.migration.legacy_metadata import LegacyStrategyType
 
 
 class TestLegacyStrategyAdapter:

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthData,
     BreadthTrend,
     DivergenceType,
@@ -11,9 +11,9 @@ from iios.investment.market.breadth.models import (
     MarketHealthSnapshot,
     ParticipationSnapshot,
 )
-from iios.investment.market.breadth.divergence_detector import DivergenceDetector
-from iios.investment.market.breadth.divergence_engine import DivergenceEngine
-from iios.investment.market.breadth.divergence_history import DivergenceHistory
+from enterprise_ai_platform.investment.market.breadth.divergence_detector import DivergenceDetector
+from enterprise_ai_platform.investment.market.breadth.divergence_engine import DivergenceEngine
+from enterprise_ai_platform.investment.market.breadth.divergence_history import DivergenceHistory
 
 
 def _bd(pct: float, stability: float = 0.6) -> BreadthData:
@@ -123,7 +123,7 @@ class TestDivergenceEngine:
         for s in signals_total:
             assert isinstance(s.divergence_type, DivergenceType)
             assert 0.0 <= s.strength <= 1.0
-        from iios.investment.market.breadth.models import BreadthEventType
+        from enterprise_ai_platform.investment.market.breadth.models import BreadthEventType
         for e in events_total:
             assert isinstance(e.event_type, BreadthEventType)
 
@@ -131,7 +131,7 @@ class TestDivergenceEngine:
 class TestDivergenceHistory:
     def test_append_and_len(self):
         h = DivergenceHistory(maxlen=5)
-        from iios.investment.market.breadth.models import DivergenceSignal
+        from enterprise_ai_platform.investment.market.breadth.models import DivergenceSignal
         sig = DivergenceSignal(
             divergence_type=DivergenceType.BULLISH_BREADTH,
             strength=0.5, bars_active=2, description="t", confirmed=False,

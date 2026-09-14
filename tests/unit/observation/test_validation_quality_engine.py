@@ -13,26 +13,26 @@ import time
 
 import pytest
 
-from iios.observation.observation_factory import get_observation_factory
-from iios.observation.observation_constants import (
+from enterprise_ai_platform.observation.observation_factory import get_observation_factory
+from enterprise_ai_platform.observation.observation_constants import (
     ObservationSource, ObservationType, ObservationStatus,
 )
-from iios.observation.models.observation import Observation
-from iios.observation.models.observation_metadata import ObservationMetadata
-from iios.observation.models.observation_source   import ObservationSourceInfo
+from enterprise_ai_platform.observation.models.observation import Observation
+from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
+from enterprise_ai_platform.observation.models.observation_source   import ObservationSourceInfo
 
-from iios.observation.validators.validation_constants import (
+from enterprise_ai_platform.observation.validators.validation_constants import (
     GovernanceAction, MIN_PASSING_SCORE, QuarantineReason,
     RuleCategory, ValidationMode, ValidationSeverity, ValidationStage,
 )
-from iios.observation.validators.validation_exceptions import (
+from enterprise_ai_platform.observation.validators.validation_exceptions import (
     ConflictingObservationError, DuplicateObservationError,
     QualityAssessmentError, QualityThresholdError, ValidationError,
     ValidationGovernanceError, ValidationPipelineError,
     ValidationQuarantineError, ValidationRegistryError,
     ValidationRuleError, ValidationTimeoutError,
 )
-from iios.observation.validators.validation_rules import (
+from enterprise_ai_platform.observation.validators.validation_rules import (
     ChecksumIntegrityRule, ConfidenceRangeRule, ContentNotNullRule,
     ContentSizeRule, DEFAULT_RULES, DeletedRule, DomainValidRule,
     ExpiryRule, IdentityRule, InstrumentPresentRule, PriorityValidRule,
@@ -40,51 +40,51 @@ from iios.observation.validators.validation_rules import (
     SourceNotUnknownRule, TimestampNotFutureRule, TimestampPositiveRule,
     TitleNotEmptyRule, TypeNotUnknownRule,
 )
-from iios.observation.validators.validation_registry import (
+from enterprise_ai_platform.observation.validators.validation_registry import (
     RuleRegistry,
     get_rule_registry, reset_rule_registry,
 )
-from iios.observation.validators.validation_context import (
+from enterprise_ai_platform.observation.validators.validation_context import (
     ValidationContext, current_obs_id, current_stage, current_run_id,
     get_validation_context, reset_validation_context, validation_operation,
 )
-from iios.observation.validators.validation_pipeline import (
+from enterprise_ai_platform.observation.validators.validation_pipeline import (
     PipelineResult, StageResult, ValidationPipeline,
 )
-from iios.observation.validators.validation_engine import (
+from enterprise_ai_platform.observation.validators.validation_engine import (
     ValidationEngine, ValidationReport,
     get_validation_engine, reset_validation_engine,
 )
-from iios.observation.validators.validation_manager import (
+from enterprise_ai_platform.observation.validators.validation_manager import (
     DuplicateDetector, GovernanceDecision, QuarantineEntry, QuarantineQueue,
     ValidationManager,
     get_validation_manager, reset_validation_manager,
 )
 
-from iios.observation.quality.quality_score import (
+from enterprise_ai_platform.observation.quality.quality_score import (
     DEFAULT_WEIGHTS, DimensionScore, QualityScore, quality_tier,
 )
-from iios.observation.quality.quality_assessment import (
+from enterprise_ai_platform.observation.quality.quality_assessment import (
     AccuracyAssessor, CompletenessAssessor, ConsistencyAssessor,
     FreshnessAssessor, IntegrityAssessor, ReliabilityAssessor,
     SourceTrustAssessor, TimelinessAssessor,
 )
-from iios.observation.quality.quality_metrics import (
+from enterprise_ai_platform.observation.quality.quality_metrics import (
     MetricWindow, QualityMetrics,
     get_quality_metrics, reset_quality_metrics,
 )
-from iios.observation.quality.quality_engine import (
+from enterprise_ai_platform.observation.quality.quality_engine import (
     QualityEngine, get_quality_engine, reset_quality_engine,
 )
-from iios.observation.quality.quality_manager import (
+from enterprise_ai_platform.observation.quality.quality_manager import (
     QualityDecision, QualityManager, QualityPolicy,
     get_quality_manager, reset_quality_manager,
 )
-from iios.observation.quality.quality_report import (
+from enterprise_ai_platform.observation.quality.quality_report import (
     QualityReportDocument, QualityReporter, QualityReportSection,
     get_quality_reporter, reset_quality_reporter,
 )
-from iios.observation.observation_constants import ObservationQuality
+from enterprise_ai_platform.observation.observation_constants import ObservationQuality
 
 
 # ─────────────────────────── Helpers & fixtures ───────────────────────────────

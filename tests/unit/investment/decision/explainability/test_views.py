@@ -5,12 +5,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.explainability.analyst_view import AnalystView, build_analyst_view
-from iios.investment.decision.explainability.audit_view import AuditView, build_audit_view
-from iios.investment.decision.explainability.developer_view import DeveloperView, build_developer_view
-from iios.investment.decision.explainability.executive_view import ExecutiveView, build_executive_view
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
-from iios.investment.decision.explainability.traceability_engine import TraceabilityEngine
+from enterprise_ai_platform.investment.decision.explainability.analyst_view import AnalystView, build_analyst_view
+from enterprise_ai_platform.investment.decision.explainability.audit_view import AuditView, build_audit_view
+from enterprise_ai_platform.investment.decision.explainability.developer_view import DeveloperView, build_developer_view
+from enterprise_ai_platform.investment.decision.explainability.executive_view import ExecutiveView, build_executive_view
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.traceability_engine import TraceabilityEngine
 
 
 class TestExecutiveView:

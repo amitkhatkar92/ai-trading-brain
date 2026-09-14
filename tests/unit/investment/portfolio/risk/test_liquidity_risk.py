@@ -1,7 +1,7 @@
 """tests/unit/investment/portfolio/risk/test_liquidity_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.liquidity_risk import analyze_liquidity_risk, LiquidityRiskResult
-from iios.investment.portfolio.risk.risk_types import RiskLevel, RiskPosition
+from enterprise_ai_platform.investment.portfolio.risk.liquidity_risk import analyze_liquidity_risk, LiquidityRiskResult
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel, RiskPosition
 
 
 def test_liquidity_empty():
@@ -33,7 +33,7 @@ def test_liquid_plus_semiliquid_plus_illiquid_approx_one(positions_5_diverse):
 
 def test_lvar_gt_var(positions_5_diverse):
     r = analyze_liquidity_risk(positions_5_diverse)
-    from iios.investment.portfolio.risk.market_risk import analyze_market_risk
+    from enterprise_ai_platform.investment.portfolio.risk.market_risk import analyze_market_risk
     mr = analyze_market_risk(positions_5_diverse)
     assert r.lvar_95_1d >= mr.var_95_1d
 

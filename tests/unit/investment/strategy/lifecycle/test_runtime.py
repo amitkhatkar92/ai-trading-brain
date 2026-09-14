@@ -9,17 +9,17 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from iios.investment.strategy.lifecycle.runtime_context import RuntimeContext
-from iios.investment.strategy.lifecycle.runtime_state import (
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_context import RuntimeContext
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_state import (
     RuntimeState,
     RuntimeStateSnapshot,
     validate_runtime_transition,
 )
-from iios.investment.strategy.lifecycle.runtime_statistics import (
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_statistics import (
     CycleSample,
     RuntimeStatistics,
 )
-from iios.investment.strategy.lifecycle.runtime_manager import (
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_manager import (
     RuntimeManager,
     RuntimeManagerError,
 )

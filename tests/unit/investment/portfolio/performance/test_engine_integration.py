@@ -1,12 +1,12 @@
 """End-to-end integration tests for PortfolioPerformanceEngine."""
 import pytest
-from iios.investment.portfolio.performance.portfolio_performance_engine import (
+from enterprise_ai_platform.investment.portfolio.performance.portfolio_performance_engine import (
     PortfolioPerformanceEngine, PerformanceIntegrationRefs,
 )
-from iios.investment.portfolio.performance.performance_profile import PerformanceProfile
-from iios.investment.portfolio.performance.performance_quality import PerformanceQualityAssessor
-from iios.investment.portfolio.performance.performance_score import PerformanceScoreCalculator
-from iios.investment.portfolio.performance.performance_types import PerformanceGrade, PerformanceLevel
+from enterprise_ai_platform.investment.portfolio.performance.performance_profile import PerformanceProfile
+from enterprise_ai_platform.investment.portfolio.performance.performance_quality import PerformanceQualityAssessor
+from enterprise_ai_platform.investment.portfolio.performance.performance_score import PerformanceScoreCalculator
+from enterprise_ai_platform.investment.portfolio.performance.performance_types import PerformanceGrade, PerformanceLevel
 
 
 @pytest.fixture

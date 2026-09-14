@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from iios.investment import (
+from enterprise_ai_platform.investment import (
     # constants
     AnalysisStatus, AssetClass, IntelligenceType, InvestmentObjective,
     RiskProfile, SessionStatus, TimeHorizon, WorkflowStatus,
@@ -993,7 +993,7 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.investment as pkg
+        import enterprise_ai_platform.investment as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
@@ -1003,5 +1003,5 @@ class TestPackageImports:
         assert issubclass(DomainEngineNotFoundError,     InvestmentEngineError)
 
     def test_version(self):
-        import iios.investment as pkg
+        import enterprise_ai_platform.investment as pkg
         assert pkg.__version__ == "1.0.0"

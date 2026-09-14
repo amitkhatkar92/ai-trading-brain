@@ -33,8 +33,8 @@ from typing import Any, Dict, List
 
 import pytest
 
-import iios.integration.snapshot as snap_pkg
-from iios.integration.snapshot import (
+import enterprise_ai_platform.integration.snapshot as snap_pkg
+from enterprise_ai_platform.integration.snapshot import (
     AdapterSummary,
     AuditSummary,
     BundleEntry,
@@ -144,7 +144,7 @@ class TestConstants:
         assert len(ProtocolHealth) == 4
 
     def test_default_constants(self):
-        from iios.integration.snapshot import (
+        from enterprise_ai_platform.integration.snapshot import (
             DEFAULT_SNAPSHOT_TTL_SECONDS, DEFAULT_HISTORY_SIZE,
             DEFAULT_CACHE_SIZE, DEFAULT_MAX_BUNDLE_SIZE, DEFAULT_STORE_MAX,
             SNAPSHOT_VERSION, FRAMEWORK_VERSION, SNAPSHOT_ID_PREFIX,
@@ -1577,15 +1577,15 @@ class TestRegression:
         """snapshot package must not import from lifecycle/engine/policies/services."""
         import sys
         for key, mod in sys.modules.items():
-            if "iios.integration.snapshot" in key and hasattr(mod, "__file__"):
+            if "enterprise_ai_platform.integration.snapshot" in key and hasattr(mod, "__file__"):
                 if mod.__file__:
                     with open(mod.__file__, encoding="utf-8", errors="ignore") as f:
                         src = f.read()
                     for forbidden in [
-                        "iios.integration.lifecycle",
-                        "iios.integration.engine",
-                        "iios.integration.policies",
-                        "iios.integration.services",
+                        "enterprise_ai_platform.integration.lifecycle",
+                        "enterprise_ai_platform.integration.engine",
+                        "enterprise_ai_platform.integration.policies",
+                        "enterprise_ai_platform.integration.services",
                     ]:
                         assert forbidden not in src, \
                             f"{key} imports from {forbidden!r} (circular)"
@@ -1599,7 +1599,7 @@ class TestRegression:
             "smtplib", "twilio", "firebase_admin",
         ]
         for key, mod in sys.modules.items():
-            if "iios.integration.snapshot" in key and hasattr(mod, "__file__"):
+            if "enterprise_ai_platform.integration.snapshot" in key and hasattr(mod, "__file__"):
                 if mod.__file__:
                     with open(mod.__file__, encoding="utf-8", errors="ignore") as f:
                         src = f.read()
@@ -1609,7 +1609,7 @@ class TestRegression:
 
     def test_all_public_api_importable(self):
         """Every name in __all__ must be accessible from the package."""
-        import iios.integration.snapshot as sp
+        import enterprise_ai_platform.integration.snapshot as sp
         for name in sp.__all__:
             assert hasattr(sp, name), f"__all__ member {name!r} not accessible"
 

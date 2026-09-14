@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 import pytest
 
-from iios.integration.research.learning import (
+from enterprise_ai_platform.integration.research.learning import (
     get_learning_engine,
     reset_learning_engine,
     LearningEngine,
@@ -30,7 +30,7 @@ from iios.integration.research.learning import (
     DriftDetector,
     DriftResult,
 )
-from iios.integration.research.learning.learning_constants import (
+from enterprise_ai_platform.integration.research.learning.learning_constants import (
     JobStatus,
     LearningEngineStatus,
     ModelStatus,
@@ -51,7 +51,7 @@ from iios.integration.research.learning.learning_constants import (
     PSI_DRIFT_THRESHOLD,
     MIN_DATASET_SIZE,
 )
-from iios.integration.research.learning.learning_exceptions import (
+from enterprise_ai_platform.integration.research.learning.learning_exceptions import (
     LearningError,
     EngineNotRunningError,
     EngineAlreadyRunningError,
@@ -123,7 +123,7 @@ class MockModel:
         return self._fitted
 
     def get_profile(self) -> Any:
-        from iios.integration.research.learning.models.model_profile import ModelProfile
+        from enterprise_ai_platform.integration.research.learning.models.model_profile import ModelProfile
         return ModelProfile.create(self.model_id, self.version)
 
     def to_dict(self) -> dict[str, Any]:
@@ -219,7 +219,7 @@ class TestExceptions:
         assert issubclass(TrainingError, LearningError)
 
     def test_all_ml_codes_unique(self):
-        from iios.integration.research.learning import learning_exceptions as lex
+        from enterprise_ai_platform.integration.research.learning import learning_exceptions as lex
         import inspect
         codes = [
             cls.code
@@ -363,7 +363,7 @@ class TestDataset:
 
 class TestDatasetRegistry:
     def test_register_and_get(self):
-        from iios.integration.research.learning.datasets.dataset_registry import DatasetRegistry
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_registry import DatasetRegistry
         reg = DatasetRegistry()
         ds  = _make_dataset(20)
         reg.register(ds)
@@ -371,28 +371,28 @@ class TestDatasetRegistry:
         assert result.dataset_id == ds.dataset_id
 
     def test_get_missing_raises(self):
-        from iios.integration.research.learning.datasets.dataset_registry import DatasetRegistry
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_registry import DatasetRegistry
         reg = DatasetRegistry()
         with pytest.raises(DatasetNotFoundError):
             reg.get("no-such-id")
 
     def test_count(self):
-        from iios.integration.research.learning.datasets.dataset_registry import DatasetRegistry
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_registry import DatasetRegistry
         reg = DatasetRegistry()
         reg.register(_make_dataset(10, "ds1"))
         reg.register(_make_dataset(10, "ds2"))
         assert reg.count() == 2
 
     def test_version_created_on_register(self):
-        from iios.integration.research.learning.datasets.dataset_registry import DatasetRegistry
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_registry import DatasetRegistry
         reg = DatasetRegistry()
         ds  = _make_dataset(10)
         ver = reg.register(ds)
         assert ver.version == ds.version
 
     def test_capacity_enforced(self):
-        from iios.integration.research.learning.datasets.dataset_registry import DatasetRegistry
-        from iios.integration.research.learning.learning_exceptions import DatasetError
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_registry import DatasetRegistry
+        from enterprise_ai_platform.integration.research.learning.learning_exceptions import DatasetError
         reg = DatasetRegistry(max_datasets=2)
         reg.register(_make_dataset(10, "a"))
         reg.register(_make_dataset(10, "b"))
@@ -498,7 +498,7 @@ class TestFeaturePipeline:
 
 class TestFeatureTransformerProtocol:
     def test_protocol_is_runtime_checkable(self):
-        from iios.integration.research.learning.features.feature_transformer import FeatureTransformerProtocol
+        from enterprise_ai_platform.integration.research.learning.features.feature_transformer import FeatureTransformerProtocol
         class GoodTransformer:
             transformer_id = "g1"
             name = "good"
@@ -509,7 +509,7 @@ class TestFeatureTransformerProtocol:
         assert isinstance(GoodTransformer(), FeatureTransformerProtocol)
 
     def test_non_conforming_not_instance(self):
-        from iios.integration.research.learning.features.feature_transformer import FeatureTransformerProtocol
+        from enterprise_ai_platform.integration.research.learning.features.feature_transformer import FeatureTransformerProtocol
         class Bad:
             pass
         assert not isinstance(Bad(), FeatureTransformerProtocol)
@@ -517,7 +517,7 @@ class TestFeatureTransformerProtocol:
 
 class TestFeatureEngine:
     def test_define_and_get_feature(self):
-        from iios.integration.research.learning.features.feature_engine import FeatureEngine
+        from enterprise_ai_platform.integration.research.learning.features.feature_engine import FeatureEngine
         eng = FeatureEngine()
         feat = FeatureDefinition.create("rsi", FeatureType.NUMERIC)
         eng.define_feature(feat)
@@ -525,13 +525,13 @@ class TestFeatureEngine:
         assert result.name == "rsi"
 
     def test_get_missing_feature_raises(self):
-        from iios.integration.research.learning.features.feature_engine import FeatureEngine
+        from enterprise_ai_platform.integration.research.learning.features.feature_engine import FeatureEngine
         eng = FeatureEngine()
         with pytest.raises(FeatureNotFoundError):
             eng.get_feature("ghost")
 
     def test_stats(self):
-        from iios.integration.research.learning.features.feature_engine import FeatureEngine
+        from enterprise_ai_platform.integration.research.learning.features.feature_engine import FeatureEngine
         eng = FeatureEngine()
         d = eng.stats()
         assert "features_registered" in d
@@ -578,7 +578,7 @@ class TestModelMetadata:
 
 class TestModelRegistry:
     def test_register_and_get(self):
-        from iios.integration.research.learning.models.model_registry import ModelRegistry
+        from enterprise_ai_platform.integration.research.learning.models.model_registry import ModelRegistry
         reg = ModelRegistry()
         meta = ModelMetadata.create("M1", ModelTask.REGRESSION, LearningType.SUPERVISED)
         reg.register(meta)
@@ -586,13 +586,13 @@ class TestModelRegistry:
         assert result.name == "M1"
 
     def test_get_missing_raises(self):
-        from iios.integration.research.learning.models.model_registry import ModelRegistry
+        from enterprise_ai_platform.integration.research.learning.models.model_registry import ModelRegistry
         reg = ModelRegistry()
         with pytest.raises(ModelNotFoundError):
             reg.get("no-such-model")
 
     def test_by_task_filter(self):
-        from iios.integration.research.learning.models.model_registry import ModelRegistry
+        from enterprise_ai_platform.integration.research.learning.models.model_registry import ModelRegistry
         reg = ModelRegistry()
         reg.register(ModelMetadata.create("A", ModelTask.REGRESSION, LearningType.SUPERVISED))
         reg.register(ModelMetadata.create("B", ModelTask.CLASSIFICATION, LearningType.SUPERVISED))
@@ -601,8 +601,8 @@ class TestModelRegistry:
         assert len(reg_models) == 2
 
     def test_capacity(self):
-        from iios.integration.research.learning.models.model_registry import ModelRegistry
-        from iios.integration.research.learning.learning_exceptions import ModelError
+        from enterprise_ai_platform.integration.research.learning.models.model_registry import ModelRegistry
+        from enterprise_ai_platform.integration.research.learning.learning_exceptions import ModelError
         reg = ModelRegistry(max_models=2)
         reg.register(ModelMetadata.create("A", ModelTask.REGRESSION, LearningType.SUPERVISED))
         reg.register(ModelMetadata.create("B", ModelTask.REGRESSION, LearningType.SUPERVISED))
@@ -685,7 +685,7 @@ class TestTrainingJob:
 
 class TestTrainingEngine:
     def test_run_sync_model(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         model  = MockModel()
         job    = TrainingJob.create("m", "d", LearningConfiguration())
@@ -696,7 +696,7 @@ class TestTrainingEngine:
         assert result.is_success
 
     def test_run_async_model(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         model  = AsyncMockModel()
         job    = TrainingJob.create("m", "d", LearningConfiguration())
@@ -706,7 +706,7 @@ class TestTrainingEngine:
         assert result.is_success
 
     def test_run_failing_model_raises(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         model  = MockModel(fail=True)
         job    = TrainingJob.create("m", "d", LearningConfiguration())
@@ -717,7 +717,7 @@ class TestTrainingEngine:
         assert job.status == JobStatus.FAILED
 
     def test_job_status_becomes_completed(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         model  = MockModel()
         job    = TrainingJob.create("m", "d", LearningConfiguration())
@@ -726,7 +726,7 @@ class TestTrainingEngine:
         assert job.status == JobStatus.COMPLETED
 
     def test_result_contains_metrics(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         model  = MockModel()
         job    = TrainingJob.create("m", "d", LearningConfiguration())
@@ -736,7 +736,7 @@ class TestTrainingEngine:
         assert result.get_metric("accuracy") == pytest.approx(0.92)
 
     def test_engine_stats(self):
-        from iios.integration.research.learning.training.training_engine import TrainingEngine
+        from enterprise_ai_platform.integration.research.learning.training.training_engine import TrainingEngine
         engine = TrainingEngine()
         d = engine.stats()
         assert "total_run" in d
@@ -748,7 +748,7 @@ class TestTrainingEngine:
 
 class TestTrainingScheduler:
     def test_enqueue_and_pop(self):
-        from iios.integration.research.learning.training.training_scheduler import TrainingScheduler
+        from enterprise_ai_platform.integration.research.learning.training.training_scheduler import TrainingScheduler
         sched = TrainingScheduler()
         job   = TrainingJob.create("m", "d", LearningConfiguration())
         sched.enqueue(job, priority=3)
@@ -757,7 +757,7 @@ class TestTrainingScheduler:
         assert popped.job_id == job.job_id
 
     def test_priority_ordering(self):
-        from iios.integration.research.learning.training.training_scheduler import TrainingScheduler
+        from enterprise_ai_platform.integration.research.learning.training.training_scheduler import TrainingScheduler
         sched = TrainingScheduler()
         job1 = TrainingJob.create("m", "d", LearningConfiguration())
         job2 = TrainingJob.create("m", "d", LearningConfiguration())
@@ -767,8 +767,8 @@ class TestTrainingScheduler:
         assert first.job_id == job2.job_id
 
     def test_duplicate_enqueue_raises(self):
-        from iios.integration.research.learning.training.training_scheduler import TrainingScheduler
-        from iios.integration.research.learning.learning_exceptions import JobAlreadyExistsError
+        from enterprise_ai_platform.integration.research.learning.training.training_scheduler import TrainingScheduler
+        from enterprise_ai_platform.integration.research.learning.learning_exceptions import JobAlreadyExistsError
         sched = TrainingScheduler()
         job   = TrainingJob.create("m", "d", LearningConfiguration())
         sched.enqueue(job)
@@ -776,12 +776,12 @@ class TestTrainingScheduler:
             sched.enqueue(job)
 
     def test_pop_empty_returns_none(self):
-        from iios.integration.research.learning.training.training_scheduler import TrainingScheduler
+        from enterprise_ai_platform.integration.research.learning.training.training_scheduler import TrainingScheduler
         sched = TrainingScheduler()
         assert sched.pop_next() is None
 
     def test_stats(self):
-        from iios.integration.research.learning.training.training_scheduler import TrainingScheduler
+        from enterprise_ai_platform.integration.research.learning.training.training_scheduler import TrainingScheduler
         sched = TrainingScheduler()
         job = TrainingJob.create("m", "d", LearningConfiguration())
         sched.enqueue(job)
@@ -795,7 +795,7 @@ class TestTrainingScheduler:
 
 class TestCheckpointManager:
     def test_add_and_latest(self):
-        from iios.integration.research.learning.training.checkpoint_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.checkpoint_manager import (
             CheckpointManager, Checkpoint
         )
         mgr  = CheckpointManager()
@@ -806,7 +806,7 @@ class TestCheckpointManager:
         assert latest.epoch == 1
 
     def test_best_by_metric(self):
-        from iios.integration.research.learning.training.checkpoint_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.checkpoint_manager import (
             CheckpointManager, Checkpoint
         )
         mgr = CheckpointManager()
@@ -817,7 +817,7 @@ class TestCheckpointManager:
         assert best.epoch == 2  # lowest val_loss
 
     def test_count(self):
-        from iios.integration.research.learning.training.checkpoint_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.checkpoint_manager import (
             CheckpointManager, Checkpoint
         )
         mgr = CheckpointManager()
@@ -832,7 +832,7 @@ class TestCheckpointManager:
 
 class TestHyperparameterManager:
     def test_defaults(self):
-        from iios.integration.research.learning.training.hyperparameter_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.hyperparameter_manager import (
             HyperparameterManager, HyperparameterSpec
         )
         mgr = HyperparameterManager()
@@ -841,7 +841,7 @@ class TestHyperparameterManager:
         assert d["lr"] == pytest.approx(1e-3)
 
     def test_random_sample_in_range(self):
-        from iios.integration.research.learning.training.hyperparameter_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.hyperparameter_manager import (
             HyperparameterManager, HyperparameterSpec
         )
         mgr = HyperparameterManager(seed=0)
@@ -850,7 +850,7 @@ class TestHyperparameterManager:
         assert 0.0 <= s["x"] <= 1.0
 
     def test_integer_sample(self):
-        from iios.integration.research.learning.training.hyperparameter_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.hyperparameter_manager import (
             HyperparameterManager, HyperparameterSpec
         )
         mgr = HyperparameterManager(seed=7)
@@ -860,7 +860,7 @@ class TestHyperparameterManager:
             assert 2 <= s["k"] <= 10
 
     def test_categorical_sample(self):
-        from iios.integration.research.learning.training.hyperparameter_manager import (
+        from enterprise_ai_platform.integration.research.learning.training.hyperparameter_manager import (
             HyperparameterManager, HyperparameterSpec
         )
         mgr = HyperparameterManager(seed=1)
@@ -917,7 +917,7 @@ class TestMetricsEngine:
         assert "mae" in m
 
     def test_mismatched_lengths_raises(self):
-        from iios.integration.research.learning.learning_exceptions import MetricsError
+        from enterprise_ai_platform.integration.research.learning.learning_exceptions import MetricsError
         with pytest.raises(MetricsError):
             self.eng.compute_classification([0, 1], [0])
 
@@ -928,7 +928,7 @@ class TestMetricsEngine:
 
 class TestEvaluationEngine:
     def test_evaluate_with_model_evaluate_method(self):
-        from iios.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
+        from enterprise_ai_platform.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
         eng    = EvaluationEngine()
         model  = MockModel()
         ds     = _make_dataset(20)
@@ -937,7 +937,7 @@ class TestEvaluationEngine:
         assert report.status in (ValidationStatus.PASSED, ValidationStatus.FAILED)
 
     def test_evaluate_via_predict_batch(self):
-        from iios.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
+        from enterprise_ai_platform.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
         class PredictOnlyModel(MockModel):
             def evaluate(self, dataset): raise NotImplementedError  # type: ignore
         eng    = EvaluationEngine()
@@ -948,7 +948,7 @@ class TestEvaluationEngine:
         assert isinstance(report, EvaluationReport)
 
     def test_report_has_model_id(self):
-        from iios.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
+        from enterprise_ai_platform.integration.research.learning.evaluation.evaluation_engine import EvaluationEngine
         eng    = EvaluationEngine()
         model  = MockModel(model_id="eval-model")
         ds     = _make_dataset(20)
@@ -978,7 +978,7 @@ class TestEvaluationReport:
 
 class TestModelComparator:
     def test_compare_picks_best_lower(self):
-        from iios.integration.research.learning.evaluation.model_comparator import ModelComparator
+        from enterprise_ai_platform.integration.research.learning.evaluation.model_comparator import ModelComparator
         mc = ModelComparator()
         r1 = EvaluationReport.create("m1", "1", "ds", ModelTask.REGRESSION, {"mae": 0.2}, 0.1)
         r2 = EvaluationReport.create("m2", "1", "ds", ModelTask.REGRESSION, {"mae": 0.1}, 0.1)
@@ -986,7 +986,7 @@ class TestModelComparator:
         assert result.winner_model_id == "m2"
 
     def test_compare_picks_best_higher(self):
-        from iios.integration.research.learning.evaluation.model_comparator import ModelComparator
+        from enterprise_ai_platform.integration.research.learning.evaluation.model_comparator import ModelComparator
         mc = ModelComparator()
         r1 = EvaluationReport.create("m1", "1", "ds", ModelTask.CLASSIFICATION, {"accuracy": 0.9}, 0.1)
         r2 = EvaluationReport.create("m2", "1", "ds", ModelTask.CLASSIFICATION, {"accuracy": 0.85}, 0.1)
@@ -996,20 +996,20 @@ class TestModelComparator:
 
 class TestCrossValidator:
     def test_k_fold_count(self):
-        from iios.integration.research.learning.evaluation.cross_validation import CrossValidator
+        from enterprise_ai_platform.integration.research.learning.evaluation.cross_validation import CrossValidator
         cv = CrossValidator(n_folds=5)
         splits = cv.k_fold_splits(50)
         assert len(splits) == 5
 
     def test_k_fold_no_overlap(self):
-        from iios.integration.research.learning.evaluation.cross_validation import CrossValidator
+        from enterprise_ai_platform.integration.research.learning.evaluation.cross_validation import CrossValidator
         cv = CrossValidator(n_folds=3)
         splits = cv.k_fold_splits(30)
         for train_idx, val_idx in splits:
             assert len(set(train_idx) & set(val_idx)) == 0
 
     def test_walk_forward_expanding(self):
-        from iios.integration.research.learning.evaluation.cross_validation import CrossValidator
+        from enterprise_ai_platform.integration.research.learning.evaluation.cross_validation import CrossValidator
         cv = CrossValidator(n_folds=4)
         splits = cv.walk_forward_splits(40)
         for i in range(1, len(splits)):
@@ -1022,20 +1022,20 @@ class TestCrossValidator:
 
 class TestDeploymentEngine:
     def test_deploy_direct(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng = DeploymentEngine()
         rec = eng.deploy("m1", "1.0")
         assert rec.status == DeploymentStatus.CHAMPION
 
     def test_champion_is_retrievable(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng = DeploymentEngine()
         eng.deploy("m1", "1.0")
         champ = eng.champion("m1")
         assert champ is not None
 
     def test_new_deploy_retires_old(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng  = DeploymentEngine()
         rec1 = eng.deploy("m1", "1.0")
         rec2 = eng.deploy("m1", "2.0")
@@ -1043,7 +1043,7 @@ class TestDeploymentEngine:
         assert rec2.status == DeploymentStatus.CHAMPION
 
     def test_rollback(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng  = DeploymentEngine()
         eng.deploy("m1", "1.0")
         eng.deploy("m1", "2.0")
@@ -1052,13 +1052,13 @@ class TestDeploymentEngine:
         assert restored.model_version == "1.0"
 
     def test_shadow_deploy_status(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng = DeploymentEngine()
         rec = eng.deploy("m1", "1.0", strategy=DeploymentStrategy.SHADOW)
         assert rec.status == DeploymentStatus.SHADOW
 
     def test_stats(self):
-        from iios.integration.research.learning.deployment.deployment_engine import DeploymentEngine
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_engine import DeploymentEngine
         eng = DeploymentEngine()
         d   = eng.stats()
         assert "total_deployed" in d
@@ -1066,12 +1066,12 @@ class TestDeploymentEngine:
 
 class TestDeploymentPolicy:
     def test_default_policy(self):
-        from iios.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
         p = DeploymentPolicy.default()
         assert p.strategy == DeploymentStrategy.DIRECT
 
     def test_promotion_eligible_pass(self):
-        from iios.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
         p = DeploymentPolicy.default()
         p.min_metric_thresholds = {"accuracy": 0.8}
         ok, reasons = p.check_promotion_eligible({"accuracy": 0.9})
@@ -1079,7 +1079,7 @@ class TestDeploymentPolicy:
         assert reasons == []
 
     def test_promotion_eligible_fail(self):
-        from iios.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
+        from enterprise_ai_platform.integration.research.learning.deployment.deployment_policy import DeploymentPolicy
         p = DeploymentPolicy.default()
         p.min_metric_thresholds = {"accuracy": 0.8}
         ok, reasons = p.check_promotion_eligible({"accuracy": 0.7})
@@ -1166,21 +1166,21 @@ class TestDriftDetector:
 
 class TestAlertManager:
     def test_raise_alert(self):
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         mgr   = AlertManager()
         alert = mgr.raise_alert(AlertSeverity.WARNING, "drift", "test drift")
         assert not alert.resolved
         assert alert.severity == AlertSeverity.WARNING
 
     def test_resolve_alert(self):
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         mgr   = AlertManager()
         alert = mgr.raise_alert(AlertSeverity.INFO, "test", "hello")
         mgr.resolve(alert.alert_id)
         assert alert.resolved
 
     def test_open_alerts_filter(self):
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         mgr = AlertManager()
         a1  = mgr.raise_alert(AlertSeverity.INFO, "cat", "m1")
         a2  = mgr.raise_alert(AlertSeverity.CRITICAL, "cat", "m2")
@@ -1190,7 +1190,7 @@ class TestAlertManager:
         assert open_[0].alert_id == a2.alert_id
 
     def test_handler_called(self):
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         received = []
         mgr = AlertManager()
         mgr.register_handler(lambda a: received.append(a.alert_id))
@@ -1198,7 +1198,7 @@ class TestAlertManager:
         assert len(received) == 1
 
     def test_stats(self):
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         mgr = AlertManager()
         mgr.raise_alert(AlertSeverity.INFO, "c", "m")
         s = mgr.stats()
@@ -1211,21 +1211,21 @@ class TestAlertManager:
 
 class TestExperimentTracker:
     def test_create_experiment(self):
-        from iios.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
+        from enterprise_ai_platform.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
         tracker = ExperimentTracker()
         exp = tracker.create_experiment("EXP1", ModelTask.REGRESSION, LearningType.SUPERVISED)
         assert exp.name == "EXP1"
         assert exp.status == ExperimentStatus.ACTIVE
 
     def test_add_job(self):
-        from iios.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
+        from enterprise_ai_platform.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
         tracker = ExperimentTracker()
         exp = tracker.create_experiment("EXP2", ModelTask.REGRESSION, LearningType.SUPERVISED)
         tracker.add_job(exp.experiment_id, "job-001")
         assert "job-001" in tracker.get(exp.experiment_id).job_ids
 
     def test_update_best(self):
-        from iios.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
+        from enterprise_ai_platform.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
         tracker = ExperimentTracker()
         exp = tracker.create_experiment("EXP3", ModelTask.REGRESSION, LearningType.SUPERVISED,
                                         best_metric_name="val_loss", higher_is_better=False)
@@ -1236,15 +1236,15 @@ class TestExperimentTracker:
         assert updated.best_metric_value == pytest.approx(0.3)
 
     def test_complete_experiment(self):
-        from iios.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
+        from enterprise_ai_platform.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
         tracker = ExperimentTracker()
         exp = tracker.create_experiment("EXP4", ModelTask.CLASSIFICATION, LearningType.SUPERVISED)
         tracker.complete(exp.experiment_id)
         assert tracker.get(exp.experiment_id).status == ExperimentStatus.COMPLETED
 
     def test_get_missing_raises(self):
-        from iios.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
-        from iios.integration.research.learning.learning_exceptions import ExperimentNotFoundError
+        from enterprise_ai_platform.integration.research.learning.experiments.experiment_tracker import ExperimentTracker
+        from enterprise_ai_platform.integration.research.learning.learning_exceptions import ExperimentNotFoundError
         tracker = ExperimentTracker()
         with pytest.raises(ExperimentNotFoundError):
             tracker.get("no-such-exp")
@@ -1486,33 +1486,33 @@ class TestLearningEngineOperations:
 
 class TestFeatureStore:
     def test_put_and_get(self):
-        from iios.integration.research.learning.features.feature_store import FeatureStore
+        from enterprise_ai_platform.integration.research.learning.features.feature_store import FeatureStore
         store = FeatureStore()
         store.put("entity-1", {"rsi": 70.0, "vol": 1.5})
         result = store.get("entity-1")
         assert result["rsi"] == 70.0
 
     def test_get_missing_raises(self):
-        from iios.integration.research.learning.features.feature_store import FeatureStore
+        from enterprise_ai_platform.integration.research.learning.features.feature_store import FeatureStore
         store = FeatureStore()
         with pytest.raises(FeatureNotFoundError):
             store.get("ghost")
 
     def test_put_batch(self):
-        from iios.integration.research.learning.features.feature_store import FeatureStore
+        from enterprise_ai_platform.integration.research.learning.features.feature_store import FeatureStore
         store = FeatureStore()
         store.put_batch({"e1": {"x": 1.0}, "e2": {"x": 2.0}})
         assert store.count() == 2
 
     def test_ttl_eviction(self):
-        from iios.integration.research.learning.features.feature_store import FeatureStore
+        from enterprise_ai_platform.integration.research.learning.features.feature_store import FeatureStore
         store = FeatureStore()
         store.put("e1", {"x": 1.0}, ttl_sec=0.01)
         time.sleep(0.05)
         assert not store.has("e1")
 
     def test_delete(self):
-        from iios.integration.research.learning.features.feature_store import FeatureStore
+        from enterprise_ai_platform.integration.research.learning.features.feature_store import FeatureStore
         store = FeatureStore()
         store.put("e1", {"x": 1.0})
         store.delete("e1")
@@ -1525,7 +1525,7 @@ class TestFeatureStore:
 
 class TestLearningHistory:
     def test_append_and_count(self):
-        from iios.integration.research.learning.core.learning_history import (
+        from enterprise_ai_platform.integration.research.learning.core.learning_history import (
             LearningHistory, LearningHistoryEntry
         )
         history = LearningHistory()
@@ -1534,7 +1534,7 @@ class TestLearningHistory:
         assert history.count() == 1
 
     def test_query_by_entity_id(self):
-        from iios.integration.research.learning.core.learning_history import (
+        from enterprise_ai_platform.integration.research.learning.core.learning_history import (
             LearningHistory, LearningHistoryEntry
         )
         history = LearningHistory()
@@ -1544,7 +1544,7 @@ class TestLearningHistory:
         assert len(results) == 1
 
     def test_query_by_event_type(self):
-        from iios.integration.research.learning.core.learning_history import (
+        from enterprise_ai_platform.integration.research.learning.core.learning_history import (
             LearningHistory, LearningHistoryEntry
         )
         history = LearningHistory()
@@ -1554,7 +1554,7 @@ class TestLearningHistory:
         assert len(results) == 1
 
     def test_max_entries_respected(self):
-        from iios.integration.research.learning.core.learning_history import (
+        from enterprise_ai_platform.integration.research.learning.core.learning_history import (
             LearningHistory, LearningHistoryEntry
         )
         history = LearningHistory(max_entries=5)
@@ -1563,7 +1563,7 @@ class TestLearningHistory:
         assert history.count() == 5
 
     def test_latest(self):
-        from iios.integration.research.learning.core.learning_history import (
+        from enterprise_ai_platform.integration.research.learning.core.learning_history import (
             LearningHistory, LearningHistoryEntry
         )
         history = LearningHistory()
@@ -1579,7 +1579,7 @@ class TestLearningHistory:
 
 class TestLearningContext:
     def test_set_and_get(self):
-        from iios.integration.research.learning.learning_context import (
+        from enterprise_ai_platform.integration.research.learning.learning_context import (
             set_context, get_context, clear_context
         )
         set_context("train_run", job_id="j1", model_id="m1")
@@ -1591,7 +1591,7 @@ class TestLearningContext:
         assert get_context() is None
 
     def test_scope_contextmanager(self):
-        from iios.integration.research.learning.learning_context import scope, get_context
+        from enterprise_ai_platform.integration.research.learning.learning_context import scope, get_context
         with scope("eval", model_id="m2") as ctx:
             assert ctx is not None
             assert ctx.model_id == "m2"
@@ -1600,7 +1600,7 @@ class TestLearningContext:
         assert get_context() is None
 
     def test_elapsed_ms(self):
-        from iios.integration.research.learning.learning_context import set_context, get_context, clear_context
+        from enterprise_ai_platform.integration.research.learning.learning_context import set_context, get_context, clear_context
         set_context("op")
         time.sleep(0.01)
         ctx = get_context()
@@ -1614,19 +1614,19 @@ class TestLearningContext:
 
 class TestModelVersion:
     def test_create(self):
-        from iios.integration.research.learning.models.model_version import ModelVersion
+        from enterprise_ai_platform.integration.research.learning.models.model_version import ModelVersion
         v = ModelVersion.create("m1", "1.0")
         assert v.model_id == "m1"
         assert not v.is_champion
 
     def test_promote(self):
-        from iios.integration.research.learning.models.model_version import ModelVersion
+        from enterprise_ai_platform.integration.research.learning.models.model_version import ModelVersion
         v = ModelVersion.create("m1", "1.0")
         v.promote()
         assert v.is_champion
 
     def test_to_dict(self):
-        from iios.integration.research.learning.models.model_version import ModelVersion
+        from enterprise_ai_platform.integration.research.learning.models.model_version import ModelVersion
         v = ModelVersion.create("m1", "1.0", metrics={"acc": 0.9})
         d = v.to_dict()
         assert d["version"] == "1.0"
@@ -1635,12 +1635,12 @@ class TestModelVersion:
 
 class TestModelArtifact:
     def test_create(self):
-        from iios.integration.research.learning.models.model_artifact import ModelArtifact
+        from enterprise_ai_platform.integration.research.learning.models.model_artifact import ModelArtifact
         art = ModelArtifact.create("m1", "1.0", "/tmp/model.pkl")
         assert art.storage_path == "/tmp/model.pkl"
 
     def test_to_dict(self):
-        from iios.integration.research.learning.models.model_artifact import ModelArtifact
+        from enterprise_ai_platform.integration.research.learning.models.model_artifact import ModelArtifact
         art = ModelArtifact.create("m1", "1.0", "/tmp/m.pkl", format="pkl")
         d = art.to_dict()
         assert d["format"] == "pkl"
@@ -1652,12 +1652,12 @@ class TestModelArtifact:
 
 class TestModelProfile:
     def test_create(self):
-        from iios.integration.research.learning.models.model_profile import ModelProfile
+        from enterprise_ai_platform.integration.research.learning.models.model_profile import ModelProfile
         p = ModelProfile.create("m1", "1.0")
         assert p.total_predictions == 0
 
     def test_to_dict(self):
-        from iios.integration.research.learning.models.model_profile import ModelProfile
+        from enterprise_ai_platform.integration.research.learning.models.model_profile import ModelProfile
         p = ModelProfile.create("m1", "1.0", baseline_metrics={"accuracy": 0.9})
         d = p.to_dict()
         assert d["baseline_metrics"]["accuracy"] == 0.9
@@ -1669,8 +1669,8 @@ class TestModelProfile:
 
 class TestModelMonitor:
     def test_record_batch_updates_profile(self):
-        from iios.integration.research.learning.monitoring.model_monitor import ModelMonitor
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.monitoring.model_monitor import ModelMonitor
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         alerts  = AlertManager()
         monitor = ModelMonitor(alerts)
         monitor.register("m1", "1.0")
@@ -1679,8 +1679,8 @@ class TestModelMonitor:
         assert profile.total_predictions == 10
 
     def test_high_error_rate_raises_alert(self):
-        from iios.integration.research.learning.monitoring.model_monitor import ModelMonitor
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.monitoring.model_monitor import ModelMonitor
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         alerts  = AlertManager()
         monitor = ModelMonitor(alerts, error_rate_limit=0.01)
         monitor.register("m2", "1.0")
@@ -1689,8 +1689,8 @@ class TestModelMonitor:
         assert len(open_) >= 1
 
     def test_stats(self):
-        from iios.integration.research.learning.monitoring.model_monitor import ModelMonitor
-        from iios.integration.research.learning.drift.alert_manager import AlertManager
+        from enterprise_ai_platform.integration.research.learning.monitoring.model_monitor import ModelMonitor
+        from enterprise_ai_platform.integration.research.learning.drift.alert_manager import AlertManager
         monitor = ModelMonitor(AlertManager())
         d = monitor.stats()
         assert "models_monitored" in d
@@ -1702,19 +1702,19 @@ class TestModelMonitor:
 
 class TestDatasetStatistics:
     def test_compute_basic(self):
-        from iios.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
         records = [{"x": float(i), "label": i % 2} for i in range(20)]
         stats   = DatasetStatistics.compute(records, ["x"], "label")
         assert stats.total_records == 20
         assert "x" in stats.feature_means
 
     def test_empty_dataset(self):
-        from iios.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
         stats = DatasetStatistics.compute([], ["x"], "label")
         assert stats.total_records == 0
 
     def test_to_dict(self):
-        from iios.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
+        from enterprise_ai_platform.integration.research.learning.datasets.dataset_statistics import DatasetStatistics
         records = [{"x": 1.0}]
         stats   = DatasetStatistics.compute(records, ["x"], None)
         d = stats.to_dict()

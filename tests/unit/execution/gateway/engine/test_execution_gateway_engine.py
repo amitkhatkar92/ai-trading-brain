@@ -43,7 +43,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.execution.gateway.engine import (
+from enterprise_ai_platform.execution.gateway.engine import (
     ACTIVE_ENGINE_STATES,
     ACTIVE_REQUEST_STATUSES,
     DEFAULT_MAX_HISTORY,
@@ -111,7 +111,7 @@ from iios.execution.gateway.engine import (
     make_request_queued_event,
     make_request_received_event,
 )
-from iios.execution.gateway.engine.gateway_request import EngineGatewayRequest
+from enterprise_ai_platform.execution.gateway.engine.gateway_request import EngineGatewayRequest
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -154,7 +154,7 @@ def _engine(**kwargs) -> ExecutionGatewayEngine:
 
 class TestConstants:
     def test_engine_system_id(self):
-        assert ENGINE_SYSTEM_ID == "iios:execution:gateway:engine"
+        assert ENGINE_SYSTEM_ID == "enterprise_ai_platform:execution:gateway:engine"
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -237,7 +237,7 @@ class TestExceptions:
         assert "e1" in str(exc)
 
     def test_exception_hierarchy(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionGatewayEngineError, IIOSError)
         assert issubclass(GatewayEngineNotRunningError, ExecutionGatewayEngineError)
 
@@ -1281,7 +1281,7 @@ class TestGatewayManager:
         m.stop()
 
     def test_double_stop_raises(self):
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         m = self._mgr()
         m.stop()
         with pytest.raises(EngineNotRunningError):
@@ -1419,7 +1419,7 @@ class TestExecutionGatewayEngine:
         e.stop()
 
     def test_double_stop_raises(self):
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         e = _engine()
         e.stop()
         with pytest.raises(EngineNotRunningError):
@@ -1630,7 +1630,7 @@ class TestRegression:
         e.stop()
 
     def test_multiple_start_raises(self):
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         e = ExecutionGatewayEngine()
         e.start()
         with pytest.raises(EngineAlreadyRunningError):
@@ -1675,7 +1675,7 @@ class TestRegression:
 
     def test_gateway_history_persists_after_stop(self):
         """History should remain readable after engine stops."""
-        from iios.execution.gateway.engine.gateway_history import GatewayEngineHistory
+        from enterprise_ai_platform.execution.gateway.engine.gateway_history import GatewayEngineHistory
         h  = GatewayEngineHistory()
         op = make_gateway_operation(
             OperationType.SUBMIT_REQUEST, "REQ-1", "SES-1", time.time()

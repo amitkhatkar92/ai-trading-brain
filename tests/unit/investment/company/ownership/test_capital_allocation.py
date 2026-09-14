@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.capital_allocation_engine import OwnershipCapitalAllocationEngine
-from iios.investment.company.ownership.ownership_profile import (
+from enterprise_ai_platform.investment.company.ownership.capital_allocation_engine import OwnershipCapitalAllocationEngine
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import (
     OwnershipCapitalAllocationProfile, CapitalAllocationQuality,
 )
-from iios.investment.company.ownership.capital_return import (
+from enterprise_ai_platform.investment.company.ownership.capital_return import (
     score_dividend_sustainability,
     score_total_shareholder_return_quality,
     score_cash_return_policy,
 )
-from iios.investment.company.ownership.capital_deployment import (
+from enterprise_ai_platform.investment.company.ownership.capital_deployment import (
     score_capex_quality, score_cash_utilization,
 )
-from iios.investment.company.ownership.capital_efficiency import (
+from enterprise_ai_platform.investment.company.ownership.capital_efficiency import (
     score_asset_utilization,
     score_capital_efficiency_composite,
 )

@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.transparency_engine import TransparencyEngine
-from iios.investment.company.governance.governance_events import classify_events
-from iios.investment.company.governance.management_profile import (
+from enterprise_ai_platform.investment.company.governance.transparency_engine import TransparencyEngine
+from enterprise_ai_platform.investment.company.governance.governance_events import classify_events
+from enterprise_ai_platform.investment.company.governance.management_profile import (
     TransparencyProfile, TransparencyLabel,
 )
 

@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.decision.reasoning.reasoning_constants import ReasoningStepType, ReasoningStatus
-from iios.investment.decision.reasoning.reasoning_step import ReasoningStep, make_step
-from iios.investment.decision.reasoning.reasoning_chain import ReasoningChain, build_chain
-from iios.investment.decision.reasoning.reasoning_history import ReasoningHistory
-from iios.investment.decision.reasoning.reasoning_statistics import ReasoningStatisticsTracker
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import ReasoningStepType, ReasoningStatus
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_step import ReasoningStep, make_step
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_chain import ReasoningChain, build_chain
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_history import ReasoningHistory
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_statistics import ReasoningStatisticsTracker
 
 
 # ========================= ReasoningStep =================================
@@ -108,7 +108,7 @@ class TestReasoningChain:
 class TestReasoningHistory:
     def _snap(self, subject_id="INFY", decision_id=None, quality=80.0):
         from tests.unit.investment.decision.reasoning.conftest import _ev_item, _snap
-        from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
         did = decision_id or str(uuid.uuid4())
         items = [
             _ev_item("price", 100.0, EvidenceSourceType.MARKET, decision_id=did, subject_id=subject_id),
@@ -116,7 +116,7 @@ class TestReasoningHistory:
         ]
         ev_snap = _snap(items, decision_id=did, subject_id=subject_id, quality=quality)
         # Build a real ReasoningSnapshot
-        from iios.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
+        from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
         engine = DecisionReasoningEngine()
         engine.start()
         return engine.reason_sync(ev_snap)
@@ -156,8 +156,8 @@ class TestReasoningStatisticsTracker:
 
     def test_records(self):
         from tests.unit.investment.decision.reasoning.conftest import _ev_item, _snap
-        from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-        from iios.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+        from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
         did = str(uuid.uuid4())
         items = [
             _ev_item("price", 100.0, EvidenceSourceType.MARKET, decision_id=did),

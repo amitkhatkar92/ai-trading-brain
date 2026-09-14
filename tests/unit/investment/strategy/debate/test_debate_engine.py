@@ -4,13 +4,13 @@ End-to-end tests for StrategyDebateEngine.
 import asyncio
 import pytest
 
-from iios.investment.strategy.debate.strategy_debate_engine import StrategyDebateEngine
-from iios.investment.strategy.debate.debate_report import DebateReport
-from iios.investment.strategy.debate.debate_constants import DebateStatus
-from iios.investment.strategy.debate.debate_context import DebateContext
-from iios.investment.strategy.debate.debate_orchestrator import OrchestratorConfig
-from iios.investment.strategy.debate.evidence_registry import make_evidence
-from iios.investment.strategy.debate.debate_constants import EvidenceSource
+from enterprise_ai_platform.investment.strategy.debate.strategy_debate_engine import StrategyDebateEngine
+from enterprise_ai_platform.investment.strategy.debate.debate_report import DebateReport
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import DebateStatus
+from enterprise_ai_platform.investment.strategy.debate.debate_context import DebateContext
+from enterprise_ai_platform.investment.strategy.debate.debate_orchestrator import OrchestratorConfig
+from enterprise_ai_platform.investment.strategy.debate.evidence_registry import make_evidence
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import EvidenceSource
 
 
 class TestStrategyDebateEngineSync:

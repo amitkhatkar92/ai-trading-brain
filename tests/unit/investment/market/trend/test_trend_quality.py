@@ -5,11 +5,11 @@ TrendStabilityCalculator, TrendPersistenceCalculator.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.trend.trend_quality import TrendQualityAnalyzer
-from iios.investment.market.trend.trend_strength import TrendStrengthCalculator
-from iios.investment.market.trend.trend_stability import TrendStabilityCalculator
-from iios.investment.market.trend.trend_persistence import TrendPersistenceCalculator
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.trend_quality import TrendQualityAnalyzer
+from enterprise_ai_platform.investment.market.trend.trend_strength import TrendStrengthCalculator
+from enterprise_ai_platform.investment.market.trend.trend_stability import TrendStabilityCalculator
+from enterprise_ai_platform.investment.market.trend.trend_persistence import TrendPersistenceCalculator
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendQualityMetrics,
     TrendLegMetrics,
@@ -17,7 +17,7 @@ from iios.investment.market.trend.models import (
     CorrectionQuality,
     _default_quality,
 )
-from iios.investment.market.market_constants import TrendDirection, MarketStrength
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection, MarketStrength
 from tests.unit.investment.market.trend.conftest import (
     make_legs,
     make_trend_state,

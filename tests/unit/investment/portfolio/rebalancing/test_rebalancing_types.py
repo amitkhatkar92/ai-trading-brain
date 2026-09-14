@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     DRIFT_THRESHOLD_CRITICAL,
     DRIFT_THRESHOLD_MINOR,
     DRIFT_THRESHOLD_MODERATE,
@@ -44,7 +44,7 @@ class TestConstants:
         assert DRIFT_THRESHOLD_SIGNIFICANT < DRIFT_THRESHOLD_CRITICAL
 
     def test_score_thresholds_ordered(self):
-        from iios.investment.portfolio.rebalancing import (
+        from enterprise_ai_platform.investment.portfolio.rebalancing import (
             REBAL_SCORE_AVERAGE, REBAL_SCORE_BELOW_AVERAGE,
         )
         assert REBAL_SCORE_BELOW_AVERAGE < REBAL_SCORE_AVERAGE

@@ -29,8 +29,8 @@ import sys
 from datetime import datetime, timezone
 
 
-DB_PATH = os.environ.get("IIOS_DB_PATH", "data/iios.db")
-LOG_DIR = os.path.dirname(os.environ.get("IIOS_LOG_FILE", "logs/iios.log")) or "logs"
+DB_PATH = os.environ.get("IIOS_DB_PATH", "data/enterprise_ai_platform.db")
+LOG_DIR = os.path.dirname(os.environ.get("IIOS_LOG_FILE", "logs/enterprise_ai_platform.log")) or "logs"
 DATA_DIR = os.path.dirname(DB_PATH) or "data"
 
 StatusDict = dict[str, object]

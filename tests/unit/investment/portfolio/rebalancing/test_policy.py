@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     PolicyEngine,
     PolicyEngineResult,
     PolicyParameters,
@@ -136,8 +136,8 @@ class TestPolicyRegistry:
 
 class TestPolicyRules:
     def _make_alloc_drift(self, max_drift: float, total_drift: float):
-        from iios.investment.portfolio.rebalancing.allocation_drift import AllocationDrift
-        from iios.investment.portfolio.rebalancing.rebalancing_types import DriftLevel
+        from enterprise_ai_platform.investment.portfolio.rebalancing.allocation_drift import AllocationDrift
+        from enterprise_ai_platform.investment.portfolio.rebalancing.rebalancing_types import DriftLevel
         return AllocationDrift(
             portfolio_id="PF",
             total_abs_drift=total_drift,
@@ -147,8 +147,8 @@ class TestPolicyRules:
         )
 
     def _make_risk_drift(self, current_risk: float, current_liquidity: float):
-        from iios.investment.portfolio.rebalancing.risk_drift import RiskDrift
-        from iios.investment.portfolio.rebalancing.rebalancing_types import DriftLevel
+        from enterprise_ai_platform.investment.portfolio.rebalancing.risk_drift import RiskDrift
+        from enterprise_ai_platform.investment.portfolio.rebalancing.rebalancing_types import DriftLevel
         return RiskDrift(
             portfolio_id="PF",
             current_risk=current_risk,

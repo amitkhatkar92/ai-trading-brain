@@ -9,12 +9,12 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.integration import (
+from enterprise_ai_platform.investment.market.integration import (
     MarketIntelligenceIntegrationEngine,
     MarketIntelligenceSnapshot,
 )
-from iios.investment.market.integration.aggregation_engine import KNOWN_ENGINES
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import KNOWN_ENGINES
+from enterprise_ai_platform.investment.market.integration.models import (
     EngineSource,
     IntelligenceBundle,
     MarketStateLabel,
@@ -230,8 +230,8 @@ class TestBundleBuilder:
 
 class TestRuleManagement:
     def test_add_rule_increases_rule_count(self):
-        from iios.investment.market.integration.consistency_rules import ConsistencyRule
-        from iios.investment.market.integration.models import ConflictSeverity, ConflictType
+        from enterprise_ai_platform.investment.market.integration.consistency_rules import ConsistencyRule
+        from enterprise_ai_platform.investment.market.integration.models import ConflictSeverity, ConflictType
         engine = MarketIntelligenceIntegrationEngine()
         initial_rules = len(engine._validator.rules)
         new_rule = ConsistencyRule(

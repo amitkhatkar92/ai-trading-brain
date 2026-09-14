@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthData,
     BreadthRegimeSnapshot,
     BreadthRegimeType,
@@ -16,9 +16,9 @@ from iios.investment.market.breadth.models import (
     SecurityObservation,
     UniverseSnapshot,
 )
-from iios.investment.market.breadth.breadth_quality import BreadthQualityScorer
-from iios.investment.market.breadth.breadth_confidence import BreadthConfidenceCalculator
-from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+from enterprise_ai_platform.investment.market.breadth.breadth_quality import BreadthQualityScorer
+from enterprise_ai_platform.investment.market.breadth.breadth_confidence import BreadthConfidenceCalculator
+from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
 
 from tests.unit.investment.market.breadth.conftest import (
     make_bull_universe,

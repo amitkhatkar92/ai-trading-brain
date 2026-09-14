@@ -35,41 +35,41 @@ import pytest
 
 def _reset_all() -> None:
     """Reset every ontology + validator singleton."""
-    from iios.ontology.validator.validation_engine    import reset_validation_engine
-    from iios.ontology.validator.ontology_validator   import reset_ontology_validator
-    from iios.ontology.validator.constraint_manager   import reset_constraint_manager
-    from iios.ontology.validator.constraint_engine    import reset_constraint_engine
-    from iios.ontology.validator.constraint_registry  import reset_constraint_registry
-    from iios.ontology.validator.validation_context   import reset_validation_context
-    from iios.ontology.compiler.compiler_manager      import reset_compiler_manager
-    from iios.ontology.compiler.compiler_registry     import reset_compiler_registry
-    from iios.ontology.compiler.compiler_factory      import reset_compiler_factory
-    from iios.ontology.compiler.compiler_context      import reset_compiler_context
-    from iios.ontology.compiler.dependency_resolver   import reset_dependency_resolver
-    from iios.ontology.compiler.metadata_generator    import reset_metadata_generator
-    from iios.ontology.compiler.ontology_compiler     import reset_ontology_compiler
-    from iios.ontology.loader.runtime_loader          import reset_runtime_loader
-    from iios.ontology.loader.ontology_loader         import reset_ontology_loader
-    from iios.ontology.cache.ontology_cache           import reset_ontology_cache
-    from iios.ontology.registry.ontology_registry_manager import reset_registry_manager
-    from iios.ontology.registry.entity_registry          import reset_entity_registry
-    from iios.ontology.registry.relationship_registry    import reset_relationship_registry
-    from iios.ontology.registry.event_registry           import reset_event_registry
-    from iios.ontology.registry.observation_registry     import reset_observation_registry
-    from iios.ontology.registry.knowledge_registry       import reset_knowledge_ont_registry
-    from iios.ontology.ontology_registry                 import reset_ontology_registry
-    from iios.ontology.ontology_manager                  import reset_ontology_manager
-    from iios.ontology.ontology_runtime_engine           import reset_ontology_engine
-    from iios.ontology.ontology_context                  import reset_ontology_context
-    from iios.ontology.ontology_factory                  import reset_ontology_factory
-    from iios.ontology.graph.ontology_graph              import reset_ontology_graph
-    from iios.ontology.query.ontology_query              import reset_query_engine
-    from iios.ontology.services.lookup_service           import reset_lookup_service
-    from iios.ontology.services.hierarchy_service        import reset_hierarchy_service
-    from iios.ontology.services.statistics_service       import reset_statistics_service
-    from iios.ontology.loader.compiled_loader            import reset_compiled_loader
-    from iios.ontology.loader.incremental_loader         import reset_incremental_loader
-    from iios.ontology.loader.cache_loader               import reset_cache_loader
+    from enterprise_ai_platform.ontology.validator.validation_engine    import reset_validation_engine
+    from enterprise_ai_platform.ontology.validator.ontology_validator   import reset_ontology_validator
+    from enterprise_ai_platform.ontology.validator.constraint_manager   import reset_constraint_manager
+    from enterprise_ai_platform.ontology.validator.constraint_engine    import reset_constraint_engine
+    from enterprise_ai_platform.ontology.validator.constraint_registry  import reset_constraint_registry
+    from enterprise_ai_platform.ontology.validator.validation_context   import reset_validation_context
+    from enterprise_ai_platform.ontology.compiler.compiler_manager      import reset_compiler_manager
+    from enterprise_ai_platform.ontology.compiler.compiler_registry     import reset_compiler_registry
+    from enterprise_ai_platform.ontology.compiler.compiler_factory      import reset_compiler_factory
+    from enterprise_ai_platform.ontology.compiler.compiler_context      import reset_compiler_context
+    from enterprise_ai_platform.ontology.compiler.dependency_resolver   import reset_dependency_resolver
+    from enterprise_ai_platform.ontology.compiler.metadata_generator    import reset_metadata_generator
+    from enterprise_ai_platform.ontology.compiler.ontology_compiler     import reset_ontology_compiler
+    from enterprise_ai_platform.ontology.loader.runtime_loader          import reset_runtime_loader
+    from enterprise_ai_platform.ontology.loader.ontology_loader         import reset_ontology_loader
+    from enterprise_ai_platform.ontology.cache.ontology_cache           import reset_ontology_cache
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import reset_registry_manager
+    from enterprise_ai_platform.ontology.registry.entity_registry          import reset_entity_registry
+    from enterprise_ai_platform.ontology.registry.relationship_registry    import reset_relationship_registry
+    from enterprise_ai_platform.ontology.registry.event_registry           import reset_event_registry
+    from enterprise_ai_platform.ontology.registry.observation_registry     import reset_observation_registry
+    from enterprise_ai_platform.ontology.registry.knowledge_registry       import reset_knowledge_ont_registry
+    from enterprise_ai_platform.ontology.ontology_registry                 import reset_ontology_registry
+    from enterprise_ai_platform.ontology.ontology_manager                  import reset_ontology_manager
+    from enterprise_ai_platform.ontology.ontology_runtime_engine           import reset_ontology_engine
+    from enterprise_ai_platform.ontology.ontology_context                  import reset_ontology_context
+    from enterprise_ai_platform.ontology.ontology_factory                  import reset_ontology_factory
+    from enterprise_ai_platform.ontology.graph.ontology_graph              import reset_ontology_graph
+    from enterprise_ai_platform.ontology.query.ontology_query              import reset_query_engine
+    from enterprise_ai_platform.ontology.services.lookup_service           import reset_lookup_service
+    from enterprise_ai_platform.ontology.services.hierarchy_service        import reset_hierarchy_service
+    from enterprise_ai_platform.ontology.services.statistics_service       import reset_statistics_service
+    from enterprise_ai_platform.ontology.loader.compiled_loader            import reset_compiled_loader
+    from enterprise_ai_platform.ontology.loader.incremental_loader         import reset_incremental_loader
+    from enterprise_ai_platform.ontology.loader.cache_loader               import reset_cache_loader
 
     reset_validation_engine()
     reset_ontology_validator()
@@ -115,33 +115,33 @@ def clean_state():
     _reset_all()
 
 
-def _make_type(name: str = "MyType", ns: str = "iios.test", parent: str | None = None):
-    from iios.ontology.ontology_factory import get_ontology_factory
+def _make_type(name: str = "MyType", ns: str = "enterprise_ai_platform.test", parent: str | None = None):
+    from enterprise_ai_platform.ontology.ontology_factory import get_ontology_factory
     fac = get_ontology_factory()
     return fac.create_type(name=name, namespace_uri=ns, parent_uri=parent)
 
 
 def _make_prop(name: str = "value", required: bool = False):
-    from iios.ontology.ontology_factory import get_ontology_factory
+    from enterprise_ai_platform.ontology.ontology_factory import get_ontology_factory
     return get_ontology_factory().create_property(name=name, required=required)
 
 
 def _make_rel(name: str = "HasChild",
-              src: str = "iios.test.ParentType",
-              tgt: str = "iios.test.ChildType"):
-    from iios.ontology.ontology_factory import get_ontology_factory
-    return get_ontology_factory().create_relationship(name=name, namespace_uri="iios.test",
+              src: str = "enterprise_ai_platform.test.ParentType",
+              tgt: str = "enterprise_ai_platform.test.ChildType"):
+    from enterprise_ai_platform.ontology.ontology_factory import get_ontology_factory
+    return get_ontology_factory().create_relationship(name=name, namespace_uri="enterprise_ai_platform.test",
                                                        source_type_uri=src, target_type_uri=tgt)
 
 
-def _make_namespace(uri: str = "iios.test", name: str = "TestNS", prefix: str = "tst"):
-    from iios.ontology.runtime.runtime_object import OntologyNamespace
+def _make_namespace(uri: str = "enterprise_ai_platform.test", name: str = "TestNS", prefix: str = "tst"):
+    from enterprise_ai_platform.ontology.runtime.runtime_object import OntologyNamespace
     return OntologyNamespace(uri=uri, name=name, prefix=prefix)
 
 
 def _warm_registry():
     """Compile all builtins so the registry is populated."""
-    from iios.ontology.compiler.compiler_manager import get_compiler_manager
+    from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
     return get_compiler_manager().compile_builtins()
 
 
@@ -151,7 +151,7 @@ def _warm_registry():
 
 class TestValidationConstants:
     def test_severity_values(self):
-        from iios.ontology.validator import ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import ValidationSeverity
         assert ValidationSeverity.PASS.value     == "pass"
         assert ValidationSeverity.INFO.value     == "info"
         assert ValidationSeverity.WARNING.value  == "warning"
@@ -159,7 +159,7 @@ class TestValidationConstants:
         assert ValidationSeverity.CRITICAL.value == "critical"
 
     def test_severity_ge(self):
-        from iios.ontology.validator import severity_ge, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import severity_ge, ValidationSeverity
         S = ValidationSeverity
         assert severity_ge(S.ERROR,    S.WARNING)
         assert severity_ge(S.CRITICAL, S.ERROR)
@@ -167,34 +167,34 @@ class TestValidationConstants:
         assert not severity_ge(S.PASS, S.ERROR)
 
     def test_max_severity_empty(self):
-        from iios.ontology.validator import max_severity, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import max_severity, ValidationSeverity
         assert max_severity([]) == ValidationSeverity.PASS
 
     def test_max_severity_mixed(self):
-        from iios.ontology.validator import max_severity, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import max_severity, ValidationSeverity
         S = ValidationSeverity
         assert max_severity([S.PASS, S.WARNING, S.ERROR]) == S.ERROR
         assert max_severity([S.INFO, S.CRITICAL, S.ERROR]) == S.CRITICAL
 
     def test_scope_values(self):
-        from iios.ontology.validator import ValidationScope
+        from enterprise_ai_platform.ontology.validator import ValidationScope
         assert ValidationScope.TYPE.value         == "type"
         assert ValidationScope.HIERARCHY.value    == "hierarchy"
         assert ValidationScope.RUNTIME_OBJ.value  == "runtime_object"
 
     def test_constraint_type_values(self):
-        from iios.ontology.validator import ConstraintType
+        from enterprise_ai_platform.ontology.validator import ConstraintType
         assert ConstraintType.REQUIRED_FIELD.value == "required_field"
         assert ConstraintType.CIRCULAR.value       == "circular"
 
     def test_mode_values(self):
-        from iios.ontology.validator import ValidationMode
+        from enterprise_ai_platform.ontology.validator import ValidationMode
         assert ValidationMode.STRICT.value      == "strict"
         assert ValidationMode.STANDARD.value    == "standard"
         assert ValidationMode.PERMISSIVE.value  == "permissive"
 
     def test_numeric_constants_positive(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             MAX_VALIDATION_ERRORS, MAX_BATCH_SIZE, VALIDATION_TIMEOUT_MS,
             MAX_HISTORY_PER_TARGET, MAX_PARALLEL_VALIDATORS,
         )
@@ -211,13 +211,13 @@ class TestValidationConstants:
 
 class TestValidationExceptions:
     def test_base_has_code(self):
-        from iios.ontology.validator import ValidatorError
+        from enterprise_ai_platform.ontology.validator import ValidatorError
         exc = ValidatorError("test", code="VAL-999")
         assert exc.code == "VAL-999"
         assert "VAL-999" in str(exc)
 
     def test_constraint_violation_hierarchy(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             ConstraintViolationError, RequiredFieldError, DataTypeConstraintError,
             CardinalityViolationError, ValidatorError,
         )
@@ -227,7 +227,7 @@ class TestValidationExceptions:
         assert issubclass(CardinalityViolationError, ConstraintViolationError)
 
     def test_semantic_validation_hierarchy(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             SemanticValidationError, HierarchyValidationError,
             NamespaceConsistencyError, ValidatorError,
         )
@@ -236,7 +236,7 @@ class TestValidationExceptions:
         assert issubclass(NamespaceConsistencyError, SemanticValidationError)
 
     def test_referential_integrity_hierarchy(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             ReferentialIntegrityError, BrokenReferenceError,
             CircularReferenceError, InvalidEndpointError, ValidatorError,
         )
@@ -246,29 +246,29 @@ class TestValidationExceptions:
         assert issubclass(InvalidEndpointError,     ReferentialIntegrityError)
 
     def test_broken_reference_carries_fields(self):
-        from iios.ontology.validator import BrokenReferenceError
-        exc = BrokenReferenceError("iios.foo.Bar", "iios.test.MyType", kind="parent_uri")
-        assert exc.ref_uri == "iios.foo.Bar"
-        assert exc.source  == "iios.test.MyType"
+        from enterprise_ai_platform.ontology.validator import BrokenReferenceError
+        exc = BrokenReferenceError("enterprise_ai_platform.foo.Bar", "enterprise_ai_platform.test.MyType", kind="parent_uri")
+        assert exc.ref_uri == "enterprise_ai_platform.foo.Bar"
+        assert exc.source  == "enterprise_ai_platform.test.MyType"
         assert "VAL-031"   in exc.code
 
     def test_circular_reference_carries_chain(self):
-        from iios.ontology.validator import CircularReferenceError
+        from enterprise_ai_platform.ontology.validator import CircularReferenceError
         chain = ["A", "B", "C", "A"]
         exc   = CircularReferenceError(chain)
         assert exc.chain == chain
         assert "VAL-032" in exc.code
 
     def test_duplicate_constraint_error(self):
-        from iios.ontology.validator import DuplicateConstraintError, ConstraintRegistryError
+        from enterprise_ai_platform.ontology.validator import DuplicateConstraintError, ConstraintRegistryError
         exc = DuplicateConstraintError("my.constraint")
         assert isinstance(exc, ConstraintRegistryError)
         assert exc.constraint_id == "my.constraint"
 
     def test_validation_timeout_carries_ms(self):
-        from iios.ontology.validator import ValidationTimeoutError
-        exc = ValidationTimeoutError("iios.test.Type", 5000.0)
-        assert exc.target     == "iios.test.Type"
+        from enterprise_ai_platform.ontology.validator import ValidationTimeoutError
+        exc = ValidationTimeoutError("enterprise_ai_platform.test.Type", 5000.0)
+        assert exc.target     == "enterprise_ai_platform.test.Type"
         assert exc.timeout_ms == 5000.0
 
 
@@ -278,14 +278,14 @@ class TestValidationExceptions:
 
 class TestValidationResult:
     def test_ok_factory(self):
-        from iios.ontology.validator import ValidationResult, ValidationSeverity, ValidationScope
-        r = ValidationResult.ok("my.constraint", ValidationScope.TYPE, target_uri="iios.test.T")
+        from enterprise_ai_platform.ontology.validator import ValidationResult, ValidationSeverity, ValidationScope
+        r = ValidationResult.ok("my.constraint", ValidationScope.TYPE, target_uri="enterprise_ai_platform.test.T")
         assert r.passed
         assert r.severity  == ValidationSeverity.PASS
-        assert r.target_uri == "iios.test.T"
+        assert r.target_uri == "enterprise_ai_platform.test.T"
 
     def test_fail_factory(self):
-        from iios.ontology.validator import ValidationResult, ValidationSeverity, ValidationScope
+        from enterprise_ai_platform.ontology.validator import ValidationResult, ValidationSeverity, ValidationScope
         r = ValidationResult.fail("c.id", "bad thing", scope=ValidationScope.TYPE,
                                   severity=ValidationSeverity.ERROR)
         assert not r.passed
@@ -293,27 +293,27 @@ class TestValidationResult:
         assert not r.is_critical
 
     def test_critical_factory(self):
-        from iios.ontology.validator import ValidationResult, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import ValidationResult, ValidationSeverity
         r = ValidationResult.critical("c.id", "structural break")
         assert not r.passed
         assert r.is_critical
         assert r.severity == ValidationSeverity.CRITICAL
 
     def test_warn_factory_does_not_block(self):
-        from iios.ontology.validator import ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationResult
         r = ValidationResult.warn("c.id", "soft warning")
         assert r.passed      # warnings don't block
         assert r.is_warning
         assert not r.is_error
 
     def test_info_factory(self):
-        from iios.ontology.validator import ValidationResult, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import ValidationResult, ValidationSeverity
         r = ValidationResult.info("c.id", "informational")
         assert r.passed
         assert r.severity == ValidationSeverity.INFO
 
     def test_to_dict(self):
-        from iios.ontology.validator import ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationResult
         r = ValidationResult.fail("c.id", "msg", path="properties.x")
         d = r.to_dict()
         assert d["passed"]        is False
@@ -323,7 +323,7 @@ class TestValidationResult:
         assert "timestamp"        in d
 
     def test_details_carried(self):
-        from iios.ontology.validator import ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationResult
         r = ValidationResult.fail("c.id", "msg", details={"depth": 5})
         assert r.details["depth"] == 5
 
@@ -334,21 +334,21 @@ class TestValidationResult:
 
 class TestValidationReport:
     def test_passed_when_no_errors(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.ok("c.id"))
         r.add(ValidationResult.warn("c.id2", "soft"))
         assert r.passed
 
     def test_not_passed_on_error(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.fail("c.id", "oops"))
         assert not r.passed
         assert r.has_errors
 
     def test_counts(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult, ValidationSeverity
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.ok("c1"))
         r.add(ValidationResult.warn("c2", "w"))
@@ -361,14 +361,14 @@ class TestValidationReport:
         assert r.total          == 4
 
     def test_severity_rollup(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult, ValidationSeverity
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.warn("c", "w"))
         r.add(ValidationResult.fail("c2", "e"))
         assert r.severity == ValidationSeverity.ERROR
 
     def test_merge(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult
         r1 = ValidationReport(target_id="A")
         r2 = ValidationReport(target_id="B")
         r1.add(ValidationResult.ok("c1"))
@@ -377,7 +377,7 @@ class TestValidationReport:
         assert r1.total == 2
 
     def test_finalise(self):
-        from iios.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator import ValidationReport
         r = ValidationReport(target_id="T")
         time.sleep(0.01)
         r.finalise()
@@ -385,7 +385,7 @@ class TestValidationReport:
         assert r.duration_ms >= 5.0
 
     def test_to_dict(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult
         r = ValidationReport(target_id="T", target_type="OntologyTypeDef")
         r.add(ValidationResult.ok("c"))
         r.finalise()
@@ -396,7 +396,7 @@ class TestValidationReport:
         assert len(d["results"]) == 1
 
     def test_summary(self):
-        from iios.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator import ValidationReport
         r = ValidationReport(target_id="T")
         r.finalise()
         s = r.summary()
@@ -405,7 +405,7 @@ class TestValidationReport:
         assert "duration_ms" in s
 
     def test_by_scope(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult, ValidationScope
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult, ValidationScope
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.ok("c1", ValidationScope.TYPE))
         r.add(ValidationResult.ok("c2", ValidationScope.PROPERTY))
@@ -413,7 +413,7 @@ class TestValidationReport:
         assert len(r.by_scope(ValidationScope.PROPERTY)) == 1
 
     def test_errors_and_criticals(self):
-        from iios.ontology.validator import ValidationReport, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationReport, ValidationResult
         r = ValidationReport(target_id="T")
         r.add(ValidationResult.fail("c1", "err"))
         r.add(ValidationResult.critical("c2", "crit"))
@@ -423,8 +423,8 @@ class TestValidationReport:
 
 class TestValidationHistory:
     def test_record_and_get(self):
-        from iios.ontology.validator import ValidationReport
-        from iios.ontology.validator.validation_report import ValidationHistory
+        from enterprise_ai_platform.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator.validation_report import ValidationHistory
         h  = ValidationHistory(max_per_target=10)
         r  = ValidationReport(target_id="T")
         h.record(r)
@@ -432,16 +432,16 @@ class TestValidationHistory:
         assert len(items) == 1
 
     def test_respects_max(self):
-        from iios.ontology.validator import ValidationReport
-        from iios.ontology.validator.validation_report import ValidationHistory
+        from enterprise_ai_platform.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator.validation_report import ValidationHistory
         h = ValidationHistory(max_per_target=3)
         for _ in range(5):
             h.record(ValidationReport(target_id="T"))
         assert len(h.get("T")) == 3
 
     def test_clear_one(self):
-        from iios.ontology.validator import ValidationReport
-        from iios.ontology.validator.validation_report import ValidationHistory
+        from enterprise_ai_platform.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator.validation_report import ValidationHistory
         h = ValidationHistory()
         h.record(ValidationReport(target_id="A"))
         h.record(ValidationReport(target_id="B"))
@@ -450,8 +450,8 @@ class TestValidationHistory:
         assert len(h.get("B")) == 1
 
     def test_stats(self):
-        from iios.ontology.validator import ValidationReport
-        from iios.ontology.validator.validation_report import ValidationHistory
+        from enterprise_ai_platform.ontology.validator import ValidationReport
+        from enterprise_ai_platform.ontology.validator.validation_report import ValidationHistory
         h = ValidationHistory()
         h.record(ValidationReport(target_id="X"))
         h.record(ValidationReport(target_id="X"))
@@ -466,27 +466,27 @@ class TestValidationHistory:
 
 class TestValidationContext:
     def test_initial_none(self):
-        from iios.ontology.validator import get_validation_context, ValidationMode, ValidationPhase
+        from enterprise_ai_platform.ontology.validator import get_validation_context, ValidationMode, ValidationPhase
         ctx = get_validation_context()
         assert ctx.operation_id    is None
         assert ctx.current_target  is None
 
     def test_validation_cm_sets_target(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         ctx = get_validation_context()
-        with ctx.validation("iios.test.T"):
-            assert ctx.current_target == "iios.test.T"
+        with ctx.validation("enterprise_ai_platform.test.T"):
+            assert ctx.current_target == "enterprise_ai_platform.test.T"
             assert ctx.operation_id   is not None
         assert ctx.current_target is None
 
     def test_mode_propagated(self):
-        from iios.ontology.validator import get_validation_context, ValidationMode
+        from enterprise_ai_platform.ontology.validator import get_validation_context, ValidationMode
         ctx = get_validation_context()
         with ctx.validation("T", mode=ValidationMode.STRICT):
             assert ctx.mode == ValidationMode.STRICT
 
     def test_nested_cm(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         ctx = get_validation_context()
         with ctx.validation("outer"):
             assert ctx.current_target == "outer"
@@ -496,7 +496,7 @@ class TestValidationContext:
             assert ctx.current_target == "outer"
 
     def test_add_diagnostic(self):
-        from iios.ontology.validator import get_validation_context, DiagnosticLevel
+        from enterprise_ai_platform.ontology.validator import get_validation_context, DiagnosticLevel
         ctx = get_validation_context()
         with ctx.validation("T"):
             ctx.add_diagnostic(DiagnosticLevel.WARNING, "test warning")
@@ -505,7 +505,7 @@ class TestValidationContext:
             assert len(ctx.errors())   == 1
 
     def test_thread_isolation(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         ctx     = get_validation_context()
         results: list = []
         lock    = threading.Lock()
@@ -524,7 +524,7 @@ class TestValidationContext:
         assert set(results) == {"T0", "T1", "T2", "T3"}
 
     def test_elapsed_ms(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         ctx = get_validation_context()
         with ctx.validation("T"):
             time.sleep(0.01)
@@ -532,7 +532,7 @@ class TestValidationContext:
         assert ms >= 5.0
 
     def test_singleton(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         assert get_validation_context() is get_validation_context()
 
 
@@ -542,11 +542,11 @@ class TestValidationContext:
 
 class TestConstraintRegistry:
     def _simple_rule(self, target, all_types):
-        from iios.ontology.validator import ValidationResult, ValidationScope
+        from enterprise_ai_platform.ontology.validator import ValidationResult, ValidationScope
         return [ValidationResult.ok("test.rule", ValidationScope.TYPE)]
 
     def test_register_and_get(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope, ValidationSeverity
         )
         reg = get_constraint_registry()
@@ -557,7 +557,7 @@ class TestConstraintRegistry:
         assert cd.name          == "My Rule"
 
     def test_duplicate_raises(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope,
             ValidationSeverity, DuplicateConstraintError,
         )
@@ -569,7 +569,7 @@ class TestConstraintRegistry:
                          ValidationSeverity.ERROR, self._simple_rule)
 
     def test_overwrite_allowed(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope, ValidationSeverity
         )
         reg = get_constraint_registry()
@@ -580,7 +580,7 @@ class TestConstraintRegistry:
         assert reg.get("ow.rule").name == "New"
 
     def test_enable_disable(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope, ValidationSeverity
         )
         reg = get_constraint_registry()
@@ -592,7 +592,7 @@ class TestConstraintRegistry:
         assert reg.get("tog.rule").enabled
 
     def test_get_by_scope(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope, ValidationSeverity
         )
         reg = get_constraint_registry()
@@ -605,7 +605,7 @@ class TestConstraintRegistry:
         assert all(cd.scope == ValidationScope.TYPE for cd in type_constraints)
 
     def test_stats(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_registry, ConstraintType, ValidationScope, ValidationSeverity
         )
         reg = get_constraint_registry()
@@ -620,7 +620,7 @@ class TestConstraintRegistry:
         assert s["disabled"] == 1
 
     def test_singleton(self):
-        from iios.ontology.validator import get_constraint_registry
+        from enterprise_ai_platform.ontology.validator import get_constraint_registry
         assert get_constraint_registry() is get_constraint_registry()
 
 
@@ -630,23 +630,23 @@ class TestConstraintRegistry:
 
 class TestConstraintEngine:
     def _bootstrap(self):
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         mgr = get_constraint_manager()
         if not mgr.is_initialized:
             mgr.register_builtin_constraints()
 
     def test_check_type_def_valid(self):
-        from iios.ontology.validator import get_constraint_engine
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine
         self._bootstrap()
-        td      = _make_type("GoodType", "iios.test")
+        td      = _make_type("GoodType", "enterprise_ai_platform.test")
         engine  = get_constraint_engine()
         results = engine.check_type_def(td, {})
         assert any(r.passed for r in results)
 
     def test_check_type_def_empty_uri_critical(self):
-        from iios.ontology.validator import get_constraint_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine, ValidationSeverity
         self._bootstrap()
-        td = _make_type("X", "iios.test")
+        td = _make_type("X", "enterprise_ai_platform.test")
         td.uri = ""   # Force empty URI
         engine  = get_constraint_engine()
         results = engine.check_type_def(td, {})
@@ -654,10 +654,10 @@ class TestConstraintEngine:
         assert len(criticals) >= 1
 
     def test_check_property_ref_uri_missing(self):
-        from iios.ontology.validator import get_constraint_engine, ValidationSeverity
-        from iios.ontology.ontology_constants import DataType
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.ontology_constants import DataType
         self._bootstrap()
-        td      = _make_type("T", "iios.test")
+        td      = _make_type("T", "enterprise_ai_platform.test")
         prop    = _make_prop("ref_field")
         prop.data_type = DataType.REF
         prop.ref_uri   = ""       # REF without ref_uri
@@ -668,7 +668,7 @@ class TestConstraintEngine:
         assert len(errors) >= 1
 
     def test_check_namespace_valid(self):
-        from iios.ontology.validator import get_constraint_engine
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine
         self._bootstrap()
         ns      = _make_namespace()
         engine  = get_constraint_engine()
@@ -676,7 +676,7 @@ class TestConstraintEngine:
         assert any(r.passed for r in results)
 
     def test_check_namespace_empty_uri(self):
-        from iios.ontology.validator import get_constraint_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine, ValidationSeverity
         self._bootstrap()
         ns     = _make_namespace(uri="")
         engine = get_constraint_engine()
@@ -685,7 +685,7 @@ class TestConstraintEngine:
         assert len(criticals) >= 1
 
     def test_check_relationship_def(self):
-        from iios.ontology.validator import get_constraint_engine
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine
         self._bootstrap()
         rel     = _make_rel()
         engine  = get_constraint_engine()
@@ -693,10 +693,10 @@ class TestConstraintEngine:
         assert any(r.passed for r in results)
 
     def test_check_hierarchy_detects_cycle(self):
-        from iios.ontology.validator import get_constraint_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine, ValidationSeverity
         self._bootstrap()
-        td_a = _make_type("A", "iios.test")
-        td_b = _make_type("B", "iios.test", parent=td_a.uri)
+        td_a = _make_type("A", "enterprise_ai_platform.test")
+        td_b = _make_type("B", "enterprise_ai_platform.test", parent=td_a.uri)
         td_a.parent_uri = td_b.uri   # Create cycle A→B→A
         all_types = {td_a.uri: td_a, td_b.uri: td_b}
         engine  = get_constraint_engine()
@@ -705,7 +705,7 @@ class TestConstraintEngine:
         assert len(criticals) >= 1
 
     def test_singleton(self):
-        from iios.ontology.validator import get_constraint_engine
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine
         assert get_constraint_engine() is get_constraint_engine()
 
 
@@ -715,24 +715,24 @@ class TestConstraintEngine:
 
 class TestConstraintManager:
     def test_register_builtin_constraints(self):
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         mgr = get_constraint_manager()
         n   = mgr.register_builtin_constraints()
         assert n >= 20   # We have 25 built-in rules
         assert mgr.is_initialized
 
     def test_idempotent_second_call(self):
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         mgr = get_constraint_manager()
         n1  = mgr.register_builtin_constraints()
         n2  = mgr.register_builtin_constraints()
         assert n1 == n2   # No duplication
 
     def test_register_custom(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_manager, ConstraintType, ValidationScope, ValidationSeverity,
         )
-        from iios.ontology.validator import ValidationResult
+        from enterprise_ai_platform.ontology.validator import ValidationResult
 
         def my_rule(target, all_types):
             return [ValidationResult.ok("custom.ok")]
@@ -749,8 +749,8 @@ class TestConstraintManager:
         assert any(c.constraint_id == cid for c in constraints)
 
     def test_enable_disable_custom(self):
-        from iios.ontology.validator import get_constraint_manager, ValidationResult
-        from iios.ontology.validator import ConstraintType, ValidationScope, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager, ValidationResult
+        from enterprise_ai_platform.ontology.validator import ConstraintType, ValidationScope, ValidationSeverity
 
         def noop(t, a): return [ValidationResult.ok("noop")]
         mgr = get_constraint_manager()
@@ -765,7 +765,7 @@ class TestConstraintManager:
         assert any(c.constraint_id == cid for c in enabled)
 
     def test_stats(self):
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         mgr = get_constraint_manager()
         mgr.register_builtin_constraints()
         s = mgr.stats()
@@ -774,7 +774,7 @@ class TestConstraintManager:
         assert s["initialized"] is True
 
     def test_singleton(self):
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         assert get_constraint_manager() is get_constraint_manager()
 
 
@@ -784,7 +784,7 @@ class TestConstraintManager:
 
 class TestOntologyValidator:
     def test_validate_type_def_valid(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         td     = _make_type()
         val    = get_ontology_validator()
         report = val.validate_type_def(td)
@@ -793,7 +793,7 @@ class TestOntologyValidator:
         assert report.target_type == "OntologyTypeDef"
 
     def test_validate_type_def_empty_name_fails(self):
-        from iios.ontology.validator import get_ontology_validator, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator, ValidationSeverity
         td   = _make_type()
         td.name = ""
         val  = get_ontology_validator()
@@ -801,30 +801,30 @@ class TestOntologyValidator:
         assert rpt.critical_count >= 1
 
     def test_validate_namespace_valid(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         ns     = _make_namespace()
         val    = get_ontology_validator()
         report = val.validate_namespace(ns)
         assert report.target_id == ns.uri
 
     def test_validate_namespace_empty_uri(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         ns     = _make_namespace(uri="", name="Bad")
         val    = get_ontology_validator()
         report = val.validate_namespace(ns)
         assert report.critical_count >= 1
 
     def test_validate_relationship_def_valid(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         rel = _make_rel()
         val = get_ontology_validator()
         rpt = val.validate_relationship_def(rel)
         assert rpt.target_id == rel.uri
 
     def test_validate_document(self):
-        from iios.ontology.validator import get_ontology_validator
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         loader = get_ontology_loader()
         doc    = loader.load_builtin(ONT_INFORMATION)
         val    = get_ontology_validator()
@@ -833,10 +833,10 @@ class TestOntologyValidator:
         assert rpt.total      >= 0
 
     def test_validate_compiled_ontology(self):
-        from iios.ontology.validator import get_ontology_validator
-        from iios.ontology.compiler.ontology_compiler import get_ontology_compiler
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.compiler.ontology_compiler import get_ontology_compiler
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         loader   = get_ontology_loader()
         compiler = get_ontology_compiler()
         doc      = loader.load_builtin(ONT_INFORMATION)
@@ -846,9 +846,9 @@ class TestOntologyValidator:
         assert rpt.target_id == compiled.name
 
     def test_validate_hierarchy_no_cycle(self):
-        from iios.ontology.validator import get_ontology_validator
-        td_a = _make_type("A", "iios.test")
-        td_b = _make_type("B", "iios.test", parent=td_a.uri)
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        td_a = _make_type("A", "enterprise_ai_platform.test")
+        td_b = _make_type("B", "enterprise_ai_platform.test", parent=td_a.uri)
         all_types = {td_a.uri: td_a, td_b.uri: td_b}
         val = get_ontology_validator()
         rpt = val.validate_hierarchy(all_types)
@@ -856,9 +856,9 @@ class TestOntologyValidator:
         assert rpt.passed    # No cycles
 
     def test_validate_hierarchy_detects_cycle(self):
-        from iios.ontology.validator import get_ontology_validator, ValidationSeverity
-        td_a = _make_type("A", "iios.test")
-        td_b = _make_type("B", "iios.test", parent=td_a.uri)
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator, ValidationSeverity
+        td_a = _make_type("A", "enterprise_ai_platform.test")
+        td_b = _make_type("B", "enterprise_ai_platform.test", parent=td_a.uri)
         td_a.parent_uri = td_b.uri   # Cycle
         all_types = {td_a.uri: td_a, td_b.uri: td_b}
         val = get_ontology_validator()
@@ -866,16 +866,16 @@ class TestOntologyValidator:
         assert rpt.critical_count >= 1
 
     def test_validate_cross_references_clean(self):
-        from iios.ontology.validator import get_ontology_validator
-        td_a = _make_type("A", "iios.test")
-        td_b = _make_type("B", "iios.test", parent=td_a.uri)
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        td_a = _make_type("A", "enterprise_ai_platform.test")
+        td_b = _make_type("B", "enterprise_ai_platform.test", parent=td_a.uri)
         all_types = {td_a.uri: td_a, td_b.uri: td_b}
         val = get_ontology_validator()
         rpt = val.validate_cross_references(all_types)
         assert rpt.target_id == "global.references"
 
     def test_validate_runtime_object_with_required(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         td   = _make_type()
         prop = _make_prop("name", required=True)
         td.properties["name"] = prop
@@ -889,10 +889,10 @@ class TestOntologyValidator:
         assert rpt2.passed
 
     def test_validate_namespace_consistency(self):
-        from iios.ontology.validator import get_ontology_validator
-        from iios.ontology.compiler.ontology_compiler import get_ontology_compiler
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.compiler.ontology_compiler import get_ontology_compiler
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         loader   = get_ontology_loader()
         compiler = get_ontology_compiler()
         compiled = compiler.compile(loader.load_builtin(ONT_INFORMATION))
@@ -901,7 +901,7 @@ class TestOntologyValidator:
         assert rpt.target_id == compiled.name
 
     def test_singleton(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         assert get_ontology_validator() is get_ontology_validator()
 
 
@@ -911,13 +911,13 @@ class TestOntologyValidator:
 
 class TestValidationEngine:
     def test_initialize(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         engine = get_validation_engine()
         engine.initialize()
         assert engine.stats()["initialized"] is True
 
     def test_validate_type_valid(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         rpt    = engine.validate_type(td)
@@ -925,7 +925,7 @@ class TestValidationEngine:
         assert rpt.target_type == "OntologyTypeDef"
 
     def test_validate_type_raises_in_strict_mode(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_validation_engine, ValidationMode, ConstraintViolationError,
         )
         td   = _make_type()
@@ -935,7 +935,7 @@ class TestValidationEngine:
             engine.validate_type(td, mode=ValidationMode.STRICT, raise_on_failure=True)
 
     def test_validate_type_no_raise_in_warning_only(self):
-        from iios.ontology.validator import get_validation_engine, ValidationMode
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ValidationMode
         td   = _make_type()
         td.uri = ""
         engine = get_validation_engine()
@@ -944,23 +944,23 @@ class TestValidationEngine:
         assert rpt is not None
 
     def test_validate_ontology_not_compiled_returns_error(self):
-        from iios.ontology.validator import get_validation_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ValidationSeverity
         engine = get_validation_engine()
         rpt    = engine.validate_ontology("NOT_COMPILED_ONT")
         assert not rpt.passed
         assert rpt.has_errors
 
     def test_validate_ontology_after_compile(self):
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_ontology(ONT_INFORMATION)
         assert rpt.target_id == ONT_INFORMATION
 
     def test_validate_all_ontologies(self):
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         _warm_registry()
         engine  = get_validation_engine()
         reports = engine.validate_all_ontologies()
@@ -968,72 +968,72 @@ class TestValidationEngine:
         assert all(name in reports for name in BUILTIN_ONTOLOGY_NAMES)
 
     def test_validate_all_ontologies_parallel(self):
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         _warm_registry()
         engine  = get_validation_engine()
         reports = engine.validate_all_ontologies(parallel=True)
         assert len(reports) == len(BUILTIN_ONTOLOGY_NAMES)
 
     def test_validate_hierarchy(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_hierarchy()
         assert rpt.target_id == "global.hierarchy"
 
     def test_validate_referential_integrity(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_referential_integrity()
         assert rpt.target_id == "global.references"
 
     def test_validate_runtime_object_missing_required(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         _warm_registry()
         engine = get_validation_engine()
         # Use a builtin type that might have required props
         # Just pass unknown type — engine should report it
-        rpt = engine.validate_runtime_object({}, "iios.UNKNOWN.Type")
+        rpt = engine.validate_runtime_object({}, "enterprise_ai_platform.UNKNOWN.Type")
         assert rpt is not None
 
     def test_validate_pre_registration_valid(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         rpt    = engine.validate_pre_registration(td, raise_on_failure=False)
         assert rpt is not None
 
     def test_validate_batch(self):
-        from iios.ontology.validator import get_validation_engine
-        types  = [_make_type(f"T{i}", "iios.test") for i in range(5)]
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        types  = [_make_type(f"T{i}", "enterprise_ai_platform.test") for i in range(5)]
         engine = get_validation_engine()
         rpts   = engine.validate_batch(types)
         assert len(rpts) == 5
 
     def test_validate_batch_parallel(self):
-        from iios.ontology.validator import get_validation_engine
-        types  = [_make_type(f"T{i}", "iios.test") for i in range(8)]
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        types  = [_make_type(f"T{i}", "enterprise_ai_platform.test") for i in range(8)]
         engine = get_validation_engine()
         rpts   = engine.validate_batch(types, parallel=True)
         assert len(rpts) == 8
 
     def test_validate_batch_too_large(self):
-        from iios.ontology.validator import get_validation_engine, ValidationEngineError, MAX_BATCH_SIZE
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ValidationEngineError, MAX_BATCH_SIZE
         engine = get_validation_engine()
-        types  = [_make_type(f"T{i}", "iios.test") for i in range(MAX_BATCH_SIZE + 1)]
+        types  = [_make_type(f"T{i}", "enterprise_ai_platform.test") for i in range(MAX_BATCH_SIZE + 1)]
         with pytest.raises(ValidationEngineError):
             engine.validate_batch(types)
 
     def test_is_valid(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         assert engine.is_valid(td)
 
     def test_history_recorded(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         engine.validate_type(td)
@@ -1041,7 +1041,7 @@ class TestValidationEngine:
         assert len(history) >= 1
 
     def test_last_report(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         engine.validate_type(td)
@@ -1049,7 +1049,7 @@ class TestValidationEngine:
         assert rpt is not None
 
     def test_register_custom_constraint(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_validation_engine, ValidationResult, ValidationScope, ConstraintType,
             ValidationSeverity,
         )
@@ -1067,7 +1067,7 @@ class TestValidationEngine:
         assert cid.startswith("custom.")
 
     def test_disable_enable_constraint(self):
-        from iios.ontology.validator import get_validation_engine, get_constraint_registry
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, get_constraint_registry
         engine = get_validation_engine()
         engine.initialize()
         cids = get_constraint_registry().all_ids()
@@ -1078,7 +1078,7 @@ class TestValidationEngine:
         assert get_constraint_registry().get(cid).enabled
 
     def test_stats(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         engine = get_validation_engine()
         engine.initialize()
         s = engine.stats()
@@ -1088,7 +1088,7 @@ class TestValidationEngine:
         assert "constraints"  in s
 
     def test_health(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         engine = get_validation_engine()
         engine.initialize()
         h = engine.health()
@@ -1096,7 +1096,7 @@ class TestValidationEngine:
         assert h["initialized"] is True
 
     def test_singleton(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         assert get_validation_engine() is get_validation_engine()
 
 
@@ -1106,8 +1106,8 @@ class TestValidationEngine:
 
 class TestReferentialIntegrity:
     def test_broken_parent_uri_detected(self):
-        from iios.ontology.validator import get_ontology_validator, ValidationSeverity
-        td = _make_type("Child", "iios.test", parent="iios.NONEXISTENT.Parent")
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator, ValidationSeverity
+        td = _make_type("Child", "enterprise_ai_platform.test", parent="enterprise_ai_platform.NONEXISTENT.Parent")
         all_types = {td.uri: td}   # Parent not in map
         val = get_ontology_validator()
         rpt = val.validate_cross_references(all_types)
@@ -1115,9 +1115,9 @@ class TestReferentialIntegrity:
         assert len(warnings) >= 1
 
     def test_clean_references_all_pass(self):
-        from iios.ontology.validator import get_ontology_validator
-        parent = _make_type("Parent", "iios.test")
-        child  = _make_type("Child",  "iios.test", parent=parent.uri)
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
+        parent = _make_type("Parent", "enterprise_ai_platform.test")
+        child  = _make_type("Child",  "enterprise_ai_platform.test", parent=parent.uri)
         all_types = {parent.uri: parent, child.uri: child}
         val = get_ontology_validator()
         rpt = val.validate_cross_references(all_types)
@@ -1125,12 +1125,12 @@ class TestReferentialIntegrity:
         assert len(errors) == 0
 
     def test_broken_ref_property_detected(self):
-        from iios.ontology.validator import get_ontology_validator, ValidationSeverity
-        from iios.ontology.ontology_constants import DataType
-        td   = _make_type("T", "iios.test")
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator, ValidationSeverity
+        from enterprise_ai_platform.ontology.ontology_constants import DataType
+        td   = _make_type("T", "enterprise_ai_platform.test")
         prop = _make_prop("ref_field")
         prop.data_type = DataType.REF
-        prop.ref_uri   = "iios.NONEXISTENT.TargetType"
+        prop.ref_uri   = "enterprise_ai_platform.NONEXISTENT.TargetType"
         td.properties["ref_field"] = prop
         all_types = {td.uri: td}
         val = get_ontology_validator()
@@ -1145,12 +1145,12 @@ class TestReferentialIntegrity:
 
 class TestHierarchyValidation:
     def test_deep_chain_within_limit(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         # Build a chain of 5 (well within limit)
         types: dict[str, Any] = {}
         prev_uri: str | None = None
         for i in range(5):
-            td = _make_type(f"T{i}", "iios.test", parent=prev_uri)
+            td = _make_type(f"T{i}", "enterprise_ai_platform.test", parent=prev_uri)
             types[td.uri] = td
             prev_uri      = td.uri
         val = get_ontology_validator()
@@ -1161,10 +1161,10 @@ class TestHierarchyValidation:
         assert len(depth_errors) == 0
 
     def test_self_inheritance_critical(self):
-        from iios.ontology.validator import get_constraint_engine, ValidationSeverity
-        from iios.ontology.validator import get_constraint_manager
+        from enterprise_ai_platform.ontology.validator import get_constraint_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_constraint_manager
         get_constraint_manager().register_builtin_constraints()
-        td = _make_type("SelfRef", "iios.test")
+        td = _make_type("SelfRef", "enterprise_ai_platform.test")
         td.parent_uri = td.uri   # Self-inheritance
         engine  = get_constraint_engine()
         results = engine.check_type_def(td, {})
@@ -1173,10 +1173,10 @@ class TestHierarchyValidation:
         assert len(criticals) >= 1
 
     def test_multi_level_cycle_detected(self):
-        from iios.ontology.validator import get_ontology_validator, ValidationSeverity
-        ta = _make_type("A", "iios.test")
-        tb = _make_type("B", "iios.test", parent=ta.uri)
-        tc = _make_type("C", "iios.test", parent=tb.uri)
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator, ValidationSeverity
+        ta = _make_type("A", "enterprise_ai_platform.test")
+        tb = _make_type("B", "enterprise_ai_platform.test", parent=ta.uri)
+        tc = _make_type("C", "enterprise_ai_platform.test", parent=tb.uri)
         ta.parent_uri = tc.uri   # A→B→C→A cycle
         all_types = {ta.uri: ta, tb.uri: tb, tc.uri: tc}
         val = get_ontology_validator()
@@ -1186,11 +1186,11 @@ class TestHierarchyValidation:
         assert len(criticals) >= 1
 
     def test_no_false_positive_on_valid_chain(self):
-        from iios.ontology.validator import get_ontology_validator
+        from enterprise_ai_platform.ontology.validator import get_ontology_validator
         # Linear chain: A → B → C (valid)
-        ta = _make_type("A", "iios.test")
-        tb = _make_type("B", "iios.test", parent=ta.uri)
-        tc = _make_type("C", "iios.test", parent=tb.uri)
+        ta = _make_type("A", "enterprise_ai_platform.test")
+        tb = _make_type("B", "enterprise_ai_platform.test", parent=ta.uri)
+        tc = _make_type("C", "enterprise_ai_platform.test", parent=tb.uri)
         all_types = {ta.uri: ta, tb.uri: tb, tc.uri: tc}
         val = get_ontology_validator()
         rpt = val.validate_hierarchy(all_types)
@@ -1205,7 +1205,7 @@ class TestHierarchyValidation:
 
 class TestBusinessRules:
     def test_custom_constraint_fires(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_manager, get_constraint_engine,
             ValidationResult, ValidationScope, ValidationSeverity, ConstraintType,
         )
@@ -1229,7 +1229,7 @@ class TestBusinessRules:
                             constraint_id="custom.must_have_tag",
                             overwrite=True)
 
-        td      = _make_type("T", "iios.test")
+        td      = _make_type("T", "enterprise_ai_platform.test")
         engine  = get_constraint_engine()
         results = engine.check_type_def(td, {})
         assert len(FIRED) >= 1
@@ -1237,7 +1237,7 @@ class TestBusinessRules:
         assert len(warns) == 1
 
     def test_custom_constraint_passes_when_satisfied(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_manager, get_constraint_engine,
             ValidationResult, ValidationScope, ValidationSeverity, ConstraintType,
         )
@@ -1255,7 +1255,7 @@ class TestBusinessRules:
                             constraint_id="custom.tag_check2",
                             overwrite=True)
 
-        td      = _make_type("T", "iios.test")
+        td      = _make_type("T", "enterprise_ai_platform.test")
         td.tags = ["core"]   # Satisfies constraint
         engine  = get_constraint_engine()
         results = engine.check_type_def(td, {})
@@ -1263,7 +1263,7 @@ class TestBusinessRules:
         assert len(passes) == 1
 
     def test_disabled_custom_does_not_fire(self):
-        from iios.ontology.validator import (
+        from enterprise_ai_platform.ontology.validator import (
             get_constraint_manager, get_constraint_engine,
             ValidationResult, ValidationScope, ValidationSeverity, ConstraintType,
         )
@@ -1294,7 +1294,7 @@ class TestBusinessRules:
 
 class TestConcurrency:
     def test_singleton_thread_safety(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         ids:  list[int] = []
         lock = threading.Lock()
 
@@ -1309,7 +1309,7 @@ class TestConcurrency:
         assert len(set(ids)) == 1, "Multiple ValidationEngine instances"
 
     def test_context_thread_isolation(self):
-        from iios.ontology.validator import get_validation_context
+        from enterprise_ai_platform.ontology.validator import get_validation_context
         ctx     = get_validation_context()
         results: dict[str, str] = {}
         lock    = threading.Lock()
@@ -1328,29 +1328,29 @@ class TestConcurrency:
             assert seen == name, f"Thread {name} saw {seen!r}"
 
     def test_parallel_validate_batch(self):
-        from iios.ontology.validator import get_validation_engine
-        types  = [_make_type(f"T{i}", "iios.test") for i in range(16)]
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        types  = [_make_type(f"T{i}", "enterprise_ai_platform.test") for i in range(16)]
         engine = get_validation_engine()
         rpts   = engine.validate_batch(types, parallel=True)
         assert len(rpts) == 16
         assert all(rpt is not None for rpt in rpts)
 
     def test_parallel_validate_all_ontologies(self):
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         _warm_registry()
         engine  = get_validation_engine()
         reports = engine.validate_all_ontologies(parallel=True)
         assert len(reports) == len(BUILTIN_ONTOLOGY_NAMES)
 
     def test_concurrent_history_writes(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         engine = get_validation_engine()
         errors: list[Exception] = []
 
         def _validate():
             try:
-                td = _make_type("Shared", "iios.test")
+                td = _make_type("Shared", "enterprise_ai_platform.test")
                 engine.validate_type(td)
             except Exception as e:
                 errors.append(e)
@@ -1368,8 +1368,8 @@ class TestConcurrency:
 class TestEndToEnd:
     def test_full_pipeline_validate_all_after_cold_start(self):
         """Cold start → validate all ontologies → all pass structural checks."""
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         _warm_registry()
         engine  = get_validation_engine()
         reports = engine.validate_all_ontologies()
@@ -1380,7 +1380,7 @@ class TestEndToEnd:
 
     def test_full_pipeline_hierarchy_no_cycle_in_builtins(self):
         """Built-in ontologies must not contain any circular inheritance."""
-        from iios.ontology.validator import get_validation_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ValidationSeverity
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_hierarchy()
@@ -1390,7 +1390,7 @@ class TestEndToEnd:
 
     def test_full_pipeline_referential_integrity(self):
         """All parent_uri references in built-ins must resolve."""
-        from iios.ontology.validator import get_validation_engine, ValidationSeverity
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ValidationSeverity
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_referential_integrity()
@@ -1401,7 +1401,7 @@ class TestEndToEnd:
 
     def test_pre_registration_gate_blocks_empty_uri(self):
         """Pre-registration gate rejects type with empty URI."""
-        from iios.ontology.validator import get_validation_engine, ConstraintViolationError, ValidationMode
+        from enterprise_ai_platform.ontology.validator import get_validation_engine, ConstraintViolationError, ValidationMode
         td     = _make_type()
         td.uri = ""
         engine = get_validation_engine()
@@ -1409,7 +1409,7 @@ class TestEndToEnd:
             engine.validate_pre_registration(td, raise_on_failure=True)
 
     def test_pre_registration_gate_passes_valid_type(self):
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         td     = _make_type()
         engine = get_validation_engine()
         rpt    = engine.validate_pre_registration(td, raise_on_failure=False)
@@ -1417,7 +1417,7 @@ class TestEndToEnd:
 
     def test_global_validation_pass(self):
         """validate_all on a warm registry returns a combined report."""
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         _warm_registry()
         engine = get_validation_engine()
         rpt    = engine.validate_all()
@@ -1427,8 +1427,8 @@ class TestEndToEnd:
 
     def test_incremental_validation(self):
         """Incremental validation only re-validates changed names."""
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
         _warm_registry()
         engine  = get_validation_engine()
         reports = engine.validate_incremental([ONT_INFORMATION, ONT_ENTITY])
@@ -1438,22 +1438,22 @@ class TestEndToEnd:
 
     def test_runtime_object_validation_full(self):
         """Runtime object validation catches missing required field."""
-        from iios.ontology.validator import get_validation_engine
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.registry.ontology_registry_manager import get_registry_manager
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
         _warm_registry()
         # Find a concrete type
         reg  = get_registry_manager()
-        td   = reg.get_type_or_none("iios.entity.Instrument")
+        td   = reg.get_type_or_none("enterprise_ai_platform.entity.Instrument")
         if td is None:
-            pytest.skip("iios.entity.Instrument not found in registry")
+            pytest.skip("enterprise_ai_platform.entity.Instrument not found in registry")
         engine = get_validation_engine()
         rpt    = engine.validate_runtime_object({"symbol": "NIFTY"}, td.uri)
         assert rpt is not None
 
     def test_stats_after_runs(self):
         """After multiple validation runs, stats accumulate correctly."""
-        from iios.ontology.validator import get_validation_engine
+        from enterprise_ai_platform.ontology.validator import get_validation_engine
         engine = get_validation_engine()
         for _ in range(3):
             engine.validate_type(_make_type())

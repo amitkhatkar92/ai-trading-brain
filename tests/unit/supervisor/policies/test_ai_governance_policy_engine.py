@@ -2,7 +2,7 @@
 test_ai_governance_policy_engine.py — tests.unit.supervisor.policies
 ----------------------------------------------------------------------
 Comprehensive tests for the C13 M3 AI Governance Policy Framework
-at iios.supervisor.policies.
+at enterprise_ai_platform.supervisor.policies.
 
 Coverage:
   - constants (enumerations, severity, sets, defaults)
@@ -40,7 +40,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.policies import (
+from enterprise_ai_platform.supervisor.policies import (
     # --- enumerations ---
     AIGovernancePolicyAction,
     AIGovernancePolicyEventType,
@@ -259,7 +259,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(AIGovernancePolicyError, IIOSError)
 
     def test_engine_not_running_subclass(self):
@@ -1233,7 +1233,7 @@ class TestManager:
         # BLOCK triggers → chain stops → only BLOCK result
         # But conflict resolution: only BLOCK, so BLOCK wins
         # To test emergency stop override, use PARALLEL chain
-        from iios.supervisor.policies.ai_governance_policy_chain import AIGovernancePolicyChain
+        from enterprise_ai_platform.supervisor.policies.ai_governance_policy_chain import AIGovernancePolicyChain
         ev = AIGovernancePolicyEvaluator()
         chain = AIGovernancePolicyChain(ev)
         reg = AIGovernancePolicyRegistry()
@@ -1559,16 +1559,16 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_present(self):
-        import iios.supervisor.policies as module
+        import enterprise_ai_platform.supervisor.policies as module
         for name in module.__all__:
             assert hasattr(module, name), f"Missing export: {name}"
 
     def test_engine_in_all(self):
-        import iios.supervisor.policies as module
+        import enterprise_ai_platform.supervisor.policies as module
         assert "AIGovernancePolicyEngine" in module.__all__
 
     def test_emergency_stop_in_actions(self):
-        import iios.supervisor.policies as module
+        import enterprise_ai_platform.supervisor.policies as module
         assert AIGovernancePolicyAction.EMERGENCY_STOP in module.AIGovernancePolicyAction
 
 

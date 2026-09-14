@@ -4,19 +4,19 @@ Tests for TrendStrategyMapper, trend_permissions, and trend_constraints.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.trend.trend_strategy_mapper import TrendStrategyMapper
-from iios.investment.market.trend.trend_permissions import (
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.trend.trend_strategy_mapper import TrendStrategyMapper
+from enterprise_ai_platform.investment.market.trend.trend_permissions import (
     STAGE_PERMISSIONS,
     TrendStrategyType,
     best_approach,
 )
-from iios.investment.market.trend.trend_constraints import (
+from enterprise_ai_platform.investment.market.trend.trend_constraints import (
     TREND_CONSTRAINTS,
     TrendConstraintEngine,
     TrendConstraint,
 )
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendQualityMetrics,
     TrendMomentumState,
@@ -116,7 +116,7 @@ class TestTrendStrategyMapper:
         self.mapper = TrendStrategyMapper()
 
     def test_readiness_returns_strategy_readiness(self):
-        from iios.investment.market.trend.models import StrategyReadiness
+        from enterprise_ai_platform.investment.market.trend.models import StrategyReadiness
         result = self.mapper.readiness(
             TrendStage.ESTABLISHED, TrendDirection.UP,
             _quality(), _momentum(), 0.75,

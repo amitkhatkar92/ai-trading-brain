@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.structure.compression_detector import CompressionDetector
-from iios.investment.market.structure.consolidation_engine import ConsolidationEngine
-from iios.investment.market.structure.models import ConsolidationType
-from iios.investment.market.structure.range_detector import RangeDetector
+from enterprise_ai_platform.investment.market.structure.compression_detector import CompressionDetector
+from enterprise_ai_platform.investment.market.structure.consolidation_engine import ConsolidationEngine
+from enterprise_ai_platform.investment.market.structure.models import ConsolidationType
+from enterprise_ai_platform.investment.market.structure.range_detector import RangeDetector
 from tests.unit.investment.market.structure.conftest import (
     make_breakout_bars,
     make_compression_bars,
@@ -62,7 +62,7 @@ class TestRangeDetector:
         state = detector.detect(bars)
         if state:
             # Create a bar well outside the range
-            from iios.investment.market.structure.models import Bar
+            from enterprise_ai_platform.investment.market.structure.models import Bar
             outside_bar = Bar(
                 index=21, timestamp=21.0,
                 open=state.high_bound + 5.0, high=state.high_bound + 6.0,

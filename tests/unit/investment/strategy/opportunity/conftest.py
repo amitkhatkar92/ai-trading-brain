@@ -8,12 +8,12 @@ from typing import List, Optional
 
 import pytest
 
-from iios.investment.strategy.opportunity.market_opportunity import (
+from enterprise_ai_platform.investment.strategy.opportunity.market_opportunity import (
     MarketOpportunity, OpportunityType, MarketRegime, VolatilityRegime, Timeframe
 )
-from iios.investment.strategy.opportunity.company_opportunity import CompanyOpportunity
-from iios.investment.strategy.opportunity.strategy_candidate import StrategyCandidate
-from iios.investment.strategy.opportunity.matching_profile import DEFAULT_PROFILE
+from enterprise_ai_platform.investment.strategy.opportunity.company_opportunity import CompanyOpportunity
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_candidate import StrategyCandidate
+from enterprise_ai_platform.investment.strategy.opportunity.matching_profile import DEFAULT_PROFILE
 
 
 def _now() -> datetime:
@@ -144,7 +144,7 @@ def make_candidate(
 
 def make_engine():
     """Fresh StrategyOpportunityEngine with default settings."""
-    from iios.investment.strategy.opportunity.strategy_opportunity_engine import (
+    from enterprise_ai_platform.investment.strategy.opportunity.strategy_opportunity_engine import (
         StrategyOpportunityEngine
     )
     return StrategyOpportunityEngine(max_workers=4)

@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.market_constants import MarketRegime
-from iios.investment.market.regime.regime_history import RegimeHistory
-from iios.investment.market.regime.regime_transition import RegimeTransition
+from enterprise_ai_platform.investment.market.market_constants import MarketRegime
+from enterprise_ai_platform.investment.market.regime.regime_history import RegimeHistory
+from enterprise_ai_platform.investment.market.regime.regime_transition import RegimeTransition
 
 
 def make_transition(

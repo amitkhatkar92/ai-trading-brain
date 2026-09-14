@@ -1,12 +1,12 @@
 """Tests for risk-adjusted returns and performance ratios."""
 import pytest
-from iios.investment.portfolio.performance.risk_adjusted_returns import (
+from enterprise_ai_platform.investment.portfolio.performance.risk_adjusted_returns import (
     compute_risk_adjusted_returns,
 )
-from iios.investment.portfolio.performance.performance_ratios import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_ratios import (
     compute_all_ratios,
 )
-from iios.investment.portfolio.performance.ratio_statistics import RatioStatistics
+from enterprise_ai_platform.investment.portfolio.performance.ratio_statistics import RatioStatistics
 
 
 class TestRiskAdjustedReturns:

@@ -7,9 +7,9 @@ import time
 import pytest
 from typing import List, Optional
 
-from iios.investment.market.market_constants import TrendDirection, MarketStrength
-from iios.investment.market.regime.models import RegimeSnapshot, RegimeType
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection, MarketStrength
+from enterprise_ai_platform.investment.market.regime.models import RegimeSnapshot, RegimeType
+from enterprise_ai_platform.investment.market.structure.models import (
     TrendState as StructureTrendState,
     TrendPhase,
     StructurePhase,
@@ -21,7 +21,7 @@ from iios.investment.market.structure.models import (
     StructureQualityScore,
     MarketStructureSnapshot,
 )
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendLegMetrics,
     TrendMomentumState,

@@ -40,7 +40,7 @@ from typing import List
 
 import pytest
 
-from iios.market.policies import (
+from enterprise_ai_platform.market.policies import (
     ACTION_SEVERITY,
     DEFAULT_POLICY_ACTION,
     DENY_ACTIONS,
@@ -166,7 +166,7 @@ def _started_engine(**kwargs) -> MarketPolicyEngine:
 
 class TestConstants:
     def test_policy_system_id(self):
-        assert POLICY_SYSTEM_ID == "iios:market:policies"
+        assert POLICY_SYSTEM_ID == "enterprise_ai_platform:market:policies"
 
     def test_version(self):
         assert VERSION == "1.0.0"

@@ -1,9 +1,9 @@
 """tests/unit/investment/company/business_quality/test_operational_quality.py"""
 import pytest
 
-from iios.investment.company.business_quality.capital_efficiency import CapitalEfficiencyAnalyzer
-from iios.investment.company.business_quality.execution_quality import ExecutionQualityAnalyzer
-from iios.investment.company.business_quality.efficiency_engine import EfficiencyEngine
+from enterprise_ai_platform.investment.company.business_quality.capital_efficiency import CapitalEfficiencyAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.execution_quality import ExecutionQualityAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.efficiency_engine import EfficiencyEngine
 from tests.unit.investment.company.business_quality.conftest import make_ctx
 
 

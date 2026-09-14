@@ -6,11 +6,11 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.company.growth.growth_intelligence_engine import GrowthIntelligenceEngine
-from iios.investment.company.growth.growth_snapshot import GrowthSnapshot
-from iios.investment.company.growth.growth_profile import GrowthTrend, GrowthIntelligenceScore
-from iios.investment.company.growth.driver_registry import DriverPlugin
-from iios.investment.company.growth.forecast_assumptions import ForecastAssumptions
+from enterprise_ai_platform.investment.company.growth.growth_intelligence_engine import GrowthIntelligenceEngine
+from enterprise_ai_platform.investment.company.growth.growth_snapshot import GrowthSnapshot
+from enterprise_ai_platform.investment.company.growth.growth_profile import GrowthTrend, GrowthIntelligenceScore
+from enterprise_ai_platform.investment.company.growth.driver_registry import DriverPlugin
+from enterprise_ai_platform.investment.company.growth.forecast_assumptions import ForecastAssumptions
 
 
 # ── Fixtures ───────────────────────────────────────────────────────────────────

@@ -8,11 +8,11 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     MarketSnapshot,
     SecurityData,
 )
-from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
 
 def _make_security(

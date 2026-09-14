@@ -5,7 +5,7 @@ import time
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthConfidenceScore,
     BreadthData,
     BreadthEvent,

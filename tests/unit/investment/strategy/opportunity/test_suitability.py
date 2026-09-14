@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.opportunity.suitability_statistics import (
+from enterprise_ai_platform.investment.strategy.opportunity.suitability_statistics import (
     clamp, score_bool, weighted_average, linear_scale,
     volatility_compat, capital_score, risk_compat,
     timeframe_score, execution_readiness_score,
 )
-from iios.investment.strategy.opportunity.constraint_engine import ConstraintEngine
-from iios.investment.strategy.opportunity.compatibility_engine import CompatibilityEngine
-from iios.investment.strategy.opportunity.strategy_suitability import SuitabilityEngine
+from enterprise_ai_platform.investment.strategy.opportunity.constraint_engine import ConstraintEngine
+from enterprise_ai_platform.investment.strategy.opportunity.compatibility_engine import CompatibilityEngine
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_suitability import SuitabilityEngine
 from tests.unit.investment.strategy.opportunity.conftest import (
     make_market_opp, make_company_opp, make_candidate
 )

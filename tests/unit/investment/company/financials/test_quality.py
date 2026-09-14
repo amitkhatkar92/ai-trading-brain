@@ -3,10 +3,10 @@ Tests for StatementConsistencyChecker, RestatementTracker, QualityStatisticsEngi
 """
 import pytest
 
-from iios.investment.company.financials.statement_consistency import StatementConsistencyChecker
-from iios.investment.company.financials.restatement_tracker import RestatementTracker, RestatementEvent
-from iios.investment.company.financials.quality_statistics import QualityStatisticsEngine, FinancialQualityScore
-from iios.investment.company.financials.balance_sheet import BalanceSheet
+from enterprise_ai_platform.investment.company.financials.statement_consistency import StatementConsistencyChecker
+from enterprise_ai_platform.investment.company.financials.restatement_tracker import RestatementTracker, RestatementEvent
+from enterprise_ai_platform.investment.company.financials.quality_statistics import QualityStatisticsEngine, FinancialQualityScore
+from enterprise_ai_platform.investment.company.financials.balance_sheet import BalanceSheet
 
 
 class TestStatementConsistency:

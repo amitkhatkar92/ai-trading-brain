@@ -9,21 +9,21 @@ from typing import List
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory,
     EvidenceSourceType,
     EvidenceValidationStatus,
 )
-from iios.investment.decision.evidence.evidence_package import EvidencePackage
-from iios.investment.decision.evidence.evidence_snapshot import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import (
     EvidenceSnapshot,
     build_snapshot,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.reasoning.decision_reasoning_engine import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import (
     DecisionReasoningEngine,
 )
-from iios.investment.decision.reasoning.reasoning_snapshot import ReasoningSnapshot
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_snapshot import ReasoningSnapshot
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────

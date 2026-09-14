@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility.strategy_volatility_mapper import StrategyVolatilityMapper
-from iios.investment.market.volatility.strategy_permissions import (
+from enterprise_ai_platform.investment.market.volatility.strategy_volatility_mapper import StrategyVolatilityMapper
+from enterprise_ai_platform.investment.market.volatility.strategy_permissions import (
     get_permissions,
     get_recommended,
     get_restricted,
 )
-from iios.investment.market.volatility.volatility_constraints import get_constraints
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.volatility_constraints import get_constraints
+from enterprise_ai_platform.investment.market.volatility.models import (
     StrategyType,
     StrategyCompatibility,
     VolatilityBehaviour,

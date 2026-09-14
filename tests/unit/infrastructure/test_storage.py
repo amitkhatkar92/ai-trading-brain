@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_storage.py
 ==========================================
-Tests for the iios.infrastructure.storage subpackage.
+Tests for the enterprise_ai_platform.infrastructure.storage subpackage.
 """
 
 from __future__ import annotations
@@ -10,10 +10,10 @@ import pathlib
 import tempfile
 import pytest
 
-from iios.infrastructure.storage import (
+from enterprise_ai_platform.infrastructure.storage import (
     LocalStorage, JsonStorage, BinaryStorage, CompressedStorage,
 )
-from iios.infrastructure.infrastructure_exceptions import StorageError
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import StorageError
 
 
 @pytest.fixture

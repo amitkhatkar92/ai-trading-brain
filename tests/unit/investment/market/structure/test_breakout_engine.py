@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.structure.breakout_classifier import BreakoutClassifier
-from iios.investment.market.structure.breakout_engine import BreakoutEngine
-from iios.investment.market.structure.breakout_statistics import BreakoutStatistics
-from iios.investment.market.structure.false_breakout import FalseBreakoutDetector
-from iios.investment.market.structure.models import (
+from enterprise_ai_platform.investment.market.structure.breakout_classifier import BreakoutClassifier
+from enterprise_ai_platform.investment.market.structure.breakout_engine import BreakoutEngine
+from enterprise_ai_platform.investment.market.structure.breakout_statistics import BreakoutStatistics
+from enterprise_ai_platform.investment.market.structure.false_breakout import FalseBreakoutDetector
+from enterprise_ai_platform.investment.market.structure.models import (
     Bar,
     BreakoutStatus,
     BreakoutType,
@@ -15,7 +15,7 @@ from iios.investment.market.structure.models import (
     ZoneStrength,
     ZoneType,
 )
-from iios.investment.market.structure.zone_registry import ZoneRegistry
+from enterprise_ai_platform.investment.market.structure.zone_registry import ZoneRegistry
 from tests.unit.investment.market.structure.conftest import (
     make_breakout_bars,
     make_range_bars,
@@ -116,7 +116,7 @@ class TestBreakoutEngine:
 class TestFalseBreakoutDetector:
     def test_failed_breakout_when_price_returns(self):
         zone = _make_zone(100.0, ZoneType.RESISTANCE)
-        from iios.investment.market.structure.models import BreakoutEvent
+        from enterprise_ai_platform.investment.market.structure.models import BreakoutEvent
         event = BreakoutEvent(
             breakout_id="test01",
             breakout_type=BreakoutType.BULLISH,
@@ -135,7 +135,7 @@ class TestFalseBreakoutDetector:
 
     def test_confirmed_breakout_holds(self):
         zone = _make_zone(100.0, ZoneType.RESISTANCE)
-        from iios.investment.market.structure.models import BreakoutEvent
+        from enterprise_ai_platform.investment.market.structure.models import BreakoutEvent
         event = BreakoutEvent(
             breakout_id="test02",
             breakout_type=BreakoutType.BULLISH,

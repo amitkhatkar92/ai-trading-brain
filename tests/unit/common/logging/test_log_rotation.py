@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from iios.common.logging.log_rotation import (
+from enterprise_ai_platform.common.logging.log_rotation import (
     LogRotationConfig,
     _CompressingRotatingHandler,
     _ensure_parent,

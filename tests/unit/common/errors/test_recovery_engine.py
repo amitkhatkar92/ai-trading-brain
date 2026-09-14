@@ -8,8 +8,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.common.errors.error_context import ErrorContext, clear_error_context
-from iios.common.errors.recovery_engine import (
+from enterprise_ai_platform.common.errors.error_context import ErrorContext, clear_error_context
+from enterprise_ai_platform.common.errors.recovery_engine import (
     CircuitBreakerHook,
     DeadLetterHook,
     RecoveryEngine,
@@ -18,7 +18,7 @@ from iios.common.errors.recovery_engine import (
     _NoOpCircuitBreaker,
     _NoOpDeadLetter,
 )
-from iios.common.errors.retry_policy import FixedRetry, NoRetry, ExponentialBackoff
+from enterprise_ai_platform.common.errors.retry_policy import FixedRetry, NoRetry, ExponentialBackoff
 
 
 @pytest.fixture(autouse=True)
@@ -92,23 +92,23 @@ class TestNoOpHooks:
 class TestSuccessfulExecution:
 
     def test_returns_value_on_success(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(lambda: 42, operation="get_42")
         assert result.succeeded
         assert result.value == 42
 
     def test_attempts_is_one_on_first_success(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(lambda: "ok")
         assert result.attempts == 1
 
     def test_elapsed_sec_positive(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(lambda: None)
         assert result.elapsed_sec >= 0.0
 
     def test_error_is_none_on_success(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(lambda: "ok")
         assert result.error is None
 
@@ -127,7 +127,7 @@ class TestRetryBehaviour:
             return "done"
 
         eng = RecoveryEngine(
-            engine_id    = "iios:test",
+            engine_id    = "enterprise_ai_platform:test",
             retry_policy = FixedRetry(max_retries=5, delay_sec=0.0),
             sleep_fn     = _no_sleep,
         )
@@ -141,7 +141,7 @@ class TestRetryBehaviour:
             raise RuntimeError("permanent")
 
         eng = RecoveryEngine(
-            engine_id    = "iios:test",
+            engine_id    = "enterprise_ai_platform:test",
             retry_policy = FixedRetry(max_retries=2, delay_sec=0.0),
             sleep_fn     = _no_sleep,
         )
@@ -160,7 +160,7 @@ class TestRetryBehaviour:
             return "done"
 
         # Engine has NoRetry but we override per-call
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(
             fn,
             policy   = FixedRetry(max_retries=3, delay_sec=0.0),
@@ -176,7 +176,7 @@ class TestRetryBehaviour:
             calls.append(1)
             raise ValueError("fail")
 
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(fn)
         assert not result.succeeded
         assert len(calls) == 1
@@ -191,7 +191,7 @@ class TestFallback:
             raise RuntimeError("permanent")
 
         eng = RecoveryEngine(
-            engine_id    = "iios:test",
+            engine_id    = "enterprise_ai_platform:test",
             retry_policy = FixedRetry(max_retries=1, delay_sec=0.0),
             sleep_fn     = _no_sleep,
         )
@@ -207,7 +207,7 @@ class TestFallback:
             fallback_called.append(True)
             return "fb"
 
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute(lambda: "ok", fallback=fb)
         assert result.succeeded
         assert result.value == "ok"
@@ -221,7 +221,7 @@ class TestFallback:
             raise RuntimeError("fallback also fails")
 
         eng = RecoveryEngine(
-            engine_id    = "iios:test",
+            engine_id    = "enterprise_ai_platform:test",
             retry_policy = NoRetry(),
         )
         result = eng.execute(always_fail, fallback=also_fails)
@@ -236,14 +236,14 @@ class TestExecuteWithSkip:
         def always_fail():
             raise RuntimeError("fail")
 
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute_with_skip(always_fail, default={"empty": True}, operation="op")
         assert result.succeeded
         assert result.value      == {"empty": True}
         assert result.strategy   == RecoveryStrategy.SKIP_STAGE
 
     def test_returns_real_value_on_success(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         result = eng.execute_with_skip(lambda: 99, default=0, operation="op")
         assert result.succeeded
         assert result.value == 99
@@ -255,7 +255,7 @@ class TestErrorContextIntegration:
 
     def test_context_captured_in_result(self):
         ctx = ErrorContext(engine_id="CTX-ENG", stage="test")
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
 
         def fail():
             raise ValueError("boom")
@@ -266,7 +266,7 @@ class TestErrorContextIntegration:
 
     def test_exception_chain_populated(self):
         ctx = ErrorContext(engine_id="E")
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
 
         def fail():
             raise ValueError("test exception")
@@ -286,7 +286,7 @@ class TestCircuitBreakerHook:
             def record_failure(self, engine_id, operation):  pass
 
         eng = RecoveryEngine(
-            engine_id       = "iios:test",
+            engine_id       = "enterprise_ai_platform:test",
             retry_policy    = NoRetry(),
             circuit_breaker = OpenCircuit(),
         )
@@ -303,7 +303,7 @@ class TestCircuitBreakerHook:
             def record_failure(self, e, o): recorded.append("failure")
 
         eng = RecoveryEngine(
-            engine_id       = "iios:test",
+            engine_id       = "enterprise_ai_platform:test",
             retry_policy    = NoRetry(),
             circuit_breaker = TrackingCB(),
         )
@@ -323,7 +323,7 @@ class TestDeadLetterHook:
                 sent.append({"op": operation, "error": error})
 
         eng = RecoveryEngine(
-            engine_id    = "iios:test",
+            engine_id    = "enterprise_ai_platform:test",
             retry_policy = NoRetry(),
             dead_letter  = TrackingDL(),
         )
@@ -337,7 +337,7 @@ class TestDeadLetterHook:
 class TestWithPolicy:
 
     def test_returns_new_engine_with_same_id(self):
-        eng = RecoveryEngine(engine_id="iios:test", retry_policy=NoRetry())
+        eng = RecoveryEngine(engine_id="enterprise_ai_platform:test", retry_policy=NoRetry())
         new_eng = eng.with_policy(FixedRetry(max_retries=5))
-        assert new_eng.engine_id == "iios:test"
+        assert new_eng.engine_id == "enterprise_ai_platform:test"
         assert new_eng is not eng

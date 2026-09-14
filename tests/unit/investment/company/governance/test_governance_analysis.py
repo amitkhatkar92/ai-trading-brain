@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.board_profile import (
+from enterprise_ai_platform.investment.company.governance.board_profile import (
     build_board_composition, build_committee_structure,
 )
-from iios.investment.company.governance.governance_events import classify_events
-from iios.investment.company.governance.governance_engine import GovernanceAnalysisEngine
-from iios.investment.company.governance.management_profile import GovernanceProfile
+from enterprise_ai_platform.investment.company.governance.governance_events import classify_events
+from enterprise_ai_platform.investment.company.governance.governance_engine import GovernanceAnalysisEngine
+from enterprise_ai_platform.investment.company.governance.management_profile import GovernanceProfile
 
 
 @pytest.fixture

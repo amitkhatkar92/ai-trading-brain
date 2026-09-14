@@ -5,14 +5,14 @@ from typing import List
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory, EvidencePriority, EvidenceSourceType,
 )
-from iios.investment.decision.evidence.evidence_item import EvidenceItem, make_evidence_item
-from iios.investment.decision.evidence.priority_engine import PriorityEngine
-from iios.investment.decision.evidence.relevance_engine import RelevanceEngine
-from iios.investment.decision.evidence.confidence_engine import ConfidenceEngine
-from iios.investment.decision.evidence.evidence_ranker import EvidenceRanker
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import EvidenceItem, make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.priority_engine import PriorityEngine
+from enterprise_ai_platform.investment.decision.evidence.relevance_engine import RelevanceEngine
+from enterprise_ai_platform.investment.decision.evidence.confidence_engine import ConfidenceEngine
+from enterprise_ai_platform.investment.decision.evidence.evidence_ranker import EvidenceRanker
 
 
 def _item(key="x", value=1, priority=EvidencePriority.MEDIUM, confidence=70.0, freshness=1.0,

@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.executive_profile import (
+from enterprise_ai_platform.investment.company.governance.executive_profile import (
     ExecutiveRecord, ExecutiveTeamProfile, build_executive_team,
 )
-from iios.investment.company.governance.board_profile import (
+from enterprise_ai_platform.investment.company.governance.board_profile import (
     BoardComposition, CommitteeStructure,
     build_board_composition, build_committee_structure,
 )
-from iios.investment.company.governance.management_profile import BoardIndependenceLevel
+from enterprise_ai_platform.investment.company.governance.management_profile import BoardIndependenceLevel
 
 
 class TestExecutiveProfile:

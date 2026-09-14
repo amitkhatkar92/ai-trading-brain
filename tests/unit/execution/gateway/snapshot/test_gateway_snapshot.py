@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.gateway.snapshot import (
+from enterprise_ai_platform.execution.gateway.snapshot import (
     ACTIVE_GATEWAY_STATES,
     ACTOR_SNAPSHOT_BUILDER,
     ACTOR_SNAPSHOT_STORE,

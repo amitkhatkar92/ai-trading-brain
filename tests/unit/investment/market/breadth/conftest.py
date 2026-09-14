@@ -6,7 +6,7 @@ from typing import Dict, List, Optional
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     MarketCapTier,
     SecurityObservation,
     UniverseSnapshot,

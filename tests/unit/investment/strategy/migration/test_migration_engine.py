@@ -1,13 +1,13 @@
 """Tests for the StrategyMigrationEngine facade."""
 import pytest
 
-from iios.investment.strategy.migration.strategy_migration_engine import (
+from enterprise_ai_platform.investment.strategy.migration.strategy_migration_engine import (
     StrategyMigrationEngine,
 )
-from iios.investment.strategy.migration.migration_pipeline import PipelineConfig
-from iios.investment.strategy.migration.migration_status import MigrationStatus
-from iios.investment.strategy.migration.migration_summary import MigrationSummary
-from iios.investment.strategy.migration.legacy_catalog import LegacyCatalog
+from enterprise_ai_platform.investment.strategy.migration.migration_pipeline import PipelineConfig
+from enterprise_ai_platform.investment.strategy.migration.migration_status import MigrationStatus
+from enterprise_ai_platform.investment.strategy.migration.migration_summary import MigrationSummary
+from enterprise_ai_platform.investment.strategy.migration.legacy_catalog import LegacyCatalog
 
 
 class TestStrategyMigrationEngine:

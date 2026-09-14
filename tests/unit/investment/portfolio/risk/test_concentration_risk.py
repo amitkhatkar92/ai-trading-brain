@@ -1,9 +1,9 @@
 """tests/unit/investment/portfolio/risk/test_concentration_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.concentration_risk import (
+from enterprise_ai_platform.investment.portfolio.risk.concentration_risk import (
     analyze_concentration_risk, ConcentrationRiskResult,
 )
-from iios.investment.portfolio.risk.risk_types import RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel
 
 
 def test_concentration_empty():
@@ -47,7 +47,7 @@ def test_concentrated_top_sector(positions_3_concentrated):
 
 
 def test_diverse_portfolio_lower_risk(positions_5_diverse):
-    from iios.investment.portfolio.risk.risk_types import RiskPosition
+    from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskPosition
     concentrated = analyze_concentration_risk(positions_5_diverse)
     # diverse should have lower or equal concentration_score
     conc_3 = analyze_concentration_risk([

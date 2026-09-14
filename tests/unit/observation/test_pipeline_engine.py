@@ -11,31 +11,31 @@ from typing import Any, Optional
 
 import pytest
 
-from iios.observation.observation_constants import (
+from enterprise_ai_platform.observation.observation_constants import (
     ObservationPriority, ObservationSource, ObservationStatus, ObservationType,
 )
-from iios.observation.observation_factory import get_observation_factory
+from enterprise_ai_platform.observation.observation_factory import get_observation_factory
 
 
 # ─────────────────────────── helpers / fixtures ───────────────────────────────
 
 def _reset_all() -> None:
-    from iios.observation.pipeline.pipeline_manager    import reset_pipeline_manager
-    from iios.observation.pipeline.pipeline_engine     import reset_pipeline_engine
-    from iios.observation.pipeline.pipeline_registry   import reset_pipeline_registry
-    from iios.observation.pipeline.pipeline_monitor    import reset_pipeline_monitor
-    from iios.observation.pipeline.pipeline_metrics    import reset_pipeline_metrics
-    from iios.observation.pipeline.pipeline_scheduler  import reset_pipeline_scheduler
-    from iios.observation.pipeline.pipeline_context    import reset_pipeline_context
-    from iios.observation.classifiers.classification_manager import reset_classification_manager
-    from iios.observation.classifiers.classification_engine  import reset_classification_engine
-    from iios.observation.classifiers.classification_registry import reset_classifier_registry
-    from iios.observation.enrichment.enrichment_manager      import reset_enrichment_manager
-    from iios.observation.enrichment.enrichment_engine       import reset_enrichment_engine
-    from iios.observation.enrichment.enrichment_registry     import reset_enricher_registry
-    from iios.observation.validators.validation_manager      import reset_validation_manager
-    from iios.observation.quality.quality_engine             import reset_quality_engine
-    from iios.observation.observation_factory                import reset_observation_factory
+    from enterprise_ai_platform.observation.pipeline.pipeline_manager    import reset_pipeline_manager
+    from enterprise_ai_platform.observation.pipeline.pipeline_engine     import reset_pipeline_engine
+    from enterprise_ai_platform.observation.pipeline.pipeline_registry   import reset_pipeline_registry
+    from enterprise_ai_platform.observation.pipeline.pipeline_monitor    import reset_pipeline_monitor
+    from enterprise_ai_platform.observation.pipeline.pipeline_metrics    import reset_pipeline_metrics
+    from enterprise_ai_platform.observation.pipeline.pipeline_scheduler  import reset_pipeline_scheduler
+    from enterprise_ai_platform.observation.pipeline.pipeline_context    import reset_pipeline_context
+    from enterprise_ai_platform.observation.classifiers.classification_manager import reset_classification_manager
+    from enterprise_ai_platform.observation.classifiers.classification_engine  import reset_classification_engine
+    from enterprise_ai_platform.observation.classifiers.classification_registry import reset_classifier_registry
+    from enterprise_ai_platform.observation.enrichment.enrichment_manager      import reset_enrichment_manager
+    from enterprise_ai_platform.observation.enrichment.enrichment_engine       import reset_enrichment_engine
+    from enterprise_ai_platform.observation.enrichment.enrichment_registry     import reset_enricher_registry
+    from enterprise_ai_platform.observation.validators.validation_manager      import reset_validation_manager
+    from enterprise_ai_platform.observation.quality.quality_engine             import reset_quality_engine
+    from enterprise_ai_platform.observation.observation_factory                import reset_observation_factory
     reset_pipeline_scheduler()
     reset_pipeline_manager()
     reset_pipeline_engine()
@@ -95,7 +95,7 @@ def _make_invalid_obs():
 
 class TestPipelineConstants:
     def test_stage_names_are_strings(self):
-        from iios.observation.pipeline.pipeline_constants import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import (
             STAGE_COLLECT, STAGE_VALIDATE, STAGE_CLASSIFY,
             STAGE_COMPLETE, STAGE_PERSIST,
         )
@@ -103,7 +103,7 @@ class TestPipelineConstants:
             assert isinstance(s, str) and len(s) > 0
 
     def test_pipeline_names_defined(self):
-        from iios.observation.pipeline.pipeline_constants import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import (
             PIPELINE_STANDARD, PIPELINE_FAST, PIPELINE_VALIDATION_ONLY,
         )
         assert PIPELINE_STANDARD        == "standard"
@@ -111,35 +111,35 @@ class TestPipelineConstants:
         assert PIPELINE_VALIDATION_ONLY == "validation_only"
 
     def test_standard_stage_order_has_17(self):
-        from iios.observation.pipeline.pipeline_constants import STANDARD_STAGE_ORDER
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import STANDARD_STAGE_ORDER
         assert len(STANDARD_STAGE_ORDER) == 17
 
     def test_stage_mode_values(self):
-        from iios.observation.pipeline.pipeline_constants import StageMode
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import StageMode
         assert StageMode.SEQUENTIAL.value  == "sequential"
         assert StageMode.OPTIONAL.value    == "optional"
         assert StageMode.CONDITIONAL.value == "conditional"
 
     def test_failure_policy_values(self):
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy
         assert FailurePolicy.FAIL_FAST.value  == "fail_fast"
         assert FailurePolicy.CONTINUE.value   == "continue"
         assert FailurePolicy.DEAD_LETTER.value == "dead_letter"
 
     def test_pipeline_state_values(self):
-        from iios.observation.pipeline.pipeline_constants import PipelineState
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import PipelineState
         assert PipelineState.RUNNING.value   == "running"
         assert PipelineState.COMPLETED.value == "completed"
         assert PipelineState.FAILED.value    == "failed"
 
     def test_checkpoint_policy_values(self):
-        from iios.observation.pipeline.pipeline_constants import CheckpointPolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import CheckpointPolicy
         assert CheckpointPolicy.NONE.value       == "none"
         assert CheckpointPolicy.ON_FAILURE.value == "on_failure"
         assert CheckpointPolicy.ALWAYS.value     == "always"
 
     def test_default_batch_size_positive(self):
-        from iios.observation.pipeline.pipeline_constants import DEFAULT_BATCH_SIZE
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import DEFAULT_BATCH_SIZE
         assert DEFAULT_BATCH_SIZE > 0
 
 
@@ -149,42 +149,42 @@ class TestPipelineConstants:
 
 class TestPipelineExceptions:
     def test_base_is_observation_error(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineError
-        from iios.observation.observation_exceptions import ObservationError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationError
         assert issubclass(PipelineError, ObservationError)
 
     def test_not_found_stores_name(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineNotFoundError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineNotFoundError
         exc = PipelineNotFoundError("missing_pipeline")
         assert "missing_pipeline" in str(exc)
         assert exc.name == "missing_pipeline"
 
     def test_already_exists_stores_name(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineAlreadyExistsError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineAlreadyExistsError
         exc = PipelineAlreadyExistsError("dup")
         assert "dup" in str(exc)
 
     def test_stage_timeout_stores_values(self):
-        from iios.observation.pipeline.pipeline_exceptions import StageTimeoutError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import StageTimeoutError
         exc = StageTimeoutError("validate", timeout_ms=5000.0)
         assert exc.stage      == "validate"
         assert exc.timeout_ms == 5000.0
 
     def test_dead_letter_stores_obs_id(self):
-        from iios.observation.pipeline.pipeline_exceptions import DeadLetterError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import DeadLetterError
         exc = DeadLetterError("obs:test/001", stage="persist")
         assert "obs:test/001" in str(exc)
         assert exc.obs_id == "obs:test/001"
 
     def test_pipeline_not_initialized(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineNotInitializedError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineNotInitializedError
         exc = PipelineNotInitializedError()
         assert "not initialised" in str(exc).lower()
 
     def test_configuration_error(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
         with pytest.raises(PipelineConfigurationError):
-            from iios.observation.pipeline.pipeline_registry import StageDefinition
+            from enterprise_ai_platform.observation.pipeline.pipeline_registry import StageDefinition
             StageDefinition(name="", handler=lambda o, c: None)
 
 
@@ -194,7 +194,7 @@ class TestPipelineExceptions:
 
 class TestPipelineContext:
     def test_pipeline_execution_cm(self):
-        from iios.observation.pipeline.pipeline_context import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import (
             pipeline_execution, get_pipeline_context, PipelineState,
         )
         with pipeline_execution("obs:test/001", "standard") as ctx:
@@ -205,7 +205,7 @@ class TestPipelineContext:
         assert ctx.state == PipelineState.COMPLETED
 
     def test_context_set_get(self):
-        from iios.observation.pipeline.pipeline_context import pipeline_execution
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import pipeline_execution
         with pipeline_execution("x", "p") as ctx:
             ctx.set("my_key", {"value": 42})
             assert ctx.get("my_key") == {"value": 42}
@@ -213,7 +213,7 @@ class TestPipelineContext:
             assert not ctx.has("missing")
 
     def test_stage_result_recording(self):
-        from iios.observation.pipeline.pipeline_context import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import (
             pipeline_execution, StageResult,
         )
         with pipeline_execution("x", "p") as ctx:
@@ -223,7 +223,7 @@ class TestPipelineContext:
         assert ctx.all_stages_successful()
 
     def test_failed_stages_detected(self):
-        from iios.observation.pipeline.pipeline_context import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import (
             pipeline_execution, StageResult,
         )
         with pipeline_execution("x", "p") as ctx:
@@ -233,20 +233,20 @@ class TestPipelineContext:
         assert len(ctx.failed_stages()) == 1
 
     def test_checkpoint_recorded(self):
-        from iios.observation.pipeline.pipeline_context import pipeline_execution
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import pipeline_execution
         with pipeline_execution("x", "p") as ctx:
             ctx.checkpoint("validate", {"status": "validated"})
         assert len(ctx.checkpoints()) == 1
         assert ctx.last_checkpoint().stage_name == "validate"
 
     def test_elapsed_ms_positive(self):
-        from iios.observation.pipeline.pipeline_context import pipeline_execution
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import pipeline_execution
         with pipeline_execution("x", "p") as ctx:
             time.sleep(0.01)
         assert ctx.elapsed_ms > 5.0
 
     def test_stage_result_to_dict(self):
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
         r = StageResult(stage_name="test", success=True, duration_ms=12.3, retries=1)
         d = r.to_dict()
         assert d["stage_name"]  == "test"
@@ -254,7 +254,7 @@ class TestPipelineContext:
         assert d["duration_ms"] == 12.3
 
     def test_nested_pipeline_contexts(self):
-        from iios.observation.pipeline.pipeline_context import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import (
             pipeline_execution, get_pipeline_context,
         )
         with pipeline_execution("outer", "p1") as outer:
@@ -270,11 +270,11 @@ class TestPipelineContext:
 
 class TestPipelineRegistry:
     def _make_registry(self):
-        from iios.observation.pipeline.pipeline_registry import PipelineRegistry
+        from enterprise_ai_platform.observation.pipeline.pipeline_registry import PipelineRegistry
         return PipelineRegistry()
 
     def _make_def(self, name: str = "test_pipeline") -> "PipelineDefinition":
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
         return (
             PipelineBuilder(name)
             .add_stage("stage_a", lambda o, c: None)
@@ -289,14 +289,14 @@ class TestPipelineRegistry:
         assert reg.get("test_pipeline") is p
 
     def test_register_duplicate_raises(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineAlreadyExistsError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineAlreadyExistsError
         reg = self._make_registry()
         reg.register(self._make_def())
         with pytest.raises(PipelineAlreadyExistsError):
             reg.register(self._make_def())
 
     def test_register_overwrite(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
         reg = self._make_registry()
         reg.register(self._make_def())
         p2  = PipelineBuilder("test_pipeline").add_stage("other", lambda o, c: None).build()
@@ -304,7 +304,7 @@ class TestPipelineRegistry:
         assert reg.get("test_pipeline") is p2
 
     def test_unregister(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineNotFoundError
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineNotFoundError
         reg = self._make_registry()
         reg.register(self._make_def())
         reg.unregister("test_pipeline")
@@ -312,8 +312,8 @@ class TestPipelineRegistry:
             reg.get("test_pipeline")
 
     def test_builtin_pipelines_registered(self):
-        from iios.observation.pipeline.pipeline_registry import get_pipeline_registry
-        from iios.observation.pipeline.pipeline_constants import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_registry import get_pipeline_registry
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import (
             PIPELINE_STANDARD, PIPELINE_FAST, PIPELINE_VALIDATION_ONLY,
         )
         reg = get_pipeline_registry()
@@ -322,7 +322,7 @@ class TestPipelineRegistry:
         assert reg.has(PIPELINE_VALIDATION_ONLY)
 
     def test_standard_pipeline_has_17_stages(self):
-        from iios.observation.pipeline.pipeline_registry import get_pipeline_registry
+        from enterprise_ai_platform.observation.pipeline.pipeline_registry import get_pipeline_registry
         p = get_pipeline_registry().get("standard")
         assert len(p.stages) == 17
 
@@ -334,8 +334,8 @@ class TestPipelineRegistry:
         assert sorted(reg.names()) == ["a", "b"]
 
     def test_pipeline_definition_duplicate_stage_names(self):
-        from iios.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
-        from iios.observation.pipeline.pipeline_registry import PipelineDefinition, StageDefinition
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
+        from enterprise_ai_platform.observation.pipeline.pipeline_registry import PipelineDefinition, StageDefinition
         with pytest.raises(PipelineConfigurationError):
             PipelineDefinition(
                 name   = "bad",
@@ -352,7 +352,7 @@ class TestPipelineRegistry:
 
 class TestPipelineBuilder:
     def test_basic_build(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
         p = (
             PipelineBuilder("test")
             .description("My pipeline")
@@ -367,8 +367,8 @@ class TestPipelineBuilder:
         assert len(p.stages) == 2
 
     def test_add_optional_stage(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_constants import StageMode, FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import StageMode, FailurePolicy
         p = (
             PipelineBuilder("t")
             .add_stage("s1", lambda o, c: None)
@@ -380,8 +380,8 @@ class TestPipelineBuilder:
         assert s2.failure_policy == FailurePolicy.CONTINUE
 
     def test_add_conditional_stage(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_constants import StageMode
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import StageMode
         cond = lambda o, c: True
         p    = (
             PipelineBuilder("t")
@@ -394,19 +394,19 @@ class TestPipelineBuilder:
         assert s2.condition is cond
 
     def test_empty_build_raises(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
         with pytest.raises(PipelineConfigurationError):
             PipelineBuilder("empty").build()
 
     def test_empty_name_raises(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_exceptions import PipelineConfigurationError
         with pytest.raises(PipelineConfigurationError):
             PipelineBuilder("")
 
     def test_stage_names_in_definition(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
         p = (
             PipelineBuilder("t")
             .add_stage("alpha",   lambda o, c: None)
@@ -417,7 +417,7 @@ class TestPipelineBuilder:
         assert p.stage_names() == ["alpha", "beta", "gamma"]
 
     def test_to_dict(self):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
         p = PipelineBuilder("test").add_stage("s1", lambda o, c: None).build()
         d = p.to_dict()
         assert d["name"]   == "test"
@@ -430,8 +430,8 @@ class TestPipelineBuilder:
 
 class TestPipelineExecutor:
     def _make_simple_pipeline(self, name: str = "simple"):
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
 
         def handler(obs, ctx):
             return StageResult(stage_name="s1", success=True, metadata={"ran": True})
@@ -439,9 +439,9 @@ class TestPipelineExecutor:
         return PipelineBuilder(name).add_stage("s1", handler).build()
 
     def _make_failing_pipeline(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy
 
         def fail_handler(obs, ctx):
             return StageResult(stage_name="fail_stage", success=False, error="deliberate failure")
@@ -453,7 +453,7 @@ class TestPipelineExecutor:
         )
 
     def test_successful_execution(self):
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
         executor = PipelineExecutor()
         obs      = _make_obs()
         pipeline = self._make_simple_pipeline()
@@ -462,7 +462,7 @@ class TestPipelineExecutor:
         assert len(result.stage_results) == 1
 
     def test_failed_execution_fail_fast(self):
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
         executor = PipelineExecutor()
         obs      = _make_obs()
         pipeline = self._make_failing_pipeline()
@@ -471,10 +471,10 @@ class TestPipelineExecutor:
         assert result.aborted
 
     def test_optional_stage_failure_continues(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import StageMode, FailurePolicy
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import StageMode, FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         def fail_optional(obs, ctx):
             raise RuntimeError("optional fail")
@@ -496,10 +496,10 @@ class TestPipelineExecutor:
         assert result.stage_results[0].skipped
 
     def test_conditional_stage_skipped(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import StageMode
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import StageMode
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         ran = []
         def conditional_handler(obs, ctx):
@@ -519,10 +519,10 @@ class TestPipelineExecutor:
         assert len(ran) == 0  # condition was False, handler never ran
 
     def test_retry_on_failure(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy, RetryBackoff
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy, RetryBackoff
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         attempts = []
         def flaky(obs, ctx):
@@ -545,7 +545,7 @@ class TestPipelineExecutor:
         assert len(attempts) == 3
 
     def test_execution_result_to_dict(self):
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
         obs    = _make_obs()
         result = PipelineExecutor().execute(obs, self._make_simple_pipeline())
         d      = result.to_dict()
@@ -554,7 +554,7 @@ class TestPipelineExecutor:
         assert "stages"        in d
 
     def test_total_ms_positive(self):
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
         result = PipelineExecutor().execute(_make_obs(), self._make_simple_pipeline())
         assert result.total_ms > 0.0
 
@@ -565,15 +565,15 @@ class TestPipelineExecutor:
 
 class TestPipelineMetrics:
     def test_initial_snapshot_zeros(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         m    = PipelineMetrics()
         snap = m.snapshot()
         assert snap.total_processed == 0
         assert snap.success_rate    == 0.0
 
     def test_record_pipeline_success(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
         m = PipelineMetrics()
         m.record_pipeline("standard", True, False, 50.0, [
             StageResult(stage_name="s1", success=True, duration_ms=10.0),
@@ -584,7 +584,7 @@ class TestPipelineMetrics:
         assert snap.total_failed    == 0
 
     def test_record_pipeline_failure(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         m = PipelineMetrics()
         m.record_pipeline("standard", False, False, 20.0, [])
         snap = m.snapshot()
@@ -592,15 +592,15 @@ class TestPipelineMetrics:
         assert snap.success_rate == 0.0
 
     def test_dead_letter_counted(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         m = PipelineMetrics()
         m.record_pipeline("standard", False, True, 20.0, [])
         snap = m.snapshot()
         assert snap.total_dead_letter == 1
 
     def test_per_stage_tracked(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
         m = PipelineMetrics()
         m.record_pipeline("standard", True, False, 50.0, [
             StageResult(stage_name="validate", success=True, duration_ms=15.0),
@@ -611,14 +611,14 @@ class TestPipelineMetrics:
         assert "classify" in snap.per_stage
 
     def test_snapshot_to_dict(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         m = PipelineMetrics()
         d = m.snapshot().to_dict()
         assert "total_processed" in d
         assert "success_rate"    in d
 
     def test_singleton(self):
-        from iios.observation.pipeline.pipeline_metrics import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import (
             get_pipeline_metrics, reset_pipeline_metrics,
         )
         m1 = get_pipeline_metrics()
@@ -632,8 +632,8 @@ class TestPipelineMetrics:
 
 class TestPipelineMonitor:
     def _make_result(self, success: bool = True) -> "PipelineExecutionResult":
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutionResult
-        from iios.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutionResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
         return PipelineExecutionResult(
             obs_id        = "obs:test/001",
             pipeline_name = "standard",
@@ -645,16 +645,16 @@ class TestPipelineMonitor:
         )
 
     def test_record_and_health_report(self):
-        from iios.observation.pipeline.pipeline_monitor import PipelineMonitor
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_monitor import PipelineMonitor
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         mon    = PipelineMonitor(PipelineMetrics())
         mon.record(self._make_result(success=True))
         report = mon.health_report()
         assert report.total_processed >= 1
 
     def test_health_report_structure(self):
-        from iios.observation.pipeline.pipeline_monitor import PipelineMonitor
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_monitor import PipelineMonitor
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         mon = PipelineMonitor(PipelineMetrics())
         for _ in range(3):
             mon.record(self._make_result(success=True))
@@ -666,15 +666,15 @@ class TestPipelineMonitor:
         assert "stages"            in d
 
     def test_recent_tracks_results(self):
-        from iios.observation.pipeline.pipeline_monitor import PipelineMonitor
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_monitor import PipelineMonitor
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
         mon = PipelineMonitor(PipelineMetrics())
         mon.record(self._make_result())
         mon.record(self._make_result())
         assert len(mon.recent(limit=10)) == 2
 
     def test_singleton(self):
-        from iios.observation.pipeline.pipeline_monitor import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_monitor import (
             get_pipeline_monitor, reset_pipeline_monitor,
         )
         m1 = get_pipeline_monitor()
@@ -688,7 +688,7 @@ class TestPipelineMonitor:
 
 class TestPipelineEngine:
     def test_execute_standard_pipeline(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         result = engine.execute(obs, "standard")
@@ -697,7 +697,7 @@ class TestPipelineEngine:
         assert len(result.stage_results) > 0
 
     def test_standard_pipeline_accepts_valid_obs(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         result = engine.execute(obs, "standard")
@@ -705,14 +705,14 @@ class TestPipelineEngine:
         assert obs.status == ObservationStatus.ACCEPTED
 
     def test_fast_pipeline_accepts_valid_obs(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         result = engine.execute(obs, "fast")
         assert result.success
 
     def test_validation_only_pipeline(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         result = engine.execute(obs, "validation_only")
@@ -720,7 +720,7 @@ class TestPipelineEngine:
         assert len(result.stage_results) == 3
 
     def test_execute_batch(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine   = PipelineEngine()
         obs_list = [_make_obs(title=f"obs{i}") for i in range(4)]
         results  = engine.execute_batch(obs_list, "fast")
@@ -728,7 +728,7 @@ class TestPipelineEngine:
         assert all(r.pipeline_name == "fast" for r in results)
 
     def test_execute_priority_ordering(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs_low  = _make_obs(title="low",      priority=ObservationPriority.LOW)
         obs_high = _make_obs(title="high",     priority=ObservationPriority.CRITICAL)
@@ -738,9 +738,9 @@ class TestPipelineEngine:
         assert len(results) == 3
 
     def test_register_custom_pipeline(self):
-        from iios.observation.pipeline.pipeline_engine  import PipelineEngine
-        from iios.observation.pipeline.pipeline_builder import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine  import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
         custom = (
             PipelineBuilder("custom_test")
             .add_stage("only_stage", lambda o, c: StageResult(stage_name="only_stage", success=True))
@@ -753,7 +753,7 @@ class TestPipelineEngine:
         assert result.success
 
     def test_list_pipelines_includes_builtins(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         names  = engine.list_pipelines()
         assert "standard"        in names
@@ -761,21 +761,21 @@ class TestPipelineEngine:
         assert "validation_only" in names
 
     def test_history_grows(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         engine.execute(_make_obs(), "fast")
         engine.execute(_make_obs(), "fast")
         assert len(engine.history()) == 2
 
     def test_history_limit(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         for _ in range(5):
             engine.execute(_make_obs(), "fast")
         assert len(engine.history(limit=3)) == 3
 
     def test_health_report_structure(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         engine.execute(_make_obs(), "fast")
         h = engine.health()
@@ -783,14 +783,14 @@ class TestPipelineEngine:
         assert "avg_latency_ms"  in h
 
     def test_stats_after_execute(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         engine.execute(_make_obs(), "fast")
         s = engine.stats()
         assert s["total_processed"] >= 1
 
     def test_singleton(self):
-        from iios.observation.pipeline.pipeline_engine import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import (
             get_pipeline_engine, reset_pipeline_engine,
         )
         e1 = get_pipeline_engine()
@@ -798,7 +798,7 @@ class TestPipelineEngine:
         assert e1 is e2
 
     def test_classification_written_to_obs(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         engine.execute(obs, "standard")
@@ -806,14 +806,14 @@ class TestPipelineEngine:
         assert obs.classification != ""
 
     def test_tags_enriched_on_obs(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         obs    = _make_obs()
         engine.execute(obs, "standard")
         assert len(obs.metadata.tags) > 0
 
     def test_result_stage_count_standard(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine = PipelineEngine()
         result = engine.execute(_make_obs(), "standard")
         assert len(result.stage_results) == 17
@@ -825,25 +825,25 @@ class TestPipelineEngine:
 
 class TestPipelineManager:
     def test_process_returns_result(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr    = PipelineManager()
         result = mgr.process(_make_obs())
         assert result.obs_id is not None
 
     def test_process_uses_default_pipeline(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr    = PipelineManager(default_pipeline="fast")
         result = mgr.process(_make_obs())
         assert result.pipeline_name == "fast"
 
     def test_process_batch(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr     = PipelineManager()
         results = mgr.process_batch([_make_obs() for _ in range(3)])
         assert len(results) == 3
 
     def test_stats_after_process(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr = PipelineManager()
         mgr.process(_make_obs())
         s = mgr.stats()
@@ -851,26 +851,26 @@ class TestPipelineManager:
         assert s["successful"] >= 1
 
     def test_dead_letter_queue_empty_initially(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr = PipelineManager()
         assert mgr.dead_letter_queue() == []
 
     def test_history_stored(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr = PipelineManager()
         mgr.process(_make_obs())
         mgr.process(_make_obs())
         assert len(mgr.history()) == 2
 
     def test_history_limit(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr = PipelineManager()
         for _ in range(5):
             mgr.process(_make_obs())
         assert len(mgr.history(limit=3)) == 3
 
     def test_singleton(self):
-        from iios.observation.pipeline.pipeline_manager import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import (
             get_pipeline_manager, reset_pipeline_manager,
         )
         m1 = get_pipeline_manager()
@@ -878,7 +878,7 @@ class TestPipelineManager:
         assert m1 is m2
 
     def test_priority_process(self):
-        from iios.observation.pipeline.pipeline_manager import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager import PipelineManager
         mgr = PipelineManager()
         obs_list = [
             _make_obs(priority=ObservationPriority.LOW),
@@ -894,8 +894,8 @@ class TestPipelineManager:
 
 class TestPipelineScheduler:
     def test_batch_scheduler_submit_and_flush(self):
-        from iios.observation.pipeline.pipeline_scheduler import BatchScheduler
-        from iios.observation.pipeline.pipeline_manager   import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import BatchScheduler
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager   import PipelineManager
         mgr  = PipelineManager()
         sched = BatchScheduler(mgr, batch_size=10, pipeline_name="fast")
         for _ in range(3):
@@ -904,8 +904,8 @@ class TestPipelineScheduler:
         assert len(results) == 3
 
     def test_batch_scheduler_auto_flush_on_size(self):
-        from iios.observation.pipeline.pipeline_scheduler import BatchScheduler
-        from iios.observation.pipeline.pipeline_manager   import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import BatchScheduler
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager   import PipelineManager
         mgr   = PipelineManager()
         sched = BatchScheduler(mgr, batch_size=2, pipeline_name="fast")
         sched.start()
@@ -918,8 +918,8 @@ class TestPipelineScheduler:
         sched.stop()
 
     def test_priority_scheduler_submit_and_process(self):
-        from iios.observation.pipeline.pipeline_scheduler import PriorityScheduler
-        from iios.observation.pipeline.pipeline_manager   import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import PriorityScheduler
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager   import PipelineManager
         mgr  = PipelineManager()
         sched = PriorityScheduler(mgr, pipeline_name="fast")
         sched.submit(_make_obs(priority=ObservationPriority.LOW))
@@ -930,8 +930,8 @@ class TestPipelineScheduler:
         assert sched.depth() == 0
 
     def test_pipeline_scheduler_routes_by_priority(self):
-        from iios.observation.pipeline.pipeline_scheduler import PipelineScheduler
-        from iios.observation.pipeline.pipeline_manager   import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import PipelineScheduler
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager   import PipelineManager
         mgr   = PipelineManager()
         sched = PipelineScheduler(mgr, pipeline_name="fast")
         # HIGH goes to priority queue
@@ -943,15 +943,15 @@ class TestPipelineScheduler:
         assert len(results) == 2
 
     def test_pipeline_scheduler_stats(self):
-        from iios.observation.pipeline.pipeline_scheduler import PipelineScheduler
-        from iios.observation.pipeline.pipeline_manager   import PipelineManager
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import PipelineScheduler
+        from enterprise_ai_platform.observation.pipeline.pipeline_manager   import PipelineManager
         sched = PipelineScheduler(PipelineManager())
         s = sched.stats()
         assert "batch"    in s
         assert "priority" in s
 
     def test_singleton(self):
-        from iios.observation.pipeline.pipeline_scheduler import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_scheduler import (
             get_pipeline_scheduler, reset_pipeline_scheduler,
         )
         s1 = get_pipeline_scheduler()
@@ -965,10 +965,10 @@ class TestPipelineScheduler:
 
 class TestFailureRecovery:
     def test_rollback_policy(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         def failing_stage(obs, ctx):
             return StageResult(stage_name="fail", success=False, error="forced")
@@ -986,10 +986,10 @@ class TestFailureRecovery:
         assert result.aborted
 
     def test_dead_letter_policy(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         def failing_stage(obs, ctx):
             return StageResult(stage_name="dl", success=False, error="dl triggered")
@@ -1004,10 +1004,10 @@ class TestFailureRecovery:
         assert result.dead_lettered
 
     def test_checkpoint_on_failure(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult, CheckpointPolicy
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy, CheckpointPolicy as CP
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult, CheckpointPolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy, CheckpointPolicy as CP
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         def good(obs, ctx):
             return StageResult(stage_name="good", success=True)
@@ -1029,10 +1029,10 @@ class TestFailureRecovery:
         assert result.context is not None
 
     def test_continue_policy_skips_failed_stage(self):
-        from iios.observation.pipeline.pipeline_builder  import PipelineBuilder
-        from iios.observation.pipeline.pipeline_context  import StageResult
-        from iios.observation.pipeline.pipeline_constants import FailurePolicy
-        from iios.observation.pipeline.pipeline_executor import PipelineExecutor
+        from enterprise_ai_platform.observation.pipeline.pipeline_builder  import PipelineBuilder
+        from enterprise_ai_platform.observation.pipeline.pipeline_context  import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_constants import FailurePolicy
+        from enterprise_ai_platform.observation.pipeline.pipeline_executor import PipelineExecutor
 
         ran = []
 
@@ -1060,7 +1060,7 @@ class TestFailureRecovery:
 
 class TestConcurrency:
     def test_parallel_pipeline_execution(self):
-        from iios.observation.pipeline.pipeline_engine import PipelineEngine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import PipelineEngine
         engine  = PipelineEngine()
         errors: list[Exception] = []
 
@@ -1080,7 +1080,7 @@ class TestConcurrency:
         assert len(engine.history()) == 8
 
     def test_concurrent_context_isolation(self):
-        from iios.observation.pipeline.pipeline_context import (
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import (
             pipeline_execution, get_pipeline_context,
         )
         results: list[Optional[str]] = []
@@ -1102,7 +1102,7 @@ class TestConcurrency:
         assert all(r is not None for r in results)
 
     def test_singleton_thread_safety(self):
-        from iios.observation.pipeline.pipeline_engine import get_pipeline_engine
+        from enterprise_ai_platform.observation.pipeline.pipeline_engine import get_pipeline_engine
         instances: list = []
 
         def _get():
@@ -1117,8 +1117,8 @@ class TestConcurrency:
         assert all(e is instances[0] for e in instances)
 
     def test_metrics_thread_safety(self):
-        from iios.observation.pipeline.pipeline_metrics import PipelineMetrics
-        from iios.observation.pipeline.pipeline_context import StageResult
+        from enterprise_ai_platform.observation.pipeline.pipeline_metrics import PipelineMetrics
+        from enterprise_ai_platform.observation.pipeline.pipeline_context import StageResult
         m      = PipelineMetrics()
         errors: list[Exception] = []
 

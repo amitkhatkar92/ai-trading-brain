@@ -13,7 +13,7 @@ from unittest.mock import patch
 
 import pytest
 
-from iios.execution.monitoring.lifecycle import (
+from enterprise_ai_platform.execution.monitoring.lifecycle import (
     ACTIVE_STATES,
     DEFAULT_MAX_HISTORY,
     DEFAULT_MAX_SESSIONS,

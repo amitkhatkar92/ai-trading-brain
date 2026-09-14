@@ -1,21 +1,21 @@
 """Tests for performance attribution (BHB, sector, security, factor, strategy)."""
 import pytest
-from iios.investment.portfolio.performance.sector_attribution import (
+from enterprise_ai_platform.investment.portfolio.performance.sector_attribution import (
     compute_sector_attribution,
 )
-from iios.investment.portfolio.performance.security_attribution import (
+from enterprise_ai_platform.investment.portfolio.performance.security_attribution import (
     compute_security_attribution,
 )
-from iios.investment.portfolio.performance.factor_attribution import (
+from enterprise_ai_platform.investment.portfolio.performance.factor_attribution import (
     compute_factor_attribution, FACTOR_RETURNS,
 )
-from iios.investment.portfolio.performance.strategy_attribution import (
+from enterprise_ai_platform.investment.portfolio.performance.strategy_attribution import (
     compute_strategy_attribution,
 )
-from iios.investment.portfolio.performance.performance_attribution import (
+from enterprise_ai_platform.investment.portfolio.performance.performance_attribution import (
     AttributionResult, PortfolioAttributionEngine,
 )
-from iios.investment.portfolio.performance.benchmark_engine import BenchmarkEngine
+from enterprise_ai_platform.investment.portfolio.performance.benchmark_engine import BenchmarkEngine
 
 
 class TestSectorAttribution:

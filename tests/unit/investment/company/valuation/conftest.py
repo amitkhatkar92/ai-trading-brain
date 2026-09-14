@@ -100,5 +100,5 @@ def make_business_quality_snapshot() -> MagicMock:
 
 def make_assumptions():
     """Default ValuationAssumptions suitable for tests."""
-    from iios.investment.company.valuation.valuation_assumptions import ValuationAssumptions
+    from enterprise_ai_platform.investment.company.valuation.valuation_assumptions import ValuationAssumptions
     return ValuationAssumptions()

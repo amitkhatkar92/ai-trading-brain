@@ -4,7 +4,7 @@ Tests for all enums and dataclasses in trend/models.py.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendEventType,
     TrendTransitionType,
@@ -17,8 +17,8 @@ from iios.investment.market.trend.models import (
     TrendEventRecord,
     TrendMomentumState,
 )
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.regime.models import RegimeType
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.regime.models import RegimeType
 
 
 class TestEnums:

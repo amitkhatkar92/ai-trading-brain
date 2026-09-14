@@ -7,15 +7,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.core.portfolio_catalog import CatalogEntry, PortfolioCatalog
-from iios.investment.portfolio.core.portfolio_factory import PortfolioFactory, FactoryResult
-from iios.investment.portfolio.core.portfolio_loader import PortfolioLoader
-from iios.investment.portfolio.core.portfolio_registry import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_catalog import CatalogEntry, PortfolioCatalog
+from enterprise_ai_platform.investment.portfolio.core.portfolio_factory import PortfolioFactory, FactoryResult
+from enterprise_ai_platform.investment.portfolio.core.portfolio_loader import PortfolioLoader
+from enterprise_ai_platform.investment.portfolio.core.portfolio_registry import (
     PortfolioClassNotFoundError,
     PortfolioClassRegistrationError,
     PortfolioClassRegistry,
 )
-from iios.investment.portfolio.core.portfolio_types import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_types import (
     PortfolioCapability,
     PortfolioDomain,
 )

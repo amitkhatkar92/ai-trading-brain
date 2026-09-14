@@ -1,10 +1,10 @@
 """tests/unit/investment/company/business_quality/test_competitive.py"""
 import pytest
 
-from iios.investment.company.business_quality.market_position import MarketPositionAnalyzer
-from iios.investment.company.business_quality.peer_comparison import PeerComparisonAnalyzer
-from iios.investment.company.business_quality.competitive_analysis import CompetitiveAnalyzer
-from iios.investment.company.business_quality.competitive_position import (
+from enterprise_ai_platform.investment.company.business_quality.market_position import MarketPositionAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.peer_comparison import PeerComparisonAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.competitive_analysis import CompetitiveAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.competitive_position import (
     MarketLeadershipLabel, CompetitivePressureLabel,
 )
 from tests.unit.investment.company.business_quality.conftest import make_ctx
@@ -55,7 +55,7 @@ class TestMarketPositionAnalyzer:
 
 class TestPeerComparisonAnalyzer:
     def test_no_peers_neutral_score(self, ctx_high_quality):
-        from iios.investment.company.business_quality.business_quality_engine import BusinessQualityEngine
+        from enterprise_ai_platform.investment.company.business_quality.business_quality_engine import BusinessQualityEngine
         own_snap = BusinessQualityEngine().ingest("TEST", **{
             "financial_snapshot": ctx_high_quality.financial_snapshot,
             "earnings_snapshot":  ctx_high_quality.earnings_snapshot,
@@ -66,7 +66,7 @@ class TestPeerComparisonAnalyzer:
 
     def test_peer_count_populated(self, ctx_high_quality, ctx_commodity):
         engine = __import__(
-            "iios.investment.company.business_quality.business_quality_engine",
+            "enterprise_ai_platform.investment.company.business_quality.business_quality_engine",
             fromlist=["BusinessQualityEngine"],
         ).BusinessQualityEngine()
         own  = engine.ingest("HQ", financial_snapshot=ctx_high_quality.financial_snapshot,
@@ -78,7 +78,7 @@ class TestPeerComparisonAnalyzer:
 
     def test_top_quartile_flag_for_superior(self, ctx_high_quality, ctx_commodity):
         engine = __import__(
-            "iios.investment.company.business_quality.business_quality_engine",
+            "enterprise_ai_platform.investment.company.business_quality.business_quality_engine",
             fromlist=["BusinessQualityEngine"],
         ).BusinessQualityEngine()
         own  = engine.ingest("HQ", financial_snapshot=ctx_high_quality.financial_snapshot,

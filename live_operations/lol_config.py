@@ -25,7 +25,7 @@ CPU_LOAD_WARN_PCT    = 80.0    # warn if > 80% CPU (1-min avg)
 # ── Database paths ────────────────────────────────────────────────────────
 DB_CONTROL_TOWER = DATA_DIR / "control_tower.db"
 DB_MARKET        = DATA_DIR / "market_behavior.db"
-DB_IIOS          = DATA_DIR / "iios.db"
+DB_IIOS          = DATA_DIR / "enterprise_ai_platform.db"
 DB_TRADING_BRAIN = DATA_DIR / "trading_brain.db"
 DB_REPLAY        = DATA_DIR / "replay.db"
 DB_TRADE_QUALITY = DATA_DIR / "trade_quality.db"

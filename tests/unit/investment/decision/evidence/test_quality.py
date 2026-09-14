@@ -6,14 +6,14 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory, EvidencePriority, EvidenceSourceType,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.evidence.quality_score import QualityScore, compute_quality_score
-from iios.investment.decision.evidence.quality_statistics import QualityStatisticsTracker
-from iios.investment.decision.evidence.quality_history import QualityHistory
-from iios.investment.decision.evidence.evidence_quality import EvidenceQuality
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.quality_score import QualityScore, compute_quality_score
+from enterprise_ai_platform.investment.decision.evidence.quality_statistics import QualityStatisticsTracker
+from enterprise_ai_platform.investment.decision.evidence.quality_history import QualityHistory
+from enterprise_ai_platform.investment.decision.evidence.evidence_quality import EvidenceQuality
 
 
 def _qs(overall=80.0):
@@ -62,7 +62,7 @@ class TestQualityScore:
             assert k in d
 
     def test_weights_sum_to_1(self):
-        from iios.investment.decision.evidence.evidence_constants import EvidenceQualityDimension
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceQualityDimension
         total = sum(dim.default_weight for dim in EvidenceQualityDimension)
         assert total == pytest.approx(1.0)
 

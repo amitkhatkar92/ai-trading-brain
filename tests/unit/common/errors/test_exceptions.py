@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.common.errors.exceptions import (
+from enterprise_ai_platform.common.errors.exceptions import (
     IIOSError,
     ConfigurationError,
     ValidationError,
@@ -188,9 +188,9 @@ class TestEngineError:
         assert EngineError("msg").code == "IIOS-ENG-001"
 
     def test_engine_id_in_context(self):
-        e = EngineError("start failed", engine_id="iios:market:integration")
-        assert e.context["engine_id"] == "iios:market:integration"
-        assert e.engine_id == "iios:market:integration"
+        e = EngineError("start failed", engine_id="enterprise_ai_platform:market:integration")
+        assert e.context["engine_id"] == "enterprise_ai_platform:market:integration"
+        assert e.engine_id == "enterprise_ai_platform:market:integration"
 
 
 # ── DependencyError ───────────────────────────────────────────────────────────

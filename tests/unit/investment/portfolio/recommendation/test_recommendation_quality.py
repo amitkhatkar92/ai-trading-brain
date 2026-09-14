@@ -7,22 +7,22 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.portfolio_recommendation import (
+from enterprise_ai_platform.investment.portfolio.recommendation.portfolio_recommendation import (
     build_recommendation, RecommendationCandidate,
 )
-from iios.investment.portfolio.recommendation.recommendation_health import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_health import (
     RecommendationHealthMonitor,
 )
-from iios.investment.portfolio.recommendation.recommendation_monitor import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_monitor import (
     RecommendationMonitor,
 )
-from iios.investment.portfolio.recommendation.recommendation_quality import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_quality import (
     RecommendationQualityAssessor,
 )
-from iios.investment.portfolio.recommendation.recommendation_tracker import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_tracker import (
     RecommendationTracker,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     RecommendationAction,
     RecommendationGrade,
     RecommendationLevel,
@@ -30,7 +30,7 @@ from iios.investment.portfolio.recommendation.recommendation_types import (
     RecommendationRisk,
     ValidationStatus,
 )
-from iios.investment.portfolio.recommendation.recommendation_validator import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_validator import (
     RecommendationValidator,
 )
 
@@ -71,7 +71,7 @@ class TestRecommendationValidator:
         assert not report.is_valid
 
     def test_empty_portfolio_warns(self, default_policy):
-        from iios.investment.portfolio.recommendation.recommendation_types import PortfolioIntelligence
+        from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import PortfolioIntelligence
         empty_intel = PortfolioIntelligence(portfolio_id="P-E", n_positions=0)
         rec = _make_rec(confidence=0.80)
         validator = RecommendationValidator()
@@ -182,7 +182,7 @@ class TestRecommendationMonitor:
         assert report.n_active == 0
 
     def test_active_non_expired_recs_counted(self):
-        from iios.investment.portfolio.recommendation.recommendation_lifecycle import LifecycleManager
+        from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_lifecycle import LifecycleManager
         lm = LifecycleManager()
         rec = lm.publish(_make_rec(confidence=0.80))
         monitor = RecommendationMonitor()

@@ -1,7 +1,7 @@
 """
 test_workflow_engine_m2.py — C16 M2: Workflow Engine
 
-Comprehensive test suite for iios.workflow.engine.
+Comprehensive test suite for enterprise_ai_platform.workflow.engine.
 Coverage target: 95%+
 
 Test groups:
@@ -35,7 +35,7 @@ from typing import List, Optional
 
 import pytest
 
-from iios.workflow.engine import (
+from enterprise_ai_platform.workflow.engine import (
     ACTOR_ENGINE,
     ACTOR_MONITOR,
     ACTOR_SCHEDULER,
@@ -83,7 +83,7 @@ from iios.workflow.engine import (
     WorkflowSessionManager,
     priority_label,
 )
-from iios.workflow.engine.exceptions import (
+from enterprise_ai_platform.workflow.engine.exceptions import (
     WorkflowEngineError,
     WorkflowGovernanceError,
     WorkflowMonitorError,
@@ -91,10 +91,10 @@ from iios.workflow.engine.exceptions import (
     WorkflowSchedulerError,
     WorkflowSessionError,
 )
-from iios.workflow.engine.workflow_engine import WorkflowEngine
-from iios.workflow.engine.workflow_request import WorkflowEngineRequest
-from iios.workflow.engine.workflow_response import WorkflowEngineResponse
-from iios.workflow.lifecycle import WorkflowType
+from enterprise_ai_platform.workflow.engine.workflow_engine import WorkflowEngine
+from enterprise_ai_platform.workflow.engine.workflow_request import WorkflowEngineRequest
+from enterprise_ai_platform.workflow.engine.workflow_response import WorkflowEngineResponse
+from enterprise_ai_platform.workflow.lifecycle import WorkflowType
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -137,7 +137,7 @@ class TestConstants:
         assert BUILD_VERSION == "c16-m2"
 
     def test_default_engine_id(self):
-        assert DEFAULT_ENGINE_ID == "iios-workflow-engine"
+        assert DEFAULT_ENGINE_ID == "enterprise_ai_platform-workflow-engine"
 
     def test_default_queue_size(self):
         assert DEFAULT_QUEUE_SIZE == 10_000
@@ -200,7 +200,7 @@ class TestExceptions:
         assert e.limit == 100
 
     def test_dispatch_error(self):
-        from iios.workflow.engine.exceptions import WorkflowDispatchError
+        from enterprise_ai_platform.workflow.engine.exceptions import WorkflowDispatchError
         e = WorkflowDispatchError("dispatch fail")
         assert "WEN-005" in str(e)
 
@@ -225,7 +225,7 @@ class TestExceptions:
         assert "WEN-010" in str(e)
 
     def test_inheritance(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(WorkflowEngineError, IIOSError)
 
 
@@ -239,7 +239,7 @@ class TestWorkflowEngineRequest:
         assert req.request_id.startswith("wenreq-")
         assert req.workflow_id == "wf-test-001"
         assert req.priority == DEFAULT_PRIORITY
-        assert req.enterprise_id == "iios"
+        assert req.enterprise_id == "enterprise_ai_platform"
 
     def test_frozen(self):
         req = make_request()

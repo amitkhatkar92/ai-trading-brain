@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import pytest
-from iios.investment.company.valuation.valuation_assumptions import (
+from enterprise_ai_platform.investment.company.valuation.valuation_assumptions import (
     WACCAssumptions, DCFAssumptions, DDMAssumptions,
     RIMAssumptions, RelativeValuationAssumptions, ValuationAssumptions,
 )

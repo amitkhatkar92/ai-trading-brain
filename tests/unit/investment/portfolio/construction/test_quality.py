@@ -8,36 +8,36 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.investment.portfolio.construction.construction_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_engine import (
     BlueprintAssembler,
     WeightAssigner,
 )
-from iios.investment.portfolio.construction.construction_health import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_health import (
     ConstructionHealthMonitor,
     EngineHealthReport,
 )
-from iios.investment.portfolio.construction.construction_quality import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_quality import (
     ConstructionQualityAssessor,
     ConstructionQualityReport,
 )
-from iios.investment.portfolio.construction.construction_score import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_score import (
     ConstructionScore,
     ScoreCalculator,
     ScoreHistory,
 )
-from iios.investment.portfolio.construction.construction_statistics import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_statistics import (
     ConstructionStatistics,
     ConstructionStatisticsSnapshot,
     RunMetric,
 )
-from iios.investment.portfolio.construction.construction_types import HealthStatus
-from iios.investment.portfolio.construction.constraint_engine import ConstraintEngine
-from iios.investment.portfolio.construction.constraint_registry import ConstraintRegistry
-from iios.investment.portfolio.construction.portfolio_blueprint import ConstructionRequest
-from iios.investment.portfolio.construction.portfolio_statistics import compute_statistics
-from iios.investment.portfolio.construction.portfolio_validator import PortfolioValidator
-from iios.investment.portfolio.construction.construction_validator import ConstructionValidator
-from iios.investment.portfolio.construction.readiness_validator import ReadinessValidator
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import HealthStatus
+from enterprise_ai_platform.investment.portfolio.construction.constraint_engine import ConstraintEngine
+from enterprise_ai_platform.investment.portfolio.construction.constraint_registry import ConstraintRegistry
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import ConstructionRequest
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_statistics import compute_statistics
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_validator import PortfolioValidator
+from enterprise_ai_platform.investment.portfolio.construction.construction_validator import ConstructionValidator
+from enterprise_ai_platform.investment.portfolio.construction.readiness_validator import ReadinessValidator
 from tests.unit.investment.portfolio.construction.conftest import make_recs
 
 

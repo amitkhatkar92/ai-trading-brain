@@ -36,7 +36,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.gateway.lifecycle import (
+from enterprise_ai_platform.execution.gateway.lifecycle import (
     ACTIVE_STATES,
     ACTOR_LIFECYCLE,
     ENDED_STATES,
@@ -131,7 +131,7 @@ def _full_workflow(lc: GatewayLifecycle, **kw) -> GatewayRequest:
 
 class TestConstants:
     def test_system_id_prefix(self):
-        assert LIFECYCLE_SYSTEM_ID.startswith("iios:")
+        assert LIFECYCLE_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version(self):
         assert VERSION == "1.0.0"
@@ -175,7 +175,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(ExecutionGatewayLifecycleError, IIOSError)
 
     def test_invalid_transition_fields(self):
@@ -208,7 +208,7 @@ class TestExceptions:
         assert e.message == "bad data"
 
     def test_all_subclass_base(self):
-        from iios.execution.gateway.lifecycle.exceptions import GatewayStateError
+        from enterprise_ai_platform.execution.gateway.lifecycle.exceptions import GatewayStateError
         for cls in (
             InvalidGatewayTransitionError, GatewayRequestNotFoundError,
             DuplicateGatewayRequestError, GatewayValidationError,
@@ -1632,7 +1632,7 @@ class TestRegression:
 
     def test_double_stop_raises_engine_not_running(self):
         """The IIOS framework raises EngineNotRunningError on double stop."""
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         lc = _lifecycle()
         lc.stop()
         with pytest.raises(EngineNotRunningError):

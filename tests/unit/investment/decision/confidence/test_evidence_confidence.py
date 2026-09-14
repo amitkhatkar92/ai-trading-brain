@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.confidence.coverage_analysis import CoverageAnalyzer
-from iios.investment.decision.confidence.evidence_confidence import (
+from enterprise_ai_platform.investment.decision.confidence.coverage_analysis import CoverageAnalyzer
+from enterprise_ai_platform.investment.decision.confidence.evidence_confidence import (
     EvidenceConfidenceEstimator,
     EvidenceConfidenceResult,
 )
-from iios.investment.decision.confidence.freshness_analysis import FreshnessAnalyzer
-from iios.investment.decision.confidence.source_reliability import (
+from enterprise_ai_platform.investment.decision.confidence.freshness_analysis import FreshnessAnalyzer
+from enterprise_ai_platform.investment.decision.confidence.source_reliability import (
     SourceReliabilityAnalyzer,
 )
-from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
 
 
 # ========================= SourceReliabilityAnalyzer =====================
@@ -73,8 +73,8 @@ class TestFreshnessAnalyzer:
         assert result.freshness_conf > 50.0
 
     def test_stale_count(self, make_ev_item):
-        from iios.investment.decision.evidence.evidence_item import make_evidence_item
-        from iios.investment.decision.evidence.evidence_constants import EvidenceCategory, EvidenceSourceType
+        from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceCategory, EvidenceSourceType
         stale = make_evidence_item(
             decision_id="D1", source_type=EvidenceSourceType.MARKET, source_provider="p",
             subject_id="S", subject_type="equity", category=EvidenceCategory.TECHNICAL,

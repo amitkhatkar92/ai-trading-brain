@@ -1,9 +1,9 @@
 """tests/unit/investment/strategy/debate/test_argument_manager.py"""
 import pytest
-from iios.investment.strategy.debate.debate_constants import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import (
     ArgumentType, ParticipantRole, RebuttalType,
 )
-from iios.investment.strategy.debate.argument_manager import (
+from enterprise_ai_platform.investment.strategy.debate.argument_manager import (
     Argument, ArgumentManager, Rebuttal,
     make_argument, make_rebuttal,
 )

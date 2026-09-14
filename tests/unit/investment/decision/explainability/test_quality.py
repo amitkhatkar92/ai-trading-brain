@@ -6,21 +6,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
     ExplainabilityStatus,
 )
-from iios.investment.decision.explainability.explainability_health import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_health import (
     ExplainabilityHealthMonitor,
     ExplainabilityHealthReport,
 )
-from iios.investment.decision.explainability.explainability_quality import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_quality import (
     ExplainabilityQualityEvaluator,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
-from iios.investment.decision.explainability.traceability_engine import TraceabilityEngine
-from iios.investment.decision.explainability.traceability_score import TraceabilityScorer
-from iios.investment.decision.explainability.transparency_score import TransparencyScorer
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.traceability_engine import TraceabilityEngine
+from enterprise_ai_platform.investment.decision.explainability.traceability_score import TraceabilityScorer
+from enterprise_ai_platform.investment.decision.explainability.transparency_score import TransparencyScorer
 
 
 # ─── TransparencyScorer ──────────────────────────────────────────────────────

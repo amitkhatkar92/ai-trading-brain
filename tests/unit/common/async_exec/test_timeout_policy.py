@@ -1,7 +1,7 @@
-"""Tests for iios.common.async_exec.timeout_policy"""
+"""Tests for enterprise_ai_platform.common.async_exec.timeout_policy"""
 import asyncio
 import pytest
-from iios.common.async_exec.timeout_policy import (
+from enterprise_ai_platform.common.async_exec.timeout_policy import (
     TimeoutPolicy,
     apply_timeout,
     with_stage_timeout,
@@ -10,7 +10,7 @@ from iios.common.async_exec.timeout_policy import (
     with_pipeline_timeout,
     timeout_scope,
 )
-from iios.common.errors.exceptions import TimeoutError as IIOSTimeoutError
+from enterprise_ai_platform.common.errors.exceptions import TimeoutError as IIOSTimeoutError
 
 
 # ── TimeoutPolicy ────────────────────────────────────────────────────────────

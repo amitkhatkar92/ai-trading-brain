@@ -1,7 +1,7 @@
 """
 tests/unit/decision/engine/test_engine.py
 ==========================================
-Comprehensive test suite for iios.decision.engine — C9 M2.
+Comprehensive test suite for enterprise_ai_platform.decision.engine — C9 M2.
 
 Coverage areas
 --------------
@@ -35,7 +35,7 @@ from typing import Any, Dict
 
 import pytest
 
-from iios.decision.engine import (
+from enterprise_ai_platform.decision.engine import (
     PIPELINE_ACTIVE_STATES,
     PIPELINE_TERMINAL_STATES,
     PIPELINE_VALID_TRANSITIONS,
@@ -85,7 +85,7 @@ from iios.decision.engine import (
     make_decision_engine_started,
     make_decision_engine_stopped,
 )
-from iios.decision.engine.exceptions import (
+from enterprise_ai_platform.decision.engine.exceptions import (
     DecisionEngineError,
     DecisionPipelineError,
     DecisionRequestNotFoundError,
@@ -144,7 +144,7 @@ class TestEngineLifecycle:
 
     def test_double_stop_raises(self):
         """LifecycleAwareMixin.stop() raises when not running — second call must raise."""
-        from iios.investment.workflow.engine_lifecycle import EngineNotRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineNotRunningError
         e = _engine()
         e.stop()
         with pytest.raises(EngineNotRunningError):
@@ -1296,5 +1296,5 @@ class TestRegression:
         assert len(DecisionEngineStatistics().snapshot()) == 8
 
     def test_version_string(self):
-        from iios.decision.engine.constants import VERSION
+        from enterprise_ai_platform.decision.engine.constants import VERSION
         assert VERSION == "1.0.0"

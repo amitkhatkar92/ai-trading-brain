@@ -1,7 +1,7 @@
 """
 tests/ai/platform/test_platform_bootstrap.py
 =============================================
-Test suite for iios.ai.platform — F0.1 Critical Architecture Resolution.
+Test suite for enterprise_ai_platform.ai.platform — F0.1 Critical Architecture Resolution.
 
 Covers:
   Section 1  — PlatformPhase (7 tests)
@@ -26,7 +26,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.ai.platform import (
+from enterprise_ai_platform.ai.platform import (
     CircularDependencyError,
     HealthCoordinator,
     IIOSBootstrap,
@@ -42,7 +42,7 @@ from iios.ai.platform import (
     StartupCoordinator,
     StartupOrder,
 )
-from iios.ai.platform.health_coordinator import (
+from enterprise_ai_platform.ai.platform.health_coordinator import (
     HEALTH_DEGRADED,
     HEALTH_DOWN,
     HEALTH_HEALTHY,
@@ -1015,14 +1015,14 @@ class TestIntegration:
         assert status.total_platforms == 2
 
     def test_module_not_importable_from_ai_platform_modules(self) -> None:
-        """iios.ai.platform must not import from A1–A10 modules."""
-        import iios.ai.platform as plat_module
+        """enterprise_ai_platform.ai.platform must not import from A1–A10 modules."""
+        import enterprise_ai_platform.ai.platform as plat_module
         import inspect, sys
         source = inspect.getfile(plat_module)
-        # The platform package lives in iios/ai/platform/ — confirm it is not
-        # importing from iios.ai.foundation or any A2–A10 module directly.
+        # The platform package lives in enterprise_ai_platform/ai/platform/ — confirm it is not
+        # importing from enterprise_ai_platform.ai.foundation or any A2–A10 module directly.
         for mod_name in list(sys.modules.keys()):
-            if mod_name.startswith("iios.ai.platform"):
+            if mod_name.startswith("enterprise_ai_platform.ai.platform"):
                 mod = sys.modules[mod_name]
                 if hasattr(mod, "__file__") and mod.__file__:
                     # Just verify the module loaded without errors

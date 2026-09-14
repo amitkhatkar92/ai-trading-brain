@@ -165,16 +165,16 @@ class _FakeSnapshotFactory:
 
 class TestConstants:
     def test_version_is_string(self) -> None:
-        from iios.supervisor.integration.constants import VERSION
+        from enterprise_ai_platform.supervisor.integration.constants import VERSION
         assert isinstance(VERSION, str)
         assert VERSION
 
     def test_integration_system_id(self) -> None:
-        from iios.supervisor.integration.constants import INTEGRATION_SYSTEM_ID
+        from enterprise_ai_platform.supervisor.integration.constants import INTEGRATION_SYSTEM_ID
         assert "integration" in INTEGRATION_SYSTEM_ID
 
     def test_integration_status_members(self) -> None:
-        from iios.supervisor.integration.constants import IntegrationStatus
+        from enterprise_ai_platform.supervisor.integration.constants import IntegrationStatus
         vals = {s.value for s in IntegrationStatus}
         assert "idle" in vals
         assert "running" in vals
@@ -182,19 +182,19 @@ class TestConstants:
         assert "failed" in vals
 
     def test_integration_event_type_count(self) -> None:
-        from iios.supervisor.integration.constants import IntegrationEventType
+        from enterprise_ai_platform.supervisor.integration.constants import IntegrationEventType
         assert len(IntegrationEventType) == 8
 
     def test_integration_validation_code_count(self) -> None:
-        from iios.supervisor.integration.constants import IntegrationValidationCode
+        from enterprise_ai_platform.supervisor.integration.constants import IntegrationValidationCode
         assert len(IntegrationValidationCode) == 7
 
     def test_component_type_count(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         assert len(ComponentType) == 5
 
     def test_component_type_members(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         assert ComponentType.LIFECYCLE.value == "lifecycle"
         assert ComponentType.ENGINE.value    == "engine"
         assert ComponentType.POLICY.value    == "policy"
@@ -202,22 +202,22 @@ class TestConstants:
         assert ComponentType.SNAPSHOT.value  == "snapshot"
 
     def test_workflow_phase_members(self) -> None:
-        from iios.supervisor.integration.constants import WorkflowPhase
+        from enterprise_ai_platform.supervisor.integration.constants import WorkflowPhase
         phases = {p.value for p in WorkflowPhase}
         assert "receive" in phases
         assert "governance" in phases
         assert "complete" in phases
 
     def test_integration_mode_members(self) -> None:
-        from iios.supervisor.integration.constants import IntegrationMode
+        from enterprise_ai_platform.supervisor.integration.constants import IntegrationMode
         assert IntegrationMode.FULL.value == "full"
 
     def test_health_status_members(self) -> None:
-        from iios.supervisor.integration.constants import IntegrationHealthStatus
+        from enterprise_ai_platform.supervisor.integration.constants import IntegrationHealthStatus
         assert IntegrationHealthStatus.HEALTHY.value == "healthy"
 
     def test_defaults_are_positive(self) -> None:
-        from iios.supervisor.integration.constants import (
+        from enterprise_ai_platform.supervisor.integration.constants import (
             DEFAULT_MAX_HISTORY,
             DEFAULT_MAX_REQUESTS,
         )
@@ -232,48 +232,48 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_error(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationError
         exc = SupervisorIntegrationError("test")
         assert "SIN-000" in str(exc) or exc.args[0] == "test"
         assert isinstance(exc, Exception)
 
     def test_not_running_error_code(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationNotRunningError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationNotRunningError
         exc = SupervisorIntegrationNotRunningError()
         assert "SIN-001" in str(exc) or isinstance(exc, Exception)
 
     def test_validation_error(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationValidationError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationValidationError
         exc = SupervisorIntegrationValidationError("bad request")
         assert isinstance(exc, Exception)
 
     def test_workflow_error(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationWorkflowError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationWorkflowError
         exc = SupervisorIntegrationWorkflowError("pipeline failed")
         assert isinstance(exc, Exception)
 
     def test_component_error_has_component(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationComponentError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationComponentError
         exc = SupervisorIntegrationComponentError("missing", component="lifecycle")
         assert exc.component == "lifecycle"
 
     def test_capacity_error_has_limit(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationCapacityError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationCapacityError
         exc = SupervisorIntegrationCapacityError("over limit", limit=100)
         assert exc.limit == 100
 
     def test_registry_error(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationRegistryError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationRegistryError
         exc = SupervisorIntegrationRegistryError("registry error")
         assert isinstance(exc, Exception)
 
     def test_timeout_error(self) -> None:
-        from iios.supervisor.integration.exceptions import SupervisorIntegrationTimeoutError
+        from enterprise_ai_platform.supervisor.integration.exceptions import SupervisorIntegrationTimeoutError
         exc = SupervisorIntegrationTimeoutError("timed out")
         assert isinstance(exc, Exception)
 
     def test_hierarchy(self) -> None:
-        from iios.supervisor.integration.exceptions import (
+        from enterprise_ai_platform.supervisor.integration.exceptions import (
             SupervisorIntegrationError,
             SupervisorIntegrationNotRunningError,
             SupervisorIntegrationValidationError,
@@ -294,7 +294,7 @@ class TestExceptions:
 
 class TestContext:
     def _make(self, **kwargs):
-        from iios.supervisor.integration.supervisor_integration_context import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_context import (
             SupervisorIntegrationContext,
         )
         return SupervisorIntegrationContext.create("int-001", **kwargs)
@@ -314,7 +314,7 @@ class TestContext:
         assert ctx.market_snapshot == {"trend": "bull"}
 
     def test_from_inputs(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_context import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_context import (
             SupervisorIntegrationContext,
         )
         inputs = {
@@ -344,7 +344,7 @@ class TestContext:
             ctx.session_id = "new"  # type: ignore[misc]
 
     def test_extra_snapshots_preserved(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_context import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_context import (
             SupervisorIntegrationContext,
         )
         inputs = {"risk_snapshot": {}, "custom": 42}
@@ -359,7 +359,7 @@ class TestContext:
 
 class TestRequest:
     def _make(self, **kwargs):
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         return SupervisorIntegrationRequest.create("int-req-001", **kwargs)
@@ -412,7 +412,7 @@ class TestRequest:
 
 class TestResponse:
     def test_create_success_defaults(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_success("i1", "r1")
@@ -422,7 +422,7 @@ class TestResponse:
         assert r.request_id == "r1"
 
     def test_create_failure(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_failure("i1", "r1", error="oops")
@@ -431,21 +431,21 @@ class TestResponse:
         assert r.supervisor_snapshot is None
 
     def test_has_snapshot_true(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_success("i1", "r1", supervisor_snapshot=object())
         assert r.has_snapshot
 
     def test_has_snapshot_false(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_success("i1", "r1")
         assert not r.has_snapshot
 
     def test_to_dict(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_success("i1", "r1")
@@ -454,21 +454,21 @@ class TestResponse:
         assert "platform_health" in d
 
     def test_platform_health_summary_create(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             PlatformHealthSummary,
         )
         ph = PlatformHealthSummary.create(overall_health=1.0)
         assert ph.is_healthy
 
     def test_platform_health_summary_not_healthy(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             PlatformHealthSummary,
         )
         ph = PlatformHealthSummary.create(overall_health=0.5)
         assert not ph.is_healthy
 
     def test_governance_summary_create(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             IntegrationGovernanceSummary,
         )
         g = IntegrationGovernanceSummary.create(final_action="APPROVE", is_compliant=True)
@@ -476,21 +476,21 @@ class TestResponse:
         assert g.final_action == "APPROVE"
 
     def test_enterprise_assessment_create(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             EnterpriseAssessment,
         )
         a = EnterpriseAssessment.create(stability_score=1.0)
         assert a.is_stable
 
     def test_enterprise_assessment_not_stable(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             EnterpriseAssessment,
         )
         a = EnterpriseAssessment.create(stability_score=0.5)
         assert not a.is_stable
 
     def test_response_is_frozen(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_success("i1", "r1")
@@ -498,7 +498,7 @@ class TestResponse:
             r.is_success = False  # type: ignore[misc]
 
     def test_failure_platform_health_score_zero(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         r = SupervisorIntegrationResponse.create_failure("i1", "r1", error="e")
@@ -512,7 +512,7 @@ class TestResponse:
 
 class TestIntegrationSnapshot:
     def _make(self, snap=None):
-        from iios.supervisor.integration.supervisor_integration_snapshot import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_snapshot import (
             SupervisorIntegrationSnapshot,
         )
         inner = snap or MagicMock(snapshot_id="snap-123", is_valid=True, is_published=True)
@@ -537,7 +537,7 @@ class TestIntegrationSnapshot:
         assert s.is_published
 
     def test_is_valid_false_when_no_snapshot(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_snapshot import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_snapshot import (
             SupervisorIntegrationSnapshot,
         )
         s = SupervisorIntegrationSnapshot.create("i1", "r1", supervisor_snapshot=None)
@@ -562,13 +562,13 @@ class TestIntegrationSnapshot:
 
 class TestValidation:
     def _make_request(self):
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         return SupervisorIntegrationRequest.create("int-001")
 
     def _validator(self):
-        from iios.supervisor.integration.supervisor_integration_validation import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_validation import (
             SupervisorIntegrationValidator,
         )
         return SupervisorIntegrationValidator()
@@ -580,7 +580,7 @@ class TestValidation:
         assert result.failed_count == 0
 
     def test_missing_integration_id_fails(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         req = SupervisorIntegrationRequest.create("")
@@ -594,14 +594,14 @@ class TestValidation:
             request_id     = "y"
             context        = None
             mode           = __import__(
-                "iios.supervisor.integration.constants", fromlist=["IntegrationMode"]
+                "enterprise_ai_platform.supervisor.integration.constants", fromlist=["IntegrationMode"]
             ).IntegrationMode.FULL
 
         result = self._validator().validate_request(_Bad())
         assert not result.is_valid
 
     def test_response_validation_success_with_snapshot(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         req  = self._make_request()
@@ -614,7 +614,7 @@ class TestValidation:
         assert result.is_valid
 
     def test_response_validation_fails_missing_snapshot(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         req  = self._make_request()
@@ -645,7 +645,7 @@ class TestValidation:
             request_id     = "r"
             context        = object()
             mode           = __import__(
-                "iios.supervisor.integration.constants", fromlist=["IntegrationMode"]
+                "enterprise_ai_platform.supervisor.integration.constants", fromlist=["IntegrationMode"]
             ).IntegrationMode.FULL
 
         result = self._validator().validate_request(_Bad())
@@ -659,7 +659,7 @@ class TestValidation:
 
 class TestHealth:
     def _health(self):
-        from iios.supervisor.integration.supervisor_integration_health import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_health import (
             SupervisorIntegrationHealth,
         )
         return SupervisorIntegrationHealth()
@@ -670,7 +670,7 @@ class TestHealth:
         return m
 
     def test_healthy_when_running(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_statistics import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_statistics import (
             SupervisorIntegrationStatistics,
         )
         eng    = self._engine_mock("running")
@@ -693,10 +693,10 @@ class TestHealth:
         assert "lifecycle_state" in result
 
     def test_degraded_when_component_not_running(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_health import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_health import (
             SupervisorIntegrationHealth,
         )
-        from iios.supervisor.integration.supervisor_integration_statistics import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_statistics import (
             SupervisorIntegrationStatistics,
         )
         eng = self._engine_mock("running")
@@ -716,7 +716,7 @@ class TestHealth:
 
 class TestStatus:
     def _status(self):
-        from iios.supervisor.integration.supervisor_integration_status import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_status import (
             SupervisorIntegrationStatus,
         )
         return SupervisorIntegrationStatus()
@@ -740,7 +740,7 @@ class TestStatus:
         assert d.get("is_running") is False
 
     def test_system_id_in_status(self) -> None:
-        from iios.supervisor.integration.constants import INTEGRATION_SYSTEM_ID
+        from enterprise_ai_platform.supervisor.integration.constants import INTEGRATION_SYSTEM_ID
         eng = MagicMock()
         eng.lifecycle_state.return_value = _FakeLifecycleState("running")
         d = self._status().build_status(eng, MagicMock(), MagicMock(), MagicMock())
@@ -754,7 +754,7 @@ class TestStatus:
 
 class TestStatistics:
     def _stats(self):
-        from iios.supervisor.integration.supervisor_integration_statistics import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_statistics import (
             SupervisorIntegrationStatistics,
         )
         return SupervisorIntegrationStatistics()
@@ -854,7 +854,7 @@ class TestStatistics:
 
 class TestHistory:
     def _hist(self):
-        from iios.supervisor.integration.supervisor_integration_history import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_history import (
             SupervisorIntegrationHistory,
         )
         return SupervisorIntegrationHistory(max_records=50)
@@ -923,7 +923,7 @@ class TestHistory:
 
 class TestEvents:
     def test_make_initialized(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_initialized_event,
             IntegrationEventType,
         )
@@ -932,7 +932,7 @@ class TestEvents:
         assert e.integration_id == "int-001"
 
     def test_make_started(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_started_event,
             IntegrationEventType,
         )
@@ -941,7 +941,7 @@ class TestEvents:
         assert e.payload["mode"] == "full"
 
     def test_make_validated(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_validated_event,
             IntegrationEventType,
         )
@@ -950,7 +950,7 @@ class TestEvents:
         assert e.payload["is_valid"] is True
 
     def test_make_executed(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_executed_event,
             IntegrationEventType,
         )
@@ -959,7 +959,7 @@ class TestEvents:
         assert e.payload["phase"] == "engine"
 
     def test_make_snapshot_published(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_snapshot_published_event,
             IntegrationEventType,
         )
@@ -968,7 +968,7 @@ class TestEvents:
         assert e.payload["snapshot_id"] == "snap-123"
 
     def test_make_completed(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_completed_event,
             IntegrationEventType,
         )
@@ -976,7 +976,7 @@ class TestEvents:
         assert e.event_type == IntegrationEventType.INTEGRATION_COMPLETED
 
     def test_make_failed(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_failed_event,
             IntegrationEventType,
         )
@@ -985,7 +985,7 @@ class TestEvents:
         assert e.payload["error"] == "oops"
 
     def test_make_stopped(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_stopped_event,
             IntegrationEventType,
         )
@@ -993,7 +993,7 @@ class TestEvents:
         assert e.event_type == IntegrationEventType.INTEGRATION_STOPPED
 
     def test_event_to_dict(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_initialized_event,
         )
         e = make_integration_initialized_event("int-001")
@@ -1002,7 +1002,7 @@ class TestEvents:
         assert "event_type" in d
 
     def test_event_is_frozen(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_events import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_events import (
             make_integration_stopped_event,
         )
         e = make_integration_stopped_event("int-001")
@@ -1017,19 +1017,19 @@ class TestEvents:
 
 class TestIntegrationRegistry:
     def _reg(self):
-        from iios.supervisor.integration.supervisor_integration_registry import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_registry import (
             SupervisorIntegrationRegistry,
         )
         return SupervisorIntegrationRegistry(max_requests=50)
 
     def _req(self):
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         return SupervisorIntegrationRequest.create("int-001")
 
     def _resp(self, req):
-        from iios.supervisor.integration.supervisor_integration_response import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_response import (
             SupervisorIntegrationResponse,
         )
         return SupervisorIntegrationResponse.create_success(
@@ -1094,7 +1094,7 @@ class TestIntegrationRegistry:
         assert reg.count == 1
 
     def test_response_without_request_raises(self) -> None:
-        from iios.supervisor.integration.exceptions import (
+        from enterprise_ai_platform.supervisor.integration.exceptions import (
             SupervisorIntegrationRegistryError,
         )
         reg  = self._reg()
@@ -1104,10 +1104,10 @@ class TestIntegrationRegistry:
             reg.register_response(resp)
 
     def test_eviction_at_capacity(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_registry import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_registry import (
             SupervisorIntegrationRegistry,
         )
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         reg = SupervisorIntegrationRegistry(max_requests=3)
@@ -1129,21 +1129,21 @@ class TestIntegrationRegistry:
 
 class TestComponentRegistry:
     def _reg(self):
-        from iios.supervisor.integration.supervisor_component_registry import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_component_registry import (
             SupervisorComponentRegistry,
         )
         return SupervisorComponentRegistry()
 
     def test_register_and_get(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg  = self._reg()
         comp = _FakeLifecycle()
         reg.register(ComponentType.LIFECYCLE, comp)
         assert reg.get(ComponentType.LIFECYCLE) is comp
 
     def test_get_missing_raises(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
-        from iios.supervisor.integration.exceptions import (
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.exceptions import (
             SupervisorIntegrationComponentError,
         )
         reg = self._reg()
@@ -1151,26 +1151,26 @@ class TestComponentRegistry:
             reg.get(ComponentType.ENGINE)
 
     def test_get_optional_missing_returns_none(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         assert reg.get_optional(ComponentType.ENGINE) is None
 
     def test_is_registered(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         assert not reg.is_registered(ComponentType.LIFECYCLE)
         reg.register(ComponentType.LIFECYCLE, _FakeLifecycle())
         assert reg.is_registered(ComponentType.LIFECYCLE)
 
     def test_unregister(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         reg.register(ComponentType.LIFECYCLE, _FakeLifecycle())
         reg.unregister(ComponentType.LIFECYCLE)
         assert not reg.is_registered(ComponentType.LIFECYCLE)
 
     def test_all_components(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         reg.register(ComponentType.LIFECYCLE, _FakeLifecycle())
         reg.register(ComponentType.ENGINE,    _FakeEngine())
@@ -1179,13 +1179,13 @@ class TestComponentRegistry:
         assert "engine" in comps
 
     def test_count(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         reg.register(ComponentType.LIFECYCLE, _FakeLifecycle())
         assert reg.count == 1
 
     def test_clear(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         reg = self._reg()
         reg.register(ComponentType.LIFECYCLE, _FakeLifecycle())
         reg.clear()
@@ -1199,13 +1199,13 @@ class TestComponentRegistry:
 
 class TestComponentFactory:
     def _factory(self):
-        from iios.supervisor.integration.supervisor_component_factory import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_component_factory import (
             SupervisorComponentFactory,
         )
         return SupervisorComponentFactory()
 
     def test_create_all_returns_registry(self) -> None:
-        from iios.supervisor.integration.supervisor_component_registry import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_component_registry import (
             SupervisorComponentRegistry,
         )
         factory = self._factory()
@@ -1220,7 +1220,7 @@ class TestComponentFactory:
         assert reg.count == 5
 
     def test_create_all_registers_all_types(self) -> None:
-        from iios.supervisor.integration.constants import ComponentType
+        from enterprise_ai_platform.supervisor.integration.constants import ComponentType
         factory = self._factory()
         reg = factory.create_all(
             lifecycle         = _FakeLifecycle(),
@@ -1233,7 +1233,7 @@ class TestComponentFactory:
             assert reg.is_registered(comp_type), f"Missing: {comp_type}"
 
     def test_create_all_uses_provided_registry(self) -> None:
-        from iios.supervisor.integration.supervisor_component_registry import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_component_registry import (
             SupervisorComponentRegistry,
         )
         factory = self._factory()
@@ -1257,16 +1257,16 @@ class TestComponentFactory:
 def _make_manager(
     lifecycle=None, engine=None, policy=None, governance=None, snapshot=None
 ):
-    from iios.supervisor.integration.supervisor_component_registry import (
+    from enterprise_ai_platform.supervisor.integration.supervisor_component_registry import (
         SupervisorComponentRegistry,
     )
-    from iios.supervisor.integration.supervisor_component_factory import (
+    from enterprise_ai_platform.supervisor.integration.supervisor_component_factory import (
         SupervisorComponentFactory,
     )
-    from iios.supervisor.integration.supervisor_integration_manager import (
+    from enterprise_ai_platform.supervisor.integration.supervisor_integration_manager import (
         SupervisorIntegrationManager,
     )
-    from iios.supervisor.integration.constants import ComponentType
+    from enterprise_ai_platform.supervisor.integration.constants import ComponentType
 
     reg = SupervisorComponentRegistry()
     reg.register(ComponentType.LIFECYCLE,  lifecycle  or _FakeLifecycle())
@@ -1280,7 +1280,7 @@ def _make_manager(
 
 class TestManager:
     def _req(self):
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         return SupervisorIntegrationRequest.create("int-mgr-001")
@@ -1311,7 +1311,7 @@ class TestManager:
     def test_run_integration_failure_on_invalid_request(self) -> None:
         mgr = _make_manager()
         # Request with empty integration_id triggers validation failure
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         req = SupervisorIntegrationRequest.create("")
@@ -1329,7 +1329,7 @@ class TestManager:
         assert "integration.completed" in event_types
 
     def test_statistics_updated_on_success(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_statistics import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_statistics import (
             SupervisorIntegrationStatistics,
         )
         stats = SupervisorIntegrationStatistics()
@@ -1340,7 +1340,7 @@ class TestManager:
         assert stats.integration_requests >= 1
 
     def test_history_recorded(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_history import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_history import (
             SupervisorIntegrationHistory,
         )
         hist = SupervisorIntegrationHistory()
@@ -1357,7 +1357,7 @@ class TestManager:
 
 
 def _make_engine(**kwargs):
-    from iios.supervisor.integration.supervisor_integration_engine import (
+    from enterprise_ai_platform.supervisor.integration.supervisor_integration_engine import (
         SupervisorIntegrationEngine,
     )
     return SupervisorIntegrationEngine(
@@ -1401,10 +1401,10 @@ class TestEngineLifecycle:
         eng.stop()
 
     def test_submit_when_not_running_raises(self) -> None:
-        from iios.supervisor.integration.exceptions import (
+        from enterprise_ai_platform.supervisor.integration.exceptions import (
             SupervisorIntegrationNotRunningError,
         )
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         eng = _make_engine()
@@ -1414,7 +1414,7 @@ class TestEngineLifecycle:
 
     def test_double_start_raises(self) -> None:
         """LifecycleAwareMixin raises EngineAlreadyRunningError on double-start."""
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         eng = _make_engine()
         eng.start()
         try:
@@ -1432,7 +1432,7 @@ class TestEngineLifecycle:
 
 class TestEngineSubmit:
     def _req(self):
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         return SupervisorIntegrationRequest.create("int-sub-001")
@@ -1518,7 +1518,7 @@ class TestEngineSubmit:
             eng.stop()
 
     def test_validate_returns_dict(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         eng = _make_engine()
@@ -1547,7 +1547,7 @@ class TestEngineSubmit:
 
 class TestConcurrency:
     def test_concurrent_submits(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
 
@@ -1584,23 +1584,23 @@ class TestConcurrency:
 
 class TestPublicSurface:
     def test_engine_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationEngine
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationEngine
         assert SupervisorIntegrationEngine is not None
 
     def test_request_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationRequest
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationRequest
         assert SupervisorIntegrationRequest is not None
 
     def test_response_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationResponse
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationResponse
         assert SupervisorIntegrationResponse is not None
 
     def test_context_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationContext
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationContext
         assert SupervisorIntegrationContext is not None
 
     def test_exceptions_exported(self) -> None:
-        from iios.supervisor.integration import (
+        from enterprise_ai_platform.supervisor.integration import (
             SupervisorIntegrationError,
             SupervisorIntegrationNotRunningError,
             SupervisorIntegrationValidationError,
@@ -1608,34 +1608,34 @@ class TestPublicSurface:
         assert SupervisorIntegrationNotRunningError is not None
 
     def test_events_exported(self) -> None:
-        from iios.supervisor.integration import (
+        from enterprise_ai_platform.supervisor.integration import (
             SupervisorIntegrationEvent,
             make_integration_initialized_event,
         )
         assert make_integration_initialized_event is not None
 
     def test_statistics_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationStatistics
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationStatistics
         assert SupervisorIntegrationStatistics is not None
 
     def test_history_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationHistory
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationHistory
         assert SupervisorIntegrationHistory is not None
 
     def test_component_factory_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorComponentFactory
+        from enterprise_ai_platform.supervisor.integration import SupervisorComponentFactory
         assert SupervisorComponentFactory is not None
 
     def test_snapshot_wrapper_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationSnapshot
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationSnapshot
         assert SupervisorIntegrationSnapshot is not None
 
     def test_validator_exported(self) -> None:
-        from iios.supervisor.integration import SupervisorIntegrationValidator
+        from enterprise_ai_platform.supervisor.integration import SupervisorIntegrationValidator
         assert SupervisorIntegrationValidator is not None
 
     def test_all_is_complete(self) -> None:
-        import iios.supervisor.integration as m6
+        import enterprise_ai_platform.supervisor.integration as m6
         for name in m6.__all__:
             assert hasattr(m6, name), f"Missing from module: {name}"
 
@@ -1647,7 +1647,7 @@ class TestPublicSurface:
 
 class TestEndToEnd:
     def test_full_integration_cycle(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         eng = _make_engine()
@@ -1669,7 +1669,7 @@ class TestEndToEnd:
             eng.stop()
 
     def test_listener_receives_events(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         events_received = []
@@ -1685,7 +1685,7 @@ class TestEndToEnd:
         assert len(events_received) > 0
 
     def test_statistics_accumulate_over_requests(self) -> None:
-        from iios.supervisor.integration.supervisor_integration_request import (
+        from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
             SupervisorIntegrationRequest,
         )
         eng = _make_engine()
@@ -1717,7 +1717,7 @@ class TestEndToEnd:
         eng.start()
         try:
             initial = len(events)
-            from iios.supervisor.integration.supervisor_integration_request import (
+            from enterprise_ai_platform.supervisor.integration.supervisor_integration_request import (
                 SupervisorIntegrationRequest,
             )
             eng.submit(SupervisorIntegrationRequest.create("int-listen"))

@@ -11,13 +11,13 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.common.logging.performance_logger import (
+from enterprise_ai_platform.common.logging.performance_logger import (
     PerformanceLogger,
     PerformanceRecord,
     _Timer,
     get_performance_logger,
 )
-from iios.common.logging.structured_logger import JsonFormatter
+from enterprise_ai_platform.common.logging.structured_logger import JsonFormatter
 
 
 def _attach_capture(perf: PerformanceLogger) -> io.StringIO:

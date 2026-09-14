@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
-from iios.investment.market.liquidity.imbalance_detector import ImbalanceDetector
-from iios.investment.market.liquidity.flow_statistics import FlowStatistics
-from iios.investment.market.liquidity.order_flow_engine import OrderFlowEngine
+from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+from enterprise_ai_platform.investment.market.liquidity.imbalance_detector import ImbalanceDetector
+from enterprise_ai_platform.investment.market.liquidity.flow_statistics import FlowStatistics
+from enterprise_ai_platform.investment.market.liquidity.order_flow_engine import OrderFlowEngine
 
 from tests.unit.investment.market.liquidity.conftest import make_volume_bar
 
@@ -52,7 +52,7 @@ class TestImbalanceDetector:
         detector = ImbalanceDetector(window=10)
         for i in range(5):
             vbar = make_volume_bar(index=i, close_position=0.7)
-            from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+            from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
             builder = OrderFlowSnapshotBuilder()
             snap = builder.build(vbar, 0.0, 1.5)
             detector.update(snap)
@@ -60,7 +60,7 @@ class TestImbalanceDetector:
         assert -1.0 <= imb <= 1.0
 
     def test_persistent_buy_pressure(self):
-        from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+        from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
         builder = OrderFlowSnapshotBuilder()
         detector = ImbalanceDetector(window=10)
         for i in range(5):
@@ -71,7 +71,7 @@ class TestImbalanceDetector:
         assert detector.has_persistent_buy_pressure(threshold=0.3) is True
 
     def test_persistent_sell_pressure(self):
-        from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+        from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
         builder = OrderFlowSnapshotBuilder()
         detector = ImbalanceDetector(window=10)
         for i in range(5):
@@ -88,7 +88,7 @@ class TestImbalanceDetector:
 class TestFlowStatistics:
     def test_record_increments_count(self):
         stats = FlowStatistics()
-        from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+        from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
         builder = OrderFlowSnapshotBuilder()
         for i in range(5):
             vbar = make_volume_bar(index=i)
@@ -105,7 +105,7 @@ class TestFlowStatistics:
 
     def test_reset(self):
         stats = FlowStatistics()
-        from iios.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
+        from enterprise_ai_platform.investment.market.liquidity.order_flow_snapshot import OrderFlowSnapshotBuilder
         builder = OrderFlowSnapshotBuilder()
         snap = builder.build(make_volume_bar(), 0.0, 1.0)
         stats.record(snap)

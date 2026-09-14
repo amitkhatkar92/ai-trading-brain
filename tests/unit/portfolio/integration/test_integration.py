@@ -36,7 +36,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.portfolio.integration import (
+from enterprise_ai_platform.portfolio.integration import (
     # constants
     INTEGRATION_SYSTEM_ID,
     VERSION,
@@ -123,7 +123,7 @@ def _make_minimal_registry() -> PortfolioComponentRegistry:
 
 def _make_snapshot_only_registry() -> PortfolioComponentRegistry:
     """Registry with only the snapshot component available."""
-    from iios.portfolio.snapshot import PortfolioSnapshotRegistry
+    from enterprise_ai_platform.portfolio.snapshot import PortfolioSnapshotRegistry
     reg = PortfolioComponentRegistry()
     reg.register_snapshot(PortfolioSnapshotRegistry(auto_validate=True))
     return reg
@@ -170,7 +170,7 @@ def registry() -> PortfolioIntegrationRegistry:
 
 class TestConstants:
     def test_system_id_starts_with_iios(self):
-        assert INTEGRATION_SYSTEM_ID.startswith("iios:")
+        assert INTEGRATION_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -217,7 +217,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(PortfolioIntegrationError, IIOSError)
 
     def test_all_are_subclasses(self):
@@ -726,7 +726,7 @@ class TestIntegrationHealth:
         assert cs.health == IntegrationHealth.UNKNOWN.value
 
     def test_check_snapshot_healthy_when_available(self):
-        from iios.portfolio.snapshot import PortfolioSnapshotRegistry
+        from enterprise_ai_platform.portfolio.snapshot import PortfolioSnapshotRegistry
         health = PortfolioIntegrationHealth()
         reg    = PortfolioComponentRegistry()
         reg.register_snapshot(PortfolioSnapshotRegistry())
@@ -935,27 +935,27 @@ class TestPortfolioComponentRegistry:
 
 class TestPortfolioComponentFactory:
     def test_create_lifecycle(self):
-        from iios.portfolio.lifecycle import PortfolioLifecycle
+        from enterprise_ai_platform.portfolio.lifecycle import PortfolioLifecycle
         lc = PortfolioComponentFactory.create_lifecycle()
         assert isinstance(lc, PortfolioLifecycle)
 
     def test_create_engine(self):
-        from iios.portfolio.engine import PortfolioEngine
+        from enterprise_ai_platform.portfolio.engine import PortfolioEngine
         eng = PortfolioComponentFactory.create_engine()
         assert isinstance(eng, PortfolioEngine)
 
     def test_create_policy(self):
-        from iios.portfolio.policies import PortfolioPolicyEngine
+        from enterprise_ai_platform.portfolio.policies import PortfolioPolicyEngine
         pol = PortfolioComponentFactory.create_policy()
         assert isinstance(pol, PortfolioPolicyEngine)
 
     def test_create_optimization(self):
-        from iios.portfolio.optimization import PortfolioOptimizationEngine
+        from enterprise_ai_platform.portfolio.optimization import PortfolioOptimizationEngine
         opt = PortfolioComponentFactory.create_optimization()
         assert isinstance(opt, PortfolioOptimizationEngine)
 
     def test_create_snapshot_registry(self):
-        from iios.portfolio.snapshot import PortfolioSnapshotRegistry
+        from enterprise_ai_platform.portfolio.snapshot import PortfolioSnapshotRegistry
         snap = PortfolioComponentFactory.create_snapshot_registry()
         assert isinstance(snap, PortfolioSnapshotRegistry)
 
@@ -1047,7 +1047,7 @@ class TestPortfolioIntegrationRegistry:
 
 class TestPortfolioIntegrationManager:
     def _make_manager_with_snapshot_only(self):
-        from iios.portfolio.snapshot import PortfolioSnapshotRegistry
+        from enterprise_ai_platform.portfolio.snapshot import PortfolioSnapshotRegistry
         reg   = PortfolioComponentRegistry()
         reg.register_snapshot(PortfolioSnapshotRegistry(auto_validate=True))
         # Patch is_ready to True so subsystem readiness check passes

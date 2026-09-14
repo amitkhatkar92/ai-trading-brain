@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 
-from iios.investment.strategy.learning.learning_input import LearningObservation
+from enterprise_ai_platform.investment.strategy.learning.learning_input import LearningObservation
 
 
 def make_observation(

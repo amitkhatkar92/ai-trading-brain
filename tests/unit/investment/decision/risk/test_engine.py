@@ -9,13 +9,13 @@ import uuid
 
 import pytest
 
-from iios.investment.decision.risk.decision_risk_engine import DecisionRiskEngine
-from iios.investment.decision.risk.risk_constants import (
+from enterprise_ai_platform.investment.decision.risk.decision_risk_engine import DecisionRiskEngine
+from enterprise_ai_platform.investment.decision.risk.risk_constants import (
     RiskEngineStatus,
     RiskPolicyStatus,
 )
-from iios.investment.decision.risk.risk_pipeline import BaseRiskModule, RiskContext
-from iios.investment.decision.risk.risk_snapshot import RiskSnapshot
+from enterprise_ai_platform.investment.decision.risk.risk_pipeline import BaseRiskModule, RiskContext
+from enterprise_ai_platform.investment.decision.risk.risk_snapshot import RiskSnapshot
 
 
 # ─── Lifecycle ────────────────────────────────────────────────────────────────
@@ -212,7 +212,7 @@ class TestQueryAPI:
     def test_get_quality_returns_grade(
         self, rich_evidence_snapshot, rich_reasoning_snapshot, rich_confidence_snapshot,
     ):
-        from iios.investment.decision.risk.risk_constants import RiskQualityGrade
+        from enterprise_ai_platform.investment.decision.risk.risk_constants import RiskQualityGrade
         snap = self.engine.evaluate_sync(
             rich_evidence_snapshot, rich_reasoning_snapshot, rich_confidence_snapshot,
         )

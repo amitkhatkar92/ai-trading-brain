@@ -3,19 +3,19 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.classification_engine import ClassificationEngine
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.classification_engine import ClassificationEngine
+from enterprise_ai_platform.investment.market.opportunity.models import (
     AssetObservation,
     IntelligenceContext,
     OpportunityCategory,
 )
-from iios.investment.market.opportunity.opportunity_category import (
+from enterprise_ai_platform.investment.market.opportunity.opportunity_category import (
     BUILT_IN_RULES,
     CategoryRule,
     classify_context,
     matches_rule,
 )
-from iios.investment.market.opportunity.opportunity_classifier import classify_observation
+from enterprise_ai_platform.investment.market.opportunity.opportunity_classifier import classify_observation
 
 
 class TestMatchesRule:

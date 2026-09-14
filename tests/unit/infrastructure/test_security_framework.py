@@ -14,7 +14,7 @@ from typing import Any, Optional
 import pytest
 
 # ── Constants & Exceptions ────────────────────────────────────────────────────
-from iios.infrastructure.security import (
+from enterprise_ai_platform.infrastructure.security import (
     # constants
     PrincipalType, IdentityStatus, AuthMethod, AuthStatus,
     TokenType, TokenStatus, SessionStatus, CredentialType,
@@ -64,7 +64,7 @@ from iios.infrastructure.security import (
     InMemoryVaultProvider, EnvironmentVaultProvider,
     PolicyStatement,
 )
-from iios.infrastructure.security.security_models import AccessRequest
+from enterprise_ai_platform.infrastructure.security.security_models import AccessRequest
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +199,7 @@ class TestPrincipalAndIdentity:
         assert svc.has_role("service")
 
     def test_system_identity_has_all_roles(self) -> None:
-        from iios.infrastructure.security import get_system_identity
+        from enterprise_ai_platform.infrastructure.security import get_system_identity
         sys_id = get_system_identity()
         assert sys_id.has_role("super_admin")
         assert sys_id.has_role("anything")
@@ -332,7 +332,7 @@ class TestSessionManager:
     def test_session_expiry(self) -> None:
         sm = get_session_manager(ttl=1)  # 1-second TTL won't work with a singleton; skip
         # Use a fresh SessionManager directly
-        from iios.infrastructure.security.session_manager import SessionManager
+        from enterprise_ai_platform.infrastructure.security.session_manager import SessionManager
         sm2 = SessionManager(default_ttl=1)
         session = sm2.create("user:x")
         time.sleep(1.1)
@@ -360,7 +360,7 @@ class TestSessionManager:
         assert sm.get_data(session.session_id, "ip") == "127.0.0.1"
 
     def test_purge_expired(self) -> None:
-        from iios.infrastructure.security.session_manager import SessionManager
+        from enterprise_ai_platform.infrastructure.security.session_manager import SessionManager
         sm2 = SessionManager(default_ttl=1)
         sm2.create("user:x")
         time.sleep(1.1)
@@ -375,7 +375,7 @@ class TestSessionManager:
 
 def get_session_manager(ttl: Optional[int] = None):
     """Wrapper that returns existing singleton (ttl param ignored for singleton)."""
-    from iios.infrastructure.security.session_manager import get_session_manager as _get
+    from enterprise_ai_platform.infrastructure.security.session_manager import get_session_manager as _get
     return _get()
 
 
@@ -401,13 +401,13 @@ class TestTokenManager:
         assert rec is None or rec.principal_id == "user:bob"
 
     def test_validate_invalid_raises(self) -> None:
-        from iios.infrastructure.security import TokenError
+        from enterprise_ai_platform.infrastructure.security import TokenError
         tm = get_token_manager()
         with pytest.raises(Exception):
             tm.validate_raw("not.a.valid.token")
 
     def test_revoke(self) -> None:
-        from iios.infrastructure.security import TokenError
+        from enterprise_ai_platform.infrastructure.security import TokenError
         tm = get_token_manager()
         token_str = tm.issue("user:carol")
         claims = tm.validate_raw(token_str)
@@ -425,7 +425,7 @@ class TestTokenManager:
         assert count >= 2
 
     def test_expired_token_raises(self) -> None:
-        from iios.infrastructure.security.token_manager_new import SecurityTokenManager
+        from enterprise_ai_platform.infrastructure.security.token_manager_new import SecurityTokenManager
         tm2 = SecurityTokenManager(default_ttl=1)
         token_str = tm2.issue("user:expiry")
         time.sleep(1.1)
@@ -439,7 +439,7 @@ class TestTokenManager:
         assert "trade:read" in claims.get("scopes", [])
 
     def test_purge_expired(self) -> None:
-        from iios.infrastructure.security.token_manager_new import SecurityTokenManager
+        from enterprise_ai_platform.infrastructure.security.token_manager_new import SecurityTokenManager
         tm2 = SecurityTokenManager(default_ttl=1)
         tm2.issue("user:x")
         time.sleep(1.1)
@@ -523,7 +523,7 @@ class TestPermissionManager:
 
     def test_register_and_get(self) -> None:
         pm = get_permission_manager()
-        from iios.infrastructure.security.security_models import PermissionRecord
+        from enterprise_ai_platform.infrastructure.security.security_models import PermissionRecord
         rec = PermissionRecord(name="custom:action", description="A custom permission")
         pm.register(rec)
         assert pm.has("custom:action")
@@ -618,7 +618,7 @@ class TestPolicyManager:
 
     def test_register_and_get_policy(self) -> None:
         pm = get_policy_manager()
-        from iios.infrastructure.security.security_models import PolicyRecord
+        from enterprise_ai_platform.infrastructure.security.security_models import PolicyRecord
         policy = PolicyRecord(
             name="test_policy",
             statements=[
@@ -635,7 +635,7 @@ class TestPolicyManager:
 
     def test_attach_and_evaluate_allow(self) -> None:
         pm = get_policy_manager()
-        from iios.infrastructure.security.security_models import PolicyRecord
+        from enterprise_ai_platform.infrastructure.security.security_models import PolicyRecord
         policy = PolicyRecord(
             name="allow_trade",
             statements=[
@@ -654,7 +654,7 @@ class TestPolicyManager:
 
     def test_deny_overrides_allow(self) -> None:
         pm = get_policy_manager()
-        from iios.infrastructure.security.security_models import PolicyRecord
+        from enterprise_ai_platform.infrastructure.security.security_models import PolicyRecord
         allow_pol = PolicyRecord(
             name="allow_all",
             statements=[PolicyStatement(effect=PolicyEffect.ALLOW, actions=["*"], resources=["*"])],
@@ -684,7 +684,7 @@ class TestPolicyManager:
 
     def test_detach_policy(self) -> None:
         pm = get_policy_manager()
-        from iios.infrastructure.security.security_models import PolicyRecord
+        from enterprise_ai_platform.infrastructure.security.security_models import PolicyRecord
         pol = PolicyRecord(
             name="detach_test",
             statements=[PolicyStatement(effect=PolicyEffect.ALLOW, actions=["*"], resources=["*"])],
@@ -709,7 +709,7 @@ class TestAccessController:
         assert result.decision == AccessDecision.PERMIT
 
     def test_deny_by_default(self) -> None:
-        from iios.infrastructure.security.access_controller import AccessController
+        from enterprise_ai_platform.infrastructure.security.access_controller import AccessController
         ac = AccessController(deny_by_default=True)
         result = ac.check("user:nobody", "trade:execute", "NIFTY")
         assert result.decision == AccessDecision.DENY
@@ -717,7 +717,7 @@ class TestAccessController:
     def test_permit_by_default(self) -> None:
         # AccessController returns DENY when principal is not found, regardless of default.
         # Create a real principal so RBAC check completes, then verify permit-by-default.
-        from iios.infrastructure.security.access_controller import AccessController
+        from enterprise_ai_platform.infrastructure.security.access_controller import AccessController
         im = get_identity_manager()
         user = im.create_user("permit_default_user")
         ac = AccessController(deny_by_default=False)
@@ -999,7 +999,7 @@ class TestCertificateManager:
     def test_generate_self_signed(self) -> None:
         cm = get_certificate_manager()
         cert_id, cert_pem, key_pem = cm.generate_self_signed(
-            "test_cert", common_name="iios.test.local", valid_days=1
+            "test_cert", common_name="enterprise_ai_platform.test.local", valid_days=1
         )
         assert cert_id
         assert b"CERTIFICATE" in cert_pem or len(cert_pem) > 0
@@ -1012,8 +1012,8 @@ class TestCertificateManager:
     def test_expired_cert_raises(self) -> None:
         cm = get_certificate_manager()
         import datetime
-        from iios.infrastructure.security.security_models import CertificateRecord
-        from iios.infrastructure.security.security_constants import CertificateType
+        from enterprise_ai_platform.infrastructure.security.security_models import CertificateRecord
+        from enterprise_ai_platform.infrastructure.security.security_constants import CertificateType
         now = datetime.datetime.now(datetime.UTC)
         past = now - datetime.timedelta(days=1)
         past_ts = past.timestamp()
@@ -1058,19 +1058,19 @@ class TestSecretStore:
         reset_crypto_provider()
 
     def _make_record(self, path: str) -> "SecretRecord":
-        from iios.infrastructure.security.security_models import SecretRecord
-        from iios.infrastructure.security.security_constants import SecretType
+        from enterprise_ai_platform.infrastructure.security.security_models import SecretRecord
+        from enterprise_ai_platform.infrastructure.security.security_constants import SecretType
         return SecretRecord(path=path, secret_type=SecretType.GENERIC)
 
     def test_put_and_get(self) -> None:
-        from iios.infrastructure.security.secret_store import SecretStore
+        from enterprise_ai_platform.infrastructure.security.secret_store import SecretStore
         store = SecretStore()
         rec = self._make_record("my/secret")
         store.put("my/secret", b"super_secret_value", rec)
         assert store.get_plaintext("my/secret") == b"super_secret_value"
 
     def test_versioned_secrets(self) -> None:
-        from iios.infrastructure.security.secret_store import SecretStore
+        from enterprise_ai_platform.infrastructure.security.secret_store import SecretStore
         store = SecretStore()
         rec1 = self._make_record("versioned/key")
         rec2 = self._make_record("versioned/key")
@@ -1080,7 +1080,7 @@ class TestSecretStore:
         assert store.version_count("versioned/key") == 2
 
     def test_delete(self) -> None:
-        from iios.infrastructure.security.secret_store import SecretStore
+        from enterprise_ai_platform.infrastructure.security.secret_store import SecretStore
         store = SecretStore()
         rec = self._make_record("to/delete")
         store.put("to/delete", b"bye", rec)
@@ -1089,7 +1089,7 @@ class TestSecretStore:
             store.get_plaintext("to/delete")
 
     def test_list_paths(self) -> None:
-        from iios.infrastructure.security.secret_store import SecretStore
+        from enterprise_ai_platform.infrastructure.security.secret_store import SecretStore
         store = SecretStore()
         store.put("broker/dhan/key", b"abc", self._make_record("broker/dhan/key"))
         store.put("broker/zerodha/key", b"xyz", self._make_record("broker/zerodha/key"))
@@ -1097,7 +1097,7 @@ class TestSecretStore:
         assert "broker/dhan/key" in paths
 
     def test_not_found_raises(self) -> None:
-        from iios.infrastructure.security.secret_store import SecretStore
+        from enterprise_ai_platform.infrastructure.security.secret_store import SecretStore
         store = SecretStore()
         with pytest.raises(SecretNotFoundError):
             store.get_plaintext("nonexistent")
@@ -1130,7 +1130,7 @@ class TestVaultProvider:
     def test_env_vault_read(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("IIOS_BROKER_DHAN_API_KEY", "test_env_key")
         v = EnvironmentVaultProvider()
-        val = v.read("iios/broker/dhan/api_key")
+        val = v.read("enterprise_ai_platform/broker/dhan/api_key")
         assert val == b"test_env_key"
 
     def test_env_vault_nonexistent_returns_none(self) -> None:
@@ -1311,7 +1311,7 @@ class TestAuditRecorder:
         ar.remove_listener(received.append)
 
     def test_bounded_buffer(self) -> None:
-        from iios.infrastructure.security.audit_recorder import AuditRecorder
+        from enterprise_ai_platform.infrastructure.security.audit_recorder import AuditRecorder
         small = AuditRecorder(max_size=3)
         for i in range(5):
             small.record(AuditEventType.ACCESS_GRANTED)
@@ -1350,7 +1350,7 @@ class TestAuditManager:
 
     def test_key_rotated(self) -> None:
         am = get_audit_manager()
-        rec = am.key_rotated("iios:system", "iios_default")
+        rec = am.key_rotated("enterprise_ai_platform:system", "iios_default")
         assert rec.event_type == AuditEventType.KEY_ROTATED
 
     def test_tamper_detected(self) -> None:
@@ -1502,7 +1502,7 @@ class TestSecurityRegistry:
         assert "audit_manager" in names
 
     def test_resolve_typed(self) -> None:
-        from iios.infrastructure.security import IdentityManager
+        from enterprise_ai_platform.infrastructure.security import IdentityManager
         reg = get_security_registry()
         im = reg.resolve_typed("identity_manager", IdentityManager)
         assert isinstance(im, IdentityManager)

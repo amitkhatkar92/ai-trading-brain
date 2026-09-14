@@ -5,13 +5,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     CommitteePosition,
     SessionState,
 )
-from iios.investment.decision.committee.committee_report import CommitteeReport
-from iios.investment.decision.committee.committee_session import CommitteeSession
-from iios.investment.decision.committee.member_registry import MemberRegistry
+from enterprise_ai_platform.investment.decision.committee.committee_report import CommitteeReport
+from enterprise_ai_platform.investment.decision.committee.committee_session import CommitteeSession
+from enterprise_ai_platform.investment.decision.committee.member_registry import MemberRegistry
 
 
 class TestCommitteeSessionFullCycle:
@@ -64,7 +64,7 @@ class TestCommitteeSessionFullCycle:
         assert len(report.opinions) > 0
 
     def test_committee_grade_assigned(self, rich_context):
-        from iios.investment.decision.committee.committee_constants import CommitteeGrade
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import CommitteeGrade
         session = CommitteeSession(rich_context.decision_id, rich_context)
         report  = session.run()
         assert report.committee_grade in list(CommitteeGrade)
@@ -106,7 +106,7 @@ class TestCommitteeSessionNoQuorum:
         for _ in range(4):
             registry.add_member(
                 __import__(
-                    "iios.investment.decision.committee.committee_constants",
+                    "enterprise_ai_platform.investment.decision.committee.committee_constants",
                     fromlist=["SpecialistType"],
                 ).SpecialistType.MARKET_INTELLIGENCE,
             )
@@ -115,7 +115,7 @@ class TestCommitteeSessionNoQuorum:
         assert report.position == CommitteePosition.INSUFFICIENT_EVIDENCE
 
     def test_quorum_met_proceeds(self, rich_context):
-        from iios.investment.decision.committee.committee_constants import SpecialistType
+        from enterprise_ai_platform.investment.decision.committee.committee_constants import SpecialistType
         registry = MemberRegistry()
         for t in [
             SpecialistType.RISK_INTELLIGENCE,

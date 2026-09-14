@@ -30,10 +30,10 @@ from unittest.mock import patch
 
 import pytest
 
-from iios.common.logging.audit_logger import AuditLogger, AuditEventType, get_audit_logger
-from iios.common.logging.logging_context import LoggingContext
-from iios.common.logging.logging_manager import LoggingManager, get_logger
-from iios.common.logging.structured_logger import JsonFormatter, StructuredLogger
+from enterprise_ai_platform.common.logging.audit_logger import AuditLogger, AuditEventType, get_audit_logger
+from enterprise_ai_platform.common.logging.logging_context import LoggingContext
+from enterprise_ai_platform.common.logging.logging_manager import LoggingManager, get_logger
+from enterprise_ai_platform.common.logging.structured_logger import JsonFormatter, StructuredLogger
 
 
 # ---------------------------------------------------------------------------
@@ -43,19 +43,19 @@ from iios.common.logging.structured_logger import JsonFormatter, StructuredLogge
 _WORKSPACE = pathlib.Path(__file__).parent.parent.parent.parent.parent
 
 _ENGINE_FILES = {
-    "C1": _WORKSPACE / "iios/investment/market/integration/market_intelligence_integration_engine.py",
-    "C2": _WORKSPACE / "iios/investment/company/integration/company_intelligence_integration_engine.py",
-    "C3": _WORKSPACE / "iios/investment/strategy/integration/strategy_intelligence_integration_engine.py",
-    "C4": _WORKSPACE / "iios/investment/decision/integration/decision_intelligence_integration_engine.py",
-    "C5": _WORKSPACE / "iios/investment/portfolio/integration/portfolio_intelligence_integration_engine.py",
+    "C1": _WORKSPACE / "enterprise_ai_platform/investment/market/integration/market_intelligence_integration_engine.py",
+    "C2": _WORKSPACE / "enterprise_ai_platform/investment/company/integration/company_intelligence_integration_engine.py",
+    "C3": _WORKSPACE / "enterprise_ai_platform/investment/strategy/integration/strategy_intelligence_integration_engine.py",
+    "C4": _WORKSPACE / "enterprise_ai_platform/investment/decision/integration/decision_intelligence_integration_engine.py",
+    "C5": _WORKSPACE / "enterprise_ai_platform/investment/portfolio/integration/portfolio_intelligence_integration_engine.py",
 }
 
 _ENGINE_IDS = {
-    "C1": "iios:market:intelligence:integration",
-    "C2": "iios:company:intelligence:integration",
-    "C3": "iios:strategy:intelligence:integration",
-    "C4": "iios:decision:intelligence:integration",
-    "C5": "iios:portfolio:intelligence:integration",
+    "C1": "enterprise_ai_platform:market:intelligence:integration",
+    "C2": "enterprise_ai_platform:company:intelligence:integration",
+    "C3": "enterprise_ai_platform:strategy:intelligence:integration",
+    "C4": "enterprise_ai_platform:decision:intelligence:integration",
+    "C5": "enterprise_ai_platform:portfolio:intelligence:integration",
 }
 
 
@@ -95,63 +95,63 @@ class TestTD002Part1LoggerInit:
     """Every C1–C5 engine exposes a StructuredLogger and an AuditLogger."""
 
     def test_c1_module_logger_is_structured(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         assert isinstance(m._log, StructuredLogger)
 
     def test_c1_module_audit_is_audit_logger(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         assert isinstance(m._audit, AuditLogger)
 
     def test_c1_logger_engine_id(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         assert m._log.engine_id == _ENGINE_IDS["C1"]
 
     def test_c2_module_logger_is_structured(self):
-        import iios.investment.company.integration.company_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine as m
         assert isinstance(m._log, StructuredLogger)
 
     def test_c2_module_audit_is_audit_logger(self):
-        import iios.investment.company.integration.company_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine as m
         assert isinstance(m._audit, AuditLogger)
 
     def test_c2_logger_engine_id(self):
-        import iios.investment.company.integration.company_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine as m
         assert m._log.engine_id == _ENGINE_IDS["C2"]
 
     def test_c3_module_logger_is_structured(self):
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         assert isinstance(m._log, StructuredLogger)
 
     def test_c3_module_audit_is_audit_logger(self):
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         assert isinstance(m._audit, AuditLogger)
 
     def test_c3_logger_engine_id(self):
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         assert m._log.engine_id == _ENGINE_IDS["C3"]
 
     def test_c4_module_logger_is_structured(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         assert isinstance(m._log, StructuredLogger)
 
     def test_c4_module_audit_is_audit_logger(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         assert isinstance(m._audit, AuditLogger)
 
     def test_c4_logger_engine_id(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         assert m._log.engine_id == _ENGINE_IDS["C4"]
 
     def test_c5_module_logger_is_structured(self):
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         assert isinstance(m._log, StructuredLogger)
 
     def test_c5_module_audit_is_audit_logger(self):
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         assert isinstance(m._audit, AuditLogger)
 
     def test_c5_logger_engine_id(self):
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         assert m._log.engine_id == _ENGINE_IDS["C5"]
 
 
@@ -250,7 +250,7 @@ class TestTD002Part3StructuredOutput:
         return {"ts", "level", "logger", "msg", "engine_id"}
 
     def test_c1_logger_emits_engine_id(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("test structured output")
         records = _parse(buf)
@@ -258,7 +258,7 @@ class TestTD002Part3StructuredOutput:
         assert records[0]["engine_id"] == _ENGINE_IDS["C1"]
 
     def test_c1_record_has_required_fields(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("schema check")
         records = _parse(buf)
@@ -267,7 +267,7 @@ class TestTD002Part3StructuredOutput:
             assert field in records[0], f"C1 record missing field: {field}"
 
     def test_c2_logger_emits_engine_id(self):
-        import iios.investment.company.integration.company_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("test structured output")
         records = _parse(buf)
@@ -275,7 +275,7 @@ class TestTD002Part3StructuredOutput:
         assert records[0]["engine_id"] == _ENGINE_IDS["C2"]
 
     def test_c3_logger_emits_engine_id(self):
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("test structured output")
         records = _parse(buf)
@@ -283,7 +283,7 @@ class TestTD002Part3StructuredOutput:
         assert records[0]["engine_id"] == _ENGINE_IDS["C3"]
 
     def test_c4_logger_emits_engine_id(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("test structured output")
         records = _parse(buf)
@@ -291,7 +291,7 @@ class TestTD002Part3StructuredOutput:
         assert records[0]["engine_id"] == _ENGINE_IDS["C4"]
 
     def test_c5_logger_emits_engine_id(self):
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("test structured output")
         records = _parse(buf)
@@ -299,7 +299,7 @@ class TestTD002Part3StructuredOutput:
         assert records[0]["engine_id"] == _ENGINE_IDS["C5"]
 
     def test_record_has_iso_timestamp(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("ts check")
         records = _parse(buf)
@@ -309,7 +309,7 @@ class TestTD002Part3StructuredOutput:
         assert ts.endswith("+00:00") or "Z" in ts or "+0" in ts or "UTC" in ts or ts.endswith("00:00")
 
     def test_exception_record_includes_exc_field(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         try:
             raise RuntimeError("boom")
@@ -321,7 +321,7 @@ class TestTD002Part3StructuredOutput:
         assert "exc" in records[0] or "RuntimeError" in str(records[0])
 
     def test_context_dict_appears_in_record(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         m._log.info("ctx test", context={"decision_id": "DEC-999"})
         records = _parse(buf)
@@ -338,7 +338,7 @@ class TestTD002Part4ContextPropagation:
     """LoggingContext fields automatically appear in structured output."""
 
     def test_workflow_id_propagates(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         LoggingContext.set_workflow_id("WF-C1-001")
         m._log.info("context propagation test")
@@ -347,7 +347,7 @@ class TestTD002Part4ContextPropagation:
         assert records[0].get("workflow_id") == "WF-C1-001"
 
     def test_correlation_id_propagates(self):
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         LoggingContext.set_correlation_id("CORR-C3-abc")
         m._log.info("corr propagation")
@@ -356,7 +356,7 @@ class TestTD002Part4ContextPropagation:
         assert records[0].get("correlation_id") == "CORR-C3-abc"
 
     def test_multiple_context_fields(self):
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         with LoggingContext(
             workflow_id    = "WF-C4-001",
@@ -372,7 +372,7 @@ class TestTD002Part4ContextPropagation:
         assert r.get("request_id")     == "REQ-123"
 
     def test_context_resets_after_bind(self):
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         with LoggingContext(workflow_id="WF-TEMP").bind():
             m._log.info("inside bind")
@@ -385,7 +385,7 @@ class TestTD002Part4ContextPropagation:
         )
 
     def test_context_propagates_across_threads(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         results: list[dict] = []
 
@@ -420,10 +420,10 @@ class TestTD002Part5LifecycleAudit:
         return buf
 
     def test_c1_on_start_emits_audit(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = MarketIntelligenceIntegrationEngine()
         engine.start()   # triggers _on_start → _audit.log_lifecycle_event
@@ -434,10 +434,10 @@ class TestTD002Part5LifecycleAudit:
         assert AuditEventType.LIFECYCLE_EVENT.value in event_types
 
     def test_c1_on_stop_emits_audit(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         engine = MarketIntelligenceIntegrationEngine()
         engine.start()
         buf = self._attach_audit_capture(m._audit)
@@ -448,10 +448,10 @@ class TestTD002Part5LifecycleAudit:
         assert AuditEventType.LIFECYCLE_EVENT.value in event_types
 
     def test_c2_on_start_emits_audit(self):
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
-        import iios.investment.company.integration.company_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = CompanyIntelligenceIntegrationEngine()
         engine.start()
@@ -460,10 +460,10 @@ class TestTD002Part5LifecycleAudit:
         assert records, "C2: no audit records emitted on start"
 
     def test_c3_on_start_emits_audit_with_health_monitor_context(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = StrategyIntelligenceIntegrationEngine()
         engine.start()
@@ -477,10 +477,10 @@ class TestTD002Part5LifecycleAudit:
         )
 
     def test_c4_on_start_emits_audit(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = DecisionIntelligenceIntegrationEngine()
         engine.start()
@@ -489,10 +489,10 @@ class TestTD002Part5LifecycleAudit:
         assert records, "C4: no audit records emitted"
 
     def test_c5_on_start_emits_audit(self):
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = PortfolioIntelligenceIntegrationEngine()
         engine.start()
@@ -501,10 +501,10 @@ class TestTD002Part5LifecycleAudit:
         assert records, "C5: no audit records emitted"
 
     def test_lifecycle_audit_record_has_from_state_to_state(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
         buf = self._attach_audit_capture(m._audit)
         engine = DecisionIntelligenceIntegrationEngine()
         engine.start()
@@ -531,10 +531,10 @@ class TestTD002Part6ExceptionLogging:
     """Exceptions in integrate/integrate_sync are logged before re-raise."""
 
     def test_c4_integrate_sync_logs_exception_on_failure(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        import iios.investment.decision.integration.decision_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine as m
 
         engine = DecisionIntelligenceIntegrationEngine()
         engine.start()
@@ -560,10 +560,10 @@ class TestTD002Part6ExceptionLogging:
         assert ctx.get("decision_id") == "DEC-FAIL-001"
 
     def test_c5_integrate_logs_exception_on_failure(self):
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
-        import iios.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine as m
 
         engine = PortfolioIntelligenceIntegrationEngine()
         engine.start()
@@ -597,7 +597,7 @@ class TestTD002Part7ThreadSafety:
     """Concurrent log calls from multiple threads do not corrupt state."""
 
     def test_c1_concurrent_log_calls(self):
-        import iios.investment.market.integration.market_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine as m
         buf = _capture_on(m._log)
         errors: list[Exception] = []
 
@@ -618,7 +618,7 @@ class TestTD002Part7ThreadSafety:
         assert len(records) == 50, f"Expected 50 records, got {len(records)}"
 
     def test_c4_concurrent_lifecycle_start_stop(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         # Verify multiple independent engine instances can start/stop concurrently
@@ -641,10 +641,10 @@ class TestTD002Part7ThreadSafety:
         assert not errors, f"C4 concurrent start/stop raised: {errors[:3]}"
 
     def test_c3_concurrent_log_under_daemon_thread(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as m
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as m
 
         engine = StrategyIntelligenceIntegrationEngine()
         engine.start()
@@ -675,10 +675,10 @@ class TestTD002Part8Regression:
     """Engine public APIs continue to work correctly after logging migration."""
 
     def test_c1_update_still_works(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        from iios.investment.market.integration.models import IntelligenceBundle
+        from enterprise_ai_platform.investment.market.integration.models import IntelligenceBundle
         import time as _time
         engine = MarketIntelligenceIntegrationEngine()
         engine.start()
@@ -688,7 +688,7 @@ class TestTD002Part8Regression:
         engine.stop()
 
     def test_c2_integrate_still_works(self):
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         engine = CompanyIntelligenceIntegrationEngine()
@@ -699,7 +699,7 @@ class TestTD002Part8Regression:
         engine.stop()
 
     def test_c3_get_snapshot_sync_still_works(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         engine = StrategyIntelligenceIntegrationEngine()
@@ -709,7 +709,7 @@ class TestTD002Part8Regression:
         engine.stop()
 
     def test_c4_integrate_sync_still_works(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -720,7 +720,7 @@ class TestTD002Part8Regression:
         engine.stop()
 
     def test_c5_integrate_still_works(self):
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -731,10 +731,10 @@ class TestTD002Part8Regression:
 
     def test_c1_async_update_still_works(self):
         import asyncio as _asyncio
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        from iios.investment.market.integration.models import IntelligenceBundle
+        from enterprise_ai_platform.investment.market.integration.models import IntelligenceBundle
         import time as _time
         engine = MarketIntelligenceIntegrationEngine()
         engine.start()

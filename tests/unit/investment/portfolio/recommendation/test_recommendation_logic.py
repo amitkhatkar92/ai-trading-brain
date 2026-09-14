@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.recommendation_logic import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_logic import (
     RecommendationLogic,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     RecommendationAction,
 )
 

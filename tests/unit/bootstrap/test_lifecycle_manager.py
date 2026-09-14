@@ -9,9 +9,9 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.bootstrap.lifecycle_manager import LifecycleError, LifecycleManager
-from iios.bootstrap.startup_state import SystemPhase
-from iios.bootstrap.system_state import SystemState, get_system_state
+from enterprise_ai_platform.bootstrap.lifecycle_manager import LifecycleError, LifecycleManager
+from enterprise_ai_platform.bootstrap.startup_state import SystemPhase
+from enterprise_ai_platform.bootstrap.system_state import SystemState, get_system_state
 
 
 @pytest.fixture(autouse=True)

@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.regime.models import RegimeType
-from iios.investment.market.regime.strategy_permissions import REGIME_PERMISSIONS, StrategyType
-from iios.investment.market.regime.regime_constraints import (
+from enterprise_ai_platform.investment.market.regime.models import RegimeType
+from enterprise_ai_platform.investment.market.regime.strategy_permissions import REGIME_PERMISSIONS, StrategyType
+from enterprise_ai_platform.investment.market.regime.regime_constraints import (
     REGIME_CONSTRAINTS,
     RegimeConstraintEngine,
 )
-from iios.investment.market.regime.strategy_regime_mapper import StrategyRegimeMapper
+from enterprise_ai_platform.investment.market.regime.strategy_regime_mapper import StrategyRegimeMapper
 
 
 @pytest.fixture

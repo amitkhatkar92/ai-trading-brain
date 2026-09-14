@@ -6,10 +6,10 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     DecisionEventType,
 )
-from iios.investment.decision.core.decision_events import (
+from enterprise_ai_platform.investment.decision.core.decision_events import (
     DecisionEvent,
     EventDispatcher,
     EventHistory,

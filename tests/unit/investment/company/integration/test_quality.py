@@ -5,20 +5,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.integration.company_confidence import (
+from enterprise_ai_platform.investment.company.integration.company_confidence import (
     compute_confidence, explain_confidence,
 )
-from iios.investment.company.integration.company_quality import (
+from enterprise_ai_platform.investment.company.integration.company_quality import (
     CompanyQualityScore, compute_company_quality,
 )
-from iios.investment.company.integration.quality_history import (
+from enterprise_ai_platform.investment.company.integration.quality_history import (
     QualityHistory, QualityRecord,
 )
-from iios.investment.company.integration.quality_statistics import (
+from enterprise_ai_platform.investment.company.integration.quality_statistics import (
     confidence_from_quality, coverage_score, freshness_from_ages,
     overall_quality, quality_grade, reliability_from_conflicts, score_volatility,
 )
-from iios.investment.company.integration.company_state import SCORED_ENGINES
+from enterprise_ai_platform.investment.company.integration.company_state import SCORED_ENGINES
 
 
 # ── quality_statistics ────────────────────────────────────────────────────────

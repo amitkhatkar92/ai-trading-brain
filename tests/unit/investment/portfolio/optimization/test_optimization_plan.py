@@ -1,14 +1,14 @@
 """test_optimization_plan.py — Tests for OptimizationPlan and related dataclasses."""
 import pytest
 
-from iios.investment.portfolio.optimization.optimization_plan import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_plan import (
     OptimizationObjective,
     OptimizationPlan,
     OptimizationRequest,
     OptimizationResult,
     OptimizedPosition,
 )
-from iios.investment.portfolio.optimization.optimization_types import (
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import (
     ConvergenceStatus,
     ObjectiveType,
     OptimizationMethod,

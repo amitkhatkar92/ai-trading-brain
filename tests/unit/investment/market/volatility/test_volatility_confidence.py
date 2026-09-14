@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.volatility.confidence_score import compute_confidence
-from iios.investment.market.volatility.volatility_confidence import VolatilityConfidenceCalculator
-from iios.investment.market.volatility.models import (
+from enterprise_ai_platform.investment.market.volatility.confidence_score import compute_confidence
+from enterprise_ai_platform.investment.market.volatility.volatility_confidence import VolatilityConfidenceCalculator
+from enterprise_ai_platform.investment.market.volatility.models import (
     VolatilityEstimate,
     VolatilityRegimeType,
     VolatilityTransitionType,

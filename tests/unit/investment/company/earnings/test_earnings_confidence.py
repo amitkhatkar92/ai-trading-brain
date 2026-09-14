@@ -1,11 +1,11 @@
 """tests/unit/investment/company/earnings/test_earnings_confidence.py"""
 import pytest
 
-from iios.investment.company.earnings.earnings_confidence import EarningsConfidenceAnalyzer
-from iios.investment.company.earnings.earnings_score import (
+from enterprise_ai_platform.investment.company.earnings.earnings_confidence import EarningsConfidenceAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_score import (
     EarningsIntelligenceScore, profitability_to_score, trend_to_score,
 )
-from iios.investment.company.earnings.earnings_quality import EarningsQualityAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_quality import EarningsQualityAnalyzer
 from tests.unit.investment.company.earnings.conftest import make_report
 
 

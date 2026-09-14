@@ -15,7 +15,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.supervisor.snapshot import (
+from enterprise_ai_platform.supervisor.snapshot import (
     # --- constants ---
     SUPERVISOR_SNAPSHOT_SYSTEM_ID,
     VERSION,
@@ -186,7 +186,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(SupervisorSnapshotError, IIOSError)
 
     def test_not_found_has_snapshot_id(self):
@@ -332,12 +332,12 @@ class TestSubsystemsSummary:
         assert len(SubsystemsSummary.unknown().all_items()) == 9
 
     def test_healthy_count(self):
-        from iios.supervisor.snapshot.supervisor_snapshot_factory import _uniform_subsystems
+        from enterprise_ai_platform.supervisor.snapshot.supervisor_snapshot_factory import _uniform_subsystems
         ss = _uniform_subsystems(SubsystemSummaryStatus.HEALTHY, 0.95)
         assert ss.healthy_count() == 9
 
     def test_critical_count(self):
-        from iios.supervisor.snapshot.supervisor_snapshot_factory import _uniform_subsystems
+        from enterprise_ai_platform.supervisor.snapshot.supervisor_snapshot_factory import _uniform_subsystems
         ss = _uniform_subsystems(SubsystemSummaryStatus.CRITICAL, 0.1)
         assert ss.critical_count() == 9
 
@@ -748,7 +748,7 @@ class TestFactory:
 
     def test_create_from_governance_summary_healthy(self):
         # Use M4 factory to get a real summary, then convert
-        from iios.supervisor.governance import AutonomousGovernanceFactory, AutonomousGovernanceEngine
+        from enterprise_ai_platform.supervisor.governance import AutonomousGovernanceFactory, AutonomousGovernanceEngine
         m4_factory = AutonomousGovernanceFactory()
         engine     = AutonomousGovernanceEngine()
         engine.start()
@@ -761,7 +761,7 @@ class TestFactory:
         assert snap.governance_decision in ("continue", "defer", "investigate", "escalate", "halt")
 
     def test_create_from_governance_summary_emergency(self):
-        from iios.supervisor.governance import AutonomousGovernanceFactory, AutonomousGovernanceEngine
+        from enterprise_ai_platform.supervisor.governance import AutonomousGovernanceFactory, AutonomousGovernanceEngine
         m4_factory = AutonomousGovernanceFactory()
         engine     = AutonomousGovernanceEngine()
         engine.start()
@@ -1298,16 +1298,16 @@ class TestBundle:
 
 class TestPublicSurface:
     def test_all_exports_present(self):
-        import iios.supervisor.snapshot as module
+        import enterprise_ai_platform.supervisor.snapshot as module
         for name in module.__all__:
             assert hasattr(module, name), f"Missing export: {name}"
 
     def test_snapshot_in_all(self):
-        import iios.supervisor.snapshot as m
+        import enterprise_ai_platform.supervisor.snapshot as m
         assert "SupervisorSnapshot" in m.__all__
 
     def test_factory_in_all(self):
-        import iios.supervisor.snapshot as m
+        import enterprise_ai_platform.supervisor.snapshot as m
         assert "SupervisorSnapshotFactory" in m.__all__
 
 
@@ -1433,7 +1433,7 @@ class TestIntegration:
 
     def test_m4_to_snapshot_pipeline(self):
         """Full pipeline: M4 governance → M5 snapshot."""
-        from iios.supervisor.governance import (
+        from enterprise_ai_platform.supervisor.governance import (
             AutonomousGovernanceEngine,
             AutonomousGovernanceFactory as M4Factory,
         )

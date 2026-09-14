@@ -1,7 +1,7 @@
 """
 tests/unit/knowledge/test_knowledge_governance_m3.py
 ------------------------------------------------------
-Comprehensive test suite for iios.knowledge.policies (C14 M3).
+Comprehensive test suite for enterprise_ai_platform.knowledge.policies (C14 M3).
 
 Coverage targets : ≥ 95 %
 Test classes     : 20
@@ -17,7 +17,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.knowledge.policies import (
+from enterprise_ai_platform.knowledge.policies import (
     ACTOR_GOVERNANCE,
     AuditError,
     ChainResult,
@@ -71,7 +71,7 @@ from iios.knowledge.policies import (
     make_knowledge_blocked,
     make_knowledge_rejected,
 )
-from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
 
 
 # ===========================================================================
@@ -183,7 +183,7 @@ class TestConstants:
         assert PolicyPriority.CRITICAL < PolicyPriority.LOW
 
     def test_governance_system_id(self):
-        from iios.knowledge.policies.constants import GOVERNANCE_SYSTEM_ID
+        from enterprise_ai_platform.knowledge.policies.constants import GOVERNANCE_SYSTEM_ID
         assert "governance" in GOVERNANCE_SYSTEM_ID
 
 
@@ -194,7 +194,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(KnowledgeGovernanceError, IIOSError)
 
     def test_error_codes_distinct(self):
@@ -1022,7 +1022,7 @@ class TestEvents:
         assert "governance.started" in d["event_type"]
 
     def test_nine_factory_functions(self):
-        from iios.knowledge.policies import (
+        from enterprise_ai_platform.knowledge.policies import (
             make_policy_loaded, make_policy_validated,
             make_governance_started, make_knowledge_approved,
             make_knowledge_rejected, make_knowledge_blocked,
@@ -1539,24 +1539,24 @@ class TestConcurrency:
 
 class TestRegression:
     def test_m1_lifecycle_import_unaffected(self):
-        from iios.knowledge.lifecycle import KnowledgeLifecycle  # noqa: F401
+        from enterprise_ai_platform.knowledge.lifecycle import KnowledgeLifecycle  # noqa: F401
 
     def test_m2_engine_import_unaffected(self):
-        from iios.knowledge.engine import KnowledgeEngine  # noqa: F401
+        from enterprise_ai_platform.knowledge.engine import KnowledgeEngine  # noqa: F401
 
     def test_supervisor_engine_import_unaffected(self):
-        from iios.supervisor.engine import SupervisorEngine  # noqa: F401
+        from enterprise_ai_platform.supervisor.engine import SupervisorEngine  # noqa: F401
 
     def test_m3_error_codes_distinct_from_m1_m2(self):
-        from iios.knowledge.lifecycle.exceptions import KnowledgeLifecycleError
-        from iios.knowledge.engine.exceptions import KnowledgeEngineError
+        from enterprise_ai_platform.knowledge.lifecycle.exceptions import KnowledgeLifecycleError
+        from enterprise_ai_platform.knowledge.engine.exceptions import KnowledgeEngineError
         m1_code = KnowledgeLifecycleError.error_code
         m2_code = KnowledgeEngineError.error_code
         m3_code = KnowledgeGovernanceError.error_code
         assert m3_code not in (m1_code, m2_code)
 
     def test_m3_governance_decision_enum_distinct_from_m2(self):
-        from iios.knowledge.engine.constants import EngineState
+        from enterprise_ai_platform.knowledge.engine.constants import EngineState
         assert GovernanceDecision is not EngineState
 
     def test_policy_priority_intcmp(self):

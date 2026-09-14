@@ -5,14 +5,14 @@ import time
 
 import pytest
 
-from iios.investment.company.profile.models import CompanyProfile, CompanyIdentity, CompanyMetadata
-from iios.investment.company.profile.profile_confidence import (
+from enterprise_ai_platform.investment.company.profile.models import CompanyProfile, CompanyIdentity, CompanyMetadata
+from enterprise_ai_platform.investment.company.profile.profile_confidence import (
     compute_confidence,
     compute_completeness,
     is_reliable,
 )
-from iios.investment.company.profile.profile_quality import ProfileQualityEngine
-from iios.investment.company.profile.profile_statistics import (
+from enterprise_ai_platform.investment.company.profile.profile_quality import ProfileQualityEngine
+from enterprise_ai_platform.investment.company.profile.profile_statistics import (
     avg_completeness,
     avg_freshness,
     avg_overall,
@@ -145,7 +145,7 @@ class TestProfileStatistics:
         assert count == 0   # all above 0
 
     def test_most_common_missing(self):
-        from iios.investment.company.profile.models import ProfileQualityScore
+        from enterprise_ai_platform.investment.company.profile.models import ProfileQualityScore
         scores = [
             ProfileQualityScore("p1", 50.0, 50.0, 50.0, 50.0, 50.0,
                                 missing_fields=["business", "classification"]),

@@ -4,8 +4,8 @@ Tests for TrendTracker.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.trend.trend_tracker import TrendTracker
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.trend.trend_tracker import TrendTracker
+from enterprise_ai_platform.investment.market.trend.models import (
     ImpulseQuality,
     CorrectionQuality,
 )

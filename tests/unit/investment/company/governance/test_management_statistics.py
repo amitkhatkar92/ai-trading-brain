@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.management_statistics import (
+from enterprise_ai_platform.investment.company.governance.management_statistics import (
     clamp, safe_mean, score_roic, score_ceo_tenure, score_board_independence,
     score_accruals, score_ocf_to_ni, score_debt_level, score_payout_ratio,
     score_leadership_stability, _label_score,

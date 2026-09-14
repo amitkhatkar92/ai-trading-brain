@@ -6,18 +6,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.construction.construction_engine import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_engine import (
     BlueprintAssembler,
     ConstructionEngine,
     RuleChain,
     WeightAssigner,
 )
-from iios.investment.portfolio.construction.construction_types import (
+from enterprise_ai_platform.investment.portfolio.construction.construction_types import (
     ConstructionDirection,
     ConstructionType,
     WeightingMethod,
 )
-from iios.investment.portfolio.construction.portfolio_blueprint import (
+from enterprise_ai_platform.investment.portfolio.construction.portfolio_blueprint import (
     ConstructionRequest,
     InvestmentRecommendation,
 )
@@ -114,7 +114,7 @@ class TestRuleChain:
         assert isinstance(apps, list)
 
     def test_max_cap_rule_applied(self):
-        from iios.investment.portfolio.construction.construction_rules import MaxWeightCapRule
+        from enterprise_ai_platform.investment.portfolio.construction.construction_rules import MaxWeightCapRule
         # Two recs, request caps at 0.40; equal weight of 0.475 each would violate
         recs = [_rec("A"), _rec("B")]
         req  = ConstructionRequest(portfolio_id="PF", max_single_weight=0.40, target_cash_pct=0.05)

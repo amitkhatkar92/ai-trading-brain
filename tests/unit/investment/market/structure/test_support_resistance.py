@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.structure.models import SwingSequence, ZoneType
-from iios.investment.market.structure.swing_detector import SwingDetector
-from iios.investment.market.structure.swing_history import SwingHistory
-from iios.investment.market.structure.support_resistance_engine import SupportResistanceEngine
-from iios.investment.market.structure.zone_detector import ZoneDetector
-from iios.investment.market.structure.zone_registry import ZoneRegistry
-from iios.investment.market.structure.zone_strength import ZoneStrengthCalculator
+from enterprise_ai_platform.investment.market.structure.models import SwingSequence, ZoneType
+from enterprise_ai_platform.investment.market.structure.swing_detector import SwingDetector
+from enterprise_ai_platform.investment.market.structure.swing_history import SwingHistory
+from enterprise_ai_platform.investment.market.structure.support_resistance_engine import SupportResistanceEngine
+from enterprise_ai_platform.investment.market.structure.zone_detector import ZoneDetector
+from enterprise_ai_platform.investment.market.structure.zone_registry import ZoneRegistry
+from enterprise_ai_platform.investment.market.structure.zone_strength import ZoneStrengthCalculator
 from tests.unit.investment.market.structure.conftest import (
     make_breakout_bars,
     make_range_bars,
@@ -61,7 +61,7 @@ class TestZoneDetector:
 
 class TestZoneRegistry:
     def test_add_and_get(self):
-        from iios.investment.market.structure.models import Zone, ZoneStrength
+        from enterprise_ai_platform.investment.market.structure.models import Zone, ZoneStrength
         registry = ZoneRegistry()
         zone = Zone(
             zone_id="R_100_0", zone_type=ZoneType.RESISTANCE,
@@ -73,7 +73,7 @@ class TestZoneRegistry:
         assert len(registry.get_all()) == 1
 
     def test_get_nearest_resistance_above(self):
-        from iios.investment.market.structure.models import Zone, ZoneStrength
+        from enterprise_ai_platform.investment.market.structure.models import Zone, ZoneStrength
         registry = ZoneRegistry()
         for level in [110, 115, 120]:
             z = Zone(
@@ -89,7 +89,7 @@ class TestZoneRegistry:
         assert nearest.lower == 109.0  # 110-1
 
     def test_get_nearest_support_below(self):
-        from iios.investment.market.structure.models import Zone, ZoneStrength
+        from enterprise_ai_platform.investment.market.structure.models import Zone, ZoneStrength
         registry = ZoneRegistry()
         for level in [80, 85, 90]:
             z = Zone(
@@ -105,7 +105,7 @@ class TestZoneRegistry:
         assert nearest.upper == 91.0  # 90+1
 
     def test_mark_broken_changes_type(self):
-        from iios.investment.market.structure.models import Zone, ZoneStrength
+        from enterprise_ai_platform.investment.market.structure.models import Zone, ZoneStrength
         registry = ZoneRegistry()
         z = Zone(
             zone_id="S_100_0", zone_type=ZoneType.SUPPORT,
@@ -120,7 +120,7 @@ class TestZoneRegistry:
         assert zones[0].zone_type == ZoneType.BROKEN_SUPPORT
 
     def test_cleanup_removes_old_zones(self):
-        from iios.investment.market.structure.models import Zone, ZoneStrength
+        from enterprise_ai_platform.investment.market.structure.models import Zone, ZoneStrength
         registry = ZoneRegistry()
         z = Zone(
             zone_id="S_100_0", zone_type=ZoneType.SUPPORT,

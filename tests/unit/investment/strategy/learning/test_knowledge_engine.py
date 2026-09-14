@@ -6,12 +6,12 @@ import pytest
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.lesson_registry import Lesson, LessonCategory, LessonRegistry
-from iios.investment.strategy.learning.best_practices import BestPractice, BestPracticeExtractor
-from iios.investment.strategy.learning.failure_library import FailureEntry, FailureLibrary
-from iios.investment.strategy.learning.success_pattern import SuccessPatternExtractor
-from iios.investment.strategy.learning.failure_pattern import FailurePatternExtractor
-from iios.investment.strategy.learning.knowledge_engine import KnowledgeEngine
+from enterprise_ai_platform.investment.strategy.learning.lesson_registry import Lesson, LessonCategory, LessonRegistry
+from enterprise_ai_platform.investment.strategy.learning.best_practices import BestPractice, BestPracticeExtractor
+from enterprise_ai_platform.investment.strategy.learning.failure_library import FailureEntry, FailureLibrary
+from enterprise_ai_platform.investment.strategy.learning.success_pattern import SuccessPatternExtractor
+from enterprise_ai_platform.investment.strategy.learning.failure_pattern import FailurePatternExtractor
+from enterprise_ai_platform.investment.strategy.learning.knowledge_engine import KnowledgeEngine
 
 
 def _make_lesson(strategy_id="s1", category=LessonCategory.SUCCESS):
@@ -174,7 +174,7 @@ class TestKnowledgeEngine:
         assert isinstance(lessons, list)
 
     def test_extract_with_degradation_adds_lesson(self, degraded_obs_series):
-        from iios.investment.strategy.learning.degradation_detector import DegradationDetector
+        from enterprise_ai_platform.investment.strategy.learning.degradation_detector import DegradationDetector
         detector = DegradationDetector()
         deg = detector.detect(degraded_obs_series)
         engine = KnowledgeEngine()

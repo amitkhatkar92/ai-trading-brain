@@ -8,14 +8,14 @@ import asyncio
 import pytest
 import pytest_asyncio
 
-from iios.investment.strategy.integration.aggregation_state import make_update
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     IntelligenceSource,
     IntegrationStatus,
     SnapshotStatus,
     UpdateType,
 )
-from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
     StrategyIntelligenceIntegrationEngine,
 )
 from tests.unit.investment.strategy.integration.conftest import (
@@ -140,7 +140,7 @@ class TestIntegrationEngineAsync:
         for u in _full_update_set(sid):
             await engine.submit_update(u)
         await engine.get_snapshot(sid)
-        from iios.investment.strategy.integration.integration_constants import IntegrationEventType
+        from enterprise_ai_platform.investment.strategy.integration.integration_constants import IntegrationEventType
         event_types = [e.event_type for e in events]
         assert IntegrationEventType.SNAPSHOT_PUBLISHED in event_types
 

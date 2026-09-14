@@ -4,9 +4,9 @@ Integration tests for EarningsIntelligenceEngine.
 import threading
 import pytest
 
-from iios.investment.company.earnings.earnings_intelligence_engine import EarningsIntelligenceEngine
-from iios.investment.company.earnings.earnings_report import TrendDirection, EarningsQualityLabel
-from iios.investment.company.earnings.earnings_revision import EarningsRevisionTracker
+from enterprise_ai_platform.investment.company.earnings.earnings_intelligence_engine import EarningsIntelligenceEngine
+from enterprise_ai_platform.investment.company.earnings.earnings_report import TrendDirection, EarningsQualityLabel
+from enterprise_ai_platform.investment.company.earnings.earnings_revision import EarningsRevisionTracker
 from tests.unit.investment.company.earnings.conftest import make_report
 
 

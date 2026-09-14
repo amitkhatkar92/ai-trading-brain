@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 import pytest
 
-from iios.ai.foundation.session import (
+from enterprise_ai_platform.ai.foundation.session import (
     SessionState,
     SessionMetadata,
     AISession,
@@ -13,7 +13,7 @@ from iios.ai.foundation.session import (
     TERMINAL_SESSION_STATES,
     can_session_transition,
 )
-from iios.ai.foundation.exceptions import (
+from enterprise_ai_platform.ai.foundation.exceptions import (
     AISessionNotFoundError,
     AISessionExpiredError,
     AISessionLimitError,

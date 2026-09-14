@@ -6,20 +6,20 @@ from __future__ import annotations
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     ApprovalStatus,
     DecisionStatus,
     EnvironmentProfile,
     RecommendationType,
     RiskReviewStatus,
 )
-from iios.investment.decision.core.decision_configuration import (
+from enterprise_ai_platform.investment.decision.core.decision_configuration import (
     DecisionConfiguration,
     DEVELOPMENT_CONFIG,
     LIVE_CONFIG,
 )
-from iios.investment.decision.core.decision_context import DecisionContext, make_context
-from iios.investment.decision.core.decision_constants import DecisionType, DecisionPriority
+from enterprise_ai_platform.investment.decision.core.decision_context import DecisionContext, make_context
+from enterprise_ai_platform.investment.decision.core.decision_constants import DecisionType, DecisionPriority
 from tests.unit.investment.decision.core.conftest import (
     FailingDecision,
     RejectedDecision,
@@ -102,27 +102,27 @@ class TestDecisionConfiguration:
 
 class TestDecisionMetadata:
     def test_initial_version(self):
-        from iios.investment.decision.core.decision_metadata import DecisionMetadata
+        from enterprise_ai_platform.investment.decision.core.decision_metadata import DecisionMetadata
         meta = DecisionMetadata("D1", "system")
         # Created by __init__ with _record (not record), so version stays at 1
         assert meta.version >= 1
 
     def test_record_increments_version(self):
-        from iios.investment.decision.core.decision_metadata import DecisionMetadata
+        from enterprise_ai_platform.investment.decision.core.decision_metadata import DecisionMetadata
         meta = DecisionMetadata("D2", "system")
         v0   = meta.version
         meta.record("user", "manual_override", "Override applied.")
         assert meta.version == v0 + 1
 
     def test_audit_trail_grows(self):
-        from iios.investment.decision.core.decision_metadata import DecisionMetadata
+        from enterprise_ai_platform.investment.decision.core.decision_metadata import DecisionMetadata
         meta = DecisionMetadata("D3", "system")
         n0   = len(meta.audit_trail)
         meta.record("analyst", "review", "Reviewed.")
         assert len(meta.audit_trail) == n0 + 1
 
     def test_to_dict(self):
-        from iios.investment.decision.core.decision_metadata import DecisionMetadata
+        from enterprise_ai_platform.investment.decision.core.decision_metadata import DecisionMetadata
         meta = DecisionMetadata("D4", "system")
         d    = meta.to_dict()
         assert "decision_id" in d

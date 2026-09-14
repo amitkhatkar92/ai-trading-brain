@@ -10,8 +10,8 @@ import time
 import threading
 import pytest
 
-from iios.configuration.configuration_cache import ConfigurationCache, CacheSnapshot
-from iios.configuration.configuration_exception import ConfigurationError
+from enterprise_ai_platform.configuration.configuration_cache import ConfigurationCache, CacheSnapshot
+from enterprise_ai_platform.configuration.configuration_exception import ConfigurationError
 
 
 class TestConfigurationCache:

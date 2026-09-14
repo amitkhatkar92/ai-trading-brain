@@ -6,7 +6,7 @@ from __future__ import annotations
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     ApprovalStatus,
     DecisionStatus,
     DecisionType,
@@ -14,11 +14,11 @@ from iios.investment.decision.core.decision_constants import (
     RecommendationType,
     EnvironmentProfile,
 )
-from iios.investment.decision.core.decision_context import make_context
-from iios.investment.decision.core.decision_history import DecisionHistory
-from iios.investment.decision.core.decision_lifecycle import DecisionLifecycle
-from iios.investment.decision.core.decision_session import DecisionSession
-from iios.investment.decision.core.decision_state import DecisionState, InvalidTransitionError
+from enterprise_ai_platform.investment.decision.core.decision_context import make_context
+from enterprise_ai_platform.investment.decision.core.decision_history import DecisionHistory
+from enterprise_ai_platform.investment.decision.core.decision_lifecycle import DecisionLifecycle
+from enterprise_ai_platform.investment.decision.core.decision_session import DecisionSession
+from enterprise_ai_platform.investment.decision.core.decision_state import DecisionState, InvalidTransitionError
 
 
 # ===========================================================================

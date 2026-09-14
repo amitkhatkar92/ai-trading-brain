@@ -4,10 +4,10 @@ Tests for TrendLifecycleDetector and TrendTransitionDetector.
 from __future__ import annotations
 
 import pytest
-from iios.investment.market.market_constants import TrendDirection
-from iios.investment.market.trend.trend_lifecycle import TrendLifecycleDetector
-from iios.investment.market.trend.trend_transition import TrendTransitionDetector
-from iios.investment.market.trend.models import (
+from enterprise_ai_platform.investment.market.market_constants import TrendDirection
+from enterprise_ai_platform.investment.market.trend.trend_lifecycle import TrendLifecycleDetector
+from enterprise_ai_platform.investment.market.trend.trend_transition import TrendTransitionDetector
+from enterprise_ai_platform.investment.market.trend.models import (
     TrendStage,
     TrendEventType,
     TrendTransitionType,
@@ -81,7 +81,7 @@ class TestTrendLifecycleDetector:
         assert stage == TrendStage.EXHAUSTING
 
     def test_failing_exhaustion_weak_impulse(self):
-        from iios.investment.market.trend.models import TrendLegMetrics
+        from enterprise_ai_platform.investment.market.trend.models import TrendLegMetrics
         trend = make_trend_state(confirmed=True, leg_count=4, phase="exhaustion")
         legs = make_legs(4)
         # Replace last impulse with WEAK

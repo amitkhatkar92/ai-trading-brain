@@ -5,16 +5,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.opportunity.explanation_engine import ExplanationEngine
-from iios.investment.company.opportunity.investment_thesis import InvestmentThesis, ThesisEvidence
-from iios.investment.company.opportunity.opportunity_profile import (
+from enterprise_ai_platform.investment.company.opportunity.explanation_engine import ExplanationEngine
+from enterprise_ai_platform.investment.company.opportunity.investment_thesis import InvestmentThesis, ThesisEvidence
+from enterprise_ai_platform.investment.company.opportunity.opportunity_profile import (
     ConfidenceLevel, OpportunityCategory, OpportunityLifecycle, OpportunityStrength,
 )
-from iios.investment.company.opportunity.reason_generator import (
+from enterprise_ai_platform.investment.company.opportunity.reason_generator import (
     build_headline, build_narrative, generate_catalysts, generate_key_risks,
     generate_monitoring_points, generate_strengths, generate_weaknesses,
 )
-from iios.investment.company.opportunity.evidence_collector import (
+from enterprise_ai_platform.investment.company.opportunity.evidence_collector import (
     collect_all_evidence, collect_earnings_evidence, collect_bq_evidence,
     collect_financial_evidence, collect_valuation_evidence,
 )

@@ -9,10 +9,10 @@ from typing import List
 
 import pytest
 
-from iios.investment.market.liquidity.volume_liquidity_engine import (
+from enterprise_ai_platform.investment.market.liquidity.volume_liquidity_engine import (
     InstitutionalVolumeLiquidityEngine,
 )
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.liquidity.models import (
     VolumeLiquiditySnapshot, VolumeLevel, VolumeTrend,
     LiquidityEventType, LiquidityEvent,
 )
@@ -133,7 +133,7 @@ class TestParticipation:
             eng.update(b)
         up_bar = make_up_bar(index=20, base=110.0, volume=200_000.0)
         snap = eng.update(up_bar)
-        from iios.investment.market.liquidity.models import ParticipationBias
+        from enterprise_ai_platform.investment.market.liquidity.models import ParticipationBias
         assert snap.participation.participation_bias in (
             ParticipationBias.BUY, ParticipationBias.STRONG_BUY, ParticipationBias.NEUTRAL
         )
@@ -369,7 +369,7 @@ class TestContextInputs:
         assert snap is not None
 
     def test_regime_none_uses_unknown(self):
-        from iios.investment.market.regime.models import RegimeType
+        from enterprise_ai_platform.investment.market.regime.models import RegimeType
         eng = _make_engine()
         snap = eng.update(make_bar())
         assert snap.regime == RegimeType.UNKNOWN

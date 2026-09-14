@@ -3,15 +3,15 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-from iios.investment.decision.reasoning.context_analyzer import ContextAnalyzer
-from iios.investment.decision.reasoning.evidence_interpreter import EvidenceInterpreter
-from iios.investment.decision.reasoning.reasoning_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+from enterprise_ai_platform.investment.decision.reasoning.context_analyzer import ContextAnalyzer
+from enterprise_ai_platform.investment.decision.reasoning.evidence_interpreter import EvidenceInterpreter
+from enterprise_ai_platform.investment.decision.reasoning.reasoning_constants import (
     ReasoningStepType,
     SignalDirection,
 )
-from iios.investment.decision.reasoning.relationship_mapper import RelationshipMapper, RelationshipType
-from iios.investment.decision.reasoning.signal_interpreter import SignalInterpreter
+from enterprise_ai_platform.investment.decision.reasoning.relationship_mapper import RelationshipMapper, RelationshipType
+from enterprise_ai_platform.investment.decision.reasoning.signal_interpreter import SignalInterpreter
 
 
 # ========================= EvidenceInterpreter ===========================

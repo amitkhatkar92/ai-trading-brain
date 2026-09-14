@@ -1,7 +1,7 @@
 """
 test_market_integration.py — tests/unit/market/integration
 ===========================================================
-Comprehensive test suite for iios.market.integration (C12 M6).
+Comprehensive test suite for enterprise_ai_platform.market.integration (C12 M6).
 
 Coverage targets: ≥ 95%
 
@@ -38,7 +38,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.market.integration import (
+from enterprise_ai_platform.market.integration import (
     # Primary
     MarketIntegrationEngine,
     # Requests
@@ -161,7 +161,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(MarketIntegrationError, IIOSError)
 
     def test_not_running_error(self):
@@ -869,37 +869,37 @@ class TestMarketComponentFactory:
     def test_create_snapshot_registry(self):
         factory = MarketComponentFactory()
         sr = factory.create_snapshot_registry()
-        from iios.market.snapshot import MarketSnapshotRegistry
+        from enterprise_ai_platform.market.snapshot import MarketSnapshotRegistry
         assert isinstance(sr, MarketSnapshotRegistry)
 
     def test_create_snapshot_store(self):
         factory = MarketComponentFactory()
         ss = factory.create_snapshot_store()
-        from iios.market.snapshot import MarketSnapshotStore
+        from enterprise_ai_platform.market.snapshot import MarketSnapshotStore
         assert isinstance(ss, MarketSnapshotStore)
 
     def test_create_snapshot_cache(self):
         factory = MarketComponentFactory()
         sc = factory.create_snapshot_cache()
-        from iios.market.snapshot import MarketSnapshotCache
+        from enterprise_ai_platform.market.snapshot import MarketSnapshotCache
         assert isinstance(sc, MarketSnapshotCache)
 
     def test_create_snapshot_history(self):
         factory = MarketComponentFactory()
         sh = factory.create_snapshot_history()
-        from iios.market.snapshot import MarketSnapshotHistory
+        from enterprise_ai_platform.market.snapshot import MarketSnapshotHistory
         assert isinstance(sh, MarketSnapshotHistory)
 
     def test_create_lifecycle(self):
         factory = MarketComponentFactory()
         lc = factory.create_lifecycle()
-        from iios.market.lifecycle import MarketLifecycle
+        from enterprise_ai_platform.market.lifecycle import MarketLifecycle
         assert isinstance(lc, MarketLifecycle)
 
     def test_create_engine(self):
         factory = MarketComponentFactory()
         e = factory.create_engine()
-        from iios.market.engine import MarketEngine
+        from enterprise_ai_platform.market.engine import MarketEngine
         assert isinstance(e, MarketEngine)
 
 
@@ -1126,16 +1126,16 @@ class TestMarketIntegrationConcurrency:
 
 class TestPublicSurface:
     def test_all_exports_importable(self):
-        import iios.market.integration as pkg
+        import enterprise_ai_platform.market.integration as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
     def test_version_exported(self):
-        from iios.market.integration import VERSION
+        from enterprise_ai_platform.market.integration import VERSION
         assert VERSION == "1.0.0"
 
     def test_integration_system_id_exported(self):
-        from iios.market.integration import INTEGRATION_SYSTEM_ID
+        from enterprise_ai_platform.market.integration import INTEGRATION_SYSTEM_ID
         assert "integration" in INTEGRATION_SYSTEM_ID
 
 
@@ -1145,7 +1145,7 @@ class TestPublicSurface:
 
 class TestNoInternalSubsystemExposed:
     def test_public_api_does_not_export_lifecycle_module(self):
-        import iios.market.integration as pkg
+        import enterprise_ai_platform.market.integration as pkg
         for name in pkg.__all__:
             # M1-M4 core classes must NOT be in the public integration API
             assert name not in (

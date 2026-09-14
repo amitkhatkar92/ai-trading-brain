@@ -27,7 +27,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.investment.workflow.engine_lifecycle import (
+from enterprise_ai_platform.investment.workflow.engine_lifecycle import (
     EngineAlreadyRunningError,
     EngineNotRunningError,
     EngineShutdownError,
@@ -1004,58 +1004,58 @@ class TestEngineIntegrations:
         assert isinstance(engine.version(), str) and engine.version()
 
     def test_c1_market_integration_engine(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         self._assert_lifecycle_aware(MarketIntelligenceIntegrationEngine())
 
     def test_c2_company_integration_engine(self):
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         self._assert_lifecycle_aware(CompanyIntelligenceIntegrationEngine())
 
     def test_c3_strategy_integration_engine(self):
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         self._assert_lifecycle_aware(StrategyIntelligenceIntegrationEngine())
 
     def test_c4_decision_integration_engine(self):
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         self._assert_lifecycle_aware(DecisionIntelligenceIntegrationEngine())
 
     def test_c5_portfolio_integration_engine(self):
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         self._assert_lifecycle_aware(PortfolioIntelligenceIntegrationEngine())
 
     def test_workflow_orchestrator(self):
-        from iios.investment.workflow.institutional_investment_workflow import (
+        from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
             InstitutionalWorkflowOrchestrator,
         )
         self._assert_lifecycle_aware(InstitutionalWorkflowOrchestrator())
 
     def test_all_engines_have_system_id(self):
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
-        from iios.investment.workflow.institutional_investment_workflow import (
+        from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
             InstitutionalWorkflowOrchestrator,
         )
         for cls in [
@@ -1071,10 +1071,10 @@ class TestEngineIntegrations:
 
     def test_c4_existing_start_stop_still_works(self):
         """C4 start()/stop() must still update internal IntegrationStatus."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        from iios.investment.decision.integration.integration_constants import IntegrationStatus
+        from enterprise_ai_platform.investment.decision.integration.integration_constants import IntegrationStatus
         engine = DecisionIntelligenceIntegrationEngine()
         engine.start()
         assert engine._status == IntegrationStatus.READY
@@ -1083,7 +1083,7 @@ class TestEngineIntegrations:
 
     def test_c5_is_running_property_still_works(self):
         """C5 is_running must stay in sync with lifecycle state."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -1095,7 +1095,7 @@ class TestEngineIntegrations:
 
     def test_lifecycle_health_always_returns_lifecycle_status(self):
         """lifecycle_health() must return LifecycleStatus regardless of health() override."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -1106,7 +1106,7 @@ class TestEngineIntegrations:
 
     def test_lifecycle_event_callback_on_c4(self):
         """Lifecycle events must fire on C4 even though it overrides start/stop."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         received: List[LifecycleEvent] = []
@@ -1125,22 +1125,22 @@ class TestSupervisorCompatibility:
     """The supervisor must be able to control all engines via one identical interface."""
 
     def _engines(self) -> list:
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
-        from iios.investment.workflow.institutional_investment_workflow import (
+        from enterprise_ai_platform.investment.workflow.institutional_investment_workflow import (
             InstitutionalWorkflowOrchestrator,
         )
         return [

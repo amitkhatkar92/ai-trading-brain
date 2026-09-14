@@ -13,7 +13,7 @@ import time
 import unittest
 from typing import Any, Dict, List, Optional, Sequence
 
-from iios.ai.foundation.provider import (
+from enterprise_ai_platform.ai.foundation.provider import (
     AIProviderCapabilities,
     AIProviderExtension,
     AIProviderRuntime,
@@ -27,7 +27,7 @@ from iios.ai.foundation.provider import (
     ProviderTier,
     ProviderProfile,
 )
-from iios.ai.foundation.events import AIEventBus, AIEventType, ProviderRegisteredEvent
+from enterprise_ai_platform.ai.foundation.events import AIEventBus, AIEventType, ProviderRegisteredEvent
 
 
 # ---------------------------------------------------------------------------

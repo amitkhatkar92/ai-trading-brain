@@ -3,11 +3,11 @@ Tests for IncomeStatementEngine, RevenueAnalyzer, ExpenseAnalyzer, ProfitAnalyze
 """
 import pytest
 
-from iios.investment.company.financials.revenue_analyzer import RevenueAnalyzer
-from iios.investment.company.financials.expense_analyzer import ExpenseAnalyzer
-from iios.investment.company.financials.profit_analyzer import ProfitAnalyzer
-from iios.investment.company.financials.income_statement_engine import IncomeStatementEngine
-from iios.investment.company.financials.income_statement import IncomeStatement
+from enterprise_ai_platform.investment.company.financials.revenue_analyzer import RevenueAnalyzer
+from enterprise_ai_platform.investment.company.financials.expense_analyzer import ExpenseAnalyzer
+from enterprise_ai_platform.investment.company.financials.profit_analyzer import ProfitAnalyzer
+from enterprise_ai_platform.investment.company.financials.income_statement_engine import IncomeStatementEngine
+from enterprise_ai_platform.investment.company.financials.income_statement import IncomeStatement
 
 
 class TestRevenueAnalyzer:

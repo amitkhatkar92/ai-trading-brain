@@ -2,7 +2,7 @@
 import math
 import pytest
 
-from iios.investment.portfolio.risk.risk_types import (
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import (
     DrawdownLevel, RiskGrade, RiskLevel, RiskPosition,
     bucket_weights, cvar_parametric, drawdown_to_level,
     hhi, portfolio_variance, portfolio_volatility,

@@ -6,21 +6,21 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
-from iios.investment.strategy.portfolio.construction_constraints import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import (
     ConstructionConstraints, DEFAULT_CONSTRAINTS
 )
-from iios.investment.strategy.portfolio.constraint_solver import ConstraintSolver
-from iios.investment.strategy.portfolio.optimization_engine import OptimizationEngine
-from iios.investment.strategy.portfolio.portfolio_optimizer import PortfolioOptimizer
-from iios.investment.strategy.portfolio.optimization_statistics import (
+from enterprise_ai_platform.investment.strategy.portfolio.constraint_solver import ConstraintSolver
+from enterprise_ai_platform.investment.strategy.portfolio.optimization_engine import OptimizationEngine
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_optimizer import PortfolioOptimizer
+from enterprise_ai_platform.investment.strategy.portfolio.optimization_statistics import (
     portfolio_return, concentration_score, coverage_score,
     target_tracking_error, blend_weights
 )
-from iios.investment.strategy.portfolio.portfolio_constructor import PortfolioConstructor
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_constructor import PortfolioConstructor
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy
 
 

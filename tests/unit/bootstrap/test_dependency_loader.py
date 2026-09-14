@@ -8,13 +8,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.bootstrap.dependency_loader import (
+from enterprise_ai_platform.bootstrap.dependency_loader import (
     DependencyLoader,
     DependencyTier,
     PackageRegistry,
     PackageSpec,
 )
-from iios.bootstrap.startup_state import ValidationSeverity
+from enterprise_ai_platform.bootstrap.startup_state import ValidationSeverity
 
 
 class TestPackageRegistry:

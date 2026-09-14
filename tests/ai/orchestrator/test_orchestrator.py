@@ -11,7 +11,7 @@ import time
 import pytest
 
 # ── Exceptions ────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.exceptions.orchestrator_exceptions import (
+from enterprise_ai_platform.ai.orchestrator.exceptions.orchestrator_exceptions import (
     AIOrchestrationException,
     AIObjectiveException,
     AIObjectiveNotFoundError,
@@ -42,10 +42,10 @@ from iios.ai.orchestrator.exceptions.orchestrator_exceptions import (
     AIRollbackFailedError,
     AIMaxRetriesExceededError,
 )
-from iios.ai.foundation.exceptions import AIException
+from enterprise_ai_platform.ai.foundation.exceptions import AIException
 
 # ── Core ──────────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.core.orchestration_types import (
+from enterprise_ai_platform.ai.orchestrator.core.orchestration_types import (
     ObjectiveStatus,
     PlanStatus,
     WorkflowStatus,
@@ -53,42 +53,42 @@ from iios.ai.orchestrator.core.orchestration_types import (
     StepStatus,
     ExecutionMode,
 )
-from iios.ai.orchestrator.core.orchestration_context import (
+from enterprise_ai_platform.ai.orchestrator.core.orchestration_context import (
     OrchestrationContext,
     OrchestrationSession,
     OrchestrationResult,
 )
-from iios.ai.orchestrator.core.plan_types import (
+from enterprise_ai_platform.ai.orchestrator.core.plan_types import (
     PlanStep,
     PlanDependency,
     ExecutionPlan,
     PlanningContext,
 )
-from iios.ai.orchestrator.core.workflow_types import (
+from enterprise_ai_platform.ai.orchestrator.core.workflow_types import (
     WorkflowStep,
     WorkflowDefinition,
     WorkflowInstance,
     WorkflowState,
 )
-from iios.ai.orchestrator.core.task_types import ScheduledTask, SchedulerPolicy
+from enterprise_ai_platform.ai.orchestrator.core.task_types import ScheduledTask, SchedulerPolicy
 
 # ── Engine ────────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.engine.planning_engine import PlanningEngine
-from iios.ai.orchestrator.engine.workflow_engine import WorkflowManager
-from iios.ai.orchestrator.engine.orchestration_engine import (
+from enterprise_ai_platform.ai.orchestrator.engine.planning_engine import PlanningEngine
+from enterprise_ai_platform.ai.orchestrator.engine.workflow_engine import WorkflowManager
+from enterprise_ai_platform.ai.orchestrator.engine.orchestration_engine import (
     Orchestrator,
     OrchestrationManager,
 )
 
 # ── Policy ────────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.policy.task_scheduler import TaskScheduler
-from iios.ai.orchestrator.policy.resource_coordinator import (
+from enterprise_ai_platform.ai.orchestrator.policy.task_scheduler import TaskScheduler
+from enterprise_ai_platform.ai.orchestrator.policy.resource_coordinator import (
     AgentAllocator,
     CapabilityAllocator,
     ExecutionCoordinator,
     ResourceReservation,
 )
-from iios.ai.orchestrator.policy.recovery_manager import (
+from enterprise_ai_platform.ai.orchestrator.policy.recovery_manager import (
     RecoveryManager,
     RecoveryStrategy,
     RetryCoordinator,
@@ -96,7 +96,7 @@ from iios.ai.orchestrator.policy.recovery_manager import (
 )
 
 # ── Observability ─────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.observability.execution_monitor import (
+from enterprise_ai_platform.ai.orchestrator.observability.execution_monitor import (
     ExecutionMetrics,
     ExecutionMonitor,
     ProgressTracker,
@@ -105,7 +105,7 @@ from iios.ai.orchestrator.observability.execution_monitor import (
 )
 
 # ── Events ────────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.events.orchestrator_events import (
+from enterprise_ai_platform.ai.orchestrator.events.orchestrator_events import (
     OrchestratorEventType,
     OrchestratorEvent,
     ObjectiveReceivedEvent,
@@ -122,13 +122,13 @@ from iios.ai.orchestrator.events.orchestrator_events import (
     AgentAllocatedEvent,
     ResourceReservedEvent,
 )
-from iios.ai.orchestrator.events.orchestrator_event_bus import OrchestratorEventBus
+from enterprise_ai_platform.ai.orchestrator.events.orchestrator_event_bus import OrchestratorEventBus
 
 # ── Snapshot ──────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.snapshot.orchestrator_snapshot import OrchestratorSnapshot
+from enterprise_ai_platform.ai.orchestrator.snapshot.orchestrator_snapshot import OrchestratorSnapshot
 
 # ── Gateway ───────────────────────────────────────────────────────────────────
-from iios.ai.orchestrator.gateway.orchestrator_gateway import OrchestratorGateway
+from enterprise_ai_platform.ai.orchestrator.gateway.orchestrator_gateway import OrchestratorGateway
 
 
 # =============================================================================
@@ -1262,7 +1262,7 @@ class TestGatewayLifecycle:
         gw = _gw()
         h  = gw.health()
         assert h["running"] is True
-        assert h["system_id"] == "iios:ai:orchestrator:gateway"
+        assert h["system_id"] == "enterprise_ai_platform:ai:orchestrator:gateway"
         gw.stop()
 
     def test_status_alias(self):

@@ -12,7 +12,7 @@ from typing import List
 
 import pytest
 
-from iios.execution.monitoring.metrics import (
+from enterprise_ai_platform.execution.monitoring.metrics import (
     AggregationType,
     DEFAULT_MAX_HISTORY,
     DEFAULT_MAX_POINTS,

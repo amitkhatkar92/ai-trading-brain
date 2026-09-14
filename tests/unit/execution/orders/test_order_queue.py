@@ -33,7 +33,7 @@ from typing import Any
 
 import pytest
 
-from iios.execution.oms.order_queue.constants import (
+from enterprise_ai_platform.execution.oms.order_queue.constants import (
     ACTIVE_ENTRY_STATES,
     DEFAULT_MAX_RETRIES,
     DEFAULT_TTL_SEC,
@@ -47,7 +47,7 @@ from iios.execution.oms.order_queue.constants import (
     QueuePriorityLevel,
     QueueValidationCode,
 )
-from iios.execution.oms.order_queue.exceptions import (
+from enterprise_ai_platform.execution.oms.order_queue.exceptions import (
     DuplicateQueueEntryError,
     QueueCapacityError,
     QueueEntryExpiredError,
@@ -59,10 +59,10 @@ from iios.execution.oms.order_queue.exceptions import (
     QueueSchedulerError,
     QueueValidationError,
 )
-from iios.execution.oms.order_queue.queue_context import QueueContext
-from iios.execution.oms.order_queue.queue_dispatch_plan import QueueDispatchPlan
-from iios.execution.oms.order_queue.queue_entry import QueueEntry
-from iios.execution.oms.order_queue.queue_events import (
+from enterprise_ai_platform.execution.oms.order_queue.queue_context import QueueContext
+from enterprise_ai_platform.execution.oms.order_queue.queue_dispatch_plan import QueueDispatchPlan
+from enterprise_ai_platform.execution.oms.order_queue.queue_entry import QueueEntry
+from enterprise_ai_platform.execution.oms.order_queue.queue_events import (
     QueueEvent,
     make_order_dispatched,
     make_order_queued,
@@ -73,9 +73,9 @@ from iios.execution.oms.order_queue.queue_events import (
     make_queue_updated,
     make_retry_scheduled,
 )
-from iios.execution.oms.order_queue.queue_factory import QueueFactory
-from iios.execution.oms.order_queue.queue_history import QueueHistory
-from iios.execution.oms.order_queue.queue_policy import (
+from enterprise_ai_platform.execution.oms.order_queue.queue_factory import QueueFactory
+from enterprise_ai_platform.execution.oms.order_queue.queue_history import QueueHistory
+from enterprise_ai_platform.execution.oms.order_queue.queue_policy import (
     QueuePolicy,
     get_policy,
     make_backtest_policy,
@@ -87,18 +87,18 @@ from iios.execution.oms.order_queue.queue_policy import (
     make_replay_policy,
     make_scheduled_policy,
 )
-from iios.execution.oms.order_queue.queue_priority import (
+from enterprise_ai_platform.execution.oms.order_queue.queue_priority import (
     compare_priority,
     highest_priority,
     lowest_priority,
     priority_sort_key,
 )
-from iios.execution.oms.order_queue.queue_registry import QueueRegistry
-from iios.execution.oms.order_queue.queue_scheduler import QueueScheduler
-from iios.execution.oms.order_queue.queue_snapshot import QueueSnapshot
-from iios.execution.oms.order_queue.queue_statistics import QueueStatistics
-from iios.execution.oms.order_queue.queue_validation import QueueValidator
-from iios.execution.oms.order_queue.order_queue import OrderQueue
+from enterprise_ai_platform.execution.oms.order_queue.queue_registry import QueueRegistry
+from enterprise_ai_platform.execution.oms.order_queue.queue_scheduler import QueueScheduler
+from enterprise_ai_platform.execution.oms.order_queue.queue_snapshot import QueueSnapshot
+from enterprise_ai_platform.execution.oms.order_queue.queue_statistics import QueueStatistics
+from enterprise_ai_platform.execution.oms.order_queue.queue_validation import QueueValidator
+from enterprise_ai_platform.execution.oms.order_queue.order_queue import OrderQueue
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -249,7 +249,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_inherits_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(QueueError, IIOSError)
 
     def test_all_subclass_base(self):
@@ -1100,7 +1100,7 @@ class TestQueueValidator:
 
 class TestQueueRegistry:
     def test_start_stop_lifecycle(self):
-        from iios.investment.workflow.engine_lifecycle import EngineState
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineState
         r = QueueRegistry()
         r.start()
         assert r.lifecycle_state() == EngineState.RUNNING

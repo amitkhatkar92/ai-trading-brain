@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthData,
     BreadthTrend,
     HealthTrend,
     ParticipationSnapshot,
 )
-from iios.investment.market.breadth import internal_strength as ist
-from iios.investment.market.breadth.market_health import MarketHealthAnalyzer
+from enterprise_ai_platform.investment.market.breadth import internal_strength as ist
+from enterprise_ai_platform.investment.market.breadth.market_health import MarketHealthAnalyzer
 
 from tests.unit.investment.market.breadth.conftest import (
     make_bull_universe,

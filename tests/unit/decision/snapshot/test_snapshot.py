@@ -31,7 +31,7 @@ from typing import Any, Dict
 
 import pytest
 
-from iios.decision.snapshot import (
+from enterprise_ai_platform.decision.snapshot import (
     # Constants
     SNAPSHOT_SYSTEM_ID,
     VERSION,
@@ -202,7 +202,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(DecisionSnapshotError, IIOSError)
 
     def test_not_found_has_snapshot_id(self):
@@ -1374,7 +1374,7 @@ class TestDecisionSnapshotBundle:
 
 class TestInit:
     def test_key_symbols_importable(self):
-        import iios.decision.snapshot as pkg
+        import enterprise_ai_platform.decision.snapshot as pkg
         for name in [
             "DecisionSnapshot", "DecisionSnapshotBuilder", "DecisionSnapshotStore",
             "DecisionSnapshotCache", "DecisionSnapshotRegistry",
@@ -1385,11 +1385,11 @@ class TestInit:
             assert hasattr(pkg, name), f"Missing export: {name}"
 
     def test_version_accessible(self):
-        import iios.decision.snapshot as pkg
+        import enterprise_ai_platform.decision.snapshot as pkg
         assert pkg.VERSION
 
     def test_snapshot_system_id(self):
-        import iios.decision.snapshot as pkg
+        import enterprise_ai_platform.decision.snapshot as pkg
         assert pkg.SNAPSHOT_SYSTEM_ID
 
 

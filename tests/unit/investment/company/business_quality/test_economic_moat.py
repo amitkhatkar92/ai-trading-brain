@@ -1,15 +1,15 @@
 """tests/unit/investment/company/business_quality/test_economic_moat.py"""
 import pytest
 
-from iios.investment.company.business_quality.economic_moat import (
+from enterprise_ai_platform.investment.company.business_quality.economic_moat import (
     MoatStrength, MoatType,
 )
-from iios.investment.company.business_quality.moat_detector import MoatDetector
-from iios.investment.company.business_quality.competitive_advantage import (
+from enterprise_ai_platform.investment.company.business_quality.moat_detector import MoatDetector
+from enterprise_ai_platform.investment.company.business_quality.competitive_advantage import (
     CompetitiveAdvantageDetector,
 )
 from tests.unit.investment.company.business_quality.conftest import make_ctx, make_earnings_snapshot
-from iios.investment.company.business_quality.assessment_context import AssessmentContext
+from enterprise_ai_platform.investment.company.business_quality.assessment_context import AssessmentContext
 
 
 def make_wide_moat_ctx():

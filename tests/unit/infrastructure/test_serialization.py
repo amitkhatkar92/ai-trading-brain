@@ -1,7 +1,7 @@
 """
 tests/unit/infrastructure/test_serialization.py
 ===============================================
-Tests for the iios.infrastructure.serialization subpackage.
+Tests for the enterprise_ai_platform.infrastructure.serialization subpackage.
 """
 
 from __future__ import annotations
@@ -10,11 +10,11 @@ import dataclasses
 import datetime
 import pytest
 
-from iios.infrastructure.serialization import (
+from enterprise_ai_platform.infrastructure.serialization import (
     JsonSerializer, YamlSerializer, TomlSerializer,
     SerializerRegistry, get_serializer_registry, reset_serializer_registry,
 )
-from iios.infrastructure.infrastructure_exceptions import SerializationError, DeserializationError
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import SerializationError, DeserializationError
 
 
 @dataclasses.dataclass
@@ -86,7 +86,7 @@ class TestYamlSerializer:
 
     def test_raises_when_unavailable(self, monkeypatch):
         # Simulate unavailability
-        import iios.infrastructure.serialization.yaml_serializer as mod
+        import enterprise_ai_platform.infrastructure.serialization.yaml_serializer as mod
         original = mod._YAML_AVAILABLE
         mod._YAML_AVAILABLE = False
         with pytest.raises(SerializationError, match="PyYAML"):

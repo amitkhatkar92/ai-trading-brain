@@ -8,21 +8,21 @@ import threading
 
 import pytest
 
-from iios.investment.strategy.lifecycle.checkpoint_manager import (
+from enterprise_ai_platform.investment.strategy.lifecycle.checkpoint_manager import (
     Checkpoint,
     CheckpointManager,
 )
-from iios.investment.strategy.lifecycle.failure_handler import (
+from enterprise_ai_platform.investment.strategy.lifecycle.failure_handler import (
     CircuitState,
     FailureHandler,
     FailurePolicy,
     StrategyCircuit,
 )
-from iios.investment.strategy.lifecycle.restart_manager import (
+from enterprise_ai_platform.investment.strategy.lifecycle.restart_manager import (
     RestartManager,
     RestartPolicy,
 )
-from iios.investment.strategy.lifecycle.recovery_engine import (
+from enterprise_ai_platform.investment.strategy.lifecycle.recovery_engine import (
     RecoveryDecision,
     RecoveryEngine,
 )

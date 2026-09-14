@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.ai.foundation.context import (
+from enterprise_ai_platform.ai.foundation.context import (
     ContextMetadata,
     AIContext,
     ContextBuilder,
     ContextValidator,
     TruncationContextCompressor,
 )
-from iios.ai.foundation.exceptions import (
+from enterprise_ai_platform.ai.foundation.exceptions import (
     AIContextTooLargeError,
     AIContextValidationError,
     AIContextBuildError,

@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from iios.decision_optimization import (
+from enterprise_ai_platform.decision_optimization import (
     # Constants
     AlgorithmType, ConstraintType, ObjectiveAggregation, ObjectiveType,
     OptimizationMode, OptimizationStatus,
@@ -1140,7 +1140,7 @@ class TestOptimizationFactory:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.decision_optimization as pkg
+        import enterprise_ai_platform.decision_optimization as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing: {name}"
 
@@ -1150,5 +1150,5 @@ class TestPackageImports:
         assert issubclass(InfeasibleSolutionError, OptimizationEngineError)
 
     def test_version(self):
-        import iios.decision_optimization as pkg
+        import enterprise_ai_platform.decision_optimization as pkg
         assert pkg.__version__ == "1.0.0"

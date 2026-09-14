@@ -3,18 +3,18 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.liquidity.models import ParticipationBias
-from iios.investment.market.liquidity.liquidity_profile import LiquidityProfileAnalyzer
-from iios.investment.market.liquidity.liquidity_score import LiquidityScoreCalculator
-from iios.investment.market.liquidity.liquidity_history import LiquidityHistory
-from iios.investment.market.liquidity.liquidity_engine import LiquidityEngine
-from iios.investment.market.liquidity.models import (
+from enterprise_ai_platform.investment.market.liquidity.models import ParticipationBias
+from enterprise_ai_platform.investment.market.liquidity.liquidity_profile import LiquidityProfileAnalyzer
+from enterprise_ai_platform.investment.market.liquidity.liquidity_score import LiquidityScoreCalculator
+from enterprise_ai_platform.investment.market.liquidity.liquidity_history import LiquidityHistory
+from enterprise_ai_platform.investment.market.liquidity.liquidity_engine import LiquidityEngine
+from enterprise_ai_platform.investment.market.liquidity.models import (
     LiquidityProfile, ParticipationSnapshot, VolumeProfile, VolumeTrend,
 )
 
 from tests.unit.investment.market.liquidity.conftest import make_volume_bar, make_bars
-from iios.investment.market.liquidity.volume_engine import VolumeEngine
-from iios.investment.market.liquidity.participation_engine import ParticipationEngine
+from enterprise_ai_platform.investment.market.liquidity.volume_engine import VolumeEngine
+from enterprise_ai_platform.investment.market.liquidity.participation_engine import ParticipationEngine
 
 
 def make_participation(score: float = 50.0) -> ParticipationSnapshot:
@@ -99,7 +99,7 @@ class TestLiquidityScoreCalculator:
         assert 0.0 <= score <= 100.0
 
     def test_volatile_regime_lower_score(self):
-        from iios.investment.market.regime.models import RegimeType
+        from enterprise_ai_platform.investment.market.regime.models import RegimeType
         lp = LiquidityProfile(
             availability=0.7, stability=0.8, depth=0.6,
             concentration=0.3, fragmentation=0.7, quality=70.0,
@@ -112,7 +112,7 @@ class TestLiquidityScoreCalculator:
         assert volatile < normal
 
     def test_calm_regime_higher_score(self):
-        from iios.investment.market.regime.models import RegimeType
+        from enterprise_ai_platform.investment.market.regime.models import RegimeType
         lp = LiquidityProfile(
             availability=0.5, stability=0.5, depth=0.5,
             concentration=0.5, fragmentation=0.5, quality=50.0,

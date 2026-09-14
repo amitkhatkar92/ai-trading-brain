@@ -38,9 +38,9 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.execution.risk.lifecycle import RiskCategory, RiskState
+from enterprise_ai_platform.execution.risk.lifecycle import RiskCategory, RiskState
 
-from iios.execution.risk.engine import (
+from enterprise_ai_platform.execution.risk.engine import (
     ACTOR_ENGINE,
     DEFAULT_MAX_EVALUATIONS,
     DEFAULT_MAX_HISTORY,
@@ -223,7 +223,7 @@ def registry():
 
 class TestConstantsAndEnumerations:
     def test_engine_system_id_format(self):
-        assert ENGINE_SYSTEM_ID.startswith("iios:")
+        assert ENGINE_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version_semver(self):
         parts = VERSION.split(".")
@@ -267,52 +267,52 @@ class TestConstantsAndEnumerations:
 
 class TestExceptions:
     def test_not_running_no_args(self):
-        from iios.execution.risk.engine import RiskEngineNotRunningError
+        from enterprise_ai_platform.execution.risk.engine import RiskEngineNotRunningError
         exc = RiskEngineNotRunningError()
         assert "ERM-001" in str(exc)
 
     def test_operation_error_has_operation_field(self):
-        from iios.execution.risk.engine import EvaluationOperationError
+        from enterprise_ai_platform.execution.risk.engine import EvaluationOperationError
         exc = EvaluationOperationError("fail", operation="evaluate")
         assert exc.operation == "evaluate"
         assert "ERM-002" in str(exc)
 
     def test_creation_error(self):
-        from iios.execution.risk.engine import EvaluationCreationError
+        from enterprise_ai_platform.execution.risk.engine import EvaluationCreationError
         exc = EvaluationCreationError("bad create")
         assert "ERM-003" in str(exc)
 
     def test_execution_error_has_rule_name(self):
-        from iios.execution.risk.engine import EvaluationExecutionError
+        from enterprise_ai_platform.execution.risk.engine import EvaluationExecutionError
         exc = EvaluationExecutionError("rule fail", rule_name="my_rule")
         assert exc.rule_name == "my_rule"
         assert "ERM-004" in str(exc)
 
     def test_not_found_has_evaluation_id(self):
-        from iios.execution.risk.engine import EvaluationNotFoundError
+        from enterprise_ai_platform.execution.risk.engine import EvaluationNotFoundError
         exc = EvaluationNotFoundError("abc-123")
         assert exc.evaluation_id == "abc-123"
         assert "ERM-007" in str(exc)
 
     def test_rule_registration_error(self):
-        from iios.execution.risk.engine import RuleRegistrationError
+        from enterprise_ai_platform.execution.risk.engine import RuleRegistrationError
         exc = RuleRegistrationError("dup", rule_name="my_rule")
         assert exc.rule_name == "my_rule"
         assert "ERM-008" in str(exc)
 
     def test_validation_error(self):
-        from iios.execution.risk.engine import RiskEngineValidationError
+        from enterprise_ai_platform.execution.risk.engine import RiskEngineValidationError
         exc = RiskEngineValidationError("bad input")
         assert "ERM-009" in str(exc)
 
     def test_all_inherit_from_base(self):
-        from iios.execution.risk.engine import (
+        from enterprise_ai_platform.execution.risk.engine import (
             ExecutionRiskEngineError,
             EvaluationAggregationError,
             EvaluationFinalizationError,
             RiskEngineStateError,
         )
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         for cls in (
             ExecutionRiskEngineError,
             RiskEngineNotRunningError,
@@ -741,7 +741,7 @@ class TestEngineRiskRegistry:
             r._assert_running()
 
     def test_register_and_get(self, registry):
-        from iios.execution.risk.lifecycle import RiskFactory as LifecycleFactory
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LifecycleFactory
         factory = LifecycleFactory()
         risk = factory.create(RiskCategory.EXPOSURE, execution_id="exec-1")
         registry.register(risk)
@@ -749,34 +749,34 @@ class TestEngineRiskRegistry:
 
     def test_count_and_is_empty(self, registry):
         assert registry.is_empty
-        from iios.execution.risk.lifecycle import RiskFactory as LF
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF
         risk = LF().create(RiskCategory.EXPOSURE)
         registry.register(risk)
         assert registry.count == 1
         assert not registry.is_empty
 
     def test_filter_by_state(self, registry):
-        from iios.execution.risk.lifecycle import RiskFactory as LF, RiskState
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF, RiskState
         risk = LF().create(RiskCategory.EXPOSURE)
         registry.register(risk)
         assert len(registry.by_state(RiskState.CREATED)) == 1
 
     def test_filter_by_category(self, registry):
-        from iios.execution.risk.lifecycle import RiskFactory as LF
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF
         risk = LF().create(RiskCategory.MARGIN)
         registry.register(risk)
         assert len(registry.by_category(RiskCategory.MARGIN)) == 1
         assert len(registry.by_category(RiskCategory.EXPOSURE)) == 0
 
     def test_deregister(self, registry):
-        from iios.execution.risk.lifecycle import RiskFactory as LF
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF
         risk = LF().create(RiskCategory.EXPOSURE)
         registry.register(risk)
         registry.deregister(risk.risk_id)
         assert registry.count == 0
 
     def test_notify_transition(self, registry):
-        from iios.execution.risk.lifecycle import RiskFactory as LF, RiskState
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF, RiskState
         risk = LF().create(RiskCategory.EXPOSURE)
         registry.register(risk)
         risk.transition_to(RiskState.PENDING_EVALUATION)
@@ -952,7 +952,7 @@ class TestRiskEngineEvents:
 
 class TestSnapshotTypes:
     def _make_risk(self, category=RiskCategory.EXPOSURE):
-        from iios.execution.risk.lifecycle import RiskFactory as LF
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF
         return LF().create(category, execution_id="e1", portfolio_id="p1")
 
     def test_evaluation_summary_from_risk(self):
@@ -976,7 +976,7 @@ class TestSnapshotTypes:
         assert snap.total_evaluations == 0
 
     def test_make_engine_risk_snapshot_counts(self):
-        from iios.execution.risk.lifecycle import RiskFactory as LF, RiskState
+        from enterprise_ai_platform.execution.risk.lifecycle import RiskFactory as LF, RiskState
         stats = EngineRiskStatistics()
         risk1 = LF().create(RiskCategory.EXPOSURE)
         risk2 = LF().create(RiskCategory.MARGIN)

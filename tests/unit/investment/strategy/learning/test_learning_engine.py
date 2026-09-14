@@ -8,11 +8,11 @@ from typing import List
 from tests.unit.investment.strategy.learning.conftest import (
     make_observation, make_observations_series
 )
-from iios.investment.strategy.learning.strategy_learning_engine import StrategyLearningEngine
-from iios.investment.strategy.learning.learning_policy import DEFAULT_POLICY
-from iios.investment.strategy.learning.degradation_detector import DegradationLevel
-from iios.investment.strategy.learning.recommendation_engine import RecommendationType
-from iios.investment.strategy.learning.strategy_maturity import MaturityLevel
+from enterprise_ai_platform.investment.strategy.learning.strategy_learning_engine import StrategyLearningEngine
+from enterprise_ai_platform.investment.strategy.learning.learning_policy import DEFAULT_POLICY
+from enterprise_ai_platform.investment.strategy.learning.degradation_detector import DegradationLevel
+from enterprise_ai_platform.investment.strategy.learning.recommendation_engine import RecommendationType
+from enterprise_ai_platform.investment.strategy.learning.strategy_maturity import MaturityLevel
 
 
 class TestStrategyLearningEngineObserve:

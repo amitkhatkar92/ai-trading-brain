@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.rebalancing import (
+from enterprise_ai_platform.investment.portfolio.rebalancing import (
     AllocationDrift,
     DriftEngine,
     DriftLevel,
@@ -89,7 +89,7 @@ class TestRiskDrift:
         assert r1.result_id != r2.result_id
 
     def test_requires_rebalance_high_risk(self):
-        from iios.investment.portfolio.rebalancing import CurrentPosition, TargetPosition
+        from enterprise_ai_platform.investment.portfolio.rebalancing import CurrentPosition, TargetPosition
         high_risk = [
             CurrentPosition("X", 0.5, risk_score=0.9),
             CurrentPosition("Y", 0.5, risk_score=0.9),

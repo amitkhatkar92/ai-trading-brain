@@ -27,18 +27,18 @@ import pytest
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _reset_all():
-    from iios.intelligence.agents.multi_agent_coordinator  import reset_multi_agent_coordinator
-    from iios.intelligence.agents.agent_manager            import reset_agent_manager
-    from iios.intelligence.agents.agent_registry           import reset_agent_registry
-    from iios.intelligence.agents.agent_factory            import reset_agent_factory
-    from iios.intelligence.agents.agent_context            import reset_agent_context
-    from iios.intelligence.agents.execution.agent_executor import reset_agent_executor
-    from iios.intelligence.agents.supervision.agent_supervisor import reset_agent_supervisor
-    from iios.intelligence.agents.monitoring.agent_monitor import reset_agent_monitor
-    from iios.intelligence.agents.communication.agent_router  import reset_agent_router
-    from iios.intelligence.agents.communication.agent_channel import reset_channel_registry
-    from iios.intelligence.agents.communication.agent_event   import reset_agent_event_bus
-    from iios.intelligence.agents.consensus.consensus_engine  import reset_consensus_engine
+    from enterprise_ai_platform.intelligence.agents.multi_agent_coordinator  import reset_multi_agent_coordinator
+    from enterprise_ai_platform.intelligence.agents.agent_manager            import reset_agent_manager
+    from enterprise_ai_platform.intelligence.agents.agent_registry           import reset_agent_registry
+    from enterprise_ai_platform.intelligence.agents.agent_factory            import reset_agent_factory
+    from enterprise_ai_platform.intelligence.agents.agent_context            import reset_agent_context
+    from enterprise_ai_platform.intelligence.agents.execution.agent_executor import reset_agent_executor
+    from enterprise_ai_platform.intelligence.agents.supervision.agent_supervisor import reset_agent_supervisor
+    from enterprise_ai_platform.intelligence.agents.monitoring.agent_monitor import reset_agent_monitor
+    from enterprise_ai_platform.intelligence.agents.communication.agent_router  import reset_agent_router
+    from enterprise_ai_platform.intelligence.agents.communication.agent_channel import reset_channel_registry
+    from enterprise_ai_platform.intelligence.agents.communication.agent_event   import reset_agent_event_bus
+    from enterprise_ai_platform.intelligence.agents.consensus.consensus_engine  import reset_consensus_engine
 
     reset_multi_agent_coordinator()
     reset_agent_manager()
@@ -65,10 +65,10 @@ def reset_all():
 
 class EchoAgent:
     """Minimal concrete agent that echoes its payload back."""
-    from iios.intelligence.agents.core.base_agent import BaseAgent  # for type check
+    from enterprise_ai_platform.intelligence.agents.core.base_agent import BaseAgent  # for type check
 
     def __init__(self, agent_id: str, agent_type=None, name: str = "Echo", **kwargs):
-        from iios.intelligence.agents import AgentType, BaseAgent, AgentRequest, AgentResponse
+        from enterprise_ai_platform.intelligence.agents import AgentType, BaseAgent, AgentRequest, AgentResponse
         # Lazily import to avoid circular
         self._inner_class = _make_echo(agent_id, agent_type or AgentType.GENERIC, name)
 
@@ -77,7 +77,7 @@ class EchoAgent:
 
 
 def _make_echo(agent_id, agent_type=None, name="Echo"):
-    from iios.intelligence.agents import (
+    from enterprise_ai_platform.intelligence.agents import (
         BaseAgent, AgentRequest, AgentResponse, AgentType,
         SupervisionPolicy,
     )
@@ -105,7 +105,7 @@ def _make_echo(agent_id, agent_type=None, name="Echo"):
 
 
 def make_agent(agent_id: str, agent_type=None, name: str = "Echo"):
-    from iios.intelligence.agents import AgentType
+    from enterprise_ai_platform.intelligence.agents import AgentType
     return _make_echo(agent_id, agent_type or AgentType.GENERIC, name)
 
 
@@ -115,17 +115,17 @@ def make_agent(agent_id: str, agent_type=None, name: str = "Echo"):
 
 class TestConstants:
     def test_agent_type_members(self):
-        from iios.intelligence.agents import AgentType
+        from enterprise_ai_platform.intelligence.agents import AgentType
         assert AgentType.REASONING.value == "reasoning_agent"
         assert AgentType.RISK.value      == "risk_agent"
         assert AgentType.GENERIC.value   == "generic_agent"
 
     def test_all_17_agent_types(self):
-        from iios.intelligence.agents import AgentType
+        from enterprise_ai_platform.intelligence.agents import AgentType
         assert len(list(AgentType)) == 17
 
     def test_coordination_modes(self):
-        from iios.intelligence.agents import CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import CoordinationMode
         modes = [m.value for m in CoordinationMode]
         assert "sequential"  in modes
         assert "parallel"    in modes
@@ -134,24 +134,24 @@ class TestConstants:
         assert "hierarchical" in modes
 
     def test_consensus_methods(self):
-        from iios.intelligence.agents import ConsensusMethod
+        from enterprise_ai_platform.intelligence.agents import ConsensusMethod
         assert ConsensusMethod.MAJORITY.value == "majority"
         assert ConsensusMethod.CONFIDENCE_WEIGHTED.value == "confidence_weighted"
 
     def test_message_priority_ordered(self):
-        from iios.intelligence.agents import MessagePriority
+        from enterprise_ai_platform.intelligence.agents import MessagePriority
         assert MessagePriority.CRITICAL < MessagePriority.HIGH
         assert MessagePriority.HIGH     < MessagePriority.NORMAL
         assert MessagePriority.NORMAL   < MessagePriority.BACKGROUND
 
     def test_limits_positive(self):
-        from iios.intelligence.agents import MAX_AGENTS, MAX_CONCURRENT_AGENTS, MAX_MAILBOX_SIZE
+        from enterprise_ai_platform.intelligence.agents import MAX_AGENTS, MAX_CONCURRENT_AGENTS, MAX_MAILBOX_SIZE
         assert MAX_AGENTS            > 0
         assert MAX_CONCURRENT_AGENTS > 0
         assert MAX_MAILBOX_SIZE      > 0
 
     def test_version_string(self):
-        from iios.intelligence.agents import MULTI_AGENT_ENGINE_VERSION
+        from enterprise_ai_platform.intelligence.agents import MULTI_AGENT_ENGINE_VERSION
         assert isinstance(MULTI_AGENT_ENGINE_VERSION, str)
         assert len(MULTI_AGENT_ENGINE_VERSION) > 0
 
@@ -162,7 +162,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             AgentError, AgentLifecycleError, AgentNotFoundError,
             CommunicationError, MailboxFullError, ChannelNotFoundError,
             CoordinationError, CoordinationTimeoutError,
@@ -179,7 +179,7 @@ class TestExceptions:
         assert issubclass(SupervisionError, AgentError)
 
     def test_error_codes(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             AgentError, AgentNotFoundError, AgentAlreadyRegisteredError,
             AgentNotInitializedError, AgentTimeoutError,
             MailboxFullError, ChannelNotFoundError,
@@ -199,7 +199,7 @@ class TestExceptions:
         assert MaxRestartsExceededError("a", 3).code == "AGT-052"
 
     def test_raise_and_catch_as_base(self):
-        from iios.intelligence.agents import AgentError, AgentNotFoundError
+        from enterprise_ai_platform.intelligence.agents import AgentError, AgentNotFoundError
         with pytest.raises(AgentError):
             raise AgentNotFoundError("missing")
 
@@ -210,14 +210,14 @@ class TestExceptions:
 
 class TestAgentContext:
     def test_execution_context_manager(self):
-        from iios.intelligence.agents import get_agent_context, agent_execution, MessagePriority
+        from enterprise_ai_platform.intelligence.agents import get_agent_context, agent_execution, MessagePriority
         with agent_execution(agent_id="a1", priority=MessagePriority.HIGH):
             ctx = get_agent_context()
             assert ctx.agent_id == "a1"
             assert ctx.priority == MessagePriority.HIGH
 
     def test_task_scope_depth(self):
-        from iios.intelligence.agents import get_agent_context, task_scope, agent_execution
+        from enterprise_ai_platform.intelligence.agents import get_agent_context, task_scope, agent_execution
         with agent_execution():
             assert get_agent_context().depth == 0
             with task_scope("t1"):
@@ -227,14 +227,14 @@ class TestAgentContext:
             assert get_agent_context().depth == 0
 
     def test_coordination_scope(self):
-        from iios.intelligence.agents import get_agent_context, coordination_scope, agent_execution
+        from enterprise_ai_platform.intelligence.agents import get_agent_context, coordination_scope, agent_execution
         with agent_execution():
             with coordination_scope("coord-1"):
                 assert get_agent_context().coordination_id == "coord-1"
             assert get_agent_context().coordination_id is None
 
     def test_diagnostics(self):
-        from iios.intelligence.agents import get_agent_context, agent_execution
+        from enterprise_ai_platform.intelligence.agents import get_agent_context, agent_execution
         with agent_execution():
             ctx = get_agent_context()
             ctx.add_diagnostic("WARNING", "low mem", "test")
@@ -243,7 +243,7 @@ class TestAgentContext:
             assert len(ctx.errors())   == 1
 
     def test_thread_local_isolation(self):
-        from iios.intelligence.agents import get_agent_context, agent_execution
+        from enterprise_ai_platform.intelligence.agents import get_agent_context, agent_execution
         results = {}
 
         def _run(i):
@@ -264,14 +264,14 @@ class TestAgentContext:
 
 class TestBaseAgent:
     def test_initialize_sets_idle(self):
-        from iios.intelligence.agents import AgentStatus
+        from enterprise_ai_platform.intelligence.agents import AgentStatus
         agent = make_agent("a1")
         assert agent.status == AgentStatus.REGISTERED
         agent.initialize()
         assert agent.status == AgentStatus.IDLE
 
     def test_run_sets_status(self):
-        from iios.intelligence.agents import AgentRequest, AgentStatus
+        from enterprise_ai_platform.intelligence.agents import AgentRequest, AgentStatus
         agent = make_agent("a2")
         agent.initialize()
         req  = AgentRequest(payload={"x": 1})
@@ -280,7 +280,7 @@ class TestBaseAgent:
         assert agent.status == AgentStatus.IDLE
 
     def test_pause_resume(self):
-        from iios.intelligence.agents import AgentStatus, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import AgentStatus, AgentRequest
         agent = make_agent("a3")
         agent.initialize()
         agent.pause()
@@ -289,7 +289,7 @@ class TestBaseAgent:
         assert agent.status == AgentStatus.IDLE
 
     def test_paused_raises_on_run(self):
-        from iios.intelligence.agents import AgentRequest, AgentStatusError
+        from enterprise_ai_platform.intelligence.agents import AgentRequest, AgentStatusError
         agent = make_agent("a4")
         agent.initialize()
         agent.pause()
@@ -298,7 +298,7 @@ class TestBaseAgent:
             agent.run(req)
 
     def test_failed_execute_returns_error_response(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             BaseAgent, AgentRequest, AgentResponse, AgentType,
         )
 
@@ -332,7 +332,7 @@ class TestBaseAgent:
         assert "agent_type" in d
 
     def test_async_execute(self):
-        from iios.intelligence.agents import AgentRequest
+        from enterprise_ai_platform.intelligence.agents import AgentRequest
         agent = make_agent("async1")
         agent.initialize()
         req   = AgentRequest(payload={"val": 42})
@@ -340,14 +340,14 @@ class TestBaseAgent:
         assert resp.success
 
     def test_agent_request_to_dict(self):
-        from iios.intelligence.agents import AgentRequest
+        from enterprise_ai_platform.intelligence.agents import AgentRequest
         r = AgentRequest(task_type="score", payload={"x": 1})
         d = r.to_dict()
         assert d["task_type"]  == "score"
         assert d["payload"]["x"] == 1
 
     def test_agent_response_to_dict(self):
-        from iios.intelligence.agents import AgentResponse
+        from enterprise_ai_platform.intelligence.agents import AgentResponse
         r = AgentResponse(request_id="r1", agent_id="a1", success=True, confidence=0.8)
         d = r.to_dict()
         assert d["success"]    is True
@@ -360,30 +360,30 @@ class TestBaseAgent:
 
 class TestConcreteAgents:
     def _run(self, agent):
-        from iios.intelligence.agents import AgentRequest
+        from enterprise_ai_platform.intelligence.agents import AgentRequest
         agent.initialize()
         return agent.run(AgentRequest(payload={"data": "test"}))
 
     def test_reasoning_agent(self):
-        from iios.intelligence.agents import ReasoningAgent
+        from enterprise_ai_platform.intelligence.agents import ReasoningAgent
         resp = self._run(ReasoningAgent("r1"))
         assert resp.success
 
     def test_analysis_agent(self):
-        from iios.intelligence.agents import AnalysisAgent
+        from enterprise_ai_platform.intelligence.agents import AnalysisAgent
         resp = self._run(AnalysisAgent("an1"))
         assert resp.success
         assert "signals" in resp.result
 
     def test_decision_agent(self):
-        from iios.intelligence.agents import DecisionAgent, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import DecisionAgent, AgentRequest
         agent = DecisionAgent("d1")
         agent.initialize()
         resp  = agent.run(AgentRequest(payload={"decision": "BUY"}))
         assert resp.result["decision"] == "BUY"
 
     def test_learning_agent_counts(self):
-        from iios.intelligence.agents import LearningAgent, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import LearningAgent, AgentRequest
         agent = LearningAgent("l1")
         agent.initialize()
         agent.run(AgentRequest())
@@ -392,7 +392,7 @@ class TestConcreteAgents:
         assert resp.result["experience_count"] == 3
 
     def test_planner_agent(self):
-        from iios.intelligence.agents import PlannerAgent, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import PlannerAgent, AgentRequest
         agent = PlannerAgent("p1")
         agent.initialize()
         resp  = agent.run(AgentRequest(payload={"goal": "maximize_return"}))
@@ -400,7 +400,7 @@ class TestConcreteAgents:
         assert len(resp.result["steps"]) >= 1
 
     def test_observer_agent_counts(self):
-        from iios.intelligence.agents import ObserverAgent, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import ObserverAgent, AgentRequest
         agent = ObserverAgent("o1")
         agent.initialize()
         agent.run(AgentRequest())
@@ -414,7 +414,7 @@ class TestConcreteAgents:
 
 class TestAgentMessage:
     def test_task_message(self):
-        from iios.intelligence.agents import AgentMessage, MessageType
+        from enterprise_ai_platform.intelligence.agents import AgentMessage, MessageType
         msg = AgentMessage.task("a1", "a2", {"task": "analyze"})
         assert msg.message_type == MessageType.TASK
         assert msg.sender_id    == "a1"
@@ -422,42 +422,42 @@ class TestAgentMessage:
         assert msg.correlation_id is not None
 
     def test_broadcast_message(self):
-        from iios.intelligence.agents import AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMessage
         msg = AgentMessage.broadcast("a1", {"alert": "market_open"})
         assert msg.is_broadcast
         assert msg.recipient_id is None
 
     def test_response_message(self):
-        from iios.intelligence.agents import AgentMessage, MessageType
+        from enterprise_ai_platform.intelligence.agents import AgentMessage, MessageType
         msg = AgentMessage.response("a2", "a1", {"result": 42}, "corr-123")
         assert msg.message_type   == MessageType.RESPONSE
         assert msg.correlation_id == "corr-123"
 
     def test_heartbeat_message(self):
-        from iios.intelligence.agents import AgentMessage, MessageType, MessagePriority
+        from enterprise_ai_platform.intelligence.agents import AgentMessage, MessageType, MessagePriority
         msg = AgentMessage.heartbeat("a1")
         assert msg.message_type == MessageType.HEARTBEAT
         assert msg.priority     == MessagePriority.BACKGROUND
 
     def test_ttl_expiry(self):
-        from iios.intelligence.agents import AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMessage
         msg = AgentMessage(ttl_s=0.001)
         time.sleep(0.01)
         assert msg.is_expired
 
     def test_no_expiry(self):
-        from iios.intelligence.agents import AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMessage
         msg = AgentMessage(ttl_s=0.0)
         assert not msg.is_expired
 
     def test_priority_ordering(self):
-        from iios.intelligence.agents import AgentMessage, MessagePriority
+        from enterprise_ai_platform.intelligence.agents import AgentMessage, MessagePriority
         m1 = AgentMessage(priority=MessagePriority.CRITICAL)
         m2 = AgentMessage(priority=MessagePriority.NORMAL)
         assert m1 < m2
 
     def test_to_dict(self):
-        from iios.intelligence.agents import AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMessage
         msg = AgentMessage.task("a1", "a2", {"k": "v"})
         d   = msg.to_dict()
         assert d["sender_id"]    == "a1"
@@ -470,7 +470,7 @@ class TestAgentMessage:
 
 class TestAgentMailbox:
     def test_put_and_get(self):
-        from iios.intelligence.agents import AgentMailbox, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage
         mb = AgentMailbox("a1")
         mb.put(AgentMessage.task("s", "a1", {"k": "v"}))
         env = mb.get(timeout_s=0.1)
@@ -478,7 +478,7 @@ class TestAgentMailbox:
         assert env.message.sender_id == "s"
 
     def test_priority_ordering(self):
-        from iios.intelligence.agents import AgentMailbox, AgentMessage, MessagePriority
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage, MessagePriority
         mb = AgentMailbox("a1")
         mb.put(AgentMessage(priority=MessagePriority.LOW))
         mb.put(AgentMessage(priority=MessagePriority.CRITICAL))
@@ -487,7 +487,7 @@ class TestAgentMailbox:
         assert first.message.priority == MessagePriority.CRITICAL
 
     def test_mailbox_full_raises(self):
-        from iios.intelligence.agents import AgentMailbox, AgentMessage, MailboxFullError
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage, MailboxFullError
         mb = AgentMailbox("a1", capacity=2)
         mb.put(AgentMessage())
         mb.put(AgentMessage())
@@ -495,19 +495,19 @@ class TestAgentMailbox:
             mb.put(AgentMessage())
 
     def test_drop_if_full(self):
-        from iios.intelligence.agents import AgentMailbox, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage
         mb = AgentMailbox("a1", capacity=1)
         mb.put(AgentMessage())
         mb.put(AgentMessage(), drop_if_full=True)  # should not raise
         assert mb.size == 1
 
     def test_empty_get_returns_none(self):
-        from iios.intelligence.agents import AgentMailbox
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox
         mb = AgentMailbox("a1")
         assert mb.get(timeout_s=0.05) is None
 
     def test_expired_message_raises(self):
-        from iios.intelligence.agents import AgentMailbox, AgentMessage, MessageExpiredError
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage, MessageExpiredError
         mb = AgentMailbox("a1")
         msg = AgentMessage(ttl_s=0.001)
         time.sleep(0.01)
@@ -521,7 +521,7 @@ class TestAgentMailbox:
 
 class TestAgentChannel:
     def test_subscribe_and_publish(self):
-        from iios.intelligence.agents import AgentChannel, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentChannel, AgentMessage
         ch       = AgentChannel("test_ch")
         received = []
         ch.subscribe("a1", received.append)
@@ -531,7 +531,7 @@ class TestAgentChannel:
         assert len(received) == 1
 
     def test_unsubscribe(self):
-        from iios.intelligence.agents import AgentChannel, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentChannel, AgentMessage
         ch       = AgentChannel("test_ch")
         received = []
         ch.subscribe("a1", received.append)
@@ -540,7 +540,7 @@ class TestAgentChannel:
         assert len(received) == 0
 
     def test_channel_registry(self):
-        from iios.intelligence.agents import get_channel_registry, ChannelAlreadyExistsError
+        from enterprise_ai_platform.intelligence.agents import get_channel_registry, ChannelAlreadyExistsError
         reg = get_channel_registry()
         ch  = reg.create("my_channel")
         assert reg.has("my_channel")
@@ -549,7 +549,7 @@ class TestAgentChannel:
         reg.create("my_channel", overwrite=True)  # should not raise
 
     def test_channel_not_found(self):
-        from iios.intelligence.agents import get_channel_registry, ChannelNotFoundError
+        from enterprise_ai_platform.intelligence.agents import get_channel_registry, ChannelNotFoundError
         reg = get_channel_registry()
         with pytest.raises(ChannelNotFoundError):
             reg.get("ghost_channel")
@@ -561,7 +561,7 @@ class TestAgentChannel:
 
 class TestAgentRouter:
     def test_direct_message(self):
-        from iios.intelligence.agents import AgentRouter, AgentMailbox, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentRouter, AgentMailbox, AgentMessage
         router = AgentRouter()
         mb     = AgentMailbox("recipient")
         router.register_mailbox("recipient", mb)
@@ -571,14 +571,14 @@ class TestAgentRouter:
         assert mb.size == 1
 
     def test_routing_unknown_recipient_raises(self):
-        from iios.intelligence.agents import AgentRouter, AgentMessage, MessageRoutingError
+        from enterprise_ai_platform.intelligence.agents import AgentRouter, AgentMessage, MessageRoutingError
         router = AgentRouter()
         msg    = AgentMessage.task("s", "nobody", {})
         with pytest.raises(MessageRoutingError):
             router.route(msg)
 
     def test_broadcast_routes_to_all(self):
-        from iios.intelligence.agents import AgentRouter, AgentMailbox, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentRouter, AgentMailbox, AgentMessage
         router = AgentRouter()
         mbs    = {f"a{i}": AgentMailbox(f"a{i}") for i in range(5)}
         for aid, mb in mbs.items():
@@ -588,7 +588,7 @@ class TestAgentRouter:
         assert n == 5
 
     def test_stats(self):
-        from iios.intelligence.agents import AgentRouter
+        from enterprise_ai_platform.intelligence.agents import AgentRouter
         router = AgentRouter()
         s = router.stats()
         assert "routed_count"  in s
@@ -601,7 +601,7 @@ class TestAgentRouter:
 
 class TestAgentEventBus:
     def test_emit_and_subscribe(self):
-        from iios.intelligence.agents import get_agent_event_bus, AgentEventType, AgentEvent
+        from enterprise_ai_platform.intelligence.agents import get_agent_event_bus, AgentEventType, AgentEvent
         bus      = get_agent_event_bus()
         received = []
         bus.subscribe(AgentEventType.STARTED, received.append)
@@ -609,7 +609,7 @@ class TestAgentEventBus:
         assert len(received) == 1
 
     def test_unsubscribe(self):
-        from iios.intelligence.agents import get_agent_event_bus, AgentEventType, AgentEvent
+        from enterprise_ai_platform.intelligence.agents import get_agent_event_bus, AgentEventType, AgentEvent
         bus      = get_agent_event_bus()
         received = []
         handler  = received.append
@@ -619,7 +619,7 @@ class TestAgentEventBus:
         assert len(received) == 0
 
     def test_emit_simple(self):
-        from iios.intelligence.agents import get_agent_event_bus, AgentEventType
+        from enterprise_ai_platform.intelligence.agents import get_agent_event_bus, AgentEventType
         bus = get_agent_event_bus()
         n   = bus.emit_simple(AgentEventType.HEARTBEAT, agent_id="a1", payload={"ts": 1.0})
         assert n == 0  # no subscribers
@@ -631,7 +631,7 @@ class TestAgentEventBus:
 
 class TestVotingEngine:
     def _decisions(self, vals, confs=None, weights=None):
-        from iios.intelligence.agents import AgentDecision
+        from enterprise_ai_platform.intelligence.agents import AgentDecision
         confs   = confs   or [0.8] * len(vals)
         weights = weights or [1.0] * len(vals)
         return [
@@ -640,20 +640,20 @@ class TestVotingEngine:
         ]
 
     def test_majority_vote_clear_winner(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["BUY", "BUY", "SELL"])
         res = VotingEngine().majority_vote(ds)
         assert res.decision == "BUY"
         assert res.reached
 
     def test_majority_vote_tie(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["BUY", "SELL"])
         res = VotingEngine().majority_vote(ds, threshold=0.6)
         assert not res.reached
 
     def test_weighted_vote(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(
             ["BUY", "SELL", "SELL"],
             weights=[3.0, 1.0, 1.0],
@@ -662,7 +662,7 @@ class TestVotingEngine:
         assert res.decision == "BUY"
 
     def test_confidence_weighted_vote(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(
             ["A", "B"],
             confs=[0.9, 0.1],
@@ -671,34 +671,34 @@ class TestVotingEngine:
         assert res.decision == "A"
 
     def test_unanimous_agree(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["BUY", "BUY", "BUY"])
         res = VotingEngine().unanimous_vote(ds, min_votes=2)
         assert res.reached
         assert res.agreement_rate == 1.0
 
     def test_unanimous_disagree(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["BUY", "SELL"])
         res = VotingEngine().unanimous_vote(ds)
         assert not res.reached
 
     def test_first_pass(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["A", "B"], confs=[0.95, 0.5])
         res = VotingEngine().first_pass_vote(ds, threshold=0.9)
         assert res.decision == "A"
         assert res.reached
 
     def test_ranked_choice(self):
-        from iios.intelligence.agents import VotingEngine
+        from enterprise_ai_platform.intelligence.agents import VotingEngine
         ds  = self._decisions(["A", "A", "B", "C"])
         res = VotingEngine().ranked_choice_vote(ds)
         assert res.decision == "A"
         assert res.reached
 
     def test_insufficient_votes_raises(self):
-        from iios.intelligence.agents import VotingEngine, InsufficientVotesError
+        from enterprise_ai_platform.intelligence.agents import VotingEngine, InsufficientVotesError
         with pytest.raises(InsufficientVotesError):
             VotingEngine().majority_vote([], min_votes=3)
 
@@ -709,26 +709,26 @@ class TestVotingEngine:
 
 class TestConfidenceAggregator:
     def _decisions(self, confs, weights=None):
-        from iios.intelligence.agents import AgentDecision
+        from enterprise_ai_platform.intelligence.agents import AgentDecision
         weights = weights or [1.0] * len(confs)
         return [AgentDecision(f"a{i}", "X", c, weight=w)
                 for i, (c, w) in enumerate(zip(confs, weights))]
 
     def test_mean(self):
-        from iios.intelligence.agents import ConfidenceAggregator
+        from enterprise_ai_platform.intelligence.agents import ConfidenceAggregator
         ds  = self._decisions([0.8, 0.6, 0.4])
         agg = ConfidenceAggregator().aggregate(ds)
         assert abs(agg.mean - 0.6) < 1e-9
 
     def test_weighted(self):
-        from iios.intelligence.agents import ConfidenceAggregator
+        from enterprise_ai_platform.intelligence.agents import ConfidenceAggregator
         ds  = self._decisions([0.9, 0.1], weights=[2.0, 1.0])
         agg = ConfidenceAggregator().aggregate(ds)
         expected = (0.9 * 2 + 0.1 * 1) / 3
         assert abs(agg.weighted - expected) < 1e-9
 
     def test_empty_returns_zeros(self):
-        from iios.intelligence.agents import ConfidenceAggregator
+        from enterprise_ai_platform.intelligence.agents import ConfidenceAggregator
         agg = ConfidenceAggregator().aggregate([])
         assert agg.count == 0
         assert agg.mean  == 0.0
@@ -740,13 +740,13 @@ class TestConfidenceAggregator:
 
 class TestConflictResolver:
     def test_no_conflict_unanimous(self):
-        from iios.intelligence.agents import ConflictResolver, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import ConflictResolver, AgentDecision
         ds  = [AgentDecision(f"a{i}", "BUY", 0.8) for i in range(3)]
         rep = ConflictResolver().detect(ds)
         assert not rep.has_conflict
 
     def test_conflict_detected(self):
-        from iios.intelligence.agents import ConflictResolver, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import ConflictResolver, AgentDecision
         ds  = [AgentDecision("a1", "BUY", 0.8),
                AgentDecision("a2", "SELL", 0.8)]
         rep = ConflictResolver().detect(ds)
@@ -754,14 +754,14 @@ class TestConflictResolver:
         assert rep.conflict_score > 0
 
     def test_conflict_resolved_by_confidence(self):
-        from iios.intelligence.agents import ConflictResolver, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import ConflictResolver, AgentDecision
         ds  = [AgentDecision("a1", "BUY",  0.95),
                AgentDecision("a2", "SELL", 0.2)]
         rep = ConflictResolver().resolve(ds)
         assert rep.resolution == "BUY"
 
     def test_empty_no_conflict(self):
-        from iios.intelligence.agents import ConflictResolver
+        from enterprise_ai_platform.intelligence.agents import ConflictResolver
         rep = ConflictResolver().detect([])
         assert not rep.has_conflict
 
@@ -772,20 +772,20 @@ class TestConflictResolver:
 
 class TestDecisionMerger:
     def test_numeric_average(self):
-        from iios.intelligence.agents import DecisionMerger, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import DecisionMerger, AgentDecision
         ds  = [AgentDecision(f"a{i}", float(i * 10 + 10), 0.8) for i in range(3)]
         res = DecisionMerger().confidence_weighted_average(ds)
         assert res.value is not None
         assert res.confidence > 0
 
     def test_best_selects_highest_conf(self):
-        from iios.intelligence.agents import DecisionMerger, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import DecisionMerger, AgentDecision
         ds  = [AgentDecision("a1", "X", 0.9), AgentDecision("a2", "Y", 0.3)]
         res = DecisionMerger().best(ds)
         assert res.value == "X"
 
     def test_non_numeric_fallback_to_best(self):
-        from iios.intelligence.agents import DecisionMerger, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import DecisionMerger, AgentDecision
         ds  = [AgentDecision("a1", "BUY", 0.7), AgentDecision("a2", "SELL", 0.4)]
         res = DecisionMerger().confidence_weighted_average(ds)
         assert res.value == "BUY"
@@ -797,17 +797,17 @@ class TestDecisionMerger:
 
 class TestConsensusEngine:
     def _make(self, decisions):
-        from iios.intelligence.agents import get_consensus_engine
+        from enterprise_ai_platform.intelligence.agents import get_consensus_engine
         return get_consensus_engine().build(decisions)
 
     def _decisions(self, vals, confs=None):
-        from iios.intelligence.agents import AgentDecision
+        from enterprise_ai_platform.intelligence.agents import AgentDecision
         confs = confs or [0.8] * len(vals)
         return [AgentDecision(f"a{i}", v, c)
                 for i, (v, c) in enumerate(zip(vals, confs))]
 
     def test_majority_consensus(self):
-        from iios.intelligence.agents import get_consensus_engine, ConsensusMethod
+        from enterprise_ai_platform.intelligence.agents import get_consensus_engine, ConsensusMethod
         ds  = self._decisions(["BUY", "BUY", "SELL"])
         res = get_consensus_engine().build(
             ds, method=ConsensusMethod.MAJORITY
@@ -816,13 +816,13 @@ class TestConsensusEngine:
         assert res.reached
 
     def test_confidence_weighted_consensus(self):
-        from iios.intelligence.agents import get_consensus_engine, ConsensusMethod
+        from enterprise_ai_platform.intelligence.agents import get_consensus_engine, ConsensusMethod
         ds  = self._decisions(["A", "B", "A"], confs=[0.9, 0.2, 0.8])
         res = get_consensus_engine().build(ds, method=ConsensusMethod.CONFIDENCE_WEIGHTED)
         assert res.decision == "A"
 
     def test_consensus_with_conflict_resolution(self):
-        from iios.intelligence.agents import get_consensus_engine, AgentDecision
+        from enterprise_ai_platform.intelligence.agents import get_consensus_engine, AgentDecision
         ds  = [AgentDecision("a1", "BUY",  0.95, weight=2.0),
                AgentDecision("a2", "SELL", 0.3,  weight=1.0)]
         res = get_consensus_engine().build(ds, resolve_conflicts=True)
@@ -836,7 +836,7 @@ class TestConsensusEngine:
         assert "decision"     in d
 
     def test_insufficient_votes(self):
-        from iios.intelligence.agents import get_consensus_engine, InsufficientVotesError
+        from enterprise_ai_platform.intelligence.agents import get_consensus_engine, InsufficientVotesError
         with pytest.raises(InsufficientVotesError):
             get_consensus_engine().build([], min_votes=2)
 
@@ -847,7 +847,7 @@ class TestConsensusEngine:
 
 class TestCoordinationStrategies:
     def _task(self, mode, agent_ids=None):
-        from iios.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
         return CoordinationTask(
             mode      = mode,
             agent_ids = agent_ids or [],
@@ -860,21 +860,21 @@ class TestCoordinationStrategies:
         return agents
 
     def test_sequential(self):
-        from iios.intelligence.agents import SequentialStrategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import SequentialStrategy, CoordinationMode
         agents = self._agents(3)
         task   = self._task(CoordinationMode.SEQUENTIAL)
         result = SequentialStrategy().coordinate(task, agents)
         assert result.successful_count == 3
 
     def test_parallel(self):
-        from iios.intelligence.agents import ParallelStrategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import ParallelStrategy, CoordinationMode
         agents = self._agents(5)
         task   = self._task(CoordinationMode.PARALLEL)
         result = ParallelStrategy().coordinate(task, agents)
         assert result.successful_count == 5
 
     def test_competitive_has_winner(self):
-        from iios.intelligence.agents import CompetitiveStrategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import CompetitiveStrategy, CoordinationMode
         agents = self._agents(4)
         task   = self._task(CoordinationMode.COMPETITIVE)
         result = CompetitiveStrategy().coordinate(task, agents)
@@ -882,7 +882,7 @@ class TestCoordinationStrategies:
         assert result.winner in agents
 
     def test_consensus_strategy(self):
-        from iios.intelligence.agents import ConsensusStrategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import ConsensusStrategy, CoordinationMode
         agents = self._agents(3)
         task   = self._task(CoordinationMode.CONSENSUS)
         result = ConsensusStrategy().coordinate(task, agents)
@@ -890,14 +890,14 @@ class TestCoordinationStrategies:
         assert result.consensus.reached
 
     def test_hierarchical(self):
-        from iios.intelligence.agents import HierarchicalStrategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import HierarchicalStrategy, CoordinationMode
         agents = self._agents(4)  # 1 supervisor + 3 workers
         task   = self._task(CoordinationMode.HIERARCHICAL)
         result = HierarchicalStrategy().coordinate(task, agents)
         assert result.mode.value == "hierarchical"
 
     def test_delegation_by_tag(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             DelegationStrategy, CoordinationMode, CoordinationTask, AgentRequest,
         )
         agents = self._agents(3)
@@ -912,13 +912,13 @@ class TestCoordinationStrategies:
         assert result.winner == list(agents.values())[0].agent_id
 
     def test_get_strategy_factory(self):
-        from iios.intelligence.agents import get_strategy, CoordinationMode
+        from enterprise_ai_platform.intelligence.agents import get_strategy, CoordinationMode
         s = get_strategy(CoordinationMode.PARALLEL)
-        from iios.intelligence.agents import ParallelStrategy
+        from enterprise_ai_platform.intelligence.agents import ParallelStrategy
         assert isinstance(s, ParallelStrategy)
 
     def test_insufficient_agents_raises(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             HierarchicalStrategy, CoordinationTask, CoordinationMode,
             InsufficientAgentsError,
         )
@@ -935,7 +935,7 @@ class TestCoordinationStrategies:
 
 class TestAgentSupervisor:
     def test_register_and_check(self):
-        from iios.intelligence.agents import get_agent_supervisor
+        from enterprise_ai_platform.intelligence.agents import get_agent_supervisor
         sup   = get_agent_supervisor()
         agent = make_agent("sup1")
         agent.initialize()
@@ -945,7 +945,7 @@ class TestAgentSupervisor:
         assert "action" in res
 
     def test_start_stop(self):
-        from iios.intelligence.agents import get_agent_supervisor
+        from enterprise_ai_platform.intelligence.agents import get_agent_supervisor
         sup = get_agent_supervisor()
         sup.start()
         assert sup.is_running
@@ -953,7 +953,7 @@ class TestAgentSupervisor:
         assert not sup.is_running
 
     def test_restart_on_error(self):
-        from iios.intelligence.agents import get_agent_supervisor, AgentStatus
+        from enterprise_ai_platform.intelligence.agents import get_agent_supervisor, AgentStatus
         sup   = get_agent_supervisor()
         agent = make_agent("fail_agent")
         agent.initialize()
@@ -966,7 +966,7 @@ class TestAgentSupervisor:
         assert rec["restart_count"] >= 1
 
     def test_isolate_on_failure(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_agent_supervisor, AgentStatus, SupervisionPolicy, AgentType,
             BaseAgent, AgentRequest, AgentResponse,
         )
@@ -987,7 +987,7 @@ class TestAgentSupervisor:
         assert agent.status == AgentStatus.PAUSED
 
     def test_stats(self):
-        from iios.intelligence.agents import get_agent_supervisor
+        from enterprise_ai_platform.intelligence.agents import get_agent_supervisor
         sup = get_agent_supervisor()
         s   = sup.stats()
         assert "supervised"    in s
@@ -1000,7 +1000,7 @@ class TestAgentSupervisor:
 
 class TestAgentMonitor:
     def test_record_and_retrieve(self):
-        from iios.intelligence.agents import get_agent_monitor, AgentResponse
+        from enterprise_ai_platform.intelligence.agents import get_agent_monitor, AgentResponse
         mon  = get_agent_monitor()
         resp = AgentResponse("r1", "a1", success=True, duration_ms=50.0)
         mon.record(resp)
@@ -1011,7 +1011,7 @@ class TestAgentMonitor:
         assert m.avg_ms          == 50.0
 
     def test_system_metrics(self):
-        from iios.intelligence.agents import get_agent_monitor, AgentResponse
+        from enterprise_ai_platform.intelligence.agents import get_agent_monitor, AgentResponse
         mon = get_agent_monitor()
         for i in range(5):
             mon.record(AgentResponse("r", f"a{i}", success=True, duration_ms=10.0))
@@ -1020,7 +1020,7 @@ class TestAgentMonitor:
         assert sys_m.total_successes   == 5
 
     def test_top_agents(self):
-        from iios.intelligence.agents import get_agent_monitor, AgentResponse
+        from enterprise_ai_platform.intelligence.agents import get_agent_monitor, AgentResponse
         mon = get_agent_monitor()
         for i in range(10):
             for _ in range(i + 1):
@@ -1029,7 +1029,7 @@ class TestAgentMonitor:
         assert len(top) == 3
 
     def test_stats_dict(self):
-        from iios.intelligence.agents import get_agent_monitor, AgentResponse
+        from enterprise_ai_platform.intelligence.agents import get_agent_monitor, AgentResponse
         mon = get_agent_monitor()
         mon.record(AgentResponse("r", "a1", success=False, duration_ms=1.0))
         s = mon.stats()
@@ -1043,7 +1043,7 @@ class TestAgentMonitor:
 
 class TestAgentExecutor:
     def test_execute_single(self):
-        from iios.intelligence.agents import get_agent_executor, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import get_agent_executor, AgentRequest
         exec_ = get_agent_executor()
         agent = make_agent("e1")
         agent.initialize()
@@ -1053,7 +1053,7 @@ class TestAgentExecutor:
         assert res.response.success
 
     def test_timeout_returns_failed(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_agent_executor, AgentRequest, BaseAgent, AgentType, AgentResponse,
         )
 
@@ -1073,7 +1073,7 @@ class TestAgentExecutor:
         assert not result.success
 
     def test_execute_many_parallel(self):
-        from iios.intelligence.agents import get_agent_executor, AgentRequest, ExecutionSpec
+        from enterprise_ai_platform.intelligence.agents import get_agent_executor, AgentRequest, ExecutionSpec
         exec_  = get_agent_executor()
         agents = [make_agent(f"em{i}") for i in range(5)]
         for a in agents: a.initialize()
@@ -1083,7 +1083,7 @@ class TestAgentExecutor:
         assert all(r.success for r in results)
 
     def test_stats(self):
-        from iios.intelligence.agents import get_agent_executor
+        from enterprise_ai_platform.intelligence.agents import get_agent_executor
         s = get_agent_executor().stats()
         assert "exec_count" in s
 
@@ -1094,7 +1094,7 @@ class TestAgentExecutor:
 
 class TestAgentRegistry:
     def test_register_and_get(self):
-        from iios.intelligence.agents import get_agent_registry, AgentNotFoundError
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry, AgentNotFoundError
         reg   = get_agent_registry()
         agent = make_agent("r1")
         reg.register(agent)
@@ -1102,14 +1102,14 @@ class TestAgentRegistry:
         assert reg.get("r1") is agent
 
     def test_duplicate_raises(self):
-        from iios.intelligence.agents import get_agent_registry, AgentAlreadyRegisteredError
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry, AgentAlreadyRegisteredError
         reg = get_agent_registry()
         reg.register(make_agent("dup"))
         with pytest.raises(AgentAlreadyRegisteredError):
             reg.register(make_agent("dup"))
 
     def test_overwrite(self):
-        from iios.intelligence.agents import get_agent_registry
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry
         reg  = get_agent_registry()
         a1   = make_agent("ow")
         a2   = make_agent("ow")
@@ -1118,12 +1118,12 @@ class TestAgentRegistry:
         assert reg.get("ow") is a2
 
     def test_not_found(self):
-        from iios.intelligence.agents import get_agent_registry, AgentNotFoundError
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry, AgentNotFoundError
         with pytest.raises(AgentNotFoundError):
             get_agent_registry().get("ghost")
 
     def test_get_by_type(self):
-        from iios.intelligence.agents import get_agent_registry, ReasoningAgent, AgentType
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry, ReasoningAgent, AgentType
         reg = get_agent_registry()
         reg.register(ReasoningAgent("req1"))
         reg.register(ReasoningAgent("req2"))
@@ -1131,7 +1131,7 @@ class TestAgentRegistry:
         assert len(agents) == 2
 
     def test_get_by_tag(self):
-        from iios.intelligence.agents import get_agent_registry
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry
         reg   = get_agent_registry()
         agent = make_agent("tagged")
         reg.register(agent, tags=["alpha"])
@@ -1139,7 +1139,7 @@ class TestAgentRegistry:
         assert any(a.agent_id == "tagged" for a in found)
 
     def test_best_ready(self):
-        from iios.intelligence.agents import get_agent_registry, AgentType
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry, AgentType
         reg   = get_agent_registry()
         agent = make_agent("best1", AgentType.GENERIC)
         agent.initialize()  # sets to IDLE
@@ -1148,7 +1148,7 @@ class TestAgentRegistry:
         assert b is not None
 
     def test_stats(self):
-        from iios.intelligence.agents import get_agent_registry
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry
         reg = get_agent_registry()
         reg.register(make_agent("s1"))
         s = reg.stats()
@@ -1161,27 +1161,27 @@ class TestAgentRegistry:
 
 class TestAgentFactory:
     def test_create_and_register(self):
-        from iios.intelligence.agents import get_agent_factory, get_agent_registry, ReasoningAgent
+        from enterprise_ai_platform.intelligence.agents import get_agent_factory, get_agent_registry, ReasoningAgent
         factory = get_agent_factory()
         agent   = factory.create(ReasoningAgent, "fact1", name="Test Reasoner")
         assert get_agent_registry().has("fact1")
         assert agent.name == "Test Reasoner"
 
     def test_create_initializes_by_default(self):
-        from iios.intelligence.agents import get_agent_factory, ReasoningAgent, AgentStatus
+        from enterprise_ai_platform.intelligence.agents import get_agent_factory, ReasoningAgent, AgentStatus
         factory = get_agent_factory()
         agent   = factory.create(ReasoningAgent, "fact2")
         assert agent.status == AgentStatus.IDLE
 
     def test_template(self):
-        from iios.intelligence.agents import get_agent_factory, ReasoningAgent
+        from enterprise_ai_platform.intelligence.agents import get_agent_factory, ReasoningAgent
         factory = get_agent_factory()
         factory.register_template("my_reasoner", ReasoningAgent, {"depth": 5})
         agent = factory.create_from_template("my_reasoner", "fact3")
         assert agent.config.get("depth") == 5
 
     def test_stats(self):
-        from iios.intelligence.agents import get_agent_factory
+        from enterprise_ai_platform.intelligence.agents import get_agent_factory
         s = get_agent_factory().stats()
         assert "created" in s
 
@@ -1192,7 +1192,7 @@ class TestAgentFactory:
 
 class TestAgentManager:
     def test_not_initialized_raises(self):
-        from iios.intelligence.agents import get_agent_manager, AgentNotInitializedError, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import get_agent_manager, AgentNotInitializedError, AgentRequest
         mgr   = get_agent_manager()
         agent = make_agent("m1")
         mgr.register(agent, supervise=False)
@@ -1201,7 +1201,7 @@ class TestAgentManager:
             mgr.execute("m1", AgentRequest())
 
     def test_execute_after_init(self):
-        from iios.intelligence.agents import get_agent_manager, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import get_agent_manager, AgentRequest
         mgr   = get_agent_manager()
         mgr.initialize()
         agent = make_agent("m2")
@@ -1211,7 +1211,7 @@ class TestAgentManager:
         assert resp.success
 
     def test_broadcast(self):
-        from iios.intelligence.agents import get_agent_manager
+        from enterprise_ai_platform.intelligence.agents import get_agent_manager
         mgr = get_agent_manager()
         mgr.initialize()
         for i in range(3):
@@ -1222,7 +1222,7 @@ class TestAgentManager:
         assert n >= 3
 
     def test_health(self):
-        from iios.intelligence.agents import get_agent_manager
+        from enterprise_ai_platform.intelligence.agents import get_agent_manager
         mgr = get_agent_manager()
         mgr.initialize()
         h = mgr.health()
@@ -1235,7 +1235,7 @@ class TestAgentManager:
 
 class TestMultiAgentCoordinator:
     def _coord(self):
-        from iios.intelligence.agents import get_multi_agent_coordinator
+        from enterprise_ai_platform.intelligence.agents import get_multi_agent_coordinator
         c = get_multi_agent_coordinator()
         c.initialize(start_supervision=False)
         return c
@@ -1246,7 +1246,7 @@ class TestMultiAgentCoordinator:
         assert c.version == "1.0.0"
 
     def test_register_and_execute(self):
-        from iios.intelligence.agents import AgentRequest
+        from enterprise_ai_platform.intelligence.agents import AgentRequest
         c     = self._coord()
         agent = make_agent("coord1")
         agent.initialize()
@@ -1255,13 +1255,13 @@ class TestMultiAgentCoordinator:
         assert resp.success
 
     def test_create_agent(self):
-        from iios.intelligence.agents import ReasoningAgent
+        from enterprise_ai_platform.intelligence.agents import ReasoningAgent
         c = self._coord()
         a = c.create_agent(ReasoningAgent, "created1", supervise=False)
         assert c.has_agent("created1")
 
     def test_coordinate_parallel(self):
-        from iios.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
         c = self._coord()
         for i in range(4):
             a = make_agent(f"par{i}")
@@ -1275,7 +1275,7 @@ class TestMultiAgentCoordinator:
         assert result.successful_count >= 1
 
     def test_coordinate_consensus(self):
-        from iios.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
+        from enterprise_ai_platform.intelligence.agents import CoordinationTask, CoordinationMode, AgentRequest
         c = self._coord()
         for i in range(3):
             a = make_agent(f"cs{i}")
@@ -1289,7 +1289,7 @@ class TestMultiAgentCoordinator:
         assert result.consensus is not None
 
     def test_build_consensus(self):
-        from iios.intelligence.agents import AgentDecision, ConsensusMethod
+        from enterprise_ai_platform.intelligence.agents import AgentDecision, ConsensusMethod
         c  = self._coord()
         ds = [AgentDecision(f"a{i}", "BUY", 0.8) for i in range(5)]
         res = c.build_consensus(ds, method=ConsensusMethod.MAJORITY)
@@ -1297,7 +1297,7 @@ class TestMultiAgentCoordinator:
         assert res.decision == "BUY"
 
     def test_not_initialized_raises(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_multi_agent_coordinator, AgentNotInitializedError, AgentRequest,
         )
         c = get_multi_agent_coordinator()  # NOT initialized
@@ -1305,7 +1305,7 @@ class TestMultiAgentCoordinator:
             c.execute_agent("nobody", AgentRequest())
 
     def test_channel_subscribe_publish(self):
-        from iios.intelligence.agents import get_channel_registry
+        from enterprise_ai_platform.intelligence.agents import get_channel_registry
         c = self._coord()
         received = []
         c.subscribe_channel("test_channel", "watcher", received.append)
@@ -1325,7 +1325,7 @@ class TestMultiAgentCoordinator:
         assert h["coordinator_version"] == "1.0.0"
 
     def test_singleton(self):
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_multi_agent_coordinator, reset_multi_agent_coordinator,
         )
         a = get_multi_agent_coordinator()
@@ -1343,7 +1343,7 @@ class TestMultiAgentCoordinator:
 class TestConcurrency:
     def test_100_agents_concurrent_execution(self):
         """Register and run 100 agents concurrently without deadlocks/errors."""
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_agent_registry, get_agent_executor, AgentRequest, ExecutionSpec,
         )
         registry = get_agent_registry()
@@ -1369,7 +1369,7 @@ class TestConcurrency:
 
     def test_concurrent_registry_registration(self):
         """Concurrent registrations don't corrupt the registry."""
-        from iios.intelligence.agents import get_agent_registry
+        from enterprise_ai_platform.intelligence.agents import get_agent_registry
         reg    = get_agent_registry()
         errors = []
 
@@ -1389,7 +1389,7 @@ class TestConcurrency:
 
     def test_concurrent_mailbox_puts(self):
         """Multiple senders can fill a mailbox without corruption."""
-        from iios.intelligence.agents import AgentMailbox, AgentMessage
+        from enterprise_ai_platform.intelligence.agents import AgentMailbox, AgentMessage
         mb     = AgentMailbox("shared", capacity=200)
         errors = []
 
@@ -1415,7 +1415,7 @@ class TestConcurrency:
 class TestPerformance:
     def test_sequential_10_agents(self):
         """10-agent sequential coordination in < 3s."""
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             SequentialStrategy, CoordinationTask, CoordinationMode, AgentRequest,
         )
         agents = {f"s{i}": make_agent(f"s{i}") for i in range(10)}
@@ -1432,7 +1432,7 @@ class TestPerformance:
 
     def test_parallel_50_agents(self):
         """50-agent parallel coordination in < 5s."""
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             ParallelStrategy, CoordinationTask, CoordinationMode, AgentRequest,
         )
         agents = {f"p{i}": make_agent(f"p{i}") for i in range(50)}
@@ -1462,7 +1462,7 @@ class TestEndToEnd:
         4. Build consensus from responses
         5. Verify stats
         """
-        from iios.intelligence.agents import (
+        from enterprise_ai_platform.intelligence.agents import (
             get_multi_agent_coordinator,
             ReasoningAgent, AnalysisAgent, DecisionAgent,
             CoordinationTask, CoordinationMode, AgentRequest,

@@ -13,7 +13,7 @@ import uuid
 import pytest
 
 # ── module imports ────────────────────────────────────────────────────────────
-from iios.workflow.policies import (
+from enterprise_ai_platform.workflow.policies import (
     # Constants & enums
     ACTION_PRECEDENCE,
     ConditionOperator,
@@ -175,7 +175,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_exception_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(WorkflowPolicyError, IIOSError)
 
     def test_all_exceptions_inherit_from_base(self):

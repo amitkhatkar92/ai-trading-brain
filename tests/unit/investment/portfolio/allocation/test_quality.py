@@ -1,35 +1,35 @@
 """test_quality.py — Quality, scoring, metrics, health."""
 import pytest
-from iios.investment.portfolio.allocation.allocation_plan import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import (
     AllocationPlan,
     CashAllocation,
     PositionAllocation,
 )
-from iios.investment.portfolio.allocation.allocation_types import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import (
     AllocationDirection,
     AllocationQualityGrade,
 )
-from iios.investment.portfolio.allocation.allocation_quality import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_quality import (
     AllocationQualityAssessor,
     AllocationQualityReport,
     _grade,
     _utilisation_score,
 )
-from iios.investment.portfolio.allocation.allocation_score import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_score import (
     AllocationScore,
     AllocationScoreCalculator,
     AllocationScoreHistory,
 )
-from iios.investment.portfolio.allocation.allocation_metrics import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_metrics import (
     AllocationMetrics,
     compute_allocation_metrics,
 )
-from iios.investment.portfolio.allocation.allocation_health import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_health import (
     AllocationHealthMonitor,
     HealthStatus,
 )
-from iios.investment.portfolio.allocation.allocation_validator import AllocationValidator
-from iios.investment.portfolio.allocation.exposure_limits import ExposureCheck, ExposureOutcome
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_validator import AllocationValidator
+from enterprise_ai_platform.investment.portfolio.allocation.exposure_limits import ExposureCheck, ExposureOutcome
 
 
 # ---------------------------------------------------------------------------

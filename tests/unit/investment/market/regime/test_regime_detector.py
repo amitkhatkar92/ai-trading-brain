@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.market_constants import (
+from enterprise_ai_platform.investment.market.market_constants import (
     MarketStrength,
     TrendDirection,
     VolatilityLevel,
 )
-from iios.investment.market.structure.models import StructurePhase, TrendPhase
-from iios.investment.market.regime.models import RegimeObservation, RegimeType
-from iios.investment.market.regime.regime_detector import RegimeDetector
+from enterprise_ai_platform.investment.market.structure.models import StructurePhase, TrendPhase
+from enterprise_ai_platform.investment.market.regime.models import RegimeObservation, RegimeType
+from enterprise_ai_platform.investment.market.regime.regime_detector import RegimeDetector
 
 from tests.unit.investment.market.regime.conftest import (
     make_observation,

@@ -9,19 +9,19 @@ from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from iios.investment.strategy.lifecycle.execution_queue import (
+from enterprise_ai_platform.investment.strategy.lifecycle.execution_queue import (
     ExecutionQueue,
     ExecutionRequest,
     QueueFullError,
     SchedulePriority,
 )
-from iios.investment.strategy.lifecycle.priority_scheduler import PriorityScheduler
-from iios.investment.strategy.lifecycle.schedule_registry import (
+from enterprise_ai_platform.investment.strategy.lifecycle.priority_scheduler import PriorityScheduler
+from enterprise_ai_platform.investment.strategy.lifecycle.schedule_registry import (
     ScheduleEntry,
     ScheduleRegistry,
     ScheduleType,
 )
-from iios.investment.strategy.lifecycle.strategy_scheduler import StrategyScheduler
+from enterprise_ai_platform.investment.strategy.lifecycle.strategy_scheduler import StrategyScheduler
 
 
 # ── ExecutionQueue ─────────────────────────────────────────────────────────────

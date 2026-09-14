@@ -1,10 +1,10 @@
 """tests/unit/investment/company/business_quality/test_business_model.py"""
 import pytest
 
-from iios.investment.company.business_quality.business_model import (
+from enterprise_ai_platform.investment.company.business_quality.business_model import (
     BusinessModelType, CapexIntensityLabel, RevenueVisibilityLabel,
 )
-from iios.investment.company.business_quality.business_model_analyzer import BusinessModelAnalyzer
+from enterprise_ai_platform.investment.company.business_quality.business_model_analyzer import BusinessModelAnalyzer
 from tests.unit.investment.company.business_quality.conftest import make_ctx
 
 

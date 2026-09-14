@@ -12,7 +12,7 @@ build-backend = "setuptools.backends.legacy:build"
 # Project Metadata
 # =============================================================================
 [project]
-name = "iios"
+name = "enterprise_ai_platform"
 version = "0.1.0"
 description = "Investment Intelligence Operating System — 17-layer hierarchical multi-agent trading system for NSE/BSE"
 readme = "README.md"
@@ -97,7 +97,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "iios[test,lint,types,security]",
+    "enterprise_ai_platform[test,lint,types,security]",
     "ipython>=8.22.0",
     "rich>=13.7.0",
     "watchdog>=4.0.0",
@@ -144,29 +144,29 @@ docs = [
 ]
 
 [project.urls]
-"Homepage"      = "https://github.com/your-org/iios"
-"Documentation" = "https://github.com/your-org/iios/blob/main/DEVELOPMENT.md"
-"Architecture"  = "https://github.com/your-org/iios/blob/main/ARCHITECTURE.md"
-"Foundation"    = "https://github.com/your-org/iios/blob/main/FOUNDATION_CERTIFICATION.md"
-"Bug Tracker"   = "https://github.com/your-org/iios/issues"
-"Changelog"     = "https://github.com/your-org/iios/blob/main/CHANGELOG.md"
+"Homepage"      = "https://github.com/your-org/enterprise_ai_platform"
+"Documentation" = "https://github.com/your-org/enterprise_ai_platform/blob/main/DEVELOPMENT.md"
+"Architecture"  = "https://github.com/your-org/enterprise_ai_platform/blob/main/ARCHITECTURE.md"
+"Foundation"    = "https://github.com/your-org/enterprise_ai_platform/blob/main/FOUNDATION_CERTIFICATION.md"
+"Bug Tracker"   = "https://github.com/your-org/enterprise_ai_platform/issues"
+"Changelog"     = "https://github.com/your-org/enterprise_ai_platform/blob/main/CHANGELOG.md"
 
 [project.scripts]
-iios-run         = "run:main"
-iios-dev         = "dev:main"
-iios-healthcheck = "healthcheck:main"
-iios-bootstrap   = "bootstrap:main"
+enterprise_ai_platform-run         = "run:main"
+enterprise_ai_platform-dev         = "dev:main"
+enterprise_ai_platform-healthcheck = "healthcheck:main"
+enterprise_ai_platform-bootstrap   = "bootstrap:main"
 
 # =============================================================================
 # Package Discovery
 # =============================================================================
 [tool.setuptools.packages.find]
 where   = ["."]
-include = ["iios*"]
+include = ["enterprise_ai_platform*"]
 exclude = ["tests*", "docs*", "scripts*"]
 
 [tool.setuptools.package-data]
-"iios" = ["py.typed", "**/*.yaml", "**/*.json"]
+"enterprise_ai_platform" = ["py.typed", "**/*.yaml", "**/*.json"]
 
 # =============================================================================
 # Black — Code Formatter
@@ -193,7 +193,7 @@ extend-exclude = '''
 [tool.isort]
 profile             = "black"
 line_length         = 100
-known_first_party   = ["iios"]
+known_first_party   = ["enterprise_ai_platform"]
 known_third_party   = [
     "pandas", "numpy", "scipy", "sklearn",
     "yfinance", "dhanhq", "kiteconnect",
@@ -211,7 +211,7 @@ force_sort_within_sections = true
 [tool.ruff]
 line-length    = 100
 target-version = "py312"
-src            = ["iios", "tests"]
+src            = ["enterprise_ai_platform", "tests"]
 exclude        = [
     ".venv", ".git", "build", "dist", "data",
     "__pycache__", "*.egg-info", "htmlcov",
@@ -248,7 +248,7 @@ ignore = [
 "scripts/**"   = ["T20", "ANN", "S"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["iios"]
+known-first-party = ["enterprise_ai_platform"]
 
 # =============================================================================
 # mypy — Type Checker
@@ -269,7 +269,7 @@ no_implicit_optional   = true
 no_implicit_reexport   = true
 namespace_packages     = true
 explicit_package_bases = true
-files                  = ["iios/", "tests/"]
+files                  = ["enterprise_ai_platform/", "tests/"]
 
 [[tool.mypy.overrides]]
 module = [
@@ -321,13 +321,13 @@ filterwarnings = [
 # Coverage
 # =============================================================================
 [tool.coverage.run]
-source   = ["iios"]
+source   = ["enterprise_ai_platform"]
 branch   = true
 omit     = [
     "*/tests/*",
     "*/__pycache__/*",
-    "iios/api/*",
-    "iios/replay/*",
+    "enterprise_ai_platform/api/*",
+    "enterprise_ai_platform/replay/*",
 ]
 parallel = true
 data_file = ".coverage"
@@ -360,14 +360,14 @@ output = "coverage.xml"
 # Bandit — Security Linting
 # =============================================================================
 [tool.bandit]
-targets   = ["iios"]
+targets   = ["enterprise_ai_platform"]
 skips     = ["B101", "B601"]
 recursive = true
 
 # =============================================================================
 # Project Custom Metadata
 # =============================================================================
-[tool.iios]
+[tool.enterprise_ai_platform]
 architecture_version  = "1.0"
 engineering_version   = "1.0"
 implementation_version = "0.1.0"
@@ -381,4 +381,4 @@ decision_threshold    = 6.5
 vix_kill_threshold    = 45.0
 daily_loss_pct        = 0.02
 paper_trades_path     = "data/paper_trades.csv"
-database_path         = "data/iios.db"
+database_path         = "data/enterprise_ai_platform.db"

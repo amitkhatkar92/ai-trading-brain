@@ -1,21 +1,21 @@
 """test_monitoring.py — alerts, threshold monitor, trends, DiversificationMonitor."""
 import pytest
 
-from iios.investment.portfolio.diversification.diversification_alerts import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_alerts import (
     AlertThresholds, DiversificationAlerter,
 )
-from iios.investment.portfolio.diversification.threshold_monitor import ThresholdMonitor
-from iios.investment.portfolio.diversification.diversification_trends import TrendAnalyzer
-from iios.investment.portfolio.diversification.diversification_monitor import DiversificationMonitor
-from iios.investment.portfolio.diversification.diversification_engine import DiversificationAnalyzer
-from iios.investment.portfolio.diversification.diversification_health import (
+from enterprise_ai_platform.investment.portfolio.diversification.threshold_monitor import ThresholdMonitor
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_trends import TrendAnalyzer
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_monitor import DiversificationMonitor
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_engine import DiversificationAnalyzer
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_health import (
     DiversificationHealthMonitor,
 )
-from iios.investment.portfolio.diversification.diversification_snapshot import DiversificationHistory
-from iios.investment.portfolio.diversification.diversification_statistics import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_snapshot import DiversificationHistory
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_statistics import (
     DiversificationRunMetric, DiversificationStatistics,
 )
-from iios.investment.portfolio.diversification.diversification_types import AlertSeverity
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import AlertSeverity
 
 
 def _analysis(positions):
@@ -31,7 +31,7 @@ class TestDiversificationAlerter:
         assert len(crit) == 0
 
     def test_critical_alert_for_extreme_concentration(self):
-        from iios.investment.portfolio.diversification.diversification_types import PositionData
+        from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import PositionData
         extreme = [
             PositionData("HUGE", 0.90, "tech", "sw", "equity"),
             PositionData("TINY", 0.10, "finance", "banking", "equity"),
@@ -133,8 +133,8 @@ class TestDiversificationMonitor:
         assert not r.has_critical
 
     def test_with_history(self, positions_5_diverse):
-        from iios.investment.portfolio.diversification.diversification_profile import DiversificationProfile
-        from iios.investment.portfolio.diversification.diversification_types import DiversificationGrade, ConcentrationLevel
+        from enterprise_ai_platform.investment.portfolio.diversification.diversification_profile import DiversificationProfile
+        from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import DiversificationGrade, ConcentrationLevel
         hist = DiversificationHistory("P1")
         # need a valid profile to satisfy metric_series
         # Just run without history

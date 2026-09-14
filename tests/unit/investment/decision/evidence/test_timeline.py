@@ -6,17 +6,17 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.decision.evidence.event_timeline import EventTimeline
-from iios.investment.decision.evidence.evidence_constants import EvidenceEventType
-from iios.investment.decision.evidence.historical_evidence import HistoricalEvidence
-from iios.investment.decision.evidence.change_tracker import ChangeTracker
-from iios.investment.decision.evidence.timeline_engine import TimelineEngine
-from iios.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
+from enterprise_ai_platform.investment.decision.evidence.event_timeline import EventTimeline
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceEventType
+from enterprise_ai_platform.investment.decision.evidence.historical_evidence import HistoricalEvidence
+from enterprise_ai_platform.investment.decision.evidence.change_tracker import ChangeTracker
+from enterprise_ai_platform.investment.decision.evidence.timeline_engine import TimelineEngine
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
 
 
 def _snap(decision_id, subject_id, items, quality=80.0):
-    from iios.investment.decision.evidence.evidence_snapshot import build_snapshot
-    from iios.investment.decision.evidence.evidence_package import EvidencePackage
+    from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot
+    from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
     pkg = EvidencePackage(str(uuid.uuid4()), decision_id, subject_id, "equity")
     pkg.add_items(items)
     pkg.seal()
@@ -102,7 +102,7 @@ class TestChangeTracker:
         assert not report.has_changes
 
     def test_detects_value_change(self, make_item, decision_id, subject_id):
-        from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
         i1 = make_item("price", 100.0, EvidenceSourceType.MARKET,
                        decision_id=decision_id, subject_id=subject_id)
         i2 = make_item("price", 120.0, EvidenceSourceType.MARKET,

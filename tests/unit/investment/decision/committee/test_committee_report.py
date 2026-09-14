@@ -5,26 +5,26 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.committee.committee_constants import (
+from enterprise_ai_platform.investment.decision.committee.committee_constants import (
     CommitteeGrade,
     CommitteePosition,
     ConsensusLevel,
 )
-from iios.investment.decision.committee.committee_findings import (
+from enterprise_ai_platform.investment.decision.committee.committee_findings import (
     CommitteeFindingsBuilder,
 )
-from iios.investment.decision.committee.committee_recommendations import build_committee_stance
-from iios.investment.decision.committee.committee_report import build_committee_report
-from iios.investment.decision.committee.committee_session import CommitteeSession
-from iios.investment.decision.committee.minority_reports import MinorityReport
-from iios.investment.decision.committee.weighted_voting import VoteSummary, WeightedVoting
-from iios.investment.decision.committee.vote_registry import CastVote
-from iios.investment.decision.committee.committee_constants import VoteType
+from enterprise_ai_platform.investment.decision.committee.committee_recommendations import build_committee_stance
+from enterprise_ai_platform.investment.decision.committee.committee_report import build_committee_report
+from enterprise_ai_platform.investment.decision.committee.committee_session import CommitteeSession
+from enterprise_ai_platform.investment.decision.committee.minority_reports import MinorityReport
+from enterprise_ai_platform.investment.decision.committee.weighted_voting import VoteSummary, WeightedVoting
+from enterprise_ai_platform.investment.decision.committee.vote_registry import CastVote
+from enterprise_ai_platform.investment.decision.committee.committee_constants import VoteType
 
 
 class TestCommitteeFindings:
     def test_build_returns_findings(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)
@@ -34,7 +34,7 @@ class TestCommitteeFindings:
         assert f is not None
 
     def test_findings_have_assessments(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)
@@ -46,7 +46,7 @@ class TestCommitteeFindings:
         assert len(f.reasoning_assessment)  > 0
 
     def test_findings_to_dict(self, rich_context, default_registry):
-        from iios.investment.decision.committee.discussion_engine import DiscussionEngine
+        from enterprise_ai_platform.investment.decision.committee.discussion_engine import DiscussionEngine
         engine   = DiscussionEngine()
         members  = default_registry.all_members()
         r1       = engine.run_opening_review(members, rich_context, 1)

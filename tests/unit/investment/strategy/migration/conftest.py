@@ -4,14 +4,14 @@ from __future__ import annotations
 import pytest
 from datetime import datetime, timezone
 
-from iios.investment.strategy.migration.legacy_metadata import (
+from enterprise_ai_platform.investment.strategy.migration.legacy_metadata import (
     EntryCondition,
     LegacyHealthStatus,
     LegacyStrategyMetadata,
     LegacyStrategySource,
     LegacyStrategyType,
 )
-from iios.investment.strategy.migration.behavior_validator import BehaviorTestCase
+from enterprise_ai_platform.investment.strategy.migration.behavior_validator import BehaviorTestCase
 
 
 def _make_metadata(

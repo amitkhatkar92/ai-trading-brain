@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     VALID_TRANSITIONS,
     ActionType,
     ApprovalStatus,
@@ -19,15 +19,15 @@ from iios.investment.decision.core.decision_constants import (
     RecommendationType,
     RiskReviewStatus,
 )
-from iios.investment.decision.core.action_types import (
+from enterprise_ai_platform.investment.decision.core.action_types import (
     ACTION_DESCRIPTORS,
     get_action_descriptor,
 )
-from iios.investment.decision.core.decision_types import (
+from enterprise_ai_platform.investment.decision.core.decision_types import (
     DECISION_TYPE_DESCRIPTORS,
     get_descriptor,
 )
-from iios.investment.decision.core.recommendation_types import (
+from enterprise_ai_platform.investment.decision.core.recommendation_types import (
     RECOMMENDATION_DESCRIPTORS,
     get_recommendation_descriptor,
 )

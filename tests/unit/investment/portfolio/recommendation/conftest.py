@@ -6,14 +6,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.recommendation.recommendation_policies import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_policies import (
     PolicyParameters,
     InstitutionalPolicy,
 )
-from iios.investment.portfolio.recommendation.recommendation_registry import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_registry import (
     RecommendationPolicyRegistry,
 )
-from iios.investment.portfolio.recommendation.recommendation_types import (
+from enterprise_ai_platform.investment.portfolio.recommendation.recommendation_types import (
     PolicyType,
     PortfolioIntelligence,
 )

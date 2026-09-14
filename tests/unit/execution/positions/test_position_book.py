@@ -34,7 +34,7 @@ from typing import List
 
 import pytest
 
-from iios.execution.positions.lifecycle import (
+from enterprise_ai_platform.execution.positions.lifecycle import (
     Position,
     PositionDirection,
     PositionFactory,
@@ -42,7 +42,7 @@ from iios.execution.positions.lifecycle import (
     PositionState,
 )
 
-from iios.execution.positions.book import (
+from enterprise_ai_platform.execution.positions.book import (
     # constants
     BOOK_SYSTEM_ID,
     BookEventType,
@@ -157,7 +157,7 @@ class TestConstants:
         assert VERSION == "1.0.0"
 
     def test_book_system_id(self):
-        assert BOOK_SYSTEM_ID.startswith("iios:")
+        assert BOOK_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
 
 # ══════════════════════════════════════════════════════════════════════════════

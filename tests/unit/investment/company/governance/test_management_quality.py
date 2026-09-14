@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.management_quality import ManagementQualityEngine
-from iios.investment.company.governance.management_profile import (
+from enterprise_ai_platform.investment.company.governance.management_quality import ManagementQualityEngine
+from enterprise_ai_platform.investment.company.governance.management_profile import (
     ManagementQualityProfile, LeadershipStability,
 )
 

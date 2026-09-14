@@ -3,16 +3,16 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.opportunity.market_scanner import MarketScanner
-from iios.investment.market.opportunity.models import (
+from enterprise_ai_platform.investment.market.opportunity.market_scanner import MarketScanner
+from enterprise_ai_platform.investment.market.opportunity.models import (
     Opportunity,
     OpportunityCategory,
     ScanScope,
 )
-from iios.investment.market.opportunity.opportunity_category import BUILT_IN_RULES
-from iios.investment.market.opportunity.opportunity_scanner import OpportunityScanner
-from iios.investment.market.opportunity.universe_scanner import Universe, UniverseScanner
-from iios.investment.market.opportunity.watchlist_scanner import WatchlistScanner
+from enterprise_ai_platform.investment.market.opportunity.opportunity_category import BUILT_IN_RULES
+from enterprise_ai_platform.investment.market.opportunity.opportunity_scanner import OpportunityScanner
+from enterprise_ai_platform.investment.market.opportunity.universe_scanner import Universe, UniverseScanner
+from enterprise_ai_platform.investment.market.opportunity.watchlist_scanner import WatchlistScanner
 
 
 class TestMarketScanner:
@@ -37,7 +37,7 @@ class TestMarketScanner:
         assert "AAPL" in syms
 
     def test_custom_rules(self, obs_batch):
-        from iios.investment.market.opportunity.opportunity_category import CategoryRule
+        from enterprise_ai_platform.investment.market.opportunity.opportunity_category import CategoryRule
         custom_rule = CategoryRule(
             category=OpportunityCategory.HIGH_RS,
             rs_vs_market_min=0.0,   # matches everything
@@ -126,7 +126,7 @@ class TestOpportunityScanner:
         assert returned.issubset({"MSFT"})
 
     def test_set_rules(self, obs_batch):
-        from iios.investment.market.opportunity.opportunity_category import CategoryRule
+        from enterprise_ai_platform.investment.market.opportunity.opportunity_category import CategoryRule
         scanner = OpportunityScanner()
         new_rule = CategoryRule(
             category=OpportunityCategory.HIGH_RS,

@@ -31,7 +31,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 # ── Package imports ────────────────────────────────────────────────────────────
-from iios.execution.recovery.integration import (
+from enterprise_ai_platform.execution.recovery.integration import (
     ACTOR_INTEGRATION,
     ACTOR_SYSTEM,
     COMP_ENGINE,

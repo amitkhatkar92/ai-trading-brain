@@ -17,15 +17,15 @@ import pytest
 
 # @pytest.fixture(scope='session')
 # def iios_config():
-#     from iios.config.config_service import ConfigurationService
+#     from enterprise_ai_platform.config.config_service import ConfigurationService
 #     return ConfigurationService.get_snapshot()
 
 # @pytest.fixture(scope='session')
 # def iios_container():
-#     from iios.infrastructure.configuration.di_container import DIContainer
+#     from enterprise_ai_platform.infrastructure.configuration.di_container import DIContainer
 #     return DIContainer.instance()
 
 # @pytest.fixture
 # def mock_clock():
-#     from iios.infrastructure.platform.clock_service import FakeClock
+#     from enterprise_ai_platform.infrastructure.platform.clock_service import FakeClock
 #     return FakeClock()

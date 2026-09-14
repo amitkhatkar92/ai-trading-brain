@@ -1,25 +1,25 @@
 """tests/unit/investment/strategy/debate/test_debate_report.py"""
 import pytest
-from iios.investment.strategy.debate.debate_constants import (
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import (
     ArgumentType, DebatePhase, ParticipantRole, VoteOutcome,
 )
-from iios.investment.strategy.debate.debate_session import DebateSession
-from iios.investment.strategy.debate.argument_manager import make_argument
-from iios.investment.strategy.debate.evidence_registry import make_evidence
-from iios.investment.strategy.debate.debate_constants import EvidenceSource
-from iios.investment.strategy.debate.voting_engine import make_vote
-from iios.investment.strategy.debate.consensus_engine import ConsensusEngine, ConsensusPolicy
-from iios.investment.strategy.debate.participant_profile import build_profile
-from iios.investment.strategy.debate.recommendation_summary import (
+from enterprise_ai_platform.investment.strategy.debate.debate_session import DebateSession
+from enterprise_ai_platform.investment.strategy.debate.argument_manager import make_argument
+from enterprise_ai_platform.investment.strategy.debate.evidence_registry import make_evidence
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import EvidenceSource
+from enterprise_ai_platform.investment.strategy.debate.voting_engine import make_vote
+from enterprise_ai_platform.investment.strategy.debate.consensus_engine import ConsensusEngine, ConsensusPolicy
+from enterprise_ai_platform.investment.strategy.debate.participant_profile import build_profile
+from enterprise_ai_platform.investment.strategy.debate.recommendation_summary import (
     RecommendationSummary, build_recommendation_summary,
 )
-from iios.investment.strategy.debate.debate_explanation import (
+from enterprise_ai_platform.investment.strategy.debate.debate_explanation import (
     DebateExplainer, DebateExplanation,
 )
-from iios.investment.strategy.debate.executive_summary import (
+from enterprise_ai_platform.investment.strategy.debate.executive_summary import (
     ExecutiveSummaryBuilder, ExecutiveSummary,
 )
-from iios.investment.strategy.debate.debate_report import DebateReport, build_report
+from enterprise_ai_platform.investment.strategy.debate.debate_report import DebateReport, build_report
 
 
 def _populated_session(debate_context):

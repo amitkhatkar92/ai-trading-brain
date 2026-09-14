@@ -26,8 +26,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.common.errors.error_manager import get_error_manager, reset_error_manager
-from iios.common.errors.error_context import ErrorContext
+from enterprise_ai_platform.common.errors.error_manager import get_error_manager, reset_error_manager
+from enterprise_ai_platform.common.errors.error_context import ErrorContext
 
 
 # ---------------------------------------------------------------------------
@@ -37,27 +37,27 @@ from iios.common.errors.error_context import ErrorContext
 _WORKSPACE = pathlib.Path(__file__).parent.parent.parent.parent.parent
 
 _ENGINE_FILES = {
-    "C1": _WORKSPACE / "iios/investment/market/integration/market_intelligence_integration_engine.py",
-    "C2": _WORKSPACE / "iios/investment/company/integration/company_intelligence_integration_engine.py",
-    "C3": _WORKSPACE / "iios/investment/strategy/integration/strategy_intelligence_integration_engine.py",
-    "C4": _WORKSPACE / "iios/investment/decision/integration/decision_intelligence_integration_engine.py",
-    "C5": _WORKSPACE / "iios/investment/portfolio/integration/portfolio_intelligence_integration_engine.py",
+    "C1": _WORKSPACE / "enterprise_ai_platform/investment/market/integration/market_intelligence_integration_engine.py",
+    "C2": _WORKSPACE / "enterprise_ai_platform/investment/company/integration/company_intelligence_integration_engine.py",
+    "C3": _WORKSPACE / "enterprise_ai_platform/investment/strategy/integration/strategy_intelligence_integration_engine.py",
+    "C4": _WORKSPACE / "enterprise_ai_platform/investment/decision/integration/decision_intelligence_integration_engine.py",
+    "C5": _WORKSPACE / "enterprise_ai_platform/investment/portfolio/integration/portfolio_intelligence_integration_engine.py",
 }
 
 _ENGINE_SYSTEM_IDS = {
-    "C1": "iios:market:intelligence:integration",
-    "C2": "iios:company:intelligence:integration",
-    "C3": "iios:strategy:intelligence:integration",
-    "C4": "iios:decision:intelligence:integration",
-    "C5": "iios:portfolio:intelligence:integration",
+    "C1": "enterprise_ai_platform:market:intelligence:integration",
+    "C2": "enterprise_ai_platform:company:intelligence:integration",
+    "C3": "enterprise_ai_platform:strategy:intelligence:integration",
+    "C4": "enterprise_ai_platform:decision:intelligence:integration",
+    "C5": "enterprise_ai_platform:portfolio:intelligence:integration",
 }
 
 _ENGINE_MODULE_PATHS = {
-    "C1": "iios.investment.market.integration.market_intelligence_integration_engine",
-    "C2": "iios.investment.company.integration.company_intelligence_integration_engine",
-    "C3": "iios.investment.strategy.integration.strategy_intelligence_integration_engine",
-    "C4": "iios.investment.decision.integration.decision_intelligence_integration_engine",
-    "C5": "iios.investment.portfolio.integration.portfolio_intelligence_integration_engine",
+    "C1": "enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine",
+    "C2": "enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine",
+    "C3": "enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine",
+    "C4": "enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine",
+    "C5": "enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine",
 }
 
 
@@ -84,14 +84,14 @@ class TestTD003Part1ImportsPresent:
     def test_get_error_manager_imported(self, engine_key: str):
         src = _src(engine_key)
         assert "get_error_manager" in src, (
-            f"{engine_key}: must import get_error_manager from iios.common.errors.error_manager"
+            f"{engine_key}: must import get_error_manager from enterprise_ai_platform.common.errors.error_manager"
         )
 
     @pytest.mark.parametrize("engine_key", ["C1", "C2", "C3", "C4", "C5"])
     def test_error_context_imported(self, engine_key: str):
         src = _src(engine_key)
         assert "ErrorContext" in src, (
-            f"{engine_key}: must import ErrorContext from iios.common.errors.error_context"
+            f"{engine_key}: must import ErrorContext from enterprise_ai_platform.common.errors.error_context"
         )
 
     @pytest.mark.parametrize("engine_key", ["C1", "C3"])
@@ -105,8 +105,8 @@ class TestTD003Part1ImportsPresent:
     @pytest.mark.parametrize("engine_key", ["C1", "C2", "C3", "C4", "C5"])
     def test_import_from_correct_module(self, engine_key: str):
         src = _src(engine_key)
-        assert "iios.common.errors.error_manager" in src, (
-            f"{engine_key}: must import from iios.common.errors.error_manager"
+        assert "enterprise_ai_platform.common.errors.error_manager" in src, (
+            f"{engine_key}: must import from enterprise_ai_platform.common.errors.error_manager"
         )
 
     @pytest.mark.parametrize("engine_key", ["C1", "C2", "C3", "C4", "C5"])
@@ -173,7 +173,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c1_update_exception_reports_failure(self):
         """C1.update(): internal processing errors are reported."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -189,7 +189,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c1_on_snapshot_callback_reports_failure(self):
         """C1._fire_callbacks(): on_snapshot exception is reported but not raised."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -209,7 +209,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c1_on_low_quality_callback_reports_failure(self):
         """C1._fire_callbacks(): on_low_quality exception is reported."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -229,7 +229,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c1_on_conflict_callback_reports_failure(self):
         """C1._fire_callbacks(): on_conflict exception is reported."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -249,7 +249,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c1_callback_failures_are_isolated(self):
         """C1: a failing on_snapshot callback does NOT prevent on_conflict from running."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -270,7 +270,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c2_update_exception_reports_failure(self):
         """C2.update(): _evaluate() exceptions are reported."""
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         engine = CompanyIntelligenceIntegrationEngine()
@@ -287,7 +287,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c2_integrate_exception_reports_failure(self):
         """C2.integrate(): _evaluate() exceptions are reported."""
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         engine = CompanyIntelligenceIntegrationEngine()
@@ -304,7 +304,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c3_submit_update_sync_exception_reports_failure(self):
         """C3.submit_update_sync(): execution failures are reported."""
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         engine = StrategyIntelligenceIntegrationEngine()
@@ -322,7 +322,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c3_get_snapshot_sync_exception_reports_failure(self):
         """C3.get_snapshot_sync(): execution failures are reported."""
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         engine = StrategyIntelligenceIntegrationEngine()
@@ -340,7 +340,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c4_integrate_sync_exception_reports_failure(self):
         """C4.integrate_sync(): pipeline failures are reported to ErrorManager."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -359,7 +359,7 @@ class TestTD003Part3ReportFailureCalled:
 
     def test_c5_integrate_exception_reports_failure(self):
         """C5.integrate(): _build_snapshot() failures are reported."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -383,7 +383,7 @@ class TestTD003Part4ErrorContextFields:
 
     def test_c4_report_failure_engine_id(self):
         """C4: report_failure receives the correct SYSTEM_ID."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -406,7 +406,7 @@ class TestTD003Part4ErrorContextFields:
 
     def test_c4_error_context_operation_field(self):
         """C4: ErrorContext passed to report_failure has operation='integrate_sync'."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -432,7 +432,7 @@ class TestTD003Part4ErrorContextFields:
 
     def test_c5_error_context_passed(self):
         """C5: ErrorContext is passed to report_failure with correct fields."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -463,7 +463,7 @@ class TestTD003Part5EngineInternalCountersPreserved:
 
     def test_c4_stats_record_failure_still_called(self):
         """C4.integrate_sync(): self._stats.record_failure() still fires on error."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -483,7 +483,7 @@ class TestTD003Part5EngineInternalCountersPreserved:
 
     def test_c4_health_record_failure_still_called(self):
         """C4.integrate_sync(): self._health.record_failure() still fires on error."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -503,7 +503,7 @@ class TestTD003Part5EngineInternalCountersPreserved:
 
     def test_c4_report_failure_called_before_reraise(self):
         """C4: report_failure is called before the exception is re-raised."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -538,7 +538,7 @@ class TestTD003Part6C5FallbackPreserved:
 
     def test_c5_integrate_does_not_reraise(self):
         """C5: _build_snapshot failure does NOT propagate to caller."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -553,11 +553,11 @@ class TestTD003Part6C5FallbackPreserved:
 
     def test_c5_integrate_returns_fallback_snapshot(self):
         """C5: the returned fallback snapshot is not published (DRAFT status)."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
             PortfolioIntelligenceSnapshot,
         )
-        from iios.investment.portfolio.integration.integration_types import SnapshotStatus
+        from enterprise_ai_platform.investment.portfolio.integration.integration_types import SnapshotStatus
         engine = PortfolioIntelligenceIntegrationEngine()
         engine.start()
 
@@ -573,7 +573,7 @@ class TestTD003Part6C5FallbackPreserved:
 
     def test_c5_health_records_failure_on_exception(self):
         """C5: health monitor records a failure when _build_snapshot raises."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -600,7 +600,7 @@ class TestTD003Part7C3OnStopLogged:
     def test_c3_on_stop_health_exception_logged(self):
         """C3: asyncio coroutine logs a warning instead of silently passing."""
         import asyncio
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         engine = StrategyIntelligenceIntegrationEngine()
@@ -614,7 +614,7 @@ class TestTD003Part7C3OnStopLogged:
 
         engine._health.stop = _failing_stop
 
-        import iios.investment.strategy.integration.strategy_intelligence_integration_engine as _mod
+        import enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine as _mod
 
         with patch.object(_mod._log, "warning") as mock_warn:
             engine.stop()
@@ -628,7 +628,7 @@ class TestTD003Part7C3OnStopLogged:
 
     def test_c3_on_stop_does_not_raise(self):
         """C3._on_stop(): engine.stop() must not raise even if health stop fails."""
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import (
             StrategyIntelligenceIntegrationEngine,
         )
         engine = StrategyIntelligenceIntegrationEngine()
@@ -652,7 +652,7 @@ class TestTD003Part8ThreadSafety:
 
     def test_c2_concurrent_update_exceptions_all_reported(self):
         """C2: multiple threads failing simultaneously each produce one report."""
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         engine = CompanyIntelligenceIntegrationEngine()
@@ -695,7 +695,7 @@ class TestTD003Part8ThreadSafety:
 
     def test_c4_concurrent_integrate_sync_exceptions_all_reported(self):
         """C4: 4 concurrent integrate_sync failures all reach report_failure."""
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import (
             DecisionIntelligenceIntegrationEngine,
         )
         engine = DecisionIntelligenceIntegrationEngine()
@@ -749,7 +749,7 @@ class TestTD003Part9Regression:
 
     def test_c1_update_happy_path_no_error_reported(self):
         """C1.update(): successful call does NOT trigger report_failure."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import (
             MarketIntelligenceIntegrationEngine,
         )
         engine = MarketIntelligenceIntegrationEngine()
@@ -768,7 +768,7 @@ class TestTD003Part9Regression:
 
     def test_c2_update_does_not_report_for_known_engine_valueerror(self):
         """C2.update(): ValueError for unknown engine is NOT caught by our handler."""
-        from iios.investment.company.integration.company_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import (
             CompanyIntelligenceIntegrationEngine,
         )
         engine = CompanyIntelligenceIntegrationEngine()
@@ -786,10 +786,10 @@ class TestTD003Part9Regression:
 
     def test_c5_integrate_happy_path_no_error_reported(self):
         """C5.integrate(): successful call does NOT trigger report_failure."""
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import (
             PortfolioIntelligenceIntegrationEngine,
         )
-        from iios.investment.portfolio.integration.portfolio_snapshot import (
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_snapshot import (
             PortfolioIntelligenceSnapshot,
         )
         engine = PortfolioIntelligenceIntegrationEngine()
@@ -808,11 +808,11 @@ class TestTD003Part9Regression:
 
     def test_all_engines_have_system_id(self):
         """All C1–C5 engines expose the correct SYSTEM_ID class attribute."""
-        from iios.investment.market.integration.market_intelligence_integration_engine import MarketIntelligenceIntegrationEngine
-        from iios.investment.company.integration.company_intelligence_integration_engine import CompanyIntelligenceIntegrationEngine
-        from iios.investment.strategy.integration.strategy_intelligence_integration_engine import StrategyIntelligenceIntegrationEngine
-        from iios.investment.decision.integration.decision_intelligence_integration_engine import DecisionIntelligenceIntegrationEngine
-        from iios.investment.portfolio.integration.portfolio_intelligence_integration_engine import PortfolioIntelligenceIntegrationEngine
+        from enterprise_ai_platform.investment.market.integration.market_intelligence_integration_engine import MarketIntelligenceIntegrationEngine
+        from enterprise_ai_platform.investment.company.integration.company_intelligence_integration_engine import CompanyIntelligenceIntegrationEngine
+        from enterprise_ai_platform.investment.strategy.integration.strategy_intelligence_integration_engine import StrategyIntelligenceIntegrationEngine
+        from enterprise_ai_platform.investment.decision.integration.decision_intelligence_integration_engine import DecisionIntelligenceIntegrationEngine
+        from enterprise_ai_platform.investment.portfolio.integration.portfolio_intelligence_integration_engine import PortfolioIntelligenceIntegrationEngine
 
         assert MarketIntelligenceIntegrationEngine.SYSTEM_ID == _ENGINE_SYSTEM_IDS["C1"]
         assert CompanyIntelligenceIntegrationEngine.SYSTEM_ID == _ENGINE_SYSTEM_IDS["C2"]

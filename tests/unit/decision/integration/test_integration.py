@@ -35,7 +35,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.decision.integration import (
+from enterprise_ai_platform.decision.integration import (
     # Constants
     INTEGRATION_SYSTEM_ID,
     VERSION,
@@ -135,8 +135,8 @@ def _minimal_registry() -> DecisionComponentRegistry:
     Build a registry with a running M1 lifecycle + M5 snapshot store.
     Components are real instances (started).
     """
-    from iios.decision.lifecycle import DecisionLifecycle
-    from iios.decision.snapshot import DecisionSnapshotStore
+    from enterprise_ai_platform.decision.lifecycle import DecisionLifecycle
+    from enterprise_ai_platform.decision.snapshot import DecisionSnapshotStore
 
     reg = DecisionComponentRegistry()
     lc  = DecisionLifecycle()
@@ -160,7 +160,7 @@ def _engine_with_registry() -> DecisionIntegrationEngine:
 
 class TestConstants:
     def test_system_id_not_empty(self):
-        assert INTEGRATION_SYSTEM_ID == "iios:decision:integration"
+        assert INTEGRATION_SYSTEM_ID == "enterprise_ai_platform:decision:integration"
 
     def test_version_semver(self):
         assert VERSION
@@ -204,7 +204,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_is_iios_error(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(DecisionIntegrationError, IIOSError)
 
     def test_not_running_error(self):
@@ -1234,24 +1234,24 @@ class TestDecisionIntegrationEngine:
 
 class TestInit:
     def test_primary_interface_importable(self):
-        import iios.decision.integration as pkg
+        import enterprise_ai_platform.decision.integration as pkg
         assert hasattr(pkg, "DecisionIntegrationEngine")
 
     def test_request_response_importable(self):
-        import iios.decision.integration as pkg
+        import enterprise_ai_platform.decision.integration as pkg
         assert hasattr(pkg, "DecisionIntegrationRequest")
         assert hasattr(pkg, "DecisionIntegrationResponse")
 
     def test_version_accessible(self):
-        import iios.decision.integration as pkg
+        import enterprise_ai_platform.decision.integration as pkg
         assert pkg.VERSION
 
     def test_system_id_accessible(self):
-        import iios.decision.integration as pkg
-        assert pkg.INTEGRATION_SYSTEM_ID == "iios:decision:integration"
+        import enterprise_ai_platform.decision.integration as pkg
+        assert pkg.INTEGRATION_SYSTEM_ID == "enterprise_ai_platform:decision:integration"
 
     def test_all_exceptions_importable(self):
-        import iios.decision.integration as pkg
+        import enterprise_ai_platform.decision.integration as pkg
         for name in [
             "DecisionIntegrationError",
             "IntegrationNotRunningError",

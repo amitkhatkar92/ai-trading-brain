@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from iios.execution.orders import (
+from enterprise_ai_platform.execution.orders import (
     CANCELLABLE_STATUSES,
     DEFAULT_MAX_ORDERS,
     DEFAULT_MAX_QUEUE_SIZE,
@@ -70,7 +70,7 @@ from iios.execution.orders import (
     OMS_VERSION,
     OMS_SYSTEM_ID,
 )
-from iios.execution.orders.order_context import (
+from enterprise_ai_platform.execution.orders.order_context import (
     OrderContextState,
     clear_order_context,
     get_order_context,
@@ -563,7 +563,7 @@ class TestOrderValidator:
         assert len(v.rules) > 0
 
     def test_add_rule_increases_count(self):
-        from iios.execution.orders.validation.validation_rules import TickerRule
+        from enterprise_ai_platform.execution.orders.validation.validation_rules import TickerRule
         v = OrderValidator()
         n = len(v.rules)
         v.add_rule(TickerRule())
@@ -1281,13 +1281,13 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_top_level_import(self):
-        import iios.execution.orders as oms_pkg  # noqa: F401
+        import enterprise_ai_platform.execution.orders as oms_pkg  # noqa: F401
         assert hasattr(oms_pkg, "OrderManagementSystem")
         assert hasattr(oms_pkg, "get_oms")
         assert hasattr(oms_pkg, "Order")
 
     def test_constants_accessible(self):
-        from iios.execution.orders import OMS_VERSION, OMS_SYSTEM_ID
+        from enterprise_ai_platform.execution.orders import OMS_VERSION, OMS_SYSTEM_ID
         assert OMS_VERSION == "1.0.0"
         assert "oms" in OMS_SYSTEM_ID
 

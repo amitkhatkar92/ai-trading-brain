@@ -3,24 +3,24 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.shareholder_registry import (
+from enterprise_ai_platform.investment.company.ownership.shareholder_registry import (
     ShareholderRecord, ShareholderRegistry, build_shareholder_registry,
 )
-from iios.investment.company.ownership.ownership_profile import (
+from enterprise_ai_platform.investment.company.ownership.ownership_profile import (
     ConcentrationLevel, PromoterStabilityLabel,
 )
-from iios.investment.company.ownership.ownership_concentration import (
+from enterprise_ai_platform.investment.company.ownership.ownership_concentration import (
     classify_concentration_level,
     score_concentration_risk,
     score_herfindahl_proxy,
     score_control_concentration,
 )
-from iios.investment.company.ownership.ownership_stability import (
+from enterprise_ai_platform.investment.company.ownership.ownership_stability import (
     classify_promoter_stability,
     score_ownership_stability,
     score_promoter_conviction,
 )
-from iios.investment.company.ownership.ownership_distribution import (
+from enterprise_ai_platform.investment.company.ownership.ownership_distribution import (
     compute_ownership_entropy, score_distribution_quality,
 )
 

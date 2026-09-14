@@ -21,19 +21,19 @@ def _pid() -> str:
 
 def _reset_all() -> None:
     """Reset every singleton so tests are isolated."""
-    from iios.intelligence.governance.governance_engine import reset_governance_engine
-    from iios.intelligence.governance.governance_manager import reset_governance_manager
-    from iios.intelligence.governance.quality.quality_manager import reset_quality_manager
-    from iios.intelligence.governance.explainability.explanation_engine import reset_explanation_engine
-    from iios.intelligence.governance.audit.audit_engine import reset_audit_engine, reset_audit_manager
-    from iios.intelligence.governance.audit.audit_registry import reset_audit_registry
-    from iios.intelligence.governance.audit.audit_recorder import reset_audit_recorder
-    from iios.intelligence.governance.certification.certification_engine import reset_certification_engine
-    from iios.intelligence.governance.certification.certification_registry import reset_certification_registry
-    from iios.intelligence.governance.monitoring.drift_detector import reset_drift_detector
-    from iios.intelligence.governance.monitoring.performance_tracker import reset_governance_performance_tracker
-    from iios.intelligence.governance.evaluation.evaluation_engine import reset_evaluation_engine
-    from iios.intelligence.governance.quality_context import reset_governance_context
+    from enterprise_ai_platform.intelligence.governance.governance_engine import reset_governance_engine
+    from enterprise_ai_platform.intelligence.governance.governance_manager import reset_governance_manager
+    from enterprise_ai_platform.intelligence.governance.quality.quality_manager import reset_quality_manager
+    from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import reset_explanation_engine
+    from enterprise_ai_platform.intelligence.governance.audit.audit_engine import reset_audit_engine, reset_audit_manager
+    from enterprise_ai_platform.intelligence.governance.audit.audit_registry import reset_audit_registry
+    from enterprise_ai_platform.intelligence.governance.audit.audit_recorder import reset_audit_recorder
+    from enterprise_ai_platform.intelligence.governance.certification.certification_engine import reset_certification_engine
+    from enterprise_ai_platform.intelligence.governance.certification.certification_registry import reset_certification_registry
+    from enterprise_ai_platform.intelligence.governance.monitoring.drift_detector import reset_drift_detector
+    from enterprise_ai_platform.intelligence.governance.monitoring.performance_tracker import reset_governance_performance_tracker
+    from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_engine import reset_evaluation_engine
+    from enterprise_ai_platform.intelligence.governance.quality_context import reset_governance_context
 
     reset_governance_engine()
     reset_governance_manager()
@@ -64,7 +64,7 @@ def clean_singletons():
 
 class TestConstants:
     def test_quality_levels_ordered(self):
-        from iios.intelligence.governance.quality_constants import (
+        from enterprise_ai_platform.intelligence.governance.quality_constants import (
             QualityLevel,
             QUALITY_SCORE_EXCELLENT,
             QUALITY_SCORE_GOOD,
@@ -73,37 +73,37 @@ class TestConstants:
         assert QUALITY_SCORE_EXCELLENT > QUALITY_SCORE_GOOD > QUALITY_SCORE_ACCEPTABLE
 
     def test_default_dimension_weights_sum_to_one(self):
-        from iios.intelligence.governance.quality_constants import DEFAULT_DIMENSION_WEIGHTS
+        from enterprise_ai_platform.intelligence.governance.quality_constants import DEFAULT_DIMENSION_WEIGHTS
         total = sum(DEFAULT_DIMENSION_WEIGHTS.values())
         assert abs(total - 1.0) < 1e-9
 
     def test_intelligence_types_present(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         assert IntelligenceType.FORECAST in list(IntelligenceType)
         assert IntelligenceType.HYPOTHESIS in list(IntelligenceType)
         assert IntelligenceType.GENERIC in list(IntelligenceType)
 
     def test_approval_status_values(self):
-        from iios.intelligence.governance.quality_constants import ApprovalStatus
+        from enterprise_ai_platform.intelligence.governance.quality_constants import ApprovalStatus
         assert ApprovalStatus.APPROVED.value == "approved"
         assert ApprovalStatus.REJECTED.value == "rejected"
 
     def test_certification_ttl_positive(self):
-        from iios.intelligence.governance.quality_constants import CERTIFICATION_TTL_S
+        from enterprise_ai_platform.intelligence.governance.quality_constants import CERTIFICATION_TTL_S
         assert CERTIFICATION_TTL_S > 0
 
     def test_audit_event_types_present(self):
-        from iios.intelligence.governance.quality_constants import AuditEventType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import AuditEventType
         assert AuditEventType.EVALUATION in list(AuditEventType)
         assert AuditEventType.DRIFT_ALERT in list(AuditEventType)
 
     def test_drift_types_present(self):
-        from iios.intelligence.governance.quality_constants import DriftType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import DriftType
         assert DriftType.QUALITY in list(DriftType)
         assert DriftType.CONFIDENCE in list(DriftType)
 
     def test_version_string(self):
-        from iios.intelligence.governance.quality_constants import GOVERNANCE_ENGINE_VERSION
+        from enterprise_ai_platform.intelligence.governance.quality_constants import GOVERNANCE_ENGINE_VERSION
         assert GOVERNANCE_ENGINE_VERSION == "1.0.0"
 
 
@@ -113,52 +113,52 @@ class TestConstants:
 
 class TestExceptions:
     def test_base_exception(self):
-        from iios.intelligence.governance.quality_exceptions import IntelligenceQualityError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import IntelligenceQualityError
         with pytest.raises(IntelligenceQualityError):
             raise IntelligenceQualityError("IQE-000", "test")
 
     def test_quality_below_threshold(self):
-        from iios.intelligence.governance.quality_exceptions import QualityBelowThresholdError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import QualityBelowThresholdError
         exc = QualityBelowThresholdError("p1", 0.3, 0.6)
         assert "IQE-011" in str(exc)
 
     def test_quality_record_not_found(self):
-        from iios.intelligence.governance.quality_exceptions import QualityRecordNotFoundError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import QualityRecordNotFoundError
         exc = QualityRecordNotFoundError("rec1")
         assert "rec1" in str(exc)
 
     def test_trace_not_found(self):
-        from iios.intelligence.governance.quality_exceptions import TraceNotFoundError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import TraceNotFoundError
         exc = TraceNotFoundError("t1")
         assert "IQE-021" in str(exc)
 
     def test_certification_not_found(self):
-        from iios.intelligence.governance.quality_exceptions import CertificationNotFoundError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import CertificationNotFoundError
         exc = CertificationNotFoundError("c1")
         assert "IQE-041" in str(exc)
 
     def test_certification_failed(self):
-        from iios.intelligence.governance.quality_exceptions import CertificationFailedError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import CertificationFailedError
         exc = CertificationFailedError("p1", "bad score")
         assert "IQE-044" in str(exc)
 
     def test_drift_alert_error(self):
-        from iios.intelligence.governance.quality_exceptions import DriftAlertError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import DriftAlertError
         exc = DriftAlertError("src1", "QUALITY", 0.2)
         assert "IQE-051" in str(exc)
 
     def test_governance_not_initialised(self):
-        from iios.intelligence.governance.quality_exceptions import GovernanceEngineNotInitializedError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import GovernanceEngineNotInitializedError
         exc = GovernanceEngineNotInitializedError()
         assert "IQE-071" in str(exc)
 
     def test_governance_already_running(self):
-        from iios.intelligence.governance.quality_exceptions import GovernanceEngineAlreadyRunningError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import GovernanceEngineAlreadyRunningError
         exc = GovernanceEngineAlreadyRunningError()
         assert "IQE-072" in str(exc)
 
     def test_policy_violation(self):
-        from iios.intelligence.governance.quality_exceptions import PolicyViolationError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import PolicyViolationError
         exc = PolicyViolationError("pol1", "violated")
         assert "IQE-045" in str(exc)
 
@@ -169,24 +169,24 @@ class TestExceptions:
 
 class TestGovernanceContext:
     def test_evaluation_scope(self):
-        from iios.intelligence.governance.quality_context import (
+        from enterprise_ai_platform.intelligence.governance.quality_context import (
             evaluation_scope,
             get_governance_context,
         )
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         with evaluation_scope("p1", IntelligenceType.FORECAST, "src1") as ctx:
             assert ctx.product_id == "p1"
             assert ctx.depth == 1
 
     def test_certification_scope(self):
-        from iios.intelligence.governance.quality_context import (
+        from enterprise_ai_platform.intelligence.governance.quality_context import (
             certification_scope,
         )
         with certification_scope("rec1") as ctx:
             assert ctx.record_id == "rec1"
 
     def test_singleton_identity(self):
-        from iios.intelligence.governance.quality_context import get_governance_context
+        from enterprise_ai_platform.intelligence.governance.quality_context import get_governance_context
         assert get_governance_context() is get_governance_context()
 
 
@@ -196,8 +196,8 @@ class TestGovernanceContext:
 
 class TestQualityRecord:
     def test_defaults(self):
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import (
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import (
             ApprovalStatus, CertificationStatus, IntelligenceType,
         )
         r = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
@@ -205,8 +205,8 @@ class TestQualityRecord:
         assert r.certification_status == CertificationStatus.UNCERTIFIED
 
     def test_is_approved(self):
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import (
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import (
             ApprovalStatus, IntelligenceType,
         )
         r = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
@@ -214,8 +214,8 @@ class TestQualityRecord:
         assert r.is_approved
 
     def test_to_dict_keys(self):
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         r = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
         d = r.to_dict()
         assert "record_id" in d
@@ -223,8 +223,8 @@ class TestQualityRecord:
         assert "approval_status" in d
 
     def test_touch_updates_updated_at(self):
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         r = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
         old = r.updated_at
         time.sleep(0.01)
@@ -238,13 +238,13 @@ class TestQualityRecord:
 
 class TestQualityScoring:
     def test_score_product(self):
-        from iios.intelligence.governance.quality.quality_score import score_product
+        from enterprise_ai_platform.intelligence.governance.quality.quality_score import score_product
         qs = score_product("p1", {"accuracy": 0.9, "consistency": 0.8})
         assert 0.0 <= qs.composite <= 1.0
 
     def test_composite_weighted(self):
-        from iios.intelligence.governance.quality.quality_score import compute_composite, DimensionScore
-        from iios.intelligence.governance.quality_constants import EvaluationDimension
+        from enterprise_ai_platform.intelligence.governance.quality.quality_score import compute_composite, DimensionScore
+        from enterprise_ai_platform.intelligence.governance.quality_constants import EvaluationDimension
         dims = [
             DimensionScore(dimension=EvaluationDimension.ACCURACY, score=1.0, weight=0.5),
             DimensionScore(dimension=EvaluationDimension.CONSISTENCY, score=0.5, weight=0.5),
@@ -252,8 +252,8 @@ class TestQualityScoring:
         assert abs(compute_composite(dims) - 0.75) < 1e-9
 
     def test_level_from_score(self):
-        from iios.intelligence.governance.quality.quality_score import level_from_score
-        from iios.intelligence.governance.quality_constants import QualityLevel
+        from enterprise_ai_platform.intelligence.governance.quality.quality_score import level_from_score
+        from enterprise_ai_platform.intelligence.governance.quality_constants import QualityLevel
         assert level_from_score(0.95) == QualityLevel.EXCELLENT
         assert level_from_score(0.60) == QualityLevel.ACCEPTABLE
         assert level_from_score(0.30) == QualityLevel.REJECTED
@@ -265,23 +265,23 @@ class TestQualityScoring:
 
 class TestQualityEvaluator:
     def test_evaluate_returns_score(self):
-        from iios.intelligence.governance.quality.quality_evaluator import QualityEvaluator
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_evaluator import QualityEvaluator
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         ev = QualityEvaluator()
         qs = ev.evaluate("p1", IntelligenceType.FORECAST, {"confidence": 0.8})
         assert 0.0 <= qs.composite <= 1.0
 
     def test_evaluate_all_dimensions_present(self):
-        from iios.intelligence.governance.quality.quality_evaluator import QualityEvaluator
-        from iios.intelligence.governance.quality_constants import IntelligenceType, EvaluationDimension
+        from enterprise_ai_platform.intelligence.governance.quality.quality_evaluator import QualityEvaluator
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, EvaluationDimension
         ev = QualityEvaluator()
         qs = ev.evaluate("p1", IntelligenceType.GENERIC, {})
         dim_names = {d.dimension for d in qs.dimensions}
         assert EvaluationDimension.ACCURACY in dim_names
 
     def test_high_confidence_improves_score(self):
-        from iios.intelligence.governance.quality.quality_evaluator import QualityEvaluator
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_evaluator import QualityEvaluator
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         ev = QualityEvaluator()
         low  = ev.evaluate("p1", IntelligenceType.FORECAST, {"confidence": 0.1})
         high = ev.evaluate("p2", IntelligenceType.FORECAST, {"confidence": 0.95})
@@ -294,15 +294,15 @@ class TestQualityEvaluator:
 
 class TestQualityManager:
     def test_evaluate_stores_record(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         mgr = get_quality_manager()
         r = mgr.evaluate(_pid(), IntelligenceType.GENERIC, {})
         assert mgr.has(r.record_id)
 
     def test_approve_sets_status(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
         mgr = get_quality_manager()
         r = mgr.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.9})
         mgr.approve(r.record_id)
@@ -310,16 +310,16 @@ class TestQualityManager:
         assert r2.approval_status == ApprovalStatus.APPROVED
 
     def test_reject_sets_status(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
         mgr = get_quality_manager()
         r = mgr.evaluate(_pid(), IntelligenceType.GENERIC, {})
         mgr.reject(r.record_id, reason="test")
         assert mgr.get(r.record_id).approval_status == ApprovalStatus.REJECTED
 
     def test_for_product(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         mgr = get_quality_manager()
         pid = _pid()
         mgr.evaluate(pid, IntelligenceType.GENERIC, {})
@@ -327,11 +327,11 @@ class TestQualityManager:
         assert len(mgr.for_product(pid)) == 2
 
     def test_singleton_identity(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
         assert get_quality_manager() is get_quality_manager()
 
     def test_stats_keys(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
         s = get_quality_manager().stats()
         assert "total" in s
 
@@ -342,19 +342,19 @@ class TestQualityManager:
 
 class TestExplainability:
     def _make_record(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         return get_quality_manager().evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.8})
 
     def test_explain_returns_dict(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         result = eng.explain(r)
         assert "record" in result
 
     def test_explain_text_nonempty(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         eng.explain(r)
@@ -362,14 +362,14 @@ class TestExplainability:
         assert len(txt) > 50
 
     def test_summary(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         s = eng.summary(r)
         assert r.product_id in s
 
     def test_get_reasoning(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         eng.explain(r)
@@ -377,7 +377,7 @@ class TestExplainability:
         assert trace.total_steps > 0
 
     def test_get_decision_trace(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         eng.explain(r)
@@ -385,7 +385,7 @@ class TestExplainability:
         assert dt.product_id == r.product_id
 
     def test_get_evidence_trace(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         eng.explain(r)
@@ -393,7 +393,7 @@ class TestExplainability:
         assert len(et.items) > 0
 
     def test_get_proof_chain(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
         eng = get_explanation_engine()
         r = self._make_record()
         eng.explain(r)
@@ -401,21 +401,21 @@ class TestExplainability:
         assert pc.is_valid in (True, False)  # just not an error
 
     def test_missing_trace_raises(self):
-        from iios.intelligence.governance.explainability.explanation_engine import get_explanation_engine
-        from iios.intelligence.governance.quality_exceptions import TraceNotFoundError
+        from enterprise_ai_platform.intelligence.governance.explainability.explanation_engine import get_explanation_engine
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import TraceNotFoundError
         eng = get_explanation_engine()
         with pytest.raises(TraceNotFoundError):
             eng.get_reasoning("nonexistent")
 
     def test_reasoning_trace_steps(self):
-        from iios.intelligence.governance.explainability.reasoning_trace import ReasoningTraceRecord
+        from enterprise_ai_platform.intelligence.governance.explainability.reasoning_trace import ReasoningTraceRecord
         t = ReasoningTraceRecord(record_id="r1", product_id="p1")
         t.add_step("step1", input_={"x": 1}, output={"y": 2}, confidence=0.9)
         assert t.total_steps == 1
         assert abs(t.avg_confidence - 0.9) < 1e-6
 
     def test_evidence_trace_net_strength(self):
-        from iios.intelligence.governance.explainability.evidence_trace import (
+        from enterprise_ai_platform.intelligence.governance.explainability.evidence_trace import (
             EvidenceItem, EvidenceTraceRecord,
         )
         t = EvidenceTraceRecord(record_id="r1", product_id="p1")
@@ -424,7 +424,7 @@ class TestExplainability:
         assert abs(t.net_strength - 0.5) < 1e-9
 
     def test_proof_chain_cumulative_confidence(self):
-        from iios.intelligence.governance.explainability.proof_chain import GovernanceProofChain
+        from enterprise_ai_platform.intelligence.governance.explainability.proof_chain import GovernanceProofChain
         chain = GovernanceProofChain(record_id="r1", product_id="p1")
         chain.add_step("P1", "C1", confidence=0.9)
         chain.add_step("P2", "C2", confidence=0.8)
@@ -437,20 +437,20 @@ class TestExplainability:
 
 class TestAudit:
     def _make_record(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         return get_quality_manager().evaluate(_pid(), IntelligenceType.GENERIC, {})
 
     def test_record_evaluation(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
         eng = get_audit_engine()
         r = self._make_record()
         audit = eng.record_evaluation(r)
         assert audit.audit_id in (a.audit_id for a in eng.for_product(r.product_id))
 
     def test_record_approval(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
-        from iios.intelligence.governance.quality_constants import AuditEventType
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import AuditEventType
         eng = get_audit_engine()
         r = self._make_record()
         eng.record_approval(r, reason="looks good")
@@ -458,8 +458,8 @@ class TestAudit:
         assert any(a.record_id == r.record_id for a in events)
 
     def test_record_rejection(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
-        from iios.intelligence.governance.quality_constants import AuditEventType
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import AuditEventType
         eng = get_audit_engine()
         r = self._make_record()
         eng.record_rejection(r, reason="too low")
@@ -467,15 +467,15 @@ class TestAudit:
         assert any(a.record_id == r.record_id for a in events)
 
     def test_record_drift_alert(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
-        from iios.intelligence.governance.quality_constants import AuditEventType
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import AuditEventType
         eng = get_audit_engine()
         eng.record_drift_alert("src1", "QUALITY", 0.2)
         alerts = eng.for_event_type(AuditEventType.DRIFT_ALERT)
         assert len(alerts) >= 1
 
     def test_report(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
         eng = get_audit_engine()
         r = self._make_record()
         eng.record_evaluation(r)
@@ -483,12 +483,12 @@ class TestAudit:
         assert report.total_entries >= 1
 
     def test_singleton_identity(self):
-        from iios.intelligence.governance.audit.audit_engine import get_audit_engine
+        from enterprise_ai_platform.intelligence.governance.audit.audit_engine import get_audit_engine
         assert get_audit_engine() is get_audit_engine()
 
     def test_not_found_raises(self):
-        from iios.intelligence.governance.audit.audit_registry import get_audit_registry
-        from iios.intelligence.governance.quality_exceptions import AuditRecordNotFoundError
+        from enterprise_ai_platform.intelligence.governance.audit.audit_registry import get_audit_registry
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import AuditRecordNotFoundError
         with pytest.raises(AuditRecordNotFoundError):
             get_audit_registry().get("nonexistent")
 
@@ -499,17 +499,17 @@ class TestAudit:
 
 class TestCertification:
     def _make_approved_record(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
         mgr = get_quality_manager()
         r = mgr.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.9})
         mgr.approve(r.record_id)
         return r
 
     def test_certify_approved_record(self):
-        from iios.intelligence.governance.certification.certification_engine import get_certification_engine
-        from iios.intelligence.governance.certification.certification_policy import ApprovalRequiredPolicy
-        from iios.intelligence.governance.quality_constants import CertificationStatus
+        from enterprise_ai_platform.intelligence.governance.certification.certification_engine import get_certification_engine
+        from enterprise_ai_platform.intelligence.governance.certification.certification_policy import ApprovalRequiredPolicy
+        from enterprise_ai_platform.intelligence.governance.quality_constants import CertificationStatus
         eng = get_certification_engine()
         eng.register_policy(ApprovalRequiredPolicy())
         r   = self._make_approved_record()
@@ -518,10 +518,10 @@ class TestCertification:
         assert cert.is_valid
 
     def test_certify_low_score_fails(self):
-        from iios.intelligence.governance.certification.certification_engine import get_certification_engine
-        from iios.intelligence.governance.quality_exceptions import CertificationFailedError
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.certification.certification_engine import get_certification_engine
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import CertificationFailedError
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_certification_engine()
         mgr = get_quality_manager()
         # Force a very low score by injecting score directly on record
@@ -531,8 +531,8 @@ class TestCertification:
             eng.certify(r)
 
     def test_revoke(self):
-        from iios.intelligence.governance.certification.certification_engine import get_certification_engine
-        from iios.intelligence.governance.quality_constants import CertificationStatus
+        from enterprise_ai_platform.intelligence.governance.certification.certification_engine import get_certification_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import CertificationStatus
         eng = get_certification_engine()
         r   = self._make_approved_record()
         cert = eng.certify(r)
@@ -541,8 +541,8 @@ class TestCertification:
         assert updated.status == CertificationStatus.REVOKED
 
     def test_check_expiry(self):
-        from iios.intelligence.governance.certification.certification_engine import get_certification_engine
-        from iios.intelligence.governance.quality_constants import CertificationStatus
+        from enterprise_ai_platform.intelligence.governance.certification.certification_engine import get_certification_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import CertificationStatus
         eng = get_certification_engine()
         r   = self._make_approved_record()
         # Issue a cert that expires in the past
@@ -552,15 +552,15 @@ class TestCertification:
         assert cert.cert_id in expired
 
     def test_policy_names(self):
-        from iios.intelligence.governance.certification.certification_engine import get_certification_engine
+        from enterprise_ai_platform.intelligence.governance.certification.certification_engine import get_certification_engine
         eng = get_certification_engine()
         names = eng.policy_names()
         assert len(names) >= 1
 
     def test_policy_allowlist(self):
-        from iios.intelligence.governance.certification.certification_policy import TypeAllowlistPolicy
-        from iios.intelligence.governance.quality_constants import IntelligenceType
-        from iios.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.certification.certification_policy import TypeAllowlistPolicy
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
         pol  = TypeAllowlistPolicy([IntelligenceType.FORECAST])
         r    = QualityRecord(product_id="p1", product_type=IntelligenceType.FORECAST)
         ok, _ = pol.check(r)
@@ -570,9 +570,9 @@ class TestCertification:
         assert not ok2
 
     def test_no_rejection_reasons_policy(self):
-        from iios.intelligence.governance.certification.certification_policy import NoRejectionReasonsPolicy
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.certification.certification_policy import NoRejectionReasonsPolicy
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         pol = NoRejectionReasonsPolicy()
         r   = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
         ok, _ = pol.check(r)
@@ -588,14 +588,14 @@ class TestCertification:
 
 class TestMonitoring:
     def test_drift_no_alert_before_window(self):
-        from iios.intelligence.governance.monitoring.drift_detector import get_drift_detector
+        from enterprise_ai_platform.intelligence.governance.monitoring.drift_detector import get_drift_detector
         det = get_drift_detector()
         for _ in range(5):
             alerts = det.record_sample("src1", 0.8, 0.8)
         assert len(alerts) == 0
 
     def test_drift_fires_after_window(self):
-        from iios.intelligence.governance.monitoring.drift_detector import DriftDetector
+        from enterprise_ai_platform.intelligence.governance.monitoring.drift_detector import DriftDetector
         det = DriftDetector(window_n=5, quality_threshold=0.1, confidence_threshold=0.1)
         # feed 5 high samples then 5 low samples
         for _ in range(5):
@@ -606,7 +606,7 @@ class TestMonitoring:
         assert len(fired) > 0
 
     def test_performance_tracker_rolling_avg(self):
-        from iios.intelligence.governance.monitoring.performance_tracker import get_governance_performance_tracker
+        from enterprise_ai_platform.intelligence.governance.monitoring.performance_tracker import get_governance_performance_tracker
         t = get_governance_performance_tracker()
         for i in range(10):
             t.record("src1", "quality_score", 0.8)
@@ -614,31 +614,31 @@ class TestMonitoring:
         assert abs(avg - 0.8) < 1e-9
 
     def test_performance_tracker_trend_improving(self):
-        from iios.intelligence.governance.monitoring.performance_tracker import PerformanceTracker
+        from enterprise_ai_platform.intelligence.governance.monitoring.performance_tracker import PerformanceTracker
         t = PerformanceTracker()
         for v in [0.5, 0.5, 0.5, 0.5, 0.9, 0.9, 0.9, 0.9]:
             t.record("src1", "q", v)
         assert t.rolling_trend("src1", "q") == "improving"
 
     def test_performance_tracker_trend_degrading(self):
-        from iios.intelligence.governance.monitoring.performance_tracker import PerformanceTracker
+        from enterprise_ai_platform.intelligence.governance.monitoring.performance_tracker import PerformanceTracker
         t = PerformanceTracker()
         for v in [0.9, 0.9, 0.9, 0.9, 0.5, 0.5, 0.5, 0.5]:
             t.record("src1", "q", v)
         assert t.rolling_trend("src1", "q") == "degrading"
 
     def test_monitor_report(self):
-        from iios.intelligence.governance.monitoring.monitor_report import (
+        from enterprise_ai_platform.intelligence.governance.monitoring.monitor_report import (
             build_monitor_report, MonitorReport,
         )
-        from iios.intelligence.governance.monitoring.performance_tracker import MetricSample
+        from enterprise_ai_platform.intelligence.governance.monitoring.performance_tracker import MetricSample
         samples = [MetricSample("src1", "q", v) for v in [0.8, 0.7, 0.9]]
         r = build_monitor_report("src1", samples, samples, [])
         assert isinstance(r, MonitorReport)
         assert r.total_samples == 3
 
     def test_drift_alert_to_dict(self):
-        from iios.intelligence.governance.monitoring.drift_detector import DriftAlert, DriftType
+        from enterprise_ai_platform.intelligence.governance.monitoring.drift_detector import DriftAlert, DriftType
         a = DriftAlert(source_id="s1", drift_type=DriftType.QUALITY, baseline=0.8, current=0.5, delta=0.3)
         d = a.to_dict()
         assert d["drift_type"] == "quality"
@@ -650,20 +650,20 @@ class TestMonitoring:
 
 class TestEvaluationMetrics:
     def _records(self, n: int = 5):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         mgr = get_quality_manager()
         return [mgr.evaluate(_pid(), IntelligenceType.GENERIC, {}) for _ in range(n)]
 
     def test_approval_rate_zero(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import approval_rate
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import approval_rate
         records = self._records(5)
         assert approval_rate(records) == 0.0
 
     def test_approval_rate_partial(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import approval_rate
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import approval_rate
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         mgr = get_quality_manager()
         records = [mgr.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.9}) for _ in range(4)]
         mgr.approve(records[0].record_id)
@@ -671,27 +671,27 @@ class TestEvaluationMetrics:
         assert abs(approval_rate(records) - 0.5) < 1e-9
 
     def test_avg_quality_score(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import avg_quality_score
-        from iios.intelligence.governance.quality_result import QualityRecord
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import avg_quality_score
+        from enterprise_ai_platform.intelligence.governance.quality_result import QualityRecord
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         r1 = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC, quality_score=0.8)
         r2 = QualityRecord(product_id="p2", product_type=IntelligenceType.GENERIC, quality_score=0.6)
         assert abs(avg_quality_score([r1, r2]) - 0.7) < 1e-9
 
     def test_drift_score(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import drift_score
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import drift_score
         d = drift_score([0.9, 0.9, 0.9], [0.5, 0.5, 0.5])
         assert abs(d - 0.4) < 1e-9
 
     def test_consistency_rate_all_consistent(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import consistency_rate
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import consistency_rate
         records = self._records(4)
         # After scoring, levels are derived from scores — should be consistent
         rate = consistency_rate(records)
         assert 0.0 <= rate <= 1.0
 
     def test_empty_inputs(self):
-        from iios.intelligence.governance.evaluation.evaluation_metrics import (
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_metrics import (
             approval_rate, avg_quality_score, drift_score,
         )
         assert approval_rate([]) == 0.0
@@ -705,16 +705,16 @@ class TestEvaluationMetrics:
 
 class TestEvaluationEngine:
     def test_evaluate_full_pipeline(self):
-        from iios.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_evaluation_engine()
         r = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.8}, "src1")
         assert r.record_id
         assert 0.0 <= r.quality_score <= 1.0
 
     def test_batch_evaluate(self):
-        from iios.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_evaluation_engine()
         products = [
             {"product_id": _pid(), "product_type": IntelligenceType.GENERIC, "content": {}}
@@ -724,16 +724,16 @@ class TestEvaluationEngine:
         assert len(results) == 3
 
     def test_stats_counter_increments(self):
-        from iios.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_evaluation_engine()
         eng.evaluate(_pid(), IntelligenceType.GENERIC, {})
         eng.evaluate(_pid(), IntelligenceType.GENERIC, {})
         assert eng.stats()["total_evaluated"] == 2
 
     def test_async_evaluate(self):
-        from iios.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_engine import get_evaluation_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_evaluation_engine()
 
         async def _run():
@@ -749,7 +749,7 @@ class TestEvaluationEngine:
 
 class TestIntelligenceQualityEngine:
     def _engine(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
         eng = get_governance_engine()
         eng.initialize()
         return eng
@@ -759,20 +759,20 @@ class TestIntelligenceQualityEngine:
         assert eng.is_running
 
     def test_double_initialize_raises(self):
-        from iios.intelligence.governance.quality_exceptions import GovernanceEngineAlreadyRunningError
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import GovernanceEngineAlreadyRunningError
         eng = self._engine()
         with pytest.raises(GovernanceEngineAlreadyRunningError):
             eng.initialize()
 
     def test_evaluate_returns_record(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
         r = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.8}, "src1")
         assert r.record_id
 
     def test_not_initialised_raises(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
-        from iios.intelligence.governance.quality_exceptions import GovernanceEngineNotInitializedError
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.quality_exceptions import GovernanceEngineNotInitializedError
         eng = get_governance_engine()
         # not yet initialised
         with pytest.raises(GovernanceEngineNotInitializedError):
@@ -784,29 +784,29 @@ class TestIntelligenceQualityEngine:
         assert not eng.is_running
 
     def test_approve_reject_cycle(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ApprovalStatus
         eng = self._engine()
         r   = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.9}, "src1")
         eng.approve(r.record_id, reason="ok")
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
         assert get_quality_manager().get(r.record_id).approval_status == ApprovalStatus.APPROVED
 
     def test_explain_human(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ExplanationType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ExplanationType
         eng = self._engine()
         r   = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.8})
         txt = eng.explain(r.record_id, ExplanationType.HUMAN_READABLE)
         assert isinstance(txt, str) and len(txt) > 10
 
     def test_explain_machine(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType, ExplanationType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, ExplanationType
         eng = self._engine()
         r   = eng.evaluate(_pid(), IntelligenceType.GENERIC, {})
         d   = eng.explain(r.record_id, ExplanationType.MACHINE_READABLE)
         assert isinstance(d, dict)
 
     def test_certify_via_engine(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType, CertificationStatus
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType, CertificationStatus
         eng = self._engine()
         r   = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.9})
         eng.approve(r.record_id)
@@ -814,20 +814,20 @@ class TestIntelligenceQualityEngine:
         assert cert.status == CertificationStatus.CERTIFIED
 
     def test_audit_query(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
         eng.evaluate(_pid(), IntelligenceType.GENERIC, {}, "srcX")
         records = eng.audit_query(source_id="srcX")
         assert len(records) >= 1
 
     def test_check_drift_empty(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
         alerts = eng.check_drift("unknown_source")
         assert isinstance(alerts, list)
 
     def test_dashboard(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
         eng.evaluate(_pid(), IntelligenceType.GENERIC, {})
         snap = eng.dashboard()
@@ -844,12 +844,12 @@ class TestIntelligenceQualityEngine:
         assert h["status"] == "healthy"
 
     def test_health_stopped(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
         eng = get_governance_engine()
         assert eng.health()["status"] == "stopped"
 
     def test_async_evaluate(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
 
         async def _run():
@@ -859,7 +859,7 @@ class TestIntelligenceQualityEngine:
         assert r.quality_score > 0.0
 
     def test_summary(self):
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = self._engine()
         r   = eng.evaluate(_pid(), IntelligenceType.FORECAST, {"confidence": 0.8})
         s   = eng.summary(r.record_id)
@@ -872,8 +872,8 @@ class TestIntelligenceQualityEngine:
 
 class TestDashboard:
     def _populated_engine(self, n: int = 4):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_governance_engine()
         eng.initialize()
         for _ in range(n):
@@ -893,8 +893,8 @@ class TestDashboard:
             assert key in d
 
     def test_source_summary(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_governance_engine()
         eng.initialize()
         pid = _pid()
@@ -903,9 +903,9 @@ class TestDashboard:
         summary = mgr._dashboard or mgr.dashboard()  # build if needed
         # Use direct method call on GovernanceManager._dashboard
         mgr2 = eng._require_running()
-        from iios.intelligence.governance.evaluation.evaluation_dashboard import EvaluationDashboard
-        from iios.intelligence.governance.monitoring.drift_detector import get_drift_detector
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.evaluation.evaluation_dashboard import EvaluationDashboard
+        from enterprise_ai_platform.intelligence.governance.monitoring.drift_detector import get_drift_detector
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
         dash = EvaluationDashboard(
             records_provider=get_quality_manager().all,
             alerts_provider=get_drift_detector().all_alerts,
@@ -915,8 +915,8 @@ class TestDashboard:
         assert s["total"] >= 1
 
     def test_audit_report_to_dict(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_governance_engine()
         eng.initialize()
         eng.evaluate(_pid(), IntelligenceType.GENERIC, {})
@@ -931,8 +931,8 @@ class TestDashboard:
 
 class TestConcurrency:
     def test_concurrent_evaluations(self):
-        from iios.intelligence.governance.governance_engine import get_governance_engine
-        from iios.intelligence.governance.quality_constants import IntelligenceType
+        from enterprise_ai_platform.intelligence.governance.governance_engine import get_governance_engine
+        from enterprise_ai_platform.intelligence.governance.quality_constants import IntelligenceType
         eng = get_governance_engine()
         eng.initialize()
 
@@ -956,7 +956,7 @@ class TestConcurrency:
         assert len(results) == 20
 
     def test_concurrent_singleton_access(self):
-        from iios.intelligence.governance.quality.quality_manager import get_quality_manager
+        from enterprise_ai_platform.intelligence.governance.quality.quality_manager import get_quality_manager
         managers = []
 
         def _get():
@@ -977,7 +977,7 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.intelligence.governance as gov
+        import enterprise_ai_platform.intelligence.governance as gov
         assert hasattr(gov, "IntelligenceQualityEngine")
         assert hasattr(gov, "QualityRecord")
         assert hasattr(gov, "AuditRecord")
@@ -987,7 +987,7 @@ class TestPackageImports:
         assert hasattr(gov, "get_governance_engine")
 
     def test_exception_hierarchy(self):
-        from iios.intelligence.governance import (
+        from enterprise_ai_platform.intelligence.governance import (
             IntelligenceQualityError,
             QualityBelowThresholdError,
             CertificationFailedError,
@@ -996,6 +996,6 @@ class TestPackageImports:
         assert issubclass(CertificationFailedError, IntelligenceQualityError)
 
     def test_quality_record_from_package(self):
-        from iios.intelligence.governance import QualityRecord, IntelligenceType
+        from enterprise_ai_platform.intelligence.governance import QualityRecord, IntelligenceType
         r = QualityRecord(product_id="p1", product_type=IntelligenceType.GENERIC)
         assert r.product_id == "p1"

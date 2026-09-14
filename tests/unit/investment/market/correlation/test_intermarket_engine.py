@@ -4,7 +4,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationMatrix,
     CorrelationMethod,
@@ -13,7 +13,7 @@ from iios.investment.market.correlation.models import (
     PriceObservation,
     RelationshipType,
 )
-from iios.investment.market.correlation.market_relationship import (
+from enterprise_ai_platform.investment.market.correlation.market_relationship import (
     MarketRelationshipTable,
     get_expected_relationship,
     is_typical_correlation,
@@ -22,8 +22,8 @@ from iios.investment.market.correlation.market_relationship import (
     is_flight_to_safety,
     anomaly_score,
 )
-from iios.investment.market.correlation.cross_asset_analysis import CrossAssetAnalyzer
-from iios.investment.market.correlation.intermarket_engine import IntermarketEngine
+from enterprise_ai_platform.investment.market.correlation.cross_asset_analysis import CrossAssetAnalyzer
+from enterprise_ai_platform.investment.market.correlation.intermarket_engine import IntermarketEngine
 
 from tests.unit.investment.market.correlation.conftest import make_snapshot
 

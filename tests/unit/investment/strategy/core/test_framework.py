@@ -6,7 +6,7 @@ from __future__ import annotations
 import threading
 import pytest
 
-from iios.investment.strategy.core import (
+from enterprise_ai_platform.investment.strategy.core import (
     ExecutionPlan, LifecycleError, StrategyConfiguration,
     StrategyContext, StrategyEventType, StrategyFramework,
     StrategySession, StrategyState,
@@ -186,7 +186,7 @@ class TestEventAPI:
 
 class TestConfigurationAPI:
     def test_declare_parameter(self, loaded_framework):
-        from iios.investment.strategy.core import ParameterSpec
+        from enterprise_ai_platform.investment.strategy.core import ParameterSpec
         loaded_framework.declare_parameter(
             "test_strategy",
             ParameterSpec(name="lookback", type=int, default=20),
@@ -252,7 +252,7 @@ class TestThreadSafety:
     def test_concurrent_execute_same_strategy(self, loaded_framework):
         """Only one thread can execute at a time; others get StrategyError (busy).
         The framework must never corrupt state or raise unexpected exceptions."""
-        from iios.investment.strategy.core import StrategyError
+        from enterprise_ai_platform.investment.strategy.core import StrategyError
         unexpected = []
 
         def run():
@@ -292,6 +292,6 @@ class TestHotReload:
 
 class TestPluginLoading:
     def test_load_from_module_not_found(self, framework):
-        from iios.investment.strategy.core import LoaderError
+        from enterprise_ai_platform.investment.strategy.core import LoaderError
         with pytest.raises(LoaderError):
             framework.load_from_module("totally.fake.module.path")

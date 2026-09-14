@@ -11,11 +11,11 @@ import threading
 import tempfile
 import pytest
 
-from iios.infrastructure.utilities import retry, RetryConfig, RateLimiter, RateLimitExceeded, CircuitBreaker, CircuitBreakerOpen
-from iios.infrastructure.security import TokenManager, SymmetricEncryption, generate_key
-from iios.infrastructure.infrastructure_exceptions import SecurityError
-from iios.infrastructure.database import SQLiteBackend, QueryBuilder
-from iios.infrastructure.messaging import Message, MessageQueue, MessageBroker, get_message_broker, reset_message_broker
+from enterprise_ai_platform.infrastructure.utilities import retry, RetryConfig, RateLimiter, RateLimitExceeded, CircuitBreaker, CircuitBreakerOpen
+from enterprise_ai_platform.infrastructure.security import TokenManager, SymmetricEncryption, generate_key
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import SecurityError
+from enterprise_ai_platform.infrastructure.database import SQLiteBackend, QueryBuilder
+from enterprise_ai_platform.infrastructure.messaging import Message, MessageQueue, MessageBroker, get_message_broker, reset_message_broker
 
 
 # ---------------------------------------------------------------------------

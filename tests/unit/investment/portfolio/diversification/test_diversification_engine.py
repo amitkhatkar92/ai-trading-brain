@@ -1,21 +1,21 @@
 """test_diversification_engine.py — DiversificationAnalyzer + Quality + Score + Metrics"""
 import pytest
 
-from iios.investment.portfolio.diversification.diversification_engine import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_engine import (
     DiversificationAnalyzer,
 )
-from iios.investment.portfolio.diversification.diversification_quality import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_quality import (
     DiversificationQualityAssessor,
 )
-from iios.investment.portfolio.diversification.diversification_score import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_score import (
     DiversificationScoreCalculator,
     DiversificationScoreHistory,
 )
-from iios.investment.portfolio.diversification.diversification_metrics import (
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_metrics import (
     DiversificationMetrics,
     compute_diversification_metrics,
 )
-from iios.investment.portfolio.diversification.diversification_types import DiversificationGrade
+from enterprise_ai_platform.investment.portfolio.diversification.diversification_types import DiversificationGrade
 
 
 class TestDiversificationAnalyzer:

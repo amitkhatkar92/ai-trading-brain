@@ -10,24 +10,24 @@ from typing import Any
 
 import pytest
 
-from iios.observation.observation_constants import (
+from enterprise_ai_platform.observation.observation_constants import (
     ObservationDomain, ObservationPriority, ObservationSource, ObservationType,
 )
-from iios.observation.observation_factory import get_observation_factory
+from enterprise_ai_platform.observation.observation_factory import get_observation_factory
 
 
 # ─────────────────────────── helpers / fixtures ───────────────────────────────
 
 def _reset_all() -> None:
-    from iios.observation.classifiers.classification_manager  import reset_classification_manager
-    from iios.observation.classifiers.classification_engine   import reset_classification_engine
-    from iios.observation.classifiers.classification_registry import reset_classifier_registry
-    from iios.observation.classifiers.classification_context  import reset_classification_context
-    from iios.observation.enrichment.enrichment_manager       import reset_enrichment_manager
-    from iios.observation.enrichment.enrichment_engine        import reset_enrichment_engine
-    from iios.observation.enrichment.enrichment_registry      import reset_enricher_registry
-    from iios.observation.enrichment.enrichment_context       import reset_enrichment_context
-    from iios.observation.observation_factory                 import reset_observation_factory
+    from enterprise_ai_platform.observation.classifiers.classification_manager  import reset_classification_manager
+    from enterprise_ai_platform.observation.classifiers.classification_engine   import reset_classification_engine
+    from enterprise_ai_platform.observation.classifiers.classification_registry import reset_classifier_registry
+    from enterprise_ai_platform.observation.classifiers.classification_context  import reset_classification_context
+    from enterprise_ai_platform.observation.enrichment.enrichment_manager       import reset_enrichment_manager
+    from enterprise_ai_platform.observation.enrichment.enrichment_engine        import reset_enrichment_engine
+    from enterprise_ai_platform.observation.enrichment.enrichment_registry      import reset_enricher_registry
+    from enterprise_ai_platform.observation.enrichment.enrichment_context       import reset_enrichment_context
+    from enterprise_ai_platform.observation.observation_factory                 import reset_observation_factory
     reset_classification_manager()
     reset_classification_engine()
     reset_classifier_registry()
@@ -95,55 +95,55 @@ def _make_signal_obs(instrument: str = "TCS"):
 
 class TestClassificationConstants:
     def test_entity_type_has_unknown(self):
-        from iios.observation.classifiers.classification_constants import EntityType
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EntityType
         assert EntityType.UNKNOWN.value == "unknown"
 
     def test_entity_type_instrument_exists(self):
-        from iios.observation.classifiers.classification_constants import EntityType
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EntityType
         assert EntityType.INSTRUMENT.value == "instrument"
 
     def test_event_type_has_all_key_values(self):
-        from iios.observation.classifiers.classification_constants import EventType
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EventType
         assert EventType.EARNINGS_RELEASE.value == "earnings_release"
         assert EventType.PRICE_MOVE.value        == "price_move"
         assert EventType.RISK_BREACH.value        == "risk_breach"
 
     def test_asset_class_derivative(self):
-        from iios.observation.classifiers.classification_constants import AssetClass
+        from enterprise_ai_platform.observation.classifiers.classification_constants import AssetClass
         assert AssetClass.DERIVATIVE.value == "derivative"
 
     def test_sector_values_are_strings(self):
-        from iios.observation.classifiers.classification_constants import Sector
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Sector
         for s in Sector:
             assert isinstance(s.value, str)
 
     def test_time_horizon_intraday(self):
-        from iios.observation.classifiers.classification_constants import TimeHorizon
+        from enterprise_ai_platform.observation.classifiers.classification_constants import TimeHorizon
         assert TimeHorizon.INTRADAY.value == "intraday"
 
     def test_importance_levels(self):
-        from iios.observation.classifiers.classification_constants import Importance
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Importance
         vals = {i.value for i in Importance}
         assert {"critical", "high", "medium", "low", "minimal"} == vals
 
     def test_risk_level_values(self):
-        from iios.observation.classifiers.classification_constants import RiskLevel
+        from enterprise_ai_platform.observation.classifiers.classification_constants import RiskLevel
         assert RiskLevel.EXTREME.value == "extreme"
 
     def test_geography_india(self):
-        from iios.observation.classifiers.classification_constants import Geography
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Geography
         assert Geography.INDIA.value == "india"
 
     def test_min_confidence_constant(self):
-        from iios.observation.classifiers.classification_constants import MIN_CLASSIFICATION_CONFIDENCE
+        from enterprise_ai_platform.observation.classifiers.classification_constants import MIN_CLASSIFICATION_CONFIDENCE
         assert 0 < MIN_CLASSIFICATION_CONFIDENCE < 1.0
 
     def test_namespace_constant(self):
-        from iios.observation.classifiers.classification_constants import CLASSIFICATION_NAMESPACE
-        assert "iios" in CLASSIFICATION_NAMESPACE
+        from enterprise_ai_platform.observation.classifiers.classification_constants import CLASSIFICATION_NAMESPACE
+        assert "enterprise_ai_platform" in CLASSIFICATION_NAMESPACE
 
     def test_classification_attr_key(self):
-        from iios.observation.classifiers.classification_constants import CLASSIFICATION_ATTR_KEY
+        from enterprise_ai_platform.observation.classifiers.classification_constants import CLASSIFICATION_ATTR_KEY
         assert isinstance(CLASSIFICATION_ATTR_KEY, str)
         assert len(CLASSIFICATION_ATTR_KEY) > 0
 
@@ -154,39 +154,39 @@ class TestClassificationConstants:
 
 class TestClassificationExceptions:
     def test_base_is_observation_error(self):
-        from iios.observation.classifiers.classification_exceptions import ClassificationError
-        from iios.observation.observation_exceptions import ObservationError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassificationError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationError
         assert issubclass(ClassificationError, ObservationError)
 
     def test_classifier_not_found(self):
-        from iios.observation.classifiers.classification_exceptions import ClassifierNotFoundError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassifierNotFoundError
         exc = ClassifierNotFoundError("my_clf")
         assert "my_clf" in str(exc)
         assert exc.name == "my_clf"
         assert exc.code.startswith("CLS-")
 
     def test_already_registered(self):
-        from iios.observation.classifiers.classification_exceptions import ClassifierAlreadyRegisteredError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassifierAlreadyRegisteredError
         exc = ClassifierAlreadyRegisteredError("dup")
         assert "dup" in str(exc)
 
     def test_timeout_stores_value(self):
-        from iios.observation.classifiers.classification_exceptions import ClassificationTimeoutError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassificationTimeoutError
         exc = ClassificationTimeoutError("too slow", timeout_s=5.0)
         assert exc.timeout_s == 5.0
 
     def test_pipeline_error_stores_classifier(self):
-        from iios.observation.classifiers.classification_exceptions import ClassificationPipelineError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassificationPipelineError
         exc = ClassificationPipelineError("failed", classifier="type_clf")
         assert exc.classifier == "type_clf"
 
     def test_ontology_link_error(self):
-        from iios.observation.classifiers.classification_exceptions import OntologyLinkError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import OntologyLinkError
         exc = OntologyLinkError("missing entity", entity="RELIANCE")
         assert exc.entity == "RELIANCE"
 
     def test_not_initialized_error(self):
-        from iios.observation.classifiers.classification_exceptions import ClassificationNotInitializedError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassificationNotInitializedError
         exc = ClassificationNotInitializedError()
         assert "not initialised" in str(exc).lower()
 
@@ -197,13 +197,13 @@ class TestClassificationExceptions:
 
 class TestClassificationContext:
     def test_get_context_is_dataclass(self):
-        from iios.observation.classifiers.classification_context import get_classification_context
+        from enterprise_ai_platform.observation.classifiers.classification_context import get_classification_context
         ctx = get_classification_context()
         assert ctx is not None
         assert hasattr(ctx, "obs_id")
 
     def test_reset_context_clears_obs_id(self):
-        from iios.observation.classifiers.classification_context import (
+        from enterprise_ai_platform.observation.classifiers.classification_context import (
             get_classification_context, reset_classification_context,
         )
         ctx = get_classification_context()
@@ -212,7 +212,7 @@ class TestClassificationContext:
         assert get_classification_context().obs_id == ""
 
     def test_classification_operation_sets_context(self):
-        from iios.observation.classifiers.classification_context import (
+        from enterprise_ai_platform.observation.classifiers.classification_context import (
             classification_operation, current_obs_id,
         )
         with classification_operation("obs::test/001"):
@@ -220,15 +220,15 @@ class TestClassificationContext:
         assert current_obs_id() == ""
 
     def test_current_classifier_default(self):
-        from iios.observation.classifiers.classification_context import (
+        from enterprise_ai_platform.observation.classifiers.classification_context import (
             current_classifier, SYSTEM_CLASSIFIER,
         )
-        from iios.observation.classifiers.classification_constants import SYSTEM_CLASSIFIER as SC
+        from enterprise_ai_platform.observation.classifiers.classification_constants import SYSTEM_CLASSIFIER as SC
         assert current_classifier() == SC
 
     def test_elapsed_ms_increases(self):
         import time
-        from iios.observation.classifiers.classification_context import get_classification_context
+        from enterprise_ai_platform.observation.classifiers.classification_context import get_classification_context
         ctx = get_classification_context()
         t0  = ctx.elapsed_ms
         time.sleep(0.01)
@@ -241,11 +241,11 @@ class TestClassificationContext:
 
 class TestClassifierRegistry:
     def _make_registry(self):
-        from iios.observation.classifiers.classification_registry import ClassifierRegistry
+        from enterprise_ai_platform.observation.classifiers.classification_registry import ClassifierRegistry
         return ClassifierRegistry()
 
     def _make_dummy_clf(self, name: str = "test_clf", dim: str = "test_dim"):
-        from iios.observation.classifiers.classification_registry import BaseClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_registry import BaseClassifier
         class DummyClf(BaseClassifier):
             def _classify(self, obs):
                 return "dummy_value", 0.80, "test"
@@ -258,7 +258,7 @@ class TestClassifierRegistry:
         assert reg.has("test_clf")
 
     def test_register_duplicate_raises(self):
-        from iios.observation.classifiers.classification_exceptions import ClassifierAlreadyRegisteredError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassifierAlreadyRegisteredError
         reg = self._make_registry()
         clf = self._make_dummy_clf()
         reg.register(clf)
@@ -274,7 +274,7 @@ class TestClassifierRegistry:
         assert reg.get("c1").dimension == "other"
 
     def test_unregister(self):
-        from iios.observation.classifiers.classification_exceptions import ClassifierNotFoundError
+        from enterprise_ai_platform.observation.classifiers.classification_exceptions import ClassifierNotFoundError
         reg = self._make_registry()
         clf = self._make_dummy_clf()
         reg.register(clf)
@@ -308,12 +308,12 @@ class TestClassifierRegistry:
         assert len(reg) == 2
 
     def test_get_default_classifiers(self):
-        from iios.observation.classifiers.classification_registry import get_classifier_registry
+        from enterprise_ai_platform.observation.classifiers.classification_registry import get_classifier_registry
         reg = get_classifier_registry()
         assert reg.count() >= 10
 
     def test_dimensions_list(self):
-        from iios.observation.classifiers.classification_registry import get_classifier_registry
+        from enterprise_ai_platform.observation.classifiers.classification_registry import get_classifier_registry
         reg  = get_classifier_registry()
         dims = reg.dimensions()
         assert "obs_type"  in dims
@@ -327,7 +327,7 @@ class TestClassifierRegistry:
 
 class TestBuiltinClassifiers:
     def test_type_classifier_known_type(self):
-        from iios.observation.classifiers.classification_engine import TypeClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_engine import TypeClassifier
         clf = TypeClassifier()
         obs = _make_market_obs()
         lbl = clf.classify(obs)
@@ -335,53 +335,53 @@ class TestBuiltinClassifiers:
         assert lbl.confidence > 0.5
 
     def test_type_classifier_unknown_falls_back(self):
-        from iios.observation.classifiers.classification_engine import TypeClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_engine import TypeClassifier
         clf = TypeClassifier()
         obs = _make_obs(obs_type=ObservationType.UNKNOWN, content={"foo": "bar"})
         lbl = clf.classify(obs)
         assert lbl.confidence >= 0.0   # no crash
 
     def test_domain_classifier_market_data(self):
-        from iios.observation.classifiers.classification_engine import DomainClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_engine import DomainClassifier
         clf = DomainClassifier()
         obs = _make_market_obs()
         lbl = clf.classify(obs)
         assert lbl.value == ObservationDomain.MARKET
 
     def test_domain_classifier_system_event(self):
-        from iios.observation.classifiers.classification_engine import DomainClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_engine import DomainClassifier
         clf = DomainClassifier()
         obs = _make_obs(obs_type=ObservationType.SYSTEM_EVENT)
         lbl = clf.classify(obs)
         assert lbl.value == ObservationDomain.SYSTEM
 
     def test_entity_classifier_index(self):
-        from iios.observation.classifiers.classification_engine import EntityClassifier
-        from iios.observation.classifiers.classification_constants import EntityType
+        from enterprise_ai_platform.observation.classifiers.classification_engine import EntityClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EntityType
         clf = EntityClassifier()
         obs = _make_obs(instrument="NIFTY")
         lbl = clf.classify(obs)
         assert lbl.value == EntityType.INDEX
 
     def test_entity_classifier_instrument(self):
-        from iios.observation.classifiers.classification_engine import EntityClassifier
-        from iios.observation.classifiers.classification_constants import EntityType
+        from enterprise_ai_platform.observation.classifiers.classification_engine import EntityClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EntityType
         clf = EntityClassifier()
         obs = _make_obs(instrument="TATASTEEL", obs_type=ObservationType.MARKET_DATA)
         lbl = clf.classify(obs)
         assert lbl.value == EntityType.INSTRUMENT
 
     def test_event_classifier_earnings(self):
-        from iios.observation.classifiers.classification_engine import EventClassifier
-        from iios.observation.classifiers.classification_constants import EventType
+        from enterprise_ai_platform.observation.classifiers.classification_engine import EventClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EventType
         clf = EventClassifier()
         obs = _make_obs(obs_type=ObservationType.EARNINGS)
         lbl = clf.classify(obs)
         assert lbl.value == EventType.EARNINGS_RELEASE
 
     def test_event_classifier_big_price_move(self):
-        from iios.observation.classifiers.classification_engine import EventClassifier
-        from iios.observation.classifiers.classification_constants import EventType
+        from enterprise_ai_platform.observation.classifiers.classification_engine import EventClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import EventType
         clf = EventClassifier()
         obs = _make_obs(
             obs_type = ObservationType.MARKET_DATA,
@@ -391,72 +391,72 @@ class TestBuiltinClassifiers:
         assert lbl.value == EventType.PRICE_MOVE
 
     def test_asset_class_derivative(self):
-        from iios.observation.classifiers.classification_engine import AssetClassClassifier
-        from iios.observation.classifiers.classification_constants import AssetClass
+        from enterprise_ai_platform.observation.classifiers.classification_engine import AssetClassClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import AssetClass
         clf = AssetClassClassifier()
         obs = _make_obs(instrument="NIFTY23NOVCE")
         lbl = clf.classify(obs)
         assert lbl.value == AssetClass.DERIVATIVE
 
     def test_asset_class_equity(self):
-        from iios.observation.classifiers.classification_engine import AssetClassClassifier
-        from iios.observation.classifiers.classification_constants import AssetClass
+        from enterprise_ai_platform.observation.classifiers.classification_engine import AssetClassClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import AssetClass
         clf = AssetClassClassifier()
         obs = _make_obs(exchange="NSE", instrument="HDFCBANK", obs_type=ObservationType.MARKET_DATA)
         lbl = clf.classify(obs)
         assert lbl.value == AssetClass.EQUITY
 
     def test_sector_classifier_known(self):
-        from iios.observation.classifiers.classification_engine import SectorClassifier
-        from iios.observation.classifiers.classification_constants import Sector
+        from enterprise_ai_platform.observation.classifiers.classification_engine import SectorClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Sector
         clf = SectorClassifier()
         obs = _make_obs(instrument="TCS")
         lbl = clf.classify(obs)
         assert lbl.value == Sector.TECHNOLOGY
 
     def test_sector_classifier_keyword(self):
-        from iios.observation.classifiers.classification_engine import SectorClassifier
-        from iios.observation.classifiers.classification_constants import Sector
+        from enterprise_ai_platform.observation.classifiers.classification_engine import SectorClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Sector
         clf = SectorClassifier()
         obs = _make_obs(title="HDFCBANK reports strong bank earnings", instrument="NEWBANK")
         lbl = clf.classify(obs)
         assert lbl.value == Sector.FINANCIALS
 
     def test_time_horizon_market_data(self):
-        from iios.observation.classifiers.classification_engine import TimeHorizonClassifier
-        from iios.observation.classifiers.classification_constants import TimeHorizon
+        from enterprise_ai_platform.observation.classifiers.classification_engine import TimeHorizonClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import TimeHorizon
         clf = TimeHorizonClassifier()
         obs = _make_market_obs()
         lbl = clf.classify(obs)
         assert lbl.value == TimeHorizon.INTRADAY
 
     def test_time_horizon_earnings_quarterly(self):
-        from iios.observation.classifiers.classification_engine import TimeHorizonClassifier
-        from iios.observation.classifiers.classification_constants import TimeHorizon
+        from enterprise_ai_platform.observation.classifiers.classification_engine import TimeHorizonClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import TimeHorizon
         clf = TimeHorizonClassifier()
         obs = _make_obs(obs_type=ObservationType.EARNINGS)
         lbl = clf.classify(obs)
         assert lbl.value == TimeHorizon.QUARTERLY
 
     def test_importance_classifier_high_priority(self):
-        from iios.observation.classifiers.classification_engine import ImportanceClassifier
-        from iios.observation.classifiers.classification_constants import Importance
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ImportanceClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Importance
         clf = ImportanceClassifier()
         obs = _make_obs(priority=ObservationPriority.HIGH)
         lbl = clf.classify(obs)
         assert lbl.value in (Importance.HIGH, Importance.CRITICAL)
 
     def test_risk_classifier_risk_metric(self):
-        from iios.observation.classifiers.classification_engine import RiskClassifier
-        from iios.observation.classifiers.classification_constants import RiskLevel
+        from enterprise_ai_platform.observation.classifiers.classification_engine import RiskClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import RiskLevel
         clf = RiskClassifier()
         obs = _make_obs(obs_type=ObservationType.RISK_METRIC)
         lbl = clf.classify(obs)
         assert lbl.value == RiskLevel.HIGH
 
     def test_risk_classifier_extreme_drawdown(self):
-        from iios.observation.classifiers.classification_engine import RiskClassifier
-        from iios.observation.classifiers.classification_constants import RiskLevel
+        from enterprise_ai_platform.observation.classifiers.classification_engine import RiskClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import RiskLevel
         clf = RiskClassifier()
         obs = _make_obs(
             obs_type = ObservationType.RISK_METRIC,
@@ -466,32 +466,32 @@ class TestBuiltinClassifiers:
         assert lbl.value == RiskLevel.EXTREME
 
     def test_geography_classifier_nse(self):
-        from iios.observation.classifiers.classification_engine import GeographyClassifier
-        from iios.observation.classifiers.classification_constants import Geography
+        from enterprise_ai_platform.observation.classifiers.classification_engine import GeographyClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Geography
         clf = GeographyClassifier()
         obs = _make_obs(exchange="NSE")
         lbl = clf.classify(obs)
         assert lbl.value == Geography.INDIA
 
     def test_geography_classifier_nyse(self):
-        from iios.observation.classifiers.classification_engine import GeographyClassifier
-        from iios.observation.classifiers.classification_constants import Geography
+        from enterprise_ai_platform.observation.classifiers.classification_engine import GeographyClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Geography
         clf = GeographyClassifier()
         obs = _make_obs(exchange="NYSE")
         lbl = clf.classify(obs)
         assert lbl.value == Geography.USA
 
     def test_ontology_category_classifier_technical(self):
-        from iios.observation.classifiers.classification_engine import OntologyCategoryClassifier
-        from iios.observation.classifiers.classification_constants import OntologyCategory
+        from enterprise_ai_platform.observation.classifiers.classification_engine import OntologyCategoryClassifier
+        from enterprise_ai_platform.observation.classifiers.classification_constants import OntologyCategory
         clf = OntologyCategoryClassifier()
         obs = _make_market_obs()
         lbl = clf.classify(obs)
         assert lbl.value == OntologyCategory.TECHNICAL
 
     def test_classification_label_to_dict(self):
-        from iios.observation.classifiers.classification_registry import ClassificationLabel
-        from iios.observation.classifiers.classification_constants import Geography
+        from enterprise_ai_platform.observation.classifiers.classification_registry import ClassificationLabel
+        from enterprise_ai_platform.observation.classifiers.classification_constants import Geography
         lbl = ClassificationLabel(
             dimension="geography", value=Geography.INDIA, confidence=0.95, reason="test",
         )
@@ -507,7 +507,7 @@ class TestBuiltinClassifiers:
 
 class TestClassificationEngine:
     def test_classify_returns_output(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         obs    = _make_market_obs()
         out    = engine.classify(obs)
@@ -515,8 +515,8 @@ class TestClassificationEngine:
         assert out.classifiers_run > 0
 
     def test_classify_writes_back_to_obs(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
-        from iios.observation.classifiers.classification_constants import CLASSIFICATION_ATTR_KEY
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_constants import CLASSIFICATION_ATTR_KEY
         engine = ClassificationEngine()
         obs    = _make_market_obs()
         engine.classify(obs)
@@ -526,14 +526,14 @@ class TestClassificationEngine:
         assert CLASSIFICATION_ATTR_KEY in obs.metadata.attributes
 
     def test_classify_updates_domain(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         obs    = _make_market_obs()
         engine.classify(obs)
         assert obs.metadata.domain == ObservationDomain.MARKET
 
     def test_classify_batch(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         obs_list = [_make_market_obs() for _ in range(3)]
         outputs  = engine.classify_batch(obs_list)
@@ -542,21 +542,21 @@ class TestClassificationEngine:
             assert obs.id in outputs
 
     def test_history_grows(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         engine.classify(_make_market_obs())
         engine.classify(_make_market_obs())
         assert len(engine.history()) == 2
 
     def test_history_limit(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         for _ in range(5):
             engine.classify(_make_market_obs())
         assert len(engine.history(limit=3)) == 3
 
     def test_stats_after_classify(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         engine.classify(_make_market_obs())
         s = engine.stats()
@@ -565,7 +565,7 @@ class TestClassificationEngine:
         assert "dimensions"      in s
 
     def test_output_to_dict(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         obs    = _make_market_obs()
         out    = engine.classify(obs)
@@ -575,7 +575,7 @@ class TestClassificationEngine:
         assert d["classifiers_run"] > 0
 
     def test_output_get_label(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         obs    = _make_market_obs()
         out    = engine.classify(obs)
@@ -584,7 +584,7 @@ class TestClassificationEngine:
         assert lbl.dimension == "geography"
 
     def test_singleton(self):
-        from iios.observation.classifiers.classification_engine import (
+        from enterprise_ai_platform.observation.classifiers.classification_engine import (
             get_classification_engine, reset_classification_engine,
         )
         e1 = get_classification_engine()
@@ -592,7 +592,7 @@ class TestClassificationEngine:
         assert e1 is e2
 
     def test_confidence_between_0_and_1(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine = ClassificationEngine()
         for obs in [_make_market_obs(), _make_signal_obs(), _make_obs()]:
             out = engine.classify(obs)
@@ -605,7 +605,7 @@ class TestClassificationEngine:
 
 class TestClassificationManager:
     def test_process_returns_result(self):
-        from iios.observation.classifiers.classification_manager import ClassificationManager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import ClassificationManager
         mgr = ClassificationManager()
         obs = _make_market_obs()
         r   = mgr.process(obs)
@@ -614,7 +614,7 @@ class TestClassificationManager:
         assert r.output is not None
 
     def test_process_batch(self):
-        from iios.observation.classifiers.classification_manager import ClassificationManager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import ClassificationManager
         mgr     = ClassificationManager()
         obs_lst = [_make_market_obs() for _ in range(4)]
         results = mgr.process_batch(obs_lst)
@@ -622,7 +622,7 @@ class TestClassificationManager:
         assert all(r.success for r in results)
 
     def test_stats_after_process(self):
-        from iios.observation.classifiers.classification_manager import ClassificationManager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import ClassificationManager
         mgr = ClassificationManager()
         mgr.process(_make_market_obs())
         s = mgr.stats()
@@ -630,7 +630,7 @@ class TestClassificationManager:
         assert s["successful"] == 1
 
     def test_history_stored(self):
-        from iios.observation.classifiers.classification_manager import ClassificationManager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import ClassificationManager
         mgr = ClassificationManager()
         mgr.process(_make_market_obs())
         mgr.process(_make_signal_obs())
@@ -638,7 +638,7 @@ class TestClassificationManager:
         assert len(h) == 2
 
     def test_result_to_dict(self):
-        from iios.observation.classifiers.classification_manager import ClassificationManager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import ClassificationManager
         mgr = ClassificationManager()
         r   = mgr.process(_make_market_obs())
         d   = r.to_dict()
@@ -647,7 +647,7 @@ class TestClassificationManager:
         assert d["output"] is not None
 
     def test_singleton(self):
-        from iios.observation.classifiers.classification_manager import (
+        from enterprise_ai_platform.observation.classifiers.classification_manager import (
             get_classification_manager, reset_classification_manager,
         )
         m1 = get_classification_manager()
@@ -661,33 +661,33 @@ class TestClassificationManager:
 
 class TestEnrichmentConstants:
     def test_enricher_stage_pipeline_order(self):
-        from iios.observation.enrichment.enrichment_constants import EnricherStage
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherStage
         assert EnricherStage.PRE.value      == "pre"
         assert EnricherStage.POST.value     == "post"
         assert EnricherStage.SEMANTIC.value == "semantic"
 
     def test_enricher_category_values(self):
-        from iios.observation.enrichment.enrichment_constants import EnricherCategory
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherCategory
         assert EnricherCategory.TAG.value      == "tag"
         assert EnricherCategory.ONTOLOGY.value == "ontology"
 
     def test_semantic_label_bullish(self):
-        from iios.observation.enrichment.enrichment_constants import SemanticLabel
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import SemanticLabel
         assert SemanticLabel.BULLISH.value == "bullish"
         assert SemanticLabel.BEARISH.value == "bearish"
 
     def test_link_type_values(self):
-        from iios.observation.enrichment.enrichment_constants import LinkType
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import LinkType
         assert LinkType.ENTITY.value      == "entity"
         assert LinkType.OBSERVATION.value == "observation"
         assert LinkType.STRATEGY.value    == "strategy"
 
     def test_max_tags_positive(self):
-        from iios.observation.enrichment.enrichment_constants import MAX_TAGS
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import MAX_TAGS
         assert MAX_TAGS > 0
 
     def test_enrichment_attr_key_defined(self):
-        from iios.observation.enrichment.enrichment_constants import ENRICHMENT_ATTR_KEY
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import ENRICHMENT_ATTR_KEY
         assert isinstance(ENRICHMENT_ATTR_KEY, str)
         assert len(ENRICHMENT_ATTR_KEY) > 0
 
@@ -698,28 +698,28 @@ class TestEnrichmentConstants:
 
 class TestEnrichmentExceptions:
     def test_base_is_observation_error(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnrichmentError
-        from iios.observation.observation_exceptions import ObservationError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnrichmentError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationError
         assert issubclass(EnrichmentError, ObservationError)
 
     def test_enricher_not_found(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnricherNotFoundError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnricherNotFoundError
         exc = EnricherNotFoundError("missing_enricher")
         assert "missing_enricher" in str(exc)
         assert exc.name == "missing_enricher"
 
     def test_already_registered(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnricherAlreadyRegisteredError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnricherAlreadyRegisteredError
         exc = EnricherAlreadyRegisteredError("dup")
         assert "dup" in str(exc)
 
     def test_pipeline_error_stores_enricher(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnrichmentPipelineError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnrichmentPipelineError
         exc = EnrichmentPipelineError("crash", enricher="tag_enricher")
         assert exc.enricher == "tag_enricher"
 
     def test_not_initialized_error(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnrichmentNotInitializedError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnrichmentNotInitializedError
         exc = EnrichmentNotInitializedError()
         assert "not initialised" in str(exc).lower()
 
@@ -730,12 +730,12 @@ class TestEnrichmentExceptions:
 
 class TestEnrichmentContext:
     def test_get_context(self):
-        from iios.observation.enrichment.enrichment_context import get_enrichment_context
+        from enterprise_ai_platform.observation.enrichment.enrichment_context import get_enrichment_context
         ctx = get_enrichment_context()
         assert ctx is not None
 
     def test_enrichment_operation_sets_obs_id(self):
-        from iios.observation.enrichment.enrichment_context import (
+        from enterprise_ai_platform.observation.enrichment.enrichment_context import (
             enrichment_operation, current_obs_id,
         )
         with enrichment_operation("obs::enrich/001"):
@@ -743,15 +743,15 @@ class TestEnrichmentContext:
         assert current_obs_id() == ""
 
     def test_enrichment_operation_sets_stage(self):
-        from iios.observation.enrichment.enrichment_context import (
+        from enterprise_ai_platform.observation.enrichment.enrichment_context import (
             enrichment_operation, current_stage,
         )
-        from iios.observation.enrichment.enrichment_constants import EnricherStage
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherStage
         with enrichment_operation("obs::test", stage=EnricherStage.SEMANTIC):
             assert current_stage() == EnricherStage.SEMANTIC
 
     def test_reset_clears_context(self):
-        from iios.observation.enrichment.enrichment_context import (
+        from enterprise_ai_platform.observation.enrichment.enrichment_context import (
             get_enrichment_context, reset_enrichment_context,
         )
         ctx = get_enrichment_context()
@@ -766,12 +766,12 @@ class TestEnrichmentContext:
 
 class TestEnricherRegistry:
     def _make_registry(self):
-        from iios.observation.enrichment.enrichment_registry import EnricherRegistry
+        from enterprise_ai_platform.observation.enrichment.enrichment_registry import EnricherRegistry
         return EnricherRegistry()
 
     def _make_dummy(self, name: str = "dummy", stage=None):
-        from iios.observation.enrichment.enrichment_constants import EnricherCategory, EnricherStage
-        from iios.observation.enrichment.enrichment_registry import BaseEnricher, EnrichmentRecord
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherCategory, EnricherStage
+        from enterprise_ai_platform.observation.enrichment.enrichment_registry import BaseEnricher, EnrichmentRecord
         stage = stage or EnricherStage.PRE
 
         class Dummy(BaseEnricher):
@@ -786,14 +786,14 @@ class TestEnricherRegistry:
         assert reg.has("dummy")
 
     def test_register_duplicate_raises(self):
-        from iios.observation.enrichment.enrichment_exceptions import EnricherAlreadyRegisteredError
+        from enterprise_ai_platform.observation.enrichment.enrichment_exceptions import EnricherAlreadyRegisteredError
         reg = self._make_registry()
         reg.register(self._make_dummy())
         with pytest.raises(EnricherAlreadyRegisteredError):
             reg.register(self._make_dummy())
 
     def test_by_stage(self):
-        from iios.observation.enrichment.enrichment_constants import EnricherStage
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherStage
         reg = self._make_registry()
         reg.register(self._make_dummy("a", EnricherStage.PRE))
         reg.register(self._make_dummy("b", EnricherStage.SEMANTIC))
@@ -802,7 +802,7 @@ class TestEnricherRegistry:
         assert len(reg.by_stage(EnricherStage.SEMANTIC)) == 1
 
     def test_ordered_respects_stage(self):
-        from iios.observation.enrichment.enrichment_constants import EnricherStage
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import EnricherStage
         reg = self._make_registry()
         reg.register(self._make_dummy("post",    EnricherStage.POST))
         reg.register(self._make_dummy("pre",     EnricherStage.PRE))
@@ -814,7 +814,7 @@ class TestEnricherRegistry:
         assert stages.index(EnricherStage.SEMANTIC) < stages.index(EnricherStage.POST)
 
     def test_default_registry_has_8_enrichers(self):
-        from iios.observation.enrichment.enrichment_registry import get_enricher_registry
+        from enterprise_ai_platform.observation.enrichment.enrichment_registry import get_enricher_registry
         reg = get_enricher_registry()
         assert reg.count() == 8
 
@@ -834,7 +834,7 @@ class TestEnricherRegistry:
 
 class TestBuiltinEnrichers:
     def test_tag_enricher_adds_obs_type_tag(self):
-        from iios.observation.enrichment.enrichment_engine import TagEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import TagEnricher
         enricher = TagEnricher()
         obs      = _make_market_obs()
         record   = enricher.enrich(obs)
@@ -842,14 +842,14 @@ class TestBuiltinEnrichers:
         assert obs.obs_type.value in obs.metadata.tags
 
     def test_tag_enricher_adds_exchange_tag(self):
-        from iios.observation.enrichment.enrichment_engine import TagEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import TagEnricher
         enricher = TagEnricher()
         obs      = _make_market_obs(exchange="NSE")
         record   = enricher.enrich(obs)
         assert "nse" in obs.metadata.tags
 
     def test_tag_enricher_strips_ns_suffix(self):
-        from iios.observation.enrichment.enrichment_engine import TagEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import TagEnricher
         enricher = TagEnricher()
         obs      = _make_obs(instrument="RELIANCE.NS")
         record   = enricher.enrich(obs)
@@ -857,7 +857,7 @@ class TestBuiltinEnrichers:
         assert "reliance.ns" not in obs.metadata.tags
 
     def test_keyword_enricher_adds_keywords(self):
-        from iios.observation.enrichment.enrichment_engine import KeywordEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import KeywordEnricher
         enricher = KeywordEnricher()
         obs      = _make_obs(title="NIFTY breakout momentum signal")
         record   = enricher.enrich(obs)
@@ -866,7 +866,7 @@ class TestBuiltinEnrichers:
         assert len(kw) > 0
 
     def test_keyword_enricher_adds_content_keys(self):
-        from iios.observation.enrichment.enrichment_engine import KeywordEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import KeywordEnricher
         enricher = KeywordEnricher()
         obs      = _make_market_obs()
         enricher.enrich(obs)
@@ -875,31 +875,31 @@ class TestBuiltinEnrichers:
         assert any(k in kw for k in ("open", "high", "low", "close"))
 
     def test_semantic_label_enricher_bullish_signal(self):
-        from iios.observation.enrichment.enrichment_engine import SemanticLabelEnricher
-        from iios.observation.enrichment.enrichment_constants import SemanticLabel
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import SemanticLabelEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import SemanticLabel
         enricher = SemanticLabelEnricher()
         obs      = _make_signal_obs()  # has direction="buy"
         enricher.enrich(obs)
         assert obs.metadata.labels.get("semantic_label") == SemanticLabel.BULLISH.value
 
     def test_semantic_label_enricher_bearish(self):
-        from iios.observation.enrichment.enrichment_engine import SemanticLabelEnricher
-        from iios.observation.enrichment.enrichment_constants import SemanticLabel
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import SemanticLabelEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import SemanticLabel
         enricher = SemanticLabelEnricher()
         obs      = _make_obs(content={"direction": "sell", "strength": 0.9})
         enricher.enrich(obs)
         assert obs.metadata.labels.get("semantic_label") == SemanticLabel.BEARISH.value
 
     def test_semantic_label_rsi_overbought(self):
-        from iios.observation.enrichment.enrichment_engine import SemanticLabelEnricher
-        from iios.observation.enrichment.enrichment_constants import SemanticLabel
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import SemanticLabelEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import SemanticLabel
         enricher = SemanticLabelEnricher()
         obs      = _make_obs(content={"rsi": 78.0})
         enricher.enrich(obs)
         assert obs.metadata.labels.get("semantic_label") == SemanticLabel.OVERBOUGHT.value
 
     def test_temporal_enricher_adds_session(self):
-        from iios.observation.enrichment.enrichment_engine import TemporalContextEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import TemporalContextEnricher
         enricher = TemporalContextEnricher()
         obs      = _make_market_obs()
         enricher.enrich(obs)
@@ -909,7 +909,7 @@ class TestBuiltinEnrichers:
         assert "quarter" in obs.metadata.attributes
 
     def test_temporal_enricher_adds_session_tag(self):
-        from iios.observation.enrichment.enrichment_engine import TemporalContextEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import TemporalContextEnricher
         enricher = TemporalContextEnricher()
         obs      = _make_market_obs()
         enricher.enrich(obs)
@@ -917,15 +917,15 @@ class TestBuiltinEnrichers:
         assert any(t.startswith("session:") for t in tags)
 
     def test_entity_metadata_enricher_no_crash_without_ctx(self):
-        from iios.observation.enrichment.enrichment_engine import EntityMetadataEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EntityMetadataEnricher
         enricher = EntityMetadataEnricher()
         obs      = _make_market_obs()
         record   = enricher.enrich(obs)  # no classification ctx
         assert record.success
 
     def test_entity_metadata_enricher_reads_classification(self):
-        from iios.observation.enrichment.enrichment_engine import EntityMetadataEnricher
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EntityMetadataEnricher
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         eng_c    = ClassificationEngine()
         obs      = _make_market_obs()
         cls_out  = eng_c.classify(obs)
@@ -936,22 +936,22 @@ class TestBuiltinEnrichers:
         assert "entity_type" in obs.metadata.labels
 
     def test_market_context_enricher_adds_market_label(self):
-        from iios.observation.enrichment.enrichment_engine import MarketContextEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import MarketContextEnricher
         enricher = MarketContextEnricher()
         obs      = _make_market_obs(exchange="NSE")
         enricher.enrich(obs)
         assert obs.metadata.labels.get("market") == "IN"
 
     def test_market_context_enricher_nifty_index_tag(self):
-        from iios.observation.enrichment.enrichment_engine import MarketContextEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import MarketContextEnricher
         enricher = MarketContextEnricher()
         obs      = _make_obs(instrument="NIFTY")
         enricher.enrich(obs)
         assert "index" in obs.metadata.tags
 
     def test_ontology_link_enricher_adds_instrument_link(self):
-        from iios.observation.enrichment.enrichment_engine import OntologyLinkEnricher
-        from iios.observation.enrichment.enrichment_constants import LinkType
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import OntologyLinkEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import LinkType
         enricher = OntologyLinkEnricher()
         obs      = _make_market_obs(instrument="RELIANCE")
         enricher.enrich(obs)
@@ -959,8 +959,8 @@ class TestBuiltinEnrichers:
         assert any(l["type"] == LinkType.ENTITY.value for l in links)
 
     def test_ontology_link_enricher_adds_obs_type_link(self):
-        from iios.observation.enrichment.enrichment_engine import OntologyLinkEnricher
-        from iios.observation.enrichment.enrichment_constants import LinkType
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import OntologyLinkEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import LinkType
         enricher = OntologyLinkEnricher()
         obs      = _make_market_obs()
         enricher.enrich(obs)
@@ -968,18 +968,18 @@ class TestBuiltinEnrichers:
         assert any(l["type"] == LinkType.KNOWLEDGE.value for l in links)
 
     def test_xref_enricher_no_crash_empty_related(self):
-        from iios.observation.enrichment.enrichment_engine import CrossReferenceEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import CrossReferenceEnricher
         enricher = CrossReferenceEnricher()
         obs      = _make_market_obs()
         record   = enricher.enrich(obs)
         assert record.success
 
     def test_xref_enricher_links_related_ids(self):
-        from iios.observation.enrichment.enrichment_engine import CrossReferenceEnricher
-        from iios.observation.enrichment.enrichment_constants import LinkType
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import CrossReferenceEnricher
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import LinkType
         enricher = CrossReferenceEnricher()
         obs      = _make_market_obs()
-        obs.related_obs_ids = ["iios:test:obs/abc123"]
+        obs.related_obs_ids = ["enterprise_ai_platform:test:obs/abc123"]
         enricher.enrich(obs)
         links = obs.metadata.attributes.get("links", [])
         assert any(l["type"] == LinkType.OBSERVATION.value for l in links)
@@ -991,7 +991,7 @@ class TestBuiltinEnrichers:
 
 class TestEnrichmentEngine:
     def test_enrich_returns_output(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         obs    = _make_market_obs()
         out    = engine.enrich(obs)
@@ -999,30 +999,30 @@ class TestEnrichmentEngine:
         assert out.enrichers_run > 0
 
     def test_enrich_adds_tags_to_obs(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         obs    = _make_market_obs()
         engine.enrich(obs)
         assert len(obs.metadata.tags) > 0
 
     def test_enrich_stores_output_in_attributes(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
-        from iios.observation.enrichment.enrichment_constants import ENRICHMENT_ATTR_KEY
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_constants import ENRICHMENT_ATTR_KEY
         engine = EnrichmentEngine()
         obs    = _make_market_obs()
         engine.enrich(obs)
         assert ENRICHMENT_ATTR_KEY in obs.metadata.attributes
 
     def test_enrich_total_tags_counted(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         obs    = _make_market_obs()
         out    = engine.enrich(obs)
         assert out.total_tags == len(out.all_tags)
 
     def test_enrich_with_classification_ctx(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
-        from iios.observation.enrichment.enrichment_engine       import EnrichmentEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine       import EnrichmentEngine
         cls_engine = ClassificationEngine()
         enr_engine = EnrichmentEngine()
         obs        = _make_market_obs()
@@ -1031,21 +1031,21 @@ class TestEnrichmentEngine:
         assert enr_out.success
 
     def test_enrich_batch(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine   = EnrichmentEngine()
         obs_list = [_make_market_obs() for _ in range(3)]
         outputs  = engine.enrich_batch(obs_list)
         assert len(outputs) == 3
 
     def test_history_stored(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         engine.enrich(_make_market_obs())
         engine.enrich(_make_signal_obs())
         assert len(engine.history()) == 2
 
     def test_stats_after_enrich(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         engine.enrich(_make_market_obs())
         s = engine.stats()
@@ -1053,7 +1053,7 @@ class TestEnrichmentEngine:
         assert s["successful"] >= 1
 
     def test_output_to_dict(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine = EnrichmentEngine()
         obs    = _make_market_obs()
         out    = engine.enrich(obs)
@@ -1063,7 +1063,7 @@ class TestEnrichmentEngine:
         assert d["enrichers_run"]   > 0
 
     def test_singleton(self):
-        from iios.observation.enrichment.enrichment_engine import (
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import (
             get_enrichment_engine, reset_enrichment_engine,
         )
         e1 = get_enrichment_engine()
@@ -1077,21 +1077,21 @@ class TestEnrichmentEngine:
 
 class TestEnrichmentManager:
     def test_process_returns_result(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr = EnrichmentManager()
         r   = mgr.process(_make_market_obs())
         assert r.success is True
         assert r.enrichment_output is not None
 
     def test_process_marks_classification_not_used(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr = EnrichmentManager()
         r   = mgr.process(_make_market_obs())
         assert r.classification_used is False
 
     def test_process_with_classification_ctx(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
-        from iios.observation.enrichment.enrichment_manager       import EnrichmentManager
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager       import EnrichmentManager
         cls_engine = ClassificationEngine()
         obs        = _make_market_obs()
         cls_out    = cls_engine.classify(obs)
@@ -1101,14 +1101,14 @@ class TestEnrichmentManager:
         assert r.classification_used is True
 
     def test_process_batch(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr     = EnrichmentManager()
         results = mgr.process_batch([_make_market_obs() for _ in range(3)])
         assert len(results) == 3
         assert all(r.success for r in results)
 
     def test_stats_after_process(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr = EnrichmentManager()
         mgr.process(_make_market_obs())
         s = mgr.stats()
@@ -1116,14 +1116,14 @@ class TestEnrichmentManager:
         assert s["successful"] == 1
 
     def test_history_stored(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr = EnrichmentManager()
         mgr.process(_make_market_obs())
         mgr.process(_make_signal_obs())
         assert len(mgr.history()) == 2
 
     def test_result_to_dict(self):
-        from iios.observation.enrichment.enrichment_manager import EnrichmentManager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import EnrichmentManager
         mgr = EnrichmentManager()
         r   = mgr.process(_make_market_obs())
         d   = r.to_dict()
@@ -1131,7 +1131,7 @@ class TestEnrichmentManager:
         assert "enrichment_output"   in d
 
     def test_singleton(self):
-        from iios.observation.enrichment.enrichment_manager import (
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager import (
             get_enrichment_manager, reset_enrichment_manager,
         )
         m1 = get_enrichment_manager()
@@ -1145,8 +1145,8 @@ class TestEnrichmentManager:
 
 class TestClassifyEnrichPipeline:
     def test_full_pipeline_market_obs(self):
-        from iios.observation.classifiers.classification_manager import get_classification_manager
-        from iios.observation.enrichment.enrichment_manager       import get_enrichment_manager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import get_classification_manager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager       import get_enrichment_manager
         cm  = get_classification_manager()
         em  = get_enrichment_manager()
         obs = _make_market_obs(instrument="INFY", exchange="NSE")
@@ -1161,8 +1161,8 @@ class TestClassifyEnrichPipeline:
         assert "market_session" in obs.metadata.attributes
 
     def test_full_pipeline_signal_obs(self):
-        from iios.observation.classifiers.classification_manager import get_classification_manager
-        from iios.observation.enrichment.enrichment_manager       import get_enrichment_manager
+        from enterprise_ai_platform.observation.classifiers.classification_manager import get_classification_manager
+        from enterprise_ai_platform.observation.enrichment.enrichment_manager       import get_enrichment_manager
         cm  = get_classification_manager()
         em  = get_enrichment_manager()
         obs = _make_signal_obs(instrument="WIPRO")
@@ -1174,21 +1174,21 @@ class TestClassifyEnrichPipeline:
         assert enr_result.success
 
     def test_classification_propagates_domain_to_obs(self):
-        from iios.observation.classifiers.classification_engine import get_classification_engine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import get_classification_engine
         eng = get_classification_engine()
         obs = _make_market_obs()
         eng.classify(obs)
         assert obs.metadata.domain == ObservationDomain.MARKET
 
     def test_enrichment_output_total_tags_positive(self):
-        from iios.observation.enrichment.enrichment_engine import get_enrichment_engine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import get_enrichment_engine
         eng = get_enrichment_engine()
         obs = _make_market_obs()
         out = eng.enrich(obs)
         assert out.total_tags > 0
 
     def test_observation_has_links_after_enrichment(self):
-        from iios.observation.enrichment.enrichment_engine import get_enrichment_engine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import get_enrichment_engine
         eng  = get_enrichment_engine()
         obs  = _make_market_obs(instrument="ONGC")
         eng.enrich(obs)
@@ -1202,7 +1202,7 @@ class TestClassifyEnrichPipeline:
 
 class TestConcurrency:
     def test_parallel_classification(self):
-        from iios.observation.classifiers.classification_engine import ClassificationEngine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import ClassificationEngine
         engine  = ClassificationEngine()
         errors: list[Exception] = []
 
@@ -1222,7 +1222,7 @@ class TestConcurrency:
         assert engine.stats()["total"] == 8
 
     def test_parallel_enrichment(self):
-        from iios.observation.enrichment.enrichment_engine import EnrichmentEngine
+        from enterprise_ai_platform.observation.enrichment.enrichment_engine import EnrichmentEngine
         engine  = EnrichmentEngine()
         errors: list[Exception] = []
 
@@ -1242,7 +1242,7 @@ class TestConcurrency:
         assert engine.stats()["total"] == 8
 
     def test_singleton_thread_safety(self):
-        from iios.observation.classifiers.classification_engine import get_classification_engine
+        from enterprise_ai_platform.observation.classifiers.classification_engine import get_classification_engine
         instances: list = []
 
         def _get():

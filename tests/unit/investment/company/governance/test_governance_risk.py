@@ -3,12 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.governance.governance_risk import GovernanceRiskEngine
-from iios.investment.company.governance.governance_events import classify_events
-from iios.investment.company.governance.management_profile import GovernanceRiskProfile, RiskLabel
-from iios.investment.company.governance.key_person_risk import score_key_person_risk
-from iios.investment.company.governance.succession_analysis import score_succession_quality
-from iios.investment.company.governance.governance_alerts import generate_alerts
+from enterprise_ai_platform.investment.company.governance.governance_risk import GovernanceRiskEngine
+from enterprise_ai_platform.investment.company.governance.governance_events import classify_events
+from enterprise_ai_platform.investment.company.governance.management_profile import GovernanceRiskProfile, RiskLabel
+from enterprise_ai_platform.investment.company.governance.key_person_risk import score_key_person_risk
+from enterprise_ai_platform.investment.company.governance.succession_analysis import score_succession_quality
+from enterprise_ai_platform.investment.company.governance.governance_alerts import generate_alerts
 
 
 @pytest.fixture

@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.risk.assessment import (
+from enterprise_ai_platform.risk.assessment import (
     # Constants
     ASSESSMENT_SYSTEM_ID,
     DEFAULT_CONFIDENCE_LEVEL,
@@ -180,7 +180,7 @@ def _started_engine() -> RiskAssessmentEngine:
 
 class TestConstants:
     def test_assessment_system_id(self):
-        assert ASSESSMENT_SYSTEM_ID == "iios:risk:assessment"
+        assert ASSESSMENT_SYSTEM_ID == "enterprise_ai_platform:risk:assessment"
 
     def test_version(self):
         assert VERSION == "1.0.0"

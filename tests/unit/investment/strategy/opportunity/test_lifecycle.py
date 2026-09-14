@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.opportunity.strategy_opportunity import (
+from enterprise_ai_platform.investment.strategy.opportunity.strategy_opportunity import (
     StrategyOpportunity, OpportunityState
 )
-from iios.investment.strategy.opportunity.lifecycle_engine import LifecycleEngine
-from iios.investment.strategy.opportunity.lifecycle_history import LifecycleHistory
+from enterprise_ai_platform.investment.strategy.opportunity.lifecycle_engine import LifecycleEngine
+from enterprise_ai_platform.investment.strategy.opportunity.lifecycle_history import LifecycleHistory
 
 
 def _opp(opp_id="o1", strategy_id="s1") -> StrategyOpportunity:

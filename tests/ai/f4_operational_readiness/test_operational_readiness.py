@@ -21,8 +21,8 @@ from typing import Any, Dict, List
 import pytest
 
 # ── Platform bootstrap ─────────────────────────────────────────────────────
-import iios.ai.platform as _platform_mod
-from iios.ai.platform import (
+import enterprise_ai_platform.ai.platform as _platform_mod
+from enterprise_ai_platform.ai.platform import (
     CircularDependencyError,
     GatewayProtocol,
     HealthCoordinator,
@@ -39,8 +39,8 @@ from iios.ai.platform import (
     StartupCoordinator,
     StartupOrder,
 )
-from iios.ai.platform.iios_bootstrap import BOOTSTRAP_VERSION
-from iios.ai.platform.health_coordinator import (
+from enterprise_ai_platform.ai.platform.iios_bootstrap import BOOTSTRAP_VERSION
+from enterprise_ai_platform.ai.platform.health_coordinator import (
     HEALTH_DEGRADED,
     HEALTH_DOWN,
     HEALTH_HEALTHY,
@@ -48,31 +48,31 @@ from iios.ai.platform.health_coordinator import (
 )
 
 # ── Module packages (for __version__ checks) ───────────────────────────────
-import iios.ai.foundation as _mod_a1
-import iios.ai.model_management as _mod_a2
-import iios.ai.prompt_context as _mod_a3
-import iios.ai.memory_knowledge as _mod_a4
-import iios.ai.agent_framework as _mod_a5
-import iios.ai.collaboration as _mod_a6
-import iios.ai.learning_evaluation as _mod_a7
-import iios.ai.governance as _mod_a8
-import iios.ai.capability as _mod_a9
-import iios.ai.orchestrator as _mod_a10
+import enterprise_ai_platform.ai.foundation as _mod_a1
+import enterprise_ai_platform.ai.model_management as _mod_a2
+import enterprise_ai_platform.ai.prompt_context as _mod_a3
+import enterprise_ai_platform.ai.memory_knowledge as _mod_a4
+import enterprise_ai_platform.ai.agent_framework as _mod_a5
+import enterprise_ai_platform.ai.collaboration as _mod_a6
+import enterprise_ai_platform.ai.learning_evaluation as _mod_a7
+import enterprise_ai_platform.ai.governance as _mod_a8
+import enterprise_ai_platform.ai.capability as _mod_a9
+import enterprise_ai_platform.ai.orchestrator as _mod_a10
 
 # ── Gateway classes (class-level constants; no instantiation required) ──────
-from iios.ai.foundation.gateway.ai_foundation_gateway import AIFoundationGateway
-from iios.ai.model_management.gateway.model_management_gateway import ModelManagementGateway
-from iios.ai.prompt_context.gateway.prompt_context_gateway import PromptContextGateway
-from iios.ai.memory_knowledge.gateway.memory_knowledge_gateway import MemoryKnowledgeGateway
-from iios.ai.agent_framework.gateway.agent_framework_gateway import AgentFrameworkGateway
-from iios.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
-from iios.ai.learning_evaluation.gateway.learning_evaluation_gateway import LearningEvaluationGateway
-from iios.ai.governance.gateway.governance_gateway import GovernanceGateway
-from iios.ai.capability.gateway.capability_gateway import CapabilityGateway
-from iios.ai.orchestrator.gateway.orchestrator_gateway import OrchestratorGateway
+from enterprise_ai_platform.ai.foundation.gateway.ai_foundation_gateway import AIFoundationGateway
+from enterprise_ai_platform.ai.model_management.gateway.model_management_gateway import ModelManagementGateway
+from enterprise_ai_platform.ai.prompt_context.gateway.prompt_context_gateway import PromptContextGateway
+from enterprise_ai_platform.ai.memory_knowledge.gateway.memory_knowledge_gateway import MemoryKnowledgeGateway
+from enterprise_ai_platform.ai.agent_framework.gateway.agent_framework_gateway import AgentFrameworkGateway
+from enterprise_ai_platform.ai.collaboration.gateway.collaboration_gateway import CollaborationGateway
+from enterprise_ai_platform.ai.learning_evaluation.gateway.learning_evaluation_gateway import LearningEvaluationGateway
+from enterprise_ai_platform.ai.governance.gateway.governance_gateway import GovernanceGateway
+from enterprise_ai_platform.ai.capability.gateway.capability_gateway import CapabilityGateway
+from enterprise_ai_platform.ai.orchestrator.gateway.orchestrator_gateway import OrchestratorGateway
 
 # ── Exception backward-compat aliases ─────────────────────────────────────
-from iios.ai.agent_framework.exceptions.agent_exceptions import (
+from enterprise_ai_platform.ai.agent_framework.exceptions.agent_exceptions import (
     AIAgentPermissionException,
     AIPermissionException,
     AIAgentPermissionDeniedError,
@@ -82,26 +82,26 @@ from iios.ai.agent_framework.exceptions.agent_exceptions import (
     AIAgentPolicyException,
     AIPolicyException,
 )
-from iios.ai.governance.exceptions.governance_exceptions import (
+from enterprise_ai_platform.ai.governance.exceptions.governance_exceptions import (
     AIGovernanceRuleViolationError,
     AIPolicyViolationError,
 )
-from iios.ai.orchestrator.exceptions.orchestrator_exceptions import (
+from enterprise_ai_platform.ai.orchestrator.exceptions.orchestrator_exceptions import (
     AISchedulerTaskNotFoundError,
     AITaskNotFoundError,
     AISchedulerTaskExecutionError,
     AITaskExecutionError,
 )
-from iios.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
+from enterprise_ai_platform.ai.learning_evaluation.exceptions.learning_evaluation_exceptions import (
     AIQualityValidationException,
     AIValidationException,
 )
 
 # ── Snapshot backward-compat aliases ──────────────────────────────────────
-from iios.ai.model_management.snapshot.model_management_snapshot import ModelManagementSnapshot
-from iios.ai.prompt_context.snapshot.prompt_context_snapshot import PromptContextSnapshot
-from iios.ai.memory_knowledge.snapshot.memory_knowledge_snapshot import MemoryKnowledgeSnapshot
-from iios.ai.agent_framework.snapshot.agent_snapshot import AgentFrameworkSnapshot
+from enterprise_ai_platform.ai.model_management.snapshot.model_management_snapshot import ModelManagementSnapshot
+from enterprise_ai_platform.ai.prompt_context.snapshot.prompt_context_snapshot import PromptContextSnapshot
+from enterprise_ai_platform.ai.memory_knowledge.snapshot.memory_knowledge_snapshot import MemoryKnowledgeSnapshot
+from enterprise_ai_platform.ai.agent_framework.snapshot.agent_snapshot import AgentFrameworkSnapshot
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -476,8 +476,8 @@ class TestEndToEndExecution:
     def test_system_id_format_iios_ai_prefix_on_all_gateways(self) -> None:
         for cls in _ALL_GATEWAY_CLASSES:
             assert hasattr(cls, "SYSTEM_ID"), f"{cls.__name__} missing SYSTEM_ID"
-            assert cls.SYSTEM_ID.startswith("iios:ai:"), (
-                f"{cls.__name__}.SYSTEM_ID='{cls.SYSTEM_ID}' does not start with 'iios:ai:'"
+            assert cls.SYSTEM_ID.startswith("enterprise_ai_platform:ai:"), (
+                f"{cls.__name__}.SYSTEM_ID='{cls.SYSTEM_ID}' does not start with 'enterprise_ai_platform:ai:'"
             )
 
 

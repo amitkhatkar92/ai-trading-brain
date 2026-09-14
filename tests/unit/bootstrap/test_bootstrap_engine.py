@@ -18,7 +18,7 @@ from typing import Any
 
 import pytest
 
-from iios.bootstrap import (
+from enterprise_ai_platform.bootstrap import (
     BootstrapEngine,
     BootstrapError,
     StartupContext,
@@ -170,7 +170,7 @@ class TestContextAccumulation:
 class TestProgressCallback:
     @pytest.mark.integration
     def test_progress_callback_receives_all_stages(self, engine: BootstrapEngine) -> None:
-        from iios.bootstrap.startup_state import StageStatus
+        from enterprise_ai_platform.bootstrap.startup_state import StageStatus
         progresses: list[tuple[int, str, StageStatus, float]] = []
 
         def cb(n: int, name: str, status: StageStatus, ms: float) -> None:

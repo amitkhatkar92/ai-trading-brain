@@ -3,11 +3,11 @@ Tests for stress scenarios, ScenarioEngine, and StressTestingEngine.
 """
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.stress_scenarios import (
+from enterprise_ai_platform.investment.strategy.risk.stress_scenarios import (
     MARKET_CRASH, VOLATILITY_SPIKE, LIQUIDITY_SHOCK,
     FLASH_CRASH, EXTREME_TREND, BUILTIN_SCENARIOS, StressScenario
 )
-from iios.investment.strategy.risk.stress_statistics import (
+from enterprise_ai_platform.investment.strategy.risk.stress_statistics import (
     stressed_vol,
     stressed_drawdown,
     stressed_expected_loss,
@@ -16,8 +16,8 @@ from iios.investment.strategy.risk.stress_statistics import (
     aggregate_stress_score,
     worst_case_loss,
 )
-from iios.investment.strategy.risk.scenario_engine import ScenarioEngine, ScenarioResult
-from iios.investment.strategy.risk.stress_testing import StressTestingEngine, StressTestReport
+from enterprise_ai_platform.investment.strategy.risk.scenario_engine import ScenarioEngine, ScenarioResult
+from enterprise_ai_platform.investment.strategy.risk.stress_testing import StressTestingEngine, StressTestReport
 
 
 class TestStressScenarios:

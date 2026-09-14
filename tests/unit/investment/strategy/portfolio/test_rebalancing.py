@@ -8,23 +8,23 @@ import pytest
 from datetime import datetime, timedelta, timezone
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.strategy_allocation import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import (
     StrategyAllocation, AllocationMethod
 )
-from iios.investment.strategy.portfolio.rebalance_policy import (
+from enterprise_ai_platform.investment.strategy.portfolio.rebalance_policy import (
     RebalancePolicy, RebalanceTrigger, DEFAULT_POLICY, AGGRESSIVE_POLICY
 )
-from iios.investment.strategy.portfolio.rebalance_scheduler import RebalanceScheduler
-from iios.investment.strategy.portfolio.rebalance_history import (
+from enterprise_ai_platform.investment.strategy.portfolio.rebalance_scheduler import RebalanceScheduler
+from enterprise_ai_platform.investment.strategy.portfolio.rebalance_history import (
     RebalanceHistory, RebalanceStatus
 )
-from iios.investment.strategy.portfolio.rebalancing_engine import RebalancingEngine
-from iios.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
-from iios.investment.strategy.portfolio.portfolio_lifecycle import PortfolioLifecycle
+from enterprise_ai_platform.investment.strategy.portfolio.rebalancing_engine import RebalancingEngine
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_lifecycle import PortfolioLifecycle
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy
 
 

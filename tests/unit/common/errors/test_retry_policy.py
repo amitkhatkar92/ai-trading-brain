@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.common.errors.exceptions import IntegrationError, TimeoutError, IIOSError
-from iios.common.errors.retry_policy import (
+from enterprise_ai_platform.common.errors.exceptions import IntegrationError, TimeoutError, IIOSError
+from enterprise_ai_platform.common.errors.retry_policy import (
     ExponentialBackoff,
     ExponentialBackoffWithJitter,
     FixedRetry,

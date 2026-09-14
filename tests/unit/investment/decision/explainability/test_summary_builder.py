@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.explainability.explainability_constants import (
+from enterprise_ai_platform.investment.decision.explainability.explainability_constants import (
     DecisionOutcome,
     FactorSource,
     CAUTION_CONFIDENCE_MIN,
@@ -13,11 +13,11 @@ from iios.investment.decision.explainability.explainability_constants import (
     PROCEED_CONFIDENCE_MIN,
     PROCEED_RISK_MAX,
 )
-from iios.investment.decision.explainability.summary_builder import (
+from enterprise_ai_platform.investment.decision.explainability.summary_builder import (
     SummaryBuilder,
     derive_outcome,
 )
-from iios.investment.decision.explainability.explanation_generator import ExplanationGenerator
+from enterprise_ai_platform.investment.decision.explainability.explanation_generator import ExplanationGenerator
 
 
 class TestDeriveOutcome:
@@ -53,8 +53,8 @@ class TestDeriveOutcome:
         gen   = ExplanationGenerator()
         snap  = gen.generate(minimal_input if False else rich_input, decision_id)
         # We can't mutate frozen RiskSnapshot, so we test the derive_outcome directly
-        from iios.investment.decision.explainability.summary_builder import derive_outcome
-        from iios.investment.decision.explainability.explainability_constants import DecisionOutcome
+        from enterprise_ai_platform.investment.decision.explainability.summary_builder import derive_outcome
+        from enterprise_ai_platform.investment.decision.explainability.explainability_constants import DecisionOutcome
 
         class FakeRisk:
             blocks_execution = True

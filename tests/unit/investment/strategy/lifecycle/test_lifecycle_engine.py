@@ -12,19 +12,19 @@ from typing import List
 
 import pytest
 
-from iios.investment.strategy.lifecycle.runtime_context import RuntimeContext
-from iios.investment.strategy.lifecycle.runtime_state import RuntimeState
-from iios.investment.strategy.lifecycle.execution_queue import SchedulePriority
-from iios.investment.strategy.lifecycle.failure_handler import FailurePolicy
-from iios.investment.strategy.lifecycle.restart_manager import RestartPolicy
-from iios.investment.strategy.lifecycle.resource_limits import ResourceLimits
-from iios.investment.strategy.lifecycle.strategy_lifecycle_engine import (
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_context import RuntimeContext
+from enterprise_ai_platform.investment.strategy.lifecycle.runtime_state import RuntimeState
+from enterprise_ai_platform.investment.strategy.lifecycle.execution_queue import SchedulePriority
+from enterprise_ai_platform.investment.strategy.lifecycle.failure_handler import FailurePolicy
+from enterprise_ai_platform.investment.strategy.lifecycle.restart_manager import RestartPolicy
+from enterprise_ai_platform.investment.strategy.lifecycle.resource_limits import ResourceLimits
+from enterprise_ai_platform.investment.strategy.lifecycle.strategy_lifecycle_engine import (
     EngineNotRunningError,
     LifecycleEngineError,
     StrategyLifecycleEngine,
     StrategyNotRegisteredError,
 )
-from iios.investment.strategy.lifecycle.dependency_graph import CyclicDependencyError
+from enterprise_ai_platform.investment.strategy.lifecycle.dependency_graph import CyclicDependencyError
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -190,7 +190,7 @@ class TestRunCycle:
         eng = _make_engine()
         eng.start()
         # Use max_retries=0 so the cycle returns immediately without retrying
-        from iios.investment.strategy.lifecycle.failure_handler import FailurePolicy
+        from enterprise_ai_platform.investment.strategy.lifecycle.failure_handler import FailurePolicy
         eng.register("bad", "Bad", failing, failure_policy=FailurePolicy(max_retries=0))
         results = eng.run_cycle()
         assert results["bad"].startswith("failed:")
@@ -220,7 +220,7 @@ class TestRunCycle:
         eng.shutdown(drain=False)
 
     def test_run_cycle_circuit_open_skips(self):
-        from iios.investment.strategy.lifecycle.failure_handler import FailurePolicy
+        from enterprise_ai_platform.investment.strategy.lifecycle.failure_handler import FailurePolicy
 
         def failing(ctx):
             raise RuntimeError("crash")

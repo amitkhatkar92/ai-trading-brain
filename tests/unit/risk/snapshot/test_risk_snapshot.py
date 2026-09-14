@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.risk.snapshot import (
+from enterprise_ai_platform.risk.snapshot import (
     # Constants
     VERSION, SnapshotStatus, RiskScope, RiskType, RiskPriority, RiskLevel,
     RiskRating, RiskTrend, IntegrityStatus, SnapshotEventType,
@@ -728,7 +728,7 @@ class TestSnapshotValidation:
         # Inject an invalid metric via the quantitative_metrics field
         bad_metrics = QuantitativeMetrics(var_95=-100.0)
         # Re-create snapshot with bad metric
-        from iios.risk.snapshot.risk_snapshot import RiskSnapshot as RS
+        from enterprise_ai_platform.risk.snapshot.risk_snapshot import RiskSnapshot as RS
         bad = RS.create(
             risk_session_id    = "sess-1",
             risk_assessment_id = "assess-1",
@@ -1803,7 +1803,7 @@ class TestRegression:
 
         # Events
         evt = make_snapshot_published(
-            snapshot.snapshot_id, snapshot.portfolio_id, "iios:system"
+            snapshot.snapshot_id, snapshot.portfolio_id, "enterprise_ai_platform:system"
         )
         assert evt.event_type == SnapshotEventType.SNAPSHOT_PUBLISHED
 

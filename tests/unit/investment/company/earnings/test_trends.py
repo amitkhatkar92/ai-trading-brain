@@ -1,11 +1,11 @@
 """tests/unit/investment/company/earnings/test_trends.py"""
 import pytest
 
-from iios.investment.company.earnings.growth_trend import GrowthTrendAnalyzer
-from iios.investment.company.earnings.profit_cycle import detect_profit_cycle
-from iios.investment.company.earnings.earnings_momentum import EarningsMomentumAnalyzer
-from iios.investment.company.earnings.earnings_trend import EarningsTrendAnalyzer
-from iios.investment.company.earnings.earnings_report import (
+from enterprise_ai_platform.investment.company.earnings.growth_trend import GrowthTrendAnalyzer
+from enterprise_ai_platform.investment.company.earnings.profit_cycle import detect_profit_cycle
+from enterprise_ai_platform.investment.company.earnings.earnings_momentum import EarningsMomentumAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_trend import EarningsTrendAnalyzer
+from enterprise_ai_platform.investment.company.earnings.earnings_report import (
     TrendDirection, ProfitCyclePhase, MomentumLabel,
 )
 from tests.unit.investment.company.earnings.conftest import make_report

@@ -3,10 +3,10 @@ Tests for RatioRegistry, RatioCalculator, RatioHistory.
 """
 import pytest
 
-from iios.investment.company.financials.ratio_registry import RatioRegistry
-from iios.investment.company.financials.ratio_calculator import RatioCalculator
-from iios.investment.company.financials.ratio_history import RatioHistory, RatioPeriodSnapshot
-from iios.investment.company.financials.financial_ratios import RatioCategory, RatioDefinition
+from enterprise_ai_platform.investment.company.financials.ratio_registry import RatioRegistry
+from enterprise_ai_platform.investment.company.financials.ratio_calculator import RatioCalculator
+from enterprise_ai_platform.investment.company.financials.ratio_history import RatioHistory, RatioPeriodSnapshot
+from enterprise_ai_platform.investment.company.financials.financial_ratios import RatioCategory, RatioDefinition
 
 
 class TestRatioRegistry:

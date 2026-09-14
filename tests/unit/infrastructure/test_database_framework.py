@@ -20,7 +20,7 @@ import pytest
 # Helpers / fixtures
 # ---------------------------------------------------------------------------
 
-from iios.infrastructure.database import (
+from enterprise_ai_platform.infrastructure.database import (
     # Constants
     DatabaseEngine as EngineType,
     MigrationStatus,

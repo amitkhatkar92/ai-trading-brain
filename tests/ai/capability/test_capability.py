@@ -30,7 +30,7 @@ import pytest
 
 # ── imports ───────────────────────────────────────────────────────────────────
 
-from iios.ai.capability.exceptions import (
+from enterprise_ai_platform.ai.capability.exceptions import (
     AICapabilityException,
     AICapabilityNotFoundError,
     AICapabilityAlreadyExistsError,
@@ -57,18 +57,18 @@ from iios.ai.capability.exceptions import (
     AICapabilityAuditException,
 )
 
-from iios.ai.capability.core import (
+from enterprise_ai_platform.ai.capability.core import (
     CapabilityType, CapabilityCategory, CapabilityStatus,
     CapabilityVersion, CapabilityMetadata, CapabilityDescriptor,
 )
 
-from iios.ai.capability.engine import (
+from enterprise_ai_platform.ai.capability.engine import (
     CapabilityContext, CapabilityRequest,
     ExecutionStatus, ExecutionResult, CapabilityResponse,
     CapabilityExecutor,
 )
 
-from iios.ai.capability.policy import (
+from enterprise_ai_platform.ai.capability.policy import (
     CapabilityPermission, CapabilityRole, CapabilityAuthorization,
     PolicyEffect, CapabilityPolicy, CapabilityPolicyEngine,
     QuotaEntry, QuotaManager,
@@ -76,18 +76,18 @@ from iios.ai.capability.policy import (
     CapabilityAuditReport, CapabilityAuditManager,
 )
 
-from iios.ai.capability.registry import CapabilityRegistry
+from enterprise_ai_platform.ai.capability.registry import CapabilityRegistry
 
-from iios.ai.capability.connectors import (
+from enterprise_ai_platform.ai.capability.connectors import (
     ConnectorType, ConnectorStatus, ConnectorDescriptor,
     BaseConnector, ConnectorRegistry,
 )
 
-from iios.ai.capability.skills import (
+from enterprise_ai_platform.ai.capability.skills import (
     SkillCategory, SkillDescriptor, BaseSkill, SkillRegistry,
 )
 
-from iios.ai.capability.events import (
+from enterprise_ai_platform.ai.capability.events import (
     CapabilityEventType, CapabilityEvent,
     CapabilityRegisteredEvent, CapabilityEnabledEvent, CapabilityDisabledEvent,
     CapabilityDeregisteredEvent, CapabilityExecutedEvent, CapabilityFailedEvent,
@@ -98,9 +98,9 @@ from iios.ai.capability.events import (
     CapabilityEventBus,
 )
 
-from iios.ai.capability.snapshot  import CapabilitySystemSnapshot
-from iios.ai.capability.container import CapabilityContainer
-from iios.ai.capability.gateway   import CapabilityGateway
+from enterprise_ai_platform.ai.capability.snapshot  import CapabilitySystemSnapshot
+from enterprise_ai_platform.ai.capability.container import CapabilityContainer
+from enterprise_ai_platform.ai.capability.gateway   import CapabilityGateway
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -1142,7 +1142,7 @@ class TestGateway:
 
     def test_system_id_version(self):
         gw = CapabilityGateway()
-        assert gw.SYSTEM_ID == "iios:ai:capability:gateway"
+        assert gw.SYSTEM_ID == "enterprise_ai_platform:ai:capability:gateway"
         assert gw.VERSION   == "1.0.0"
 
     def test_call_without_start_raises(self):
@@ -1426,7 +1426,7 @@ class TestGateway:
         h  = gw.health()
         assert h["is_running"]         is True
         assert "total_capabilities"   in h
-        assert h["system_id"]          == "iios:ai:capability:gateway"
+        assert h["system_id"]          == "enterprise_ai_platform:ai:capability:gateway"
         gw.stop()
 
     def test_snapshot(self):

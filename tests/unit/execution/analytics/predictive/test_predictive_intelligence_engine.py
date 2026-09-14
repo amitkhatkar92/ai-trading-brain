@@ -17,7 +17,7 @@ from typing import Dict, List, Optional
 
 import pytest
 
-from iios.execution.analytics.predictive import (
+from enterprise_ai_platform.execution.analytics.predictive import (
     AnomalyResult,
     CapacityForecast,
     ConfidenceLevel,

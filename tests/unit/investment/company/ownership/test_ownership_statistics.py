@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.ownership.ownership_statistics import (
+from enterprise_ai_platform.investment.company.ownership.ownership_statistics import (
     clamp, safe_mean, pct_to_100,
     score_promoter_holding, score_institutional_holding,
     score_free_float, score_insider_holding,

@@ -25,15 +25,15 @@ import pytest
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _reset_all():
-    from iios.intelligence.intelligence_orchestrator import reset_intelligence_orchestrator
-    from iios.intelligence.intelligence_manager      import reset_intelligence_manager
-    from iios.intelligence.intelligence_context      import reset_intelligence_context
-    from iios.intelligence.registry.engine_registry  import reset_engine_registry
-    from iios.intelligence.sessions.session_manager  import reset_session_manager
-    from iios.intelligence.workflow.workflow_engine  import reset_workflow_engine
-    from iios.intelligence.workflow.workflow_executor  import reset_workflow_executor
-    from iios.intelligence.workflow.workflow_registry  import reset_workflow_registry
-    from iios.intelligence.workflow.workflow_scheduler import reset_workflow_scheduler
+    from enterprise_ai_platform.intelligence.intelligence_orchestrator import reset_intelligence_orchestrator
+    from enterprise_ai_platform.intelligence.intelligence_manager      import reset_intelligence_manager
+    from enterprise_ai_platform.intelligence.intelligence_context      import reset_intelligence_context
+    from enterprise_ai_platform.intelligence.registry.engine_registry  import reset_engine_registry
+    from enterprise_ai_platform.intelligence.sessions.session_manager  import reset_session_manager
+    from enterprise_ai_platform.intelligence.workflow.workflow_engine  import reset_workflow_engine
+    from enterprise_ai_platform.intelligence.workflow.workflow_executor  import reset_workflow_executor
+    from enterprise_ai_platform.intelligence.workflow.workflow_registry  import reset_workflow_registry
+    from enterprise_ai_platform.intelligence.workflow.workflow_scheduler import reset_workflow_scheduler
 
     reset_intelligence_orchestrator()
     reset_intelligence_manager()
@@ -59,7 +59,7 @@ def reset_all():
 
 class TestConstants:
     def test_engine_type_members(self):
-        from iios.intelligence import EngineType
+        from enterprise_ai_platform.intelligence import EngineType
         assert EngineType.REASONING.value   == "reasoning_engine"
         assert EngineType.DEBATE.value      == "debate_engine"
         assert EngineType.STRATEGY.value    == "strategy_engine"
@@ -68,7 +68,7 @@ class TestConstants:
         assert EngineType.AGENT.value       == "agent_engine"
 
     def test_workflow_types(self):
-        from iios.intelligence import WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowType
         types = [wt.value for wt in WorkflowType]
         assert "sequential"   in types
         assert "parallel"     in types
@@ -78,16 +78,16 @@ class TestConstants:
         assert "long_running" in types
 
     def test_priority_ordered(self):
-        from iios.intelligence import Priority
+        from enterprise_ai_platform.intelligence import Priority
         assert Priority.CRITICAL > Priority.HIGH > Priority.NORMAL > Priority.LOW
 
     def test_session_status_members(self):
-        from iios.intelligence import SessionStatus
+        from enterprise_ai_platform.intelligence import SessionStatus
         for s in ("pending", "active", "paused", "completed", "failed", "expired", "cancelled"):
             assert any(st.value == s for st in SessionStatus)
 
     def test_limits_positive(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             MAX_CONCURRENT_SESSIONS, MAX_CONCURRENT_WORKFLOWS, MAX_WORKFLOW_STEPS,
             MAX_NESTING_DEPTH, SESSION_TTL_SECONDS, WORKFLOW_TIMEOUT_MS,
         )
@@ -97,7 +97,7 @@ class TestConstants:
         assert WORKFLOW_TIMEOUT_MS > 0
 
     def test_well_known_workflow_ids(self):
-        from iios.intelligence import WF_FULL_ANALYSIS, WF_RISK_CHECK, WF_STRATEGY_CYCLE, WF_LEARNING_CYCLE
+        from enterprise_ai_platform.intelligence import WF_FULL_ANALYSIS, WF_RISK_CHECK, WF_STRATEGY_CYCLE, WF_LEARNING_CYCLE
         assert all(isinstance(x, str) and len(x) > 0 for x in [
             WF_FULL_ANALYSIS, WF_RISK_CHECK, WF_STRATEGY_CYCLE, WF_LEARNING_CYCLE
         ])
@@ -109,7 +109,7 @@ class TestConstants:
 
 class TestExceptions:
     def test_hierarchy(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             IntelligenceError,
             EngineError, EngineNotFoundError, EngineAlreadyRegisteredError,
             EngineExecutionError, EngineTimeoutError, EngineUnavailableError,
@@ -133,7 +133,7 @@ class TestExceptions:
         assert issubclass(SchedulerNotRunningError, SchedulerError)
 
     def test_error_codes(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             IntelligenceError, EngineNotFoundError,
             SessionNotFoundError, OrchestratorNotInitializedError,
             WorkflowNotFoundError, SchedulerNotRunningError,
@@ -146,12 +146,12 @@ class TestExceptions:
         assert SchedulerNotRunningError().code == "INT-051"
 
     def test_raise_and_catch(self):
-        from iios.intelligence import IntelligenceError, EngineNotFoundError
+        from enterprise_ai_platform.intelligence import IntelligenceError, EngineNotFoundError
         with pytest.raises(IntelligenceError):
             raise EngineNotFoundError("missing-engine")
 
     def test_circular_dependency_carries_cycle(self):
-        from iios.intelligence import CircularDependencyError
+        from enterprise_ai_platform.intelligence import CircularDependencyError
         err = CircularDependencyError(["a", "b", "a"])
         assert "a" in err.cycle
 
@@ -162,8 +162,8 @@ class TestExceptions:
 
 class TestIntelligenceContext:
     def test_execution_context_manager(self):
-        from iios.intelligence import get_intelligence_context, Priority
-        from iios.intelligence.intelligence_context import intelligence_execution
+        from enterprise_ai_platform.intelligence import get_intelligence_context, Priority
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution
         with intelligence_execution(session_id="s1", actor="tester", priority=Priority.HIGH):
             ctx = get_intelligence_context()
             assert ctx.session_id == "s1"
@@ -171,8 +171,8 @@ class TestIntelligenceContext:
             assert ctx.priority   == Priority.HIGH
 
     def test_workflow_scope(self):
-        from iios.intelligence.intelligence_context import intelligence_execution, workflow_scope
-        from iios.intelligence import get_intelligence_context, Priority
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution, workflow_scope
+        from enterprise_ai_platform.intelligence import get_intelligence_context, Priority
         with intelligence_execution():
             with workflow_scope("wf-test"):
                 ctx = get_intelligence_context()
@@ -181,8 +181,8 @@ class TestIntelligenceContext:
             assert ctx2.workflow_id is None
 
     def test_step_scope_increments_depth(self):
-        from iios.intelligence.intelligence_context import intelligence_execution, step_scope
-        from iios.intelligence import get_intelligence_context
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution, step_scope
+        from enterprise_ai_platform.intelligence import get_intelligence_context
         with intelligence_execution():
             assert get_intelligence_context().depth == 0
             with step_scope("step-1"):
@@ -192,15 +192,15 @@ class TestIntelligenceContext:
             assert get_intelligence_context().depth == 0
 
     def test_elapsed_ms(self):
-        from iios.intelligence.intelligence_context import intelligence_execution
-        from iios.intelligence import get_intelligence_context
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution
+        from enterprise_ai_platform.intelligence import get_intelligence_context
         with intelligence_execution():
             time.sleep(0.01)
             assert get_intelligence_context().elapsed_ms() >= 0
 
     def test_diagnostics(self):
-        from iios.intelligence.intelligence_context import intelligence_execution
-        from iios.intelligence import get_intelligence_context
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution
+        from enterprise_ai_platform.intelligence import get_intelligence_context
         with intelligence_execution():
             ctx = get_intelligence_context()
             ctx.add_diagnostic("WARNING", "low memory", "monitor")
@@ -210,8 +210,8 @@ class TestIntelligenceContext:
 
     def test_context_is_thread_local(self):
         """Each thread has its own context."""
-        from iios.intelligence.intelligence_context import intelligence_execution
-        from iios.intelligence import get_intelligence_context
+        from enterprise_ai_platform.intelligence.intelligence_context import intelligence_execution
+        from enterprise_ai_platform.intelligence import get_intelligence_context
         results: dict = {}
 
         def _run(sid):
@@ -232,21 +232,21 @@ class TestIntelligenceContext:
 
 class TestExecutionPolicy:
     def test_retry_policy_should_retry(self):
-        from iios.intelligence import RetryPolicy
+        from enterprise_ai_platform.intelligence import RetryPolicy
         policy = RetryPolicy(max_attempts=3, jitter=False)
         assert policy.should_retry(0, ValueError("x"))
         assert policy.should_retry(2, ValueError("x"))
         assert not policy.should_retry(3, ValueError("x"))
 
     def test_retry_backoff_increases(self):
-        from iios.intelligence import RetryPolicy
+        from enterprise_ai_platform.intelligence import RetryPolicy
         policy = RetryPolicy(backoff_ms=100, backoff_factor=2.0, jitter=False)
         assert policy.wait_ms(0) == pytest.approx(100, abs=1)
         assert policy.wait_ms(1) == pytest.approx(200, abs=1)
         assert policy.wait_ms(2) == pytest.approx(400, abs=1)
 
     def test_cancellation_token(self):
-        from iios.intelligence import CancellationToken
+        from enterprise_ai_platform.intelligence import CancellationToken
         tok = CancellationToken()
         assert not tok.is_cancelled
         tok.cancel("test reason")
@@ -256,18 +256,18 @@ class TestExecutionPolicy:
         assert not tok.is_cancelled
 
     def test_fallback_policy_no_fn(self):
-        from iios.intelligence import FallbackPolicy
+        from enterprise_ai_platform.intelligence import FallbackPolicy
         fp = FallbackPolicy(fallback_value=42, silence_errors=True)
         assert fp.apply(RuntimeError("boom")) == 42
 
     def test_fallback_policy_with_fn(self):
-        from iios.intelligence import FallbackPolicy
+        from enterprise_ai_platform.intelligence import FallbackPolicy
         fp = FallbackPolicy(fallback_fn=lambda e: f"caught:{e}")
         result = fp.apply(ValueError("oops"))
         assert "caught" in result
 
     def test_execution_policy_to_dict(self):
-        from iios.intelligence import ExecutionPolicy, Priority
+        from enterprise_ai_platform.intelligence import ExecutionPolicy, Priority
         p = ExecutionPolicy(priority=Priority.HIGH)
         d = p.to_dict()
         assert d["priority"] == "HIGH"
@@ -282,7 +282,7 @@ class TestExecutionPolicy:
 
 class TestEngineRegistry:
     def test_register_and_get(self):
-        from iios.intelligence import get_engine_registry, EngineType, Priority
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType, Priority
         reg = get_engine_registry()
         reg.register_factory(
             engine_id="test.reasoning",
@@ -295,34 +295,34 @@ class TestEngineRegistry:
         assert d.engine_type == EngineType.REASONING
 
     def test_duplicate_raises(self):
-        from iios.intelligence import get_engine_registry, EngineType, EngineAlreadyRegisteredError
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType, EngineAlreadyRegisteredError
         reg = get_engine_registry()
         reg.register_factory("dup.e", EngineType.DECISION, "D", lambda: None)
         with pytest.raises(EngineAlreadyRegisteredError):
             reg.register_factory("dup.e", EngineType.DECISION, "D", lambda: None)
 
     def test_overwrite(self):
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg = get_engine_registry()
         reg.register_factory("ow.e", EngineType.FORECAST, "F1", lambda: None)
         reg.register_factory("ow.e", EngineType.FORECAST, "F2", lambda: None, overwrite=True)
         assert reg.get("ow.e").name == "F2"
 
     def test_not_found_raises(self):
-        from iios.intelligence import get_engine_registry, EngineNotFoundError
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineNotFoundError
         with pytest.raises(EngineNotFoundError):
             get_engine_registry().get("no.such.engine")
 
     def test_register_all_engine_types(self):
         """Verify all 15 engine types can be registered."""
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg = get_engine_registry()
         for et in EngineType:
             reg.register_factory(f"stub.{et.value}", et, et.value, lambda: None, overwrite=True)
         assert reg.stats()["total"] >= len(list(EngineType))
 
     def test_best_returns_highest_priority(self):
-        from iios.intelligence import get_engine_registry, EngineType, EngineStatus, Priority
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType, EngineStatus, Priority
         reg = get_engine_registry()
         reg.register_factory("low.r",  EngineType.REASONING, "Low",  lambda: None, priority=Priority.LOW)
         reg.register_factory("high.r", EngineType.REASONING, "High", lambda: None, priority=Priority.HIGH)
@@ -332,12 +332,12 @@ class TestEngineRegistry:
         assert best.engine_id == "high.r"
 
     def test_best_returns_none_when_none_ready(self):
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg = get_engine_registry()
         assert reg.best(EngineType.DEBATE) is None
 
     def test_get_by_type(self):
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg = get_engine_registry()
         reg.register_factory("r1", EngineType.RISK, "R1", lambda: None)
         reg.register_factory("r2", EngineType.RISK, "R2", lambda: None)
@@ -345,7 +345,7 @@ class TestEngineRegistry:
         assert len(risk_engines) == 2
 
     def test_register_instance(self):
-        from iios.intelligence import get_engine_registry, EngineType, EngineStatus
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType, EngineStatus
 
         class FakeEngine:
             def execute(self, r): return "ok"
@@ -358,7 +358,7 @@ class TestEngineRegistry:
         assert d.status == EngineStatus.READY
 
     def test_unregister(self):
-        from iios.intelligence import get_engine_registry, EngineType, EngineNotFoundError
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType, EngineNotFoundError
         reg = get_engine_registry()
         reg.register_factory("del.e", EngineType.AGENT, "A", lambda: None)
         assert reg.has("del.e")
@@ -368,7 +368,7 @@ class TestEngineRegistry:
             reg.get("del.e")
 
     def test_stats(self):
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg = get_engine_registry()
         reg.register_factory("s1", EngineType.KNOWLEDGE, "K", lambda: None)
         s = reg.stats()
@@ -382,19 +382,19 @@ class TestEngineRegistry:
 
 class TestSessions:
     def test_create_and_get(self):
-        from iios.intelligence import get_session_manager, Priority
+        from enterprise_ai_platform.intelligence import get_session_manager, Priority
         sm = get_session_manager()
         s  = sm.create(actor="tester", priority=Priority.HIGH)
         assert s.session_id is not None
         assert sm.get(s.session_id).session_id == s.session_id
 
     def test_not_found(self):
-        from iios.intelligence import get_session_manager, SessionNotFoundError
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionNotFoundError
         with pytest.raises(SessionNotFoundError):
             get_session_manager().get("does-not-exist")
 
     def test_lifecycle_complete(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm = get_session_manager()
         s  = sm.create()
         sm.start(s.session_id)
@@ -404,7 +404,7 @@ class TestSessions:
         assert s.is_terminal
 
     def test_lifecycle_fail(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm = get_session_manager()
         s  = sm.create()
         sm.start(s.session_id)
@@ -414,7 +414,7 @@ class TestSessions:
         assert s.result.error_count >= 1
 
     def test_pause_resume(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm = get_session_manager()
         s  = sm.create()
         sm.start(s.session_id)
@@ -424,14 +424,14 @@ class TestSessions:
         assert s.status == SessionStatus.ACTIVE
 
     def test_cancel(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm = get_session_manager()
         s  = sm.create()
         sm.cancel(s.session_id)
         assert s.status == SessionStatus.CANCELLED
 
     def test_nested_session(self):
-        from iios.intelligence import get_session_manager
+        from enterprise_ai_platform.intelligence import get_session_manager
         sm     = get_session_manager()
         parent = sm.create()
         child  = sm.create_nested(parent.session_id)
@@ -441,7 +441,7 @@ class TestSessions:
         assert any(c.session_id == child.session_id for c in children)
 
     def test_session_recovery(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm = get_session_manager()
         s  = sm.create()
         sm.start(s.session_id)
@@ -451,7 +451,7 @@ class TestSessions:
         assert s.checkpoint_id == "ckpt-001"
 
     def test_stats(self):
-        from iios.intelligence import get_session_manager
+        from enterprise_ai_platform.intelligence import get_session_manager
         sm = get_session_manager()
         sm.create()
         sm.create()
@@ -461,7 +461,7 @@ class TestSessions:
         assert "capacity" in s
 
     def test_to_dict(self):
-        from iios.intelligence import get_session_manager
+        from enterprise_ai_platform.intelligence import get_session_manager
         sm = get_session_manager()
         s  = sm.create(tags=["daily"], metadata={"symbol": "NIFTY"})
         d  = s.to_dict()
@@ -475,21 +475,21 @@ class TestSessions:
 
 class TestSessionResult:
     def test_complete(self):
-        from iios.intelligence import SessionResult, SessionStatus
+        from enterprise_ai_platform.intelligence import SessionResult, SessionStatus
         r = SessionResult(session_id="r1")
         r.complete()
         assert r.succeeded
         assert r.status == SessionStatus.COMPLETED
 
     def test_fail(self):
-        from iios.intelligence import SessionResult, SessionStatus
+        from enterprise_ai_platform.intelligence import SessionResult, SessionStatus
         r = SessionResult(session_id="r2")
         r.fail("reason")
         assert r.failed
         assert r.error_count == 1
 
     def test_add_output_and_warning(self):
-        from iios.intelligence import SessionResult
+        from enterprise_ai_platform.intelligence import SessionResult
         r = SessionResult(session_id="r3")
         r.add_output("signal", 0.8)
         r.add_warning("low confidence")
@@ -497,7 +497,7 @@ class TestSessionResult:
         assert r.warning_count == 1
 
     def test_to_dict(self):
-        from iios.intelligence import SessionResult
+        from enterprise_ai_platform.intelligence import SessionResult
         r = SessionResult(session_id="r4")
         r.add_output("result", "x")
         d = r.to_dict()
@@ -511,7 +511,7 @@ class TestSessionResult:
 
 class TestWorkflowBuilder:
     def test_build_sequential(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType
         wf = (
             WorkflowBuilder("wf1")
             .name("Test WF")
@@ -525,7 +525,7 @@ class TestWorkflowBuilder:
         assert len(wf.steps)  == 2
 
     def test_build_parallel(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType
         wf = (
             WorkflowBuilder("wf2")
             .type(WorkflowType.PARALLEL)
@@ -536,7 +536,7 @@ class TestWorkflowBuilder:
         assert wf.workflow_type == WorkflowType.PARALLEL
 
     def test_circular_dependency_raises(self):
-        from iios.intelligence import WorkflowBuilder, CircularDependencyError
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, CircularDependencyError
         builder = (
             WorkflowBuilder("cycle")
             .step("a", lambda _: None, depends_on=["b"])
@@ -546,13 +546,13 @@ class TestWorkflowBuilder:
             builder.build()
 
     def test_missing_dep_raises(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         builder = WorkflowBuilder("bad").step("s1", lambda _: None, depends_on=["ghost"])
         with pytest.raises(ValueError):
             builder.build()
 
     def test_topological_order(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType
         wf = (
             WorkflowBuilder("topo")
             .step("root", lambda _: 1)
@@ -564,13 +564,13 @@ class TestWorkflowBuilder:
         assert order.index("root") < order.index("mid") < order.index("leaf")
 
     def test_fluent_timeout(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         wf = WorkflowBuilder("to").step("s", lambda _: None).timeout(120_000, 5_000).build()
         assert wf.policy.timeout.workflow_timeout_ms == 120_000
         assert wf.policy.timeout.step_timeout_ms     == 5_000
 
     def test_fluent_tags_metadata(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         wf = (
             WorkflowBuilder("meta")
             .step("s", lambda _: None)
@@ -582,7 +582,7 @@ class TestWorkflowBuilder:
         assert wf.metadata["symbol"] == "NIFTY"
 
     def test_checkpoint_step(self):
-        from iios.intelligence import WorkflowBuilder, StepType
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, StepType
         wf = (
             WorkflowBuilder("ckpt")
             .step("s1", lambda _: None)
@@ -594,7 +594,7 @@ class TestWorkflowBuilder:
         assert ckpt.step_type == StepType.CHECKPOINT
 
     def test_to_dict(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         wf = WorkflowBuilder("d").step("s", lambda _: None).build()
         d  = wf.to_dict()
         assert d["workflow_id"] == "d"
@@ -607,7 +607,7 @@ class TestWorkflowBuilder:
 
 class TestWorkflowExecutorSequential:
     def _build(self, wf_id="seq_test"):
-        from iios.intelligence import WorkflowBuilder, WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType
         return (
             WorkflowBuilder(wf_id)
             .type(WorkflowType.SEQUENTIAL)
@@ -618,7 +618,7 @@ class TestWorkflowExecutorSequential:
         )
 
     def test_sequential_completes(self):
-        from iios.intelligence import get_workflow_executor, ExecutionStatus
+        from enterprise_ai_platform.intelligence import get_workflow_executor, ExecutionStatus
         wf     = self._build()
         result = get_workflow_executor().execute(wf)
         assert result.succeeded
@@ -626,14 +626,14 @@ class TestWorkflowExecutorSequential:
         assert result.step_count == 2
 
     def test_step_outputs_available(self):
-        from iios.intelligence import get_workflow_executor
+        from enterprise_ai_platform.intelligence import get_workflow_executor
         wf     = self._build()
         result = get_workflow_executor().execute(wf)
         assert "s1" in result.outputs
         assert "s2" in result.outputs
 
     def test_failed_step_recorded(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, StepStatus
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, StepStatus
         wf = (
             WorkflowBuilder("fail_wf")
             .step("ok", lambda _: "fine")
@@ -645,7 +645,7 @@ class TestWorkflowExecutorSequential:
         assert result.steps["bad"].status == StepStatus.FAILED
 
     def test_conditional_step_skipped(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, StepStatus
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, StepStatus
         wf = (
             WorkflowBuilder("cond_wf")
             .step("s1", lambda _: "data")
@@ -658,7 +658,7 @@ class TestWorkflowExecutorSequential:
         assert result.steps["s2"].status == StepStatus.SKIPPED
 
     def test_checkpoint_step_saves_state(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         wf = (
             WorkflowBuilder("ckpt_wf")
             .step("s1", lambda _: "data")
@@ -672,7 +672,7 @@ class TestWorkflowExecutorSequential:
 
     def test_checkpoint_recovery(self):
         """Re-run a workflow with a checkpoint dict — completed steps are skipped."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         counter = [0]
 
         def _count(_inp):
@@ -696,7 +696,7 @@ class TestWorkflowExecutorSequential:
 
     def test_input_map(self):
         """Step input_map routes outputs from prior steps."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         wf = (
             WorkflowBuilder("inp_map")
             .step("producer", lambda _: {"price": 100.0})
@@ -716,7 +716,7 @@ class TestWorkflowExecutorSequential:
 
 class TestWorkflowExecutorParallel:
     def test_parallel_all_steps_run(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         wf = (
             WorkflowBuilder("par")
             .type(WorkflowType.PARALLEL)
@@ -731,7 +731,7 @@ class TestWorkflowExecutorParallel:
 
     def test_parallel_respects_dependencies(self):
         """Steps with deps run after their deps complete."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         order: list = []
 
         def _root(_):
@@ -753,7 +753,7 @@ class TestWorkflowExecutorParallel:
         assert order.index("root") < order.index("child")
 
     def test_parallel_cancellation(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             WorkflowBuilder, WorkflowType, get_workflow_executor,
             ExecutionPolicy, CancellationToken, ExecutionStatus, WorkflowCancelledError,
         )
@@ -776,7 +776,7 @@ class TestWorkflowExecutorParallel:
 
 class TestNestedWorkflows:
     def test_nested_workflow_executes(self):
-        from iios.intelligence import WorkflowBuilder, WorkflowType, StepType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, StepType, get_workflow_executor
         inner = WorkflowBuilder("inner").step("i1", lambda _: "inner_result").build()
         outer = (
             WorkflowBuilder("outer")
@@ -789,7 +789,7 @@ class TestNestedWorkflows:
         assert "inner_step" in result.steps
 
     def test_nesting_depth_limit(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             WorkflowBuilder, get_workflow_executor, MAX_NESTING_DEPTH, WorkflowExecutionError
         )
         # Build a single-step workflow and call with depth > limit
@@ -804,7 +804,7 @@ class TestNestedWorkflows:
 
 class TestWorkflowRegistry:
     def test_register_and_get(self):
-        from iios.intelligence import get_workflow_registry, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowBuilder
         reg = get_workflow_registry()
         wf  = WorkflowBuilder("reg1").step("s", lambda _: None).build()
         reg.register(wf)
@@ -812,7 +812,7 @@ class TestWorkflowRegistry:
         assert reg.get("reg1").workflow_id == "reg1"
 
     def test_duplicate_raises(self):
-        from iios.intelligence import get_workflow_registry, WorkflowBuilder, WorkflowAlreadyRegisteredError
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowBuilder, WorkflowAlreadyRegisteredError
         reg = get_workflow_registry()
         wf  = WorkflowBuilder("dup").step("s", lambda _: None).build()
         reg.register(wf)
@@ -820,12 +820,12 @@ class TestWorkflowRegistry:
             reg.register(wf)
 
     def test_not_found(self):
-        from iios.intelligence import get_workflow_registry, WorkflowNotFoundError
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowNotFoundError
         with pytest.raises(WorkflowNotFoundError):
             get_workflow_registry().get("ghost")
 
     def test_versioning(self):
-        from iios.intelligence import get_workflow_registry, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowBuilder
         reg = get_workflow_registry()
         wf1 = WorkflowBuilder("ver").step("s", lambda _: None).version("1.0.0").build()
         wf2 = WorkflowBuilder("ver").step("s", lambda _: None).version("2.0.0").build()
@@ -836,7 +836,7 @@ class TestWorkflowRegistry:
         assert reg.get("ver").version == "2.0.0"  # latest
 
     def test_list_ids(self):
-        from iios.intelligence import get_workflow_registry, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowBuilder
         reg = get_workflow_registry()
         for i in range(3):
             wf = WorkflowBuilder(f"wf{i}").step("s", lambda _: None).build()
@@ -845,7 +845,7 @@ class TestWorkflowRegistry:
         assert len(ids) >= 3
 
     def test_stats(self):
-        from iios.intelligence import get_workflow_registry, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_workflow_registry, WorkflowBuilder
         reg = get_workflow_registry()
         wf  = WorkflowBuilder("stat_wf").step("s", lambda _: None).build()
         reg.register(wf)
@@ -859,11 +859,11 @@ class TestWorkflowRegistry:
 
 class TestWorkflowScheduler:
     def _simple_wf(self, wf_id="sched_wf"):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         return WorkflowBuilder(wf_id).step("s", lambda _: "done").build()
 
     def test_schedule_once_and_trigger(self):
-        from iios.intelligence import get_workflow_scheduler, ExecutionStatus
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler, ExecutionStatus
         sched = get_workflow_scheduler()
         wf    = self._simple_wf("once_wf")
         sw    = sched.schedule_once(wf, delay_s=9999)  # won't auto-fire
@@ -871,14 +871,14 @@ class TestWorkflowScheduler:
         assert result.succeeded
 
     def test_schedule_on_demand(self):
-        from iios.intelligence import get_workflow_scheduler
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler
         sched = get_workflow_scheduler()
         wf    = self._simple_wf("demand_wf")
         sw    = sched.schedule_on_demand(wf)
         assert not sw.is_due    # on-demand never auto-fires
 
     def test_cancel_schedule(self):
-        from iios.intelligence import get_workflow_scheduler, WorkflowNotFoundError
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler, WorkflowNotFoundError
         sched = get_workflow_scheduler()
         wf    = self._simple_wf("cancel_wf")
         sw    = sched.schedule_once(wf)
@@ -887,7 +887,7 @@ class TestWorkflowScheduler:
             sched.get_schedule(sw.schedule_id)
 
     def test_disable_enable(self):
-        from iios.intelligence import get_workflow_scheduler
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler
         sched = get_workflow_scheduler()
         wf    = self._simple_wf("de_wf")
         sw    = sched.schedule_once(wf)
@@ -897,7 +897,7 @@ class TestWorkflowScheduler:
         assert sw.enabled
 
     def test_interval_schedule_advances(self):
-        from iios.intelligence import get_workflow_scheduler, ScheduleType
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler, ScheduleType
         sched  = get_workflow_scheduler()
         wf     = self._simple_wf("interval_wf")
         sw     = sched.schedule_interval(wf, interval_s=60)
@@ -907,7 +907,7 @@ class TestWorkflowScheduler:
         assert sw.run_at > t_before  # advanced
 
     def test_scheduler_start_stop(self):
-        from iios.intelligence import get_workflow_scheduler
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler
         sched = get_workflow_scheduler()
         sched.start()
         assert sched.is_running
@@ -915,7 +915,7 @@ class TestWorkflowScheduler:
         assert not sched.is_running
 
     def test_on_complete_callback(self):
-        from iios.intelligence import get_workflow_scheduler
+        from enterprise_ai_platform.intelligence import get_workflow_scheduler
         results = []
         sched = get_workflow_scheduler()
         wf    = self._simple_wf("cb_wf")
@@ -930,13 +930,13 @@ class TestWorkflowScheduler:
 
 class TestWorkflowEngine:
     def _engine(self):
-        from iios.intelligence import get_workflow_engine
+        from enterprise_ai_platform.intelligence import get_workflow_engine
         e = get_workflow_engine()
         e.initialize()
         return e
 
     def test_register_and_run(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         engine = self._engine()
         wf = WorkflowBuilder("we_test").step("s", lambda _: "ok").build()
         engine.register(wf)
@@ -944,14 +944,14 @@ class TestWorkflowEngine:
         assert result.succeeded
 
     def test_run_definition(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         engine = self._engine()
         wf     = WorkflowBuilder("inline").step("s", lambda _: "ok").build()
         result = engine.run_definition(wf)
         assert result.succeeded
 
     def test_builder_shortcut(self):
-        from iios.intelligence import WorkflowType
+        from enterprise_ai_platform.intelligence import WorkflowType
         engine  = self._engine()
         builder = engine.builder("b1")
         assert builder is not None
@@ -977,13 +977,13 @@ class TestWorkflowEngine:
 
 class TestIntelligenceManager:
     def _mgr(self):
-        from iios.intelligence import get_intelligence_manager
+        from enterprise_ai_platform.intelligence import get_intelligence_manager
         m = get_intelligence_manager()
         m.initialize()
         return m
 
     def test_not_initialized_raises(self):
-        from iios.intelligence import get_intelligence_manager, OrchestratorNotInitializedError, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_intelligence_manager, OrchestratorNotInitializedError, WorkflowBuilder
         m   = get_intelligence_manager()  # not initialized yet
         wf  = WorkflowBuilder("x").step("s", lambda _: None).build()
         with pytest.raises(OrchestratorNotInitializedError):
@@ -995,7 +995,7 @@ class TestIntelligenceManager:
             def initialize(self): pass
             def health(self): return {}
 
-        from iios.intelligence import EngineType
+        from enterprise_ai_platform.intelligence import EngineType
         mgr = self._mgr()
         mgr.register_engine(
             "fake.strategy", EngineType.STRATEGY, "Fake",
@@ -1006,7 +1006,7 @@ class TestIntelligenceManager:
         assert result["ans"] == 42
 
     def test_session_lifecycle_via_manager(self):
-        from iios.intelligence import SessionStatus
+        from enterprise_ai_platform.intelligence import SessionStatus
         mgr = self._mgr()
         s   = mgr.create_session(actor="test", tags=["unit"])
         mgr.complete_session(s.session_id)
@@ -1014,7 +1014,7 @@ class TestIntelligenceManager:
         assert retrieved.status == SessionStatus.COMPLETED
 
     def test_run_workflow(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         mgr = self._mgr()
         wf  = WorkflowBuilder("mgr_wf").step("s", lambda _: "data").build()
         mgr.register_workflow(wf)
@@ -1040,7 +1040,7 @@ class TestIntelligenceManager:
 
 class TestIntelligenceOrchestrator:
     def _orch(self):
-        from iios.intelligence import get_intelligence_orchestrator
+        from enterprise_ai_platform.intelligence import get_intelligence_orchestrator
         o = get_intelligence_orchestrator()
         o.initialize()
         return o
@@ -1056,7 +1056,7 @@ class TestIntelligenceOrchestrator:
             def initialize(self): pass
             def health(self): return {}
 
-        from iios.intelligence import EngineType
+        from enterprise_ai_platform.intelligence import EngineType
         o = self._orch()
         o.register_engine(
             "orch.reasoning", EngineType.REASONING, "Reasoning",
@@ -1072,7 +1072,7 @@ class TestIntelligenceOrchestrator:
             def initialize(self): pass
             def health(self): return {}
 
-        from iios.intelligence import EngineType, Priority
+        from enterprise_ai_platform.intelligence import EngineType, Priority
         o = self._orch()
         o.register_engine(
             "orch.best", EngineType.FORECAST, "Best",
@@ -1083,7 +1083,7 @@ class TestIntelligenceOrchestrator:
         assert r == 99
 
     def test_session_create_complete(self):
-        from iios.intelligence import SessionStatus
+        from enterprise_ai_platform.intelligence import SessionStatus
         o = self._orch()
         s = o.create_session(actor="orch_test")
         o.complete_session(s.session_id)
@@ -1091,7 +1091,7 @@ class TestIntelligenceOrchestrator:
         assert s2.status == SessionStatus.COMPLETED
 
     def test_workflow_register_and_run(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         o  = self._orch()
         wf = WorkflowBuilder("orch_wf").step("s", lambda _: "done").build()
         o.register_workflow(wf)
@@ -1099,7 +1099,7 @@ class TestIntelligenceOrchestrator:
         assert result.succeeded
 
     def test_run_definition(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         o  = self._orch()
         wf = WorkflowBuilder("inline_orch").step("s", lambda _: "x").build()
         r  = o.run_definition(wf)
@@ -1111,7 +1111,7 @@ class TestIntelligenceOrchestrator:
         assert wb is not None
 
     def test_schedule_and_trigger(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         o  = self._orch()
         wf = WorkflowBuilder("sched_orch").step("s", lambda _: "ok").build()
         sw = o.schedule_workflow(wf, delay_s=9999)
@@ -1119,14 +1119,14 @@ class TestIntelligenceOrchestrator:
         assert r.succeeded
 
     def test_cancel_schedule(self):
-        from iios.intelligence import WorkflowBuilder
+        from enterprise_ai_platform.intelligence import WorkflowBuilder
         o  = self._orch()
         wf = WorkflowBuilder("cancel_orch").step("s", lambda _: "ok").build()
         sw = o.schedule_workflow(wf, delay_s=9999)
         assert o.cancel_schedule(sw.schedule_id)
 
     def test_priority_policy_enforcement(self):
-        from iios.intelligence import PolicyType, Priority, PolicyViolationError
+        from enterprise_ai_platform.intelligence import PolicyType, Priority, PolicyViolationError
         o = self._orch()
         o.register_policy(PolicyType.PRIORITY, Priority.HIGH)
         with pytest.raises(PolicyViolationError):
@@ -1143,7 +1143,7 @@ class TestIntelligenceOrchestrator:
         assert h["status"] == "ready"
 
     def test_singleton(self):
-        from iios.intelligence import get_intelligence_orchestrator, reset_intelligence_orchestrator
+        from enterprise_ai_platform.intelligence import get_intelligence_orchestrator, reset_intelligence_orchestrator
         a = get_intelligence_orchestrator()
         b = get_intelligence_orchestrator()
         assert a is b
@@ -1152,12 +1152,12 @@ class TestIntelligenceOrchestrator:
         assert c is not a
 
     def test_not_initialized_raises_on_call(self):
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             get_intelligence_orchestrator, OrchestratorNotInitializedError,
         )
         o = get_intelligence_orchestrator()  # NOT initialized
         with pytest.raises(OrchestratorNotInitializedError):
-            from iios.intelligence import WorkflowBuilder
+            from enterprise_ai_platform.intelligence import WorkflowBuilder
             wf = WorkflowBuilder("x").step("s", lambda _: None).build()
             o.run_definition(wf)
 
@@ -1169,7 +1169,7 @@ class TestIntelligenceOrchestrator:
 class TestConcurrency:
     def test_parallel_workflow_execution(self):
         """Multiple workflows run concurrently without corruption."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, ExecutionStatus
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor, ExecutionStatus
         exec_ = get_workflow_executor()
         results: list = []
         errors:  list = []
@@ -1196,7 +1196,7 @@ class TestConcurrency:
         assert all(results)
 
     def test_concurrent_session_creation(self):
-        from iios.intelligence import get_session_manager
+        from enterprise_ai_platform.intelligence import get_session_manager
         sm     = get_session_manager()
         ids:   list = []
         errors: list = []
@@ -1217,7 +1217,7 @@ class TestConcurrency:
         assert len(set(ids)) == 50  # all unique
 
     def test_concurrent_engine_registration(self):
-        from iios.intelligence import get_engine_registry, EngineType
+        from enterprise_ai_platform.intelligence import get_engine_registry, EngineType
         reg    = get_engine_registry()
         errors: list = []
 
@@ -1235,7 +1235,7 @@ class TestConcurrency:
         assert reg.stats()["total"] >= 20
 
     def test_session_manager_thread_safe(self):
-        from iios.intelligence import get_session_manager, SessionStatus
+        from enterprise_ai_platform.intelligence import get_session_manager, SessionStatus
         sm     = get_session_manager()
         sids:  list = []
         errors: list = []
@@ -1263,7 +1263,7 @@ class TestConcurrency:
 class TestPerformance:
     def test_sequential_50_step_workflow(self):
         """A 50-step sequential workflow should complete in under 5 seconds."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         builder = WorkflowBuilder("perf50").type(WorkflowType.SEQUENTIAL)
         prev    = None
         for i in range(50):
@@ -1282,7 +1282,7 @@ class TestPerformance:
 
     def test_parallel_10_step_workflow(self):
         """A 10-step parallel workflow (no deps) should be faster than sequential."""
-        from iios.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
+        from enterprise_ai_platform.intelligence import WorkflowBuilder, WorkflowType, get_workflow_executor
         builder = WorkflowBuilder("par10").type(WorkflowType.PARALLEL)
         for i in range(10):
             def _fn(_, i=i):
@@ -1315,7 +1315,7 @@ class TestEndToEnd:
         5. Complete session with result
         6. Verify stats
         """
-        from iios.intelligence import (
+        from enterprise_ai_platform.intelligence import (
             get_intelligence_orchestrator,
             EngineType, EngineStatus, Priority,
             WorkflowBuilder, WorkflowType,
@@ -1356,7 +1356,7 @@ class TestEndToEnd:
             .step("risk_check",   lambda inp: {"risk": "low"},    depends_on=["load_data"])
             .step("strategy_gen", lambda inp: {"action": "BUY"},  depends_on=["risk_check"])
             .step("checkpoint",   None, step_type=__import__(
-                "iios.intelligence", fromlist=["StepType"]).StepType.CHECKPOINT,
+                "enterprise_ai_platform.intelligence", fromlist=["StepType"]).StepType.CHECKPOINT,
                 depends_on=["strategy_gen"])
             .build()
         )
@@ -1369,7 +1369,7 @@ class TestEndToEnd:
         assert result.step_count >= 3
 
         # --- Complete session ---
-        from iios.intelligence import SessionResult
+        from enterprise_ai_platform.intelligence import SessionResult
         sr = SessionResult(session_id=session.session_id)
         sr.add_output("workflow_result", result.to_dict())
         sr.complete()
@@ -1384,7 +1384,7 @@ class TestEndToEnd:
         assert stats["metrics"]["total_sessions"]  >= 1
 
     def test_multiple_session_run_and_stats(self):
-        from iios.intelligence import get_intelligence_orchestrator, WorkflowBuilder
+        from enterprise_ai_platform.intelligence import get_intelligence_orchestrator, WorkflowBuilder
         orch = get_intelligence_orchestrator()
         orch.initialize()
 

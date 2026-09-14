@@ -6,24 +6,24 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.core.configuration_engine import ConfigurationEngine
-from iios.investment.decision.core.configuration_version import ConfigurationVersion
-from iios.investment.decision.core.decision_configuration import (
+from enterprise_ai_platform.investment.decision.core.configuration_engine import ConfigurationEngine
+from enterprise_ai_platform.investment.decision.core.configuration_version import ConfigurationVersion
+from enterprise_ai_platform.investment.decision.core.decision_configuration import (
     DEVELOPMENT_CONFIG,
     LIVE_CONFIG,
     PAPER_CONFIG,
     BACKTEST_CONFIG,
     DecisionConfiguration,
 )
-from iios.investment.decision.core.decision_constants import (
+from enterprise_ai_platform.investment.decision.core.decision_constants import (
     DEFAULT_APPROVAL_THRESHOLD,
     EnvironmentProfile,
 )
-from iios.investment.decision.core.parameter_registry import (
+from enterprise_ai_platform.investment.decision.core.parameter_registry import (
     ParameterDescriptor,
     ParameterRegistry,
 )
-from iios.investment.decision.core.parameter_validation import (
+from enterprise_ai_platform.investment.decision.core.parameter_validation import (
     ParameterRule,
     ParameterValidator,
 )

@@ -15,7 +15,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.recovery.snapshot.constants import (
+from enterprise_ai_platform.execution.recovery.snapshot.constants import (
     LIFECYCLE_TERMINAL_STATES,
     LIFECYCLE_VALID_STATES,
     SCHEMA_VERSION,
@@ -26,7 +26,7 @@ from iios.execution.recovery.snapshot.constants import (
     SnapshotStatus,
     VerificationOutcome,
 )
-from iios.execution.recovery.snapshot.exceptions import (
+from enterprise_ai_platform.execution.recovery.snapshot.exceptions import (
     RecoverySnapshotError,
     SnapshotBuildError,
     SnapshotCacheError,
@@ -38,17 +38,17 @@ from iios.execution.recovery.snapshot.exceptions import (
     SnapshotValidationError,
     SnapshotVersionError,
 )
-from iios.execution.recovery.snapshot.execution_recovery_snapshot import (
+from enterprise_ai_platform.execution.recovery.snapshot.execution_recovery_snapshot import (
     ExecutionRecoverySnapshot,
     make_execution_recovery_snapshot,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_builder import RecoverySnapshotBuilder
-from iios.execution.recovery.snapshot.recovery_snapshot_bundle import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_builder import RecoverySnapshotBuilder
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_bundle import (
     RecoverySnapshotBundle,
     make_snapshot_bundle,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_cache import RecoverySnapshotCache
-from iios.execution.recovery.snapshot.recovery_snapshot_events import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_cache import RecoverySnapshotCache
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_events import (
     SnapshotEvent,
     make_snapshot_archived,
     make_snapshot_cached,
@@ -57,20 +57,20 @@ from iios.execution.recovery.snapshot.recovery_snapshot_events import (
     make_snapshot_retrieved,
     make_snapshot_validated,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_factory import RecoverySnapshotFactory
-from iios.execution.recovery.snapshot.recovery_snapshot_history import RecoverySnapshotHistory
-from iios.execution.recovery.snapshot.recovery_snapshot_metadata import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_factory import RecoverySnapshotFactory
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_history import RecoverySnapshotHistory
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_metadata import (
     AuditMetadata,
     make_audit_metadata,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_registry import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_registry import (
     RecoverySnapshotRegistry,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_statistics import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_statistics import (
     RecoverySnapshotStatistics,
 )
-from iios.execution.recovery.snapshot.recovery_snapshot_store import RecoverySnapshotStore
-from iios.execution.recovery.snapshot.recovery_snapshot_validation import (
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_store import RecoverySnapshotStore
+from enterprise_ai_platform.execution.recovery.snapshot.recovery_snapshot_validation import (
     RecoverySnapshotValidator,
     SnapshotValidationResult,
 )
@@ -1439,7 +1439,7 @@ class TestRecoverySnapshotBuilder:
 
 class TestPublicSurface:
     def test_primary_imports(self):
-        from iios.execution.recovery.snapshot import (
+        from enterprise_ai_platform.execution.recovery.snapshot import (
             ExecutionRecoverySnapshot,
             RecoverySnapshotBuilder,
             RecoverySnapshotStore,
@@ -1447,7 +1447,7 @@ class TestPublicSurface:
         )
 
     def test_exception_imports(self):
-        from iios.execution.recovery.snapshot import (
+        from enterprise_ai_platform.execution.recovery.snapshot import (
             RecoverySnapshotError,
             SnapshotNotRunningError,
             SnapshotBuildError,
@@ -1455,23 +1455,23 @@ class TestPublicSurface:
         )
 
     def test_constant_imports(self):
-        from iios.execution.recovery.snapshot import VERSION, SYSTEM_ID, BUILDER_ID
+        from enterprise_ai_platform.execution.recovery.snapshot import VERSION, SYSTEM_ID, BUILDER_ID
         assert VERSION == "1.0.0"
 
     def test_enum_imports(self):
-        from iios.execution.recovery.snapshot import (
+        from enterprise_ai_platform.execution.recovery.snapshot import (
             SnapshotStatus, RecoveryResult, VerificationOutcome, SnapshotHealth,
         )
 
     def test_factory_imports(self):
-        from iios.execution.recovery.snapshot import (
+        from enterprise_ai_platform.execution.recovery.snapshot import (
             make_execution_recovery_snapshot,
             make_audit_metadata,
             make_snapshot_bundle,
         )
 
     def test_event_imports(self):
-        from iios.execution.recovery.snapshot import (
+        from enterprise_ai_platform.execution.recovery.snapshot import (
             make_snapshot_created, make_snapshot_published,
             make_snapshot_archived, make_snapshot_cached,
         )

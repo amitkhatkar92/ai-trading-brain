@@ -3,17 +3,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.profile.business_profile import BusinessProfileBuilder, BusinessProfileManager
-from iios.investment.company.profile.business_segments import SegmentStore
-from iios.investment.company.profile.geographic_presence import GeographicPresenceStore
-from iios.investment.company.profile.models import (
+from enterprise_ai_platform.investment.company.profile.business_profile import BusinessProfileBuilder, BusinessProfileManager
+from enterprise_ai_platform.investment.company.profile.business_segments import SegmentStore
+from enterprise_ai_platform.investment.company.profile.geographic_presence import GeographicPresenceStore
+from enterprise_ai_platform.investment.company.profile.models import (
     BusinessSegment,
     GeographicPresence,
     OperationsType,
     Product,
     Service,
 )
-from iios.investment.company.profile.products_services import ProductServiceStore
+from enterprise_ai_platform.investment.company.profile.products_services import ProductServiceStore
 
 
 class TestSegmentStore:

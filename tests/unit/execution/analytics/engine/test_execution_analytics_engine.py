@@ -38,7 +38,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.execution.analytics.engine import (
+from enterprise_ai_platform.execution.analytics.engine import (
     ACTIVE_ENGINE_STATES,
     ACTOR_ENGINE,
     ACTOR_SYSTEM,
@@ -93,10 +93,10 @@ from iios.execution.analytics.engine import (
     make_analytics_snapshot,
     make_engine_analytics_context,
 )
-from iios.execution.analytics.engine.analytics_factory import EngineAnalyticsFactory
-from iios.execution.analytics.engine.analytics_manager import AnalyticsManager
-from iios.execution.analytics.engine.analytics_registry import EngineAnalyticsRegistry
-from iios.execution.analytics.engine.analytics_session_manager import AnalyticsSessionManager
+from enterprise_ai_platform.execution.analytics.engine.analytics_factory import EngineAnalyticsFactory
+from enterprise_ai_platform.execution.analytics.engine.analytics_manager import AnalyticsManager
+from enterprise_ai_platform.execution.analytics.engine.analytics_registry import EngineAnalyticsRegistry
+from enterprise_ai_platform.execution.analytics.engine.analytics_session_manager import AnalyticsSessionManager
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceCategory, EvidencePriority, EvidenceSourceType, EvidenceStatus,
 )
-from iios.investment.decision.evidence.evidence_item import make_evidence_item
-from iios.investment.decision.evidence.evidence_package import EvidencePackage
-from iios.investment.decision.evidence.evidence_statistics import EvidenceStatisticsTracker
-from iios.investment.decision.evidence.evidence_history import EvidenceHistory
+from enterprise_ai_platform.investment.decision.evidence.evidence_item import make_evidence_item
+from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+from enterprise_ai_platform.investment.decision.evidence.evidence_statistics import EvidenceStatisticsTracker
+from enterprise_ai_platform.investment.decision.evidence.evidence_history import EvidenceHistory
 
 
 # ============================= EvidenceItem ==============================
@@ -110,9 +110,9 @@ class TestEvidencePackage:
 
 class TestEvidenceHistory:
     def test_record_and_retrieve(self, sample_items, decision_id, subject_id, subject_type):
-        from iios.investment.decision.evidence.evidence_snapshot import build_snapshot
-        from iios.investment.decision.evidence.evidence_package import EvidencePackage
-        from iios.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
+        from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot
+        from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
 
         pkg = EvidencePackage(str(uuid.uuid4()), decision_id, subject_id, subject_type)
         pkg.add_items(sample_items)
@@ -126,9 +126,9 @@ class TestEvidenceHistory:
         assert hist.get(snap.snapshot_id) is snap
 
     def test_for_subject(self, sample_items, decision_id, subject_id, subject_type):
-        from iios.investment.decision.evidence.evidence_snapshot import build_snapshot
-        from iios.investment.decision.evidence.evidence_package import EvidencePackage
-        from iios.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
+        from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot
+        from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
 
         hist = EvidenceHistory()
         for _ in range(3):
@@ -151,9 +151,9 @@ class TestEvidenceStatisticsTracker:
         assert s.total_snapshots == 0
 
     def test_records_correctly(self, sample_items, decision_id, subject_id, subject_type):
-        from iios.investment.decision.evidence.evidence_snapshot import build_snapshot
-        from iios.investment.decision.evidence.evidence_package import EvidencePackage
-        from iios.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
+        from enterprise_ai_platform.investment.decision.evidence.evidence_snapshot import build_snapshot
+        from enterprise_ai_platform.investment.decision.evidence.evidence_package import EvidencePackage
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceValidationStatus
 
         pkg = EvidencePackage(str(uuid.uuid4()), decision_id, subject_id, subject_type)
         pkg.add_items(sample_items)

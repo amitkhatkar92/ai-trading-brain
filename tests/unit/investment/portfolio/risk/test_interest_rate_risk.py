@@ -1,9 +1,9 @@
 """tests/unit/investment/portfolio/risk/test_interest_rate_risk.py"""
 import pytest
-from iios.investment.portfolio.risk.interest_rate_risk import (
+from enterprise_ai_platform.investment.portfolio.risk.interest_rate_risk import (
     analyze_interest_rate_risk, InterestRateRiskResult, DURATION_PROXY,
 )
-from iios.investment.portfolio.risk.risk_types import RiskLevel
+from enterprise_ai_platform.investment.portfolio.risk.risk_types import RiskLevel
 
 
 def test_ir_empty():

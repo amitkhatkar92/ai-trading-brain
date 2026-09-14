@@ -1,6 +1,6 @@
 """tests/unit/integration/research/backtesting/test_backtesting_engine.py
 
-Comprehensive test suite for iios/integration/research/backtesting/
+Comprehensive test suite for enterprise_ai_platform/integration/research/backtesting/
 
 Run with:
     python -m pytest tests/unit/integration/research/backtesting/ -q
@@ -21,7 +21,7 @@ import pytest
 def _run(coro): return asyncio.run(coro)
 
 # ── Imports ───────────────────────────────────────────────────────────────────
-from iios.integration.research.backtesting.backtest_constants import (
+from enterprise_ai_platform.integration.research.backtesting.backtest_constants import (
     BACKTESTING_ENGINE_VERSION,
     BACKTEST_ERROR_PREFIX,
     BacktestEngineStatus,
@@ -36,7 +36,7 @@ from iios.integration.research.backtesting.backtest_constants import (
     SimulationStatus,
     ValidationStatus,
 )
-from iios.integration.research.backtesting.backtest_exceptions import (
+from enterprise_ai_platform.integration.research.backtesting.backtest_exceptions import (
     BacktestAlreadyExistsError,
     BacktestCapacityError,
     BacktestEngineAlreadyRunningError,
@@ -53,43 +53,43 @@ from iios.integration.research.backtesting.backtest_exceptions import (
     SimulationDataError,
     WalkForwardError,
 )
-from iios.integration.research.backtesting.core.backtest import Backtest
-from iios.integration.research.backtesting.core.backtest_configuration import BacktestConfiguration
-from iios.integration.research.backtesting.core.backtest_history import (
+from enterprise_ai_platform.integration.research.backtesting.core.backtest import Backtest
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_configuration import BacktestConfiguration
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_history import (
     BacktestHistory,
     BacktestHistoryEntry,
 )
-from iios.integration.research.backtesting.core.backtest_metadata import BacktestMetadata
-from iios.integration.research.backtesting.core.backtest_request import BacktestRequest
-from iios.integration.research.backtesting.core.backtest_result import BacktestResult
-from iios.integration.research.backtesting.core.backtest_session import BacktestSession
-from iios.integration.research.backtesting.core.backtest_statistics import BacktestStatistics
-from iios.integration.research.backtesting.engine.event_scheduler import EventScheduler, SimEvent, SimEventType
-from iios.integration.research.backtesting.engine.execution_simulator import ExecutionSimulator
-from iios.integration.research.backtesting.engine.market_simulator import BarEvent, MarketSimulator
-from iios.integration.research.backtesting.engine.simulation_clock import SimulationClock
-from iios.integration.research.backtesting.engine.simulation_engine import (
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_metadata import BacktestMetadata
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_request import BacktestRequest
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_result import BacktestResult
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_session import BacktestSession
+from enterprise_ai_platform.integration.research.backtesting.core.backtest_statistics import BacktestStatistics
+from enterprise_ai_platform.integration.research.backtesting.engine.event_scheduler import EventScheduler, SimEvent, SimEventType
+from enterprise_ai_platform.integration.research.backtesting.engine.execution_simulator import ExecutionSimulator
+from enterprise_ai_platform.integration.research.backtesting.engine.market_simulator import BarEvent, MarketSimulator
+from enterprise_ai_platform.integration.research.backtesting.engine.simulation_clock import SimulationClock
+from enterprise_ai_platform.integration.research.backtesting.engine.simulation_engine import (
     BacktestStrategy,
     SimulationEngine,
 )
-from iios.integration.research.backtesting.execution.order import Fill, Order, OrderSignal
-from iios.integration.research.backtesting.execution.portfolio import Portfolio, PortfolioSnapshot
-from iios.integration.research.backtesting.execution.trade import Trade
-from iios.integration.research.backtesting.metrics.drawdown_calculator import (
+from enterprise_ai_platform.integration.research.backtesting.execution.order import Fill, Order, OrderSignal
+from enterprise_ai_platform.integration.research.backtesting.execution.portfolio import Portfolio, PortfolioSnapshot
+from enterprise_ai_platform.integration.research.backtesting.execution.trade import Trade
+from enterprise_ai_platform.integration.research.backtesting.metrics.drawdown_calculator import (
     drawdown_series,
     max_drawdown,
     max_drawdown_duration_bars,
 )
-from iios.integration.research.backtesting.metrics.performance_engine import PerformanceEngine
-from iios.integration.research.backtesting.metrics.performance_report import PerformanceReport
-from iios.integration.research.backtesting.metrics.return_calculator import (
+from enterprise_ai_platform.integration.research.backtesting.metrics.performance_engine import PerformanceEngine
+from enterprise_ai_platform.integration.research.backtesting.metrics.performance_report import PerformanceReport
+from enterprise_ai_platform.integration.research.backtesting.metrics.return_calculator import (
     annualized_return,
     calculate_bar_returns,
     cumulative_returns,
     monthly_returns,
     total_return,
 )
-from iios.integration.research.backtesting.metrics.risk_metrics import (
+from enterprise_ai_platform.integration.research.backtesting.metrics.risk_metrics import (
     calmar_ratio,
     compute_beta,
     information_ratio,
@@ -99,7 +99,7 @@ from iios.integration.research.backtesting.metrics.risk_metrics import (
     value_at_risk,
     volatility,
 )
-from iios.integration.research.backtesting.metrics.trade_statistics import (
+from enterprise_ai_platform.integration.research.backtesting.metrics.trade_statistics import (
     avg_loss,
     avg_trade_duration,
     avg_win,
@@ -112,24 +112,24 @@ from iios.integration.research.backtesting.metrics.trade_statistics import (
     trade_return_distribution,
     win_rate,
 )
-from iios.integration.research.backtesting.reporting.benchmark_report import BenchmarkReport
-from iios.integration.research.backtesting.reporting.comparison_report import ComparisonReport
-from iios.integration.research.backtesting.reporting.equity_curve import EquityCurveReport, resample_equity_curve
-from iios.integration.research.backtesting.reporting.report_generator import ReportGenerator
-from iios.integration.research.backtesting.reporting.trade_report import TradeReport
-from iios.integration.research.backtesting.validation.out_of_sample_validator import OutOfSampleValidator
-from iios.integration.research.backtesting.validation.overfitting_detector import (
+from enterprise_ai_platform.integration.research.backtesting.reporting.benchmark_report import BenchmarkReport
+from enterprise_ai_platform.integration.research.backtesting.reporting.comparison_report import ComparisonReport
+from enterprise_ai_platform.integration.research.backtesting.reporting.equity_curve import EquityCurveReport, resample_equity_curve
+from enterprise_ai_platform.integration.research.backtesting.reporting.report_generator import ReportGenerator
+from enterprise_ai_platform.integration.research.backtesting.reporting.trade_report import TradeReport
+from enterprise_ai_platform.integration.research.backtesting.validation.out_of_sample_validator import OutOfSampleValidator
+from enterprise_ai_platform.integration.research.backtesting.validation.overfitting_detector import (
     OverfittingDetector,
     OverfittingScore,
 )
-from iios.integration.research.backtesting.validation.robustness_analyzer import RobustnessAnalyzer
-from iios.integration.research.backtesting.validation.validation_engine import ValidationEngine
-from iios.integration.research.backtesting.validation.walk_forward_validator import WalkForwardValidator
-from iios.integration.research.backtesting.backtest_context import BacktestContext
-from iios.integration.research.backtesting.backtest_registry import BacktestRegistry
-from iios.integration.research.backtesting.backtest_factory import BacktestFactory
-from iios.integration.research.backtesting.backtest_manager import BacktestManager
-from iios.integration.research.backtesting.backtesting_engine import (
+from enterprise_ai_platform.integration.research.backtesting.validation.robustness_analyzer import RobustnessAnalyzer
+from enterprise_ai_platform.integration.research.backtesting.validation.validation_engine import ValidationEngine
+from enterprise_ai_platform.integration.research.backtesting.validation.walk_forward_validator import WalkForwardValidator
+from enterprise_ai_platform.integration.research.backtesting.backtest_context import BacktestContext
+from enterprise_ai_platform.integration.research.backtesting.backtest_registry import BacktestRegistry
+from enterprise_ai_platform.integration.research.backtesting.backtest_factory import BacktestFactory
+from enterprise_ai_platform.integration.research.backtesting.backtest_manager import BacktestManager
+from enterprise_ai_platform.integration.research.backtesting.backtesting_engine import (
     BacktestingEngine,
     get_backtesting_engine,
     reset_backtesting_engine,
@@ -635,7 +635,7 @@ class TestSimulationClock:
         c = SimulationClock()
         c.initialise(0.0, 1000.0)
         c.advance_to(500.0)
-        from iios.integration.research.backtesting.backtest_exceptions import SimulationClockError
+        from enterprise_ai_platform.integration.research.backtesting.backtest_exceptions import SimulationClockError
         with pytest.raises(SimulationClockError):
             c.advance_to(100.0)
 
@@ -647,7 +647,7 @@ class TestSimulationClock:
 
     def test_invalid_range_raises(self):
         c = SimulationClock()
-        from iios.integration.research.backtesting.backtest_exceptions import SimulationClockError
+        from enterprise_ai_platform.integration.research.backtesting.backtest_exceptions import SimulationClockError
         with pytest.raises(SimulationClockError):
             c.initialise(1000.0, 500.0)
 
@@ -1291,7 +1291,7 @@ class TestOutOfSampleValidator:
         assert cmp["sharpe_ratio"]["degradation_pct"] == pytest.approx(0.5)
 
     def test_invalid_oos_fraction_raises(self):
-        from iios.integration.research.backtesting.backtest_exceptions import BacktestValidationFrameworkError
+        from enterprise_ai_platform.integration.research.backtesting.backtest_exceptions import BacktestValidationFrameworkError
         with pytest.raises(BacktestValidationFrameworkError):
             OutOfSampleValidator().split([1.0], oos_fraction=1.5)
 

@@ -6,11 +6,11 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.evidence.evidence_collection_engine import EvidenceCollectionEngine
-from iios.investment.decision.evidence.evidence_constants import (
+from enterprise_ai_platform.investment.decision.evidence.evidence_collection_engine import EvidenceCollectionEngine
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import (
     EvidenceEngineStatus, EvidenceSourceType, EvidenceValidationStatus,
 )
-from iios.investment.decision.evidence.provider_registry import ProviderRegistry
+from enterprise_ai_platform.investment.decision.evidence.provider_registry import ProviderRegistry
 
 
 # ========================= Helpers =======================================
@@ -99,7 +99,7 @@ class TestEngineCollection:
 
     async def test_payload_injected_to_provider(self, decision_id, subject_type):
         """Provider with real payload extracts items from it."""
-        from iios.investment.decision.evidence.market_evidence import MarketEvidenceProvider
+        from enterprise_ai_platform.investment.decision.evidence.market_evidence import MarketEvidenceProvider
         reg = ProviderRegistry()
         reg.register(MarketEvidenceProvider())
         eng = EvidenceCollectionEngine(registry=reg)
@@ -112,8 +112,8 @@ class TestEngineCollection:
     async def test_provider_failure_is_non_fatal(self, decision_id, subject_id, subject_type,
                                                   StubProvider):
         """A provider that throws must not abort collection."""
-        from iios.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
-        from iios.investment.decision.evidence.evidence_item import EvidenceItem
+        from enterprise_ai_platform.investment.decision.evidence.evidence_provider import BaseEvidenceProvider
+        from enterprise_ai_platform.investment.decision.evidence.evidence_item import EvidenceItem
         from typing import List, Optional, Dict, Any
 
         class BrokenProvider(BaseEvidenceProvider):

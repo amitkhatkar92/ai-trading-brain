@@ -5,17 +5,17 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.company.integration.company_state import (
+from enterprise_ai_platform.investment.company.integration.company_state import (
     ConflictSeverity, ValidationStatus,
 )
-from iios.investment.company.integration.company_intelligence_aggregator import AggregatedIntelligence
-from iios.investment.company.integration.consistency_rules import (
+from enterprise_ai_platform.investment.company.integration.company_intelligence_aggregator import AggregatedIntelligence
+from enterprise_ai_platform.investment.company.integration.consistency_rules import (
     rule_bq_vs_financial, rule_earnings_vs_financial, rule_growth_vs_earnings,
     rule_growth_vs_valuation, rule_management_vs_ownership,
     rule_opportunity_vs_financial, rule_bq_vs_earnings, ALL_RULES,
 )
-from iios.investment.company.integration.consistency_validator import ConsistencyValidator
-from iios.investment.company.integration.validation_report import (
+from enterprise_ai_platform.investment.company.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.company.integration.validation_report import (
     ValidationCheck, ValidationReport,
 )
 

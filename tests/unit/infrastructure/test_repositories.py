@@ -1,14 +1,14 @@
 """
 tests/unit/infrastructure/test_repositories.py
 ===============================================
-Tests for the iios.infrastructure.repositories subpackage.
+Tests for the enterprise_ai_platform.infrastructure.repositories subpackage.
 """
 
 from __future__ import annotations
 
 import pytest
 
-from iios.infrastructure.repositories import (
+from enterprise_ai_platform.infrastructure.repositories import (
     BaseRepository, InMemoryRepository,
     InMemoryUnitOfWork,
     TransactionManager,
@@ -16,7 +16,7 @@ from iios.infrastructure.repositories import (
     RepositoryFactory,
     RepositoryManager, get_repository_manager, reset_repository_manager,
 )
-from iios.infrastructure.infrastructure_exceptions import (
+from enterprise_ai_platform.infrastructure.infrastructure_exceptions import (
     RepositoryError, TransactionError, UnitOfWorkError,
 )
 

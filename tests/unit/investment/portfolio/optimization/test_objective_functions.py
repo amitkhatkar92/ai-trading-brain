@@ -2,9 +2,9 @@
 import math
 import pytest
 
-from iios.investment.portfolio.optimization.objective_engine import ObjectiveEvaluator
-from iios.investment.portfolio.optimization.optimization_engine import AssetProxy
-from iios.investment.portfolio.optimization.optimization_types import ObjectiveType
+from enterprise_ai_platform.investment.portfolio.optimization.objective_engine import ObjectiveEvaluator
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_engine import AssetProxy
+from enterprise_ai_platform.investment.portfolio.optimization.optimization_types import ObjectiveType
 
 
 @pytest.fixture

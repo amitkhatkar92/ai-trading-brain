@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import MarketSnapshot, SecurityData
-from iios.investment.market.sector_rotation.sector_performance import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import MarketSnapshot, SecurityData
+from enterprise_ai_platform.investment.market.sector_rotation.sector_performance import (
     _avg_volume_ratio,
     _breadth,
     _momentum_score,
@@ -13,9 +13,9 @@ from iios.investment.market.sector_rotation.sector_performance import (
     _weighted_avg_return,
     compute_sector_performance,
 )
-from iios.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
-from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
-from iios.investment.market.sector_rotation.sector_tracker import SectorTracker
+from enterprise_ai_platform.investment.market.sector_rotation.sector_snapshot import SectorSnapshotBuilder
+from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+from enterprise_ai_platform.investment.market.sector_rotation.sector_tracker import SectorTracker
 from collections import deque
 
 

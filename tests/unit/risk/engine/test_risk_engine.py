@@ -43,7 +43,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.risk.engine import (
+from enterprise_ai_platform.risk.engine import (
     # constants
     ENGINE_SYSTEM_ID,
     VERSION,
@@ -138,7 +138,7 @@ def _make_request(
 
 class TestConstants:
     def test_engine_system_id_prefix(self):
-        assert ENGINE_SYSTEM_ID.startswith("iios:risk:engine")
+        assert ENGINE_SYSTEM_ID.startswith("enterprise_ai_platform:risk:engine")
 
     def test_version_format(self):
         parts = VERSION.split(".")
@@ -718,13 +718,13 @@ class TestRiskDispatcher:
             d.dispatch(pipe, req)
 
     def test_determine_next_state_assessment(self):
-        from iios.risk.engine.constants import ASSESSMENT_WORKFLOWS
+        from enterprise_ai_platform.risk.engine.constants import ASSESSMENT_WORKFLOWS
         d = RiskDispatcher()
         for wt in ASSESSMENT_WORKFLOWS:
             assert d.determine_next_state(wt) == EngineState.ASSESSING
 
     def test_determine_next_state_monitoring(self):
-        from iios.risk.engine.constants import MONITORING_WORKFLOWS
+        from enterprise_ai_platform.risk.engine.constants import MONITORING_WORKFLOWS
         d = RiskDispatcher()
         for wt in MONITORING_WORKFLOWS:
             assert d.determine_next_state(wt) == EngineState.MONITORING
@@ -752,7 +752,7 @@ class TestRiskDispatcher:
 class TestRiskSessionManager:
     @pytest.fixture
     def sm(self):
-        from iios.risk.lifecycle import RiskLifecycle
+        from enterprise_ai_platform.risk.lifecycle import RiskLifecycle
         lc = RiskLifecycle()
         mgr = RiskSessionManager(lifecycle=lc)
         mgr.start()
@@ -953,7 +953,7 @@ class TestRiskEngineValidator:
 
 class TestRiskEngineHealth:
     def test_report_returns_dict(self):
-        from iios.risk.lifecycle import RiskLifecycle
+        from enterprise_ai_platform.risk.lifecycle import RiskLifecycle
         lc = RiskLifecycle()
         sm = RiskSessionManager(lifecycle=lc)
         sm.start()
@@ -964,7 +964,7 @@ class TestRiskEngineHealth:
         sm.stop()
 
     def test_report_has_required_keys(self):
-        from iios.risk.lifecycle import RiskLifecycle
+        from enterprise_ai_platform.risk.lifecycle import RiskLifecycle
         sm = RiskSessionManager(lifecycle=RiskLifecycle())
         sm.start()
         d = RiskDispatcher()
@@ -1278,7 +1278,7 @@ class TestRiskEngineLifecycle:
 
     def test_second_start_raises(self):
         """LifecycleAwareMixin raises EngineAlreadyRunningError on double-start."""
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         e = RiskEngine()
         e.start()
         with pytest.raises(EngineAlreadyRunningError):
@@ -1683,7 +1683,7 @@ class TestRegression:
         # (can only inspect via status before stop)
 
     def test_session_manager_start_idempotent(self):
-        from iios.risk.lifecycle import RiskLifecycle
+        from enterprise_ai_platform.risk.lifecycle import RiskLifecycle
         sm = RiskSessionManager(lifecycle=RiskLifecycle())
         sm.start()
         sm.start()  # second call should not raise

@@ -7,18 +7,18 @@ from __future__ import annotations
 import pytest
 from typing import List
 
-from iios.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
-from iios.investment.strategy.portfolio.strategy_portfolio import (
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_strategy import PortfolioStrategy
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_portfolio import (
     StrategyPortfolio, PortfolioType, PortfolioState
 )
-from iios.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
-from iios.investment.strategy.portfolio.portfolio_quality import PortfolioQuality
-from iios.investment.strategy.portfolio.portfolio_confidence import PortfolioConfidence
-from iios.investment.strategy.portfolio.portfolio_health import PortfolioHealth, HealthStatus
-from iios.investment.strategy.portfolio.portfolio_score import (
+from enterprise_ai_platform.investment.strategy.portfolio.strategy_allocation import StrategyAllocation
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_quality import PortfolioQuality
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_confidence import PortfolioConfidence
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_health import PortfolioHealth, HealthStatus
+from enterprise_ai_platform.investment.strategy.portfolio.portfolio_score import (
     PortfolioScore, PortfolioScoreCalculator
 )
-from iios.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
+from enterprise_ai_platform.investment.strategy.portfolio.construction_constraints import DEFAULT_CONSTRAINTS
 from tests.unit.investment.strategy.portfolio.conftest import make_strategy
 
 

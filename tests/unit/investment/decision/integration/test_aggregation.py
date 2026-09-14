@@ -7,13 +7,13 @@ from __future__ import annotations
 import uuid
 import pytest
 
-from iios.investment.decision.integration.aggregation_engine import AggregationEngine
-from iios.investment.decision.integration.aggregation_history import AggregationHistory
-from iios.investment.decision.integration.aggregation_state import AggregationState
-from iios.investment.decision.integration.decision_intelligence_aggregator import (
+from enterprise_ai_platform.investment.decision.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.decision.integration.aggregation_history import AggregationHistory
+from enterprise_ai_platform.investment.decision.integration.aggregation_state import AggregationState
+from enterprise_ai_platform.investment.decision.integration.decision_intelligence_aggregator import (
     DecisionIntelligenceAggregator,
 )
-from iios.investment.decision.integration.integration_constants import (
+from enterprise_ai_platform.investment.decision.integration.integration_constants import (
     ComponentId,
     COMPONENT_MAX_AGE_SECONDS,
 )

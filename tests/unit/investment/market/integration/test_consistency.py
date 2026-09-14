@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.integration.aggregation_engine import AggregationEngine
-from iios.investment.market.integration.consistency_rules import (
+from enterprise_ai_platform.investment.market.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.market.integration.consistency_rules import (
     BUILT_IN_RULES,
     ConsistencyRule,
     _both_present,
 )
-from iios.investment.market.integration.consistency_validator import ConsistencyValidator
-from iios.investment.market.integration.models import (
+from enterprise_ai_platform.investment.market.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.market.integration.models import (
     ConflictSeverity,
     ConflictType,
     ValidationStatus,
@@ -19,7 +19,7 @@ from iios.investment.market.integration.models import (
 
 class TestBuiltInRules:
     def test_trend_up_in_bear_regime_fires(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         state = AggregationState(
             bar_index=1, timestamp=1.0,
             market_regime="bear",
@@ -30,7 +30,7 @@ class TestBuiltInRules:
         assert rule.check(state) is True
 
     def test_trend_up_in_bear_regime_no_fire_weak_trend(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         state = AggregationState(
             bar_index=1, timestamp=1.0,
             market_regime="bear",
@@ -41,7 +41,7 @@ class TestBuiltInRules:
         assert rule.check(state) is False
 
     def test_correlation_crisis_in_bull_fires(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         state = AggregationState(
             bar_index=1, timestamp=1.0,
             correlation_regime="crisis",
@@ -51,7 +51,7 @@ class TestBuiltInRules:
         assert rule.check(state) is True
 
     def test_opportunity_crisis_regime_fires(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         state = AggregationState(
             bar_index=1, timestamp=1.0,
             market_regime="crisis",
@@ -61,7 +61,7 @@ class TestBuiltInRules:
         assert rule.check(state) is True
 
     def test_opportunity_crisis_regime_no_fire_few_opps(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         state = AggregationState(
             bar_index=1, timestamp=1.0,
             market_regime="crisis",
@@ -75,7 +75,7 @@ class TestBuiltInRules:
             assert callable(rule.check)
 
     def test_both_present_helper(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         s = AggregationState(1, 1.0, market_regime="bull")
         assert _both_present(s, "market_regime") is True
         assert _both_present(s, "market_regime", "trend_direction") is False
@@ -113,8 +113,8 @@ class TestConsistencyValidator:
         assert total == len(validator.rules)
 
     def test_custom_rule_injected(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
-        from iios.investment.market.integration.models import ValidationIssue
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.models import ValidationIssue
         always_fire = ConsistencyRule(
             name="always_fire",
             conflict_type=ConflictType.CROSS_ENGINE,
@@ -140,7 +140,7 @@ class TestConsistencyValidator:
         assert len(validator.rules) == initial_count + 1
 
     def test_rule_exception_does_not_crash(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         bad_rule = ConsistencyRule(
             name="explodes", conflict_type=ConflictType.CROSS_ENGINE,
             severity=ConflictSeverity.LOW, engines=[], description="Bad",
@@ -151,7 +151,7 @@ class TestConsistencyValidator:
         report    = validator.validate(state)   # must not raise
 
     def test_high_severity_issue_leads_to_failed_status(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         high_rule = ConsistencyRule(
             name="high_sev", conflict_type=ConflictType.TREND_REGIME,
             severity=ConflictSeverity.HIGH, engines=[], description="High",
@@ -163,7 +163,7 @@ class TestConsistencyValidator:
         assert report.status is ValidationStatus.FAILED
 
     def test_medium_severity_issue_leads_to_warning(self):
-        from iios.investment.market.integration.aggregation_state import AggregationState
+        from enterprise_ai_platform.investment.market.integration.aggregation_state import AggregationState
         # Only add a medium rule, no high/critical
         medium_rule = ConsistencyRule(
             name="medium_sev", conflict_type=ConflictType.BREADTH_SECTOR,

@@ -16,20 +16,20 @@ import pytest
 
 def _reset_all() -> None:
     """Reset every singleton so tests are isolated."""
-    from iios.observation.repositories.observation_storage    import reset_observation_storage
-    from iios.observation.repositories.observation_cache      import reset_observation_cache
-    from iios.observation.repositories.observation_repository import reset_observation_repository
-    from iios.observation.validators.observation_validator    import reset_observation_validator
-    from iios.observation.classifiers.observation_classifier  import reset_observation_classifier
-    from iios.observation.enrichment.observation_enricher     import reset_observation_enricher
-    from iios.observation.pipeline.observation_pipeline       import reset_observation_pipeline
-    from iios.observation.quality.observation_quality         import reset_quality_assessor
-    from iios.observation.storage.observation_store           import reset_observation_store
-    from iios.observation.observation_factory                 import reset_observation_factory
-    from iios.observation.observation_manager                 import reset_observation_manager
-    from iios.observation.observation_engine                  import reset_observation_engine
-    from iios.observation.observation_registry                import reset_observation_registry
-    from iios.observation.observation_context                 import reset_observation_context
+    from enterprise_ai_platform.observation.repositories.observation_storage    import reset_observation_storage
+    from enterprise_ai_platform.observation.repositories.observation_cache      import reset_observation_cache
+    from enterprise_ai_platform.observation.repositories.observation_repository import reset_observation_repository
+    from enterprise_ai_platform.observation.validators.observation_validator    import reset_observation_validator
+    from enterprise_ai_platform.observation.classifiers.observation_classifier  import reset_observation_classifier
+    from enterprise_ai_platform.observation.enrichment.observation_enricher     import reset_observation_enricher
+    from enterprise_ai_platform.observation.pipeline.observation_pipeline       import reset_observation_pipeline
+    from enterprise_ai_platform.observation.quality.observation_quality         import reset_quality_assessor
+    from enterprise_ai_platform.observation.storage.observation_store           import reset_observation_store
+    from enterprise_ai_platform.observation.observation_factory                 import reset_observation_factory
+    from enterprise_ai_platform.observation.observation_manager                 import reset_observation_manager
+    from enterprise_ai_platform.observation.observation_engine                  import reset_observation_engine
+    from enterprise_ai_platform.observation.observation_registry                import reset_observation_registry
+    from enterprise_ai_platform.observation.observation_context                 import reset_observation_context
 
     reset_observation_storage()
     reset_observation_cache()
@@ -55,7 +55,7 @@ def isolate():
 
 
 def _make_obs(**kw):
-    from iios.observation.observation_factory import get_observation_factory
+    from enterprise_ai_platform.observation.observation_factory import get_observation_factory
     f = get_observation_factory()
     defaults = dict(content={"price": 100.0}, title="Test obs")
     defaults.update(kw)
@@ -68,51 +68,51 @@ def _make_obs(**kw):
 
 class TestObservationConstants:
     def test_observation_types_count(self):
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         assert len(ObservationType) >= 20
 
     def test_observation_statuses_count(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         assert len(ObservationStatus) >= 13
 
     def test_priority_ordering(self):
-        from iios.observation.observation_constants import ObservationPriority
+        from enterprise_ai_platform.observation.observation_constants import ObservationPriority
         assert ObservationPriority.CRITICAL > ObservationPriority.HIGH
         assert ObservationPriority.HIGH > ObservationPriority.MEDIUM
         assert ObservationPriority.MEDIUM > ObservationPriority.LOW
         assert ObservationPriority.LOW > ObservationPriority.MINIMAL
 
     def test_quality_enum_values(self):
-        from iios.observation.observation_constants import ObservationQuality
+        from enterprise_ai_platform.observation.observation_constants import ObservationQuality
         oq = ObservationQuality
         assert oq.EXCELLENT.threshold >= oq.GOOD.threshold >= oq.FAIR.threshold
 
     def test_default_confidence_in_range(self):
-        from iios.observation.observation_constants import (
+        from enterprise_ai_platform.observation.observation_constants import (
             DEFAULT_CONFIDENCE, MIN_CONFIDENCE, MAX_CONFIDENCE,
         )
         assert MIN_CONFIDENCE <= DEFAULT_CONFIDENCE <= MAX_CONFIDENCE
 
     def test_max_batch_size_positive(self):
-        from iios.observation.observation_constants import MAX_BATCH_SIZE
+        from enterprise_ai_platform.observation.observation_constants import MAX_BATCH_SIZE
         assert MAX_BATCH_SIZE > 0
 
     def test_namespace_is_string(self):
-        from iios.observation.observation_constants import OBSERVATION_NAMESPACE
+        from enterprise_ai_platform.observation.observation_constants import OBSERVATION_NAMESPACE
         assert isinstance(OBSERVATION_NAMESPACE, str)
         assert "." in OBSERVATION_NAMESPACE
 
     def test_lifecycle_events(self):
-        from iios.observation.observation_constants import LifecycleEvent
+        from enterprise_ai_platform.observation.observation_constants import LifecycleEvent
         assert len(LifecycleEvent) >= 10
 
     def test_duplicate_policy_members(self):
-        from iios.observation.observation_constants import DuplicatePolicy
+        from enterprise_ai_platform.observation.observation_constants import DuplicatePolicy
         names = {p.name for p in DuplicatePolicy}
         assert {"REJECT", "SKIP", "OVERWRITE"}.issubset(names)
 
     def test_pipeline_stages(self):
-        from iios.observation.observation_constants import PipelineStage
+        from enterprise_ai_platform.observation.observation_constants import PipelineStage
         names = [s.name for s in PipelineStage]
         assert "INGEST" in names
         assert "VALIDATE" in names
@@ -125,28 +125,28 @@ class TestObservationConstants:
 
 class TestObservationExceptions:
     def test_base_exception(self):
-        from iios.observation.observation_exceptions import ObservationError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationError
         e = ObservationError("test", code="OBS-000")
         assert e.code == "OBS-000"
         assert "test" in str(e)
 
     def test_not_found_exception(self):
-        from iios.observation.observation_exceptions import ObservationNotFoundError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationNotFoundError
         e = ObservationNotFoundError("abc123")
         assert isinstance(e, Exception)
 
     def test_validation_error_has_violations(self):
-        from iios.observation.observation_exceptions import ObservationValidationError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationValidationError
         e = ObservationValidationError("bad obs", violations=["missing title", "bad conf"])
         assert len(e.violations) == 2
 
     def test_duplicate_error_has_id(self):
-        from iios.observation.observation_exceptions import ObservationDuplicateError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationDuplicateError
         e = ObservationDuplicateError("dup", code="OBS-080", existing_id="xyz")
         assert e.existing_id == "xyz"
 
     def test_lifecycle_error(self):
-        from iios.observation.observation_exceptions import ObservationLifecycleError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationLifecycleError
         e = ObservationLifecycleError("bad transition", code="OBS-030")
         assert "OBS-030" == e.code
 
@@ -157,24 +157,24 @@ class TestObservationExceptions:
 
 class TestObservationId:
     def test_new_generates_unique(self):
-        from iios.observation.models.observation_identifier import ObservationId
+        from enterprise_ai_platform.observation.models.observation_identifier import ObservationId
         a, b = ObservationId.new(), ObservationId.new()
         assert a.uid != b.uid
 
     def test_full_property(self):
-        from iios.observation.models.observation_identifier import ObservationId
+        from enterprise_ai_platform.observation.models.observation_identifier import ObservationId
         oid = ObservationId.new()
         assert oid.namespace in oid.full
         assert oid.uid in oid.full
 
     def test_parse_roundtrip(self):
-        from iios.observation.models.observation_identifier import ObservationId
+        from enterprise_ai_platform.observation.models.observation_identifier import ObservationId
         oid = ObservationId.new()
         parsed = ObservationId.parse(oid.full)
         assert parsed.uid == oid.uid
 
     def test_generate_obs_id(self):
-        from iios.observation.models.observation_identifier import generate_obs_id
+        from enterprise_ai_platform.observation.models.observation_identifier import generate_obs_id
         oid = generate_obs_id()
         assert "/" in oid.full
 
@@ -185,8 +185,8 @@ class TestObservationId:
 
 class TestObservationSourceInfo:
     def test_to_dict_from_dict(self):
-        from iios.observation.models.observation_source import ObservationSourceInfo
-        from iios.observation.observation_constants import ObservationSource
+        from enterprise_ai_platform.observation.models.observation_source import ObservationSourceInfo
+        from enterprise_ai_platform.observation.observation_constants import ObservationSource
         src = ObservationSourceInfo(
             source=ObservationSource.YFINANCE,
             instrument="NIFTY",
@@ -198,8 +198,8 @@ class TestObservationSourceInfo:
         assert s2.source == ObservationSource.YFINANCE
 
     def test_default_source(self):
-        from iios.observation.models.observation_source import ObservationSourceInfo
-        from iios.observation.observation_constants import ObservationSource
+        from enterprise_ai_platform.observation.models.observation_source import ObservationSourceInfo
+        from enterprise_ai_platform.observation.observation_constants import ObservationSource
         src = ObservationSourceInfo()
         assert src.source == ObservationSource.UNKNOWN
 
@@ -210,29 +210,29 @@ class TestObservationSourceInfo:
 
 class TestObservationMetadata:
     def test_confidence_clamped(self):
-        from iios.observation.models.observation_metadata import ObservationMetadata
+        from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
         m = ObservationMetadata(confidence=2.5)
         assert m.confidence == 1.0
 
     def test_tags_truncated(self):
-        from iios.observation.models.observation_metadata import ObservationMetadata
-        from iios.observation.observation_constants import MAX_TAGS
+        from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
+        from enterprise_ai_platform.observation.observation_constants import MAX_TAGS
         m = ObservationMetadata(tags=[f"t{i}" for i in range(MAX_TAGS + 10)])
         assert len(m.tags) == MAX_TAGS
 
     def test_expires_at_computed(self):
-        from iios.observation.models.observation_metadata import ObservationMetadata
+        from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
         m = ObservationMetadata(ttl_seconds=60)
         assert m.expires_at is not None
         assert m.expires_at > time.time()
 
     def test_is_expired(self):
-        from iios.observation.models.observation_metadata import ObservationMetadata
+        from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
         m = ObservationMetadata(ttl_seconds=-1)
         assert m.is_expired is True
 
     def test_to_dict_from_dict_roundtrip(self):
-        from iios.observation.models.observation_metadata import ObservationMetadata
+        from enterprise_ai_platform.observation.models.observation_metadata import ObservationMetadata
         m  = ObservationMetadata(confidence=0.75, tags=["tag1"])
         m2 = ObservationMetadata.from_dict(m.to_dict())
         assert m2.confidence == pytest.approx(0.75)
@@ -246,7 +246,7 @@ class TestObservationMetadata:
 class TestObservation:
     def test_creation_defaults(self):
         obs = _make_obs()
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         assert obs.status == ObservationStatus.CREATED
         assert obs.obs_id is not None
 
@@ -259,13 +259,13 @@ class TestObservation:
         assert obs.checksum
 
     def test_mark_collected(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         obs = _make_obs()
         obs.mark_collected()
         assert obs.status == ObservationStatus.COLLECTED
 
     def test_full_lifecycle_accept(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         obs = _make_obs()
         obs.mark_collected()
         obs.mark_validated()
@@ -276,7 +276,7 @@ class TestObservation:
         assert obs.accepted_at is not None
 
     def test_reject(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         obs = _make_obs()
         obs.mark_collected()
         obs.reject("bad data")
@@ -284,13 +284,13 @@ class TestObservation:
         assert obs.rejection_reason == "bad data"
 
     def test_illegal_transition_raises(self):
-        from iios.observation.observation_exceptions import ObservationLifecycleError
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationLifecycleError
         obs = _make_obs()
         with pytest.raises(ObservationLifecycleError):
             obs.accept()   # CREATED → ACCEPTED is illegal
 
     def test_archive_from_accepted(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         obs = _make_obs()
         obs.mark_collected()
         obs.mark_validated()
@@ -325,7 +325,7 @@ class TestObservation:
         assert obs2.content == {"v": 42}
 
     def test_can_transition_to(self):
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         obs = _make_obs()
         assert obs.can_transition_to(ObservationStatus.COLLECTED)
         assert not obs.can_transition_to(ObservationStatus.ACCEPTED)
@@ -337,8 +337,8 @@ class TestObservation:
 
 class TestObservationRecord:
     def test_add_event(self):
-        from iios.observation.models.observation_record import ObservationRecord
-        from iios.observation.observation_constants import PipelineStage, ObservationStatus
+        from enterprise_ai_platform.observation.models.observation_record import ObservationRecord
+        from enterprise_ai_platform.observation.observation_constants import PipelineStage, ObservationStatus
         obs = _make_obs()
         rec = ObservationRecord(observation=obs)
         rec.add_event(stage=PipelineStage.INGEST, status=ObservationStatus.COLLECTED, actor="sys", duration_ms=5.0)
@@ -347,7 +347,7 @@ class TestObservationRecord:
 
     def test_obs_id_property(self):
         obs = _make_obs()
-        from iios.observation.models.observation_record import ObservationRecord
+        from enterprise_ai_platform.observation.models.observation_record import ObservationRecord
         rec = ObservationRecord(observation=obs)
         assert rec.obs_id == obs.id
 
@@ -358,17 +358,17 @@ class TestObservationRecord:
 
 class TestObservationStatistics:
     def test_acceptance_rate(self):
-        from iios.observation.models.observation_statistics import ObservationStatistics
+        from enterprise_ai_platform.observation.models.observation_statistics import ObservationStatistics
         s = ObservationStatistics(total_created=10, total_accepted=7, total_rejected=3)
         assert s.acceptance_rate == pytest.approx(0.70)
 
     def test_zero_division_safe(self):
-        from iios.observation.models.observation_statistics import ObservationStatistics
+        from enterprise_ai_platform.observation.models.observation_statistics import ObservationStatistics
         s = ObservationStatistics()
         assert s.acceptance_rate == 0.0
 
     def test_cache_hit_rate(self):
-        from iios.observation.models.observation_statistics import ObservationStatistics
+        from enterprise_ai_platform.observation.models.observation_statistics import ObservationStatistics
         s = ObservationStatistics(cache_hits=8, cache_misses=2)
         assert s.cache_hit_rate == pytest.approx(0.80)
 
@@ -379,7 +379,7 @@ class TestObservationStatistics:
 
 class TestObservationStorage:
     def test_store_and_get(self):
-        from iios.observation.repositories.observation_storage import ObservationStorage
+        from enterprise_ai_platform.observation.repositories.observation_storage import ObservationStorage
         s   = ObservationStorage()
         obs = _make_obs()
         s.store(obs)
@@ -388,14 +388,14 @@ class TestObservationStorage:
         assert fetched.id == obs.id
 
     def test_get_missing_raises(self):
-        from iios.observation.repositories.observation_storage import ObservationStorage
-        from iios.observation.observation_exceptions import ObservationNotFoundError
+        from enterprise_ai_platform.observation.repositories.observation_storage import ObservationStorage
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationNotFoundError
         s = ObservationStorage()
         with pytest.raises(ObservationNotFoundError):
             s.get("nonexistent/id")
 
     def test_delete(self):
-        from iios.observation.repositories.observation_storage import ObservationStorage
+        from enterprise_ai_platform.observation.repositories.observation_storage import ObservationStorage
         s   = ObservationStorage()
         obs = _make_obs()
         s.store(obs)
@@ -403,7 +403,7 @@ class TestObservationStorage:
         assert not s.exists(obs.id)
 
     def test_bulk_store(self):
-        from iios.observation.repositories.observation_storage import ObservationStorage
+        from enterprise_ai_platform.observation.repositories.observation_storage import ObservationStorage
         s    = ObservationStorage()
         obs1 = _make_obs(title="A")
         obs2 = _make_obs(title="B")
@@ -412,8 +412,8 @@ class TestObservationStorage:
         assert s.count() == 2
 
     def test_list_by_status(self):
-        from iios.observation.repositories.observation_storage import ObservationStorage
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.repositories.observation_storage import ObservationStorage
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         s   = ObservationStorage()
         obs = _make_obs()
         s.store(obs)
@@ -427,7 +427,7 @@ class TestObservationStorage:
 
 class TestObservationCache:
     def test_put_and_get(self):
-        from iios.observation.repositories.observation_cache import ObservationCache
+        from enterprise_ai_platform.observation.repositories.observation_cache import ObservationCache
         c   = ObservationCache(max_size=10)
         obs = _make_obs()
         c.put(obs)
@@ -435,12 +435,12 @@ class TestObservationCache:
         assert c.get(obs.id).id == obs.id
 
     def test_miss_returns_none(self):
-        from iios.observation.repositories.observation_cache import ObservationCache
+        from enterprise_ai_platform.observation.repositories.observation_cache import ObservationCache
         c = ObservationCache()
         assert c.get("nope/nope") is None
 
     def test_lru_eviction(self):
-        from iios.observation.repositories.observation_cache import ObservationCache
+        from enterprise_ai_platform.observation.repositories.observation_cache import ObservationCache
         c = ObservationCache(max_size=2)
         a = _make_obs(title="a"); b = _make_obs(title="b"); d = _make_obs(title="d")
         c.put(a); c.put(b)
@@ -449,7 +449,7 @@ class TestObservationCache:
         assert c.contains(d.id)
 
     def test_hit_miss_stats(self):
-        from iios.observation.repositories.observation_cache import ObservationCache
+        from enterprise_ai_platform.observation.repositories.observation_cache import ObservationCache
         c = ObservationCache()
         obs = _make_obs()
         c.put(obs)
@@ -460,7 +460,7 @@ class TestObservationCache:
         assert stats["misses"] >= 1
 
     def test_invalidate(self):
-        from iios.observation.repositories.observation_cache import ObservationCache
+        from enterprise_ai_platform.observation.repositories.observation_cache import ObservationCache
         c   = ObservationCache()
         obs = _make_obs()
         c.put(obs)
@@ -474,14 +474,14 @@ class TestObservationCache:
 
 class TestObservationRepository:
     def test_save_and_get(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = _make_obs()
         repo.save(obs)
         assert repo.get(obs.id).id == obs.id
 
     def test_save_batch(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = [_make_obs(title=f"obs{i}") for i in range(5)]
         ids  = repo.save_batch(obs)
@@ -489,7 +489,7 @@ class TestObservationRepository:
         assert repo.count() == 5
 
     def test_update(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = _make_obs()
         repo.save(obs)
@@ -498,7 +498,7 @@ class TestObservationRepository:
         assert repo.get(obs.id).title == "updated"
 
     def test_soft_delete(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = _make_obs()
         repo.save(obs)
@@ -507,8 +507,8 @@ class TestObservationRepository:
         assert fetched is None  # soft-deleted items excluded from default query
 
     def test_find_by_status(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         repo = ObservationRepository()
         obs  = _make_obs()
         repo.save(obs)
@@ -516,7 +516,7 @@ class TestObservationRepository:
         assert any(o.id == obs.id for o in results)
 
     def test_list_accepted(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = _make_obs()
         obs.mark_collected(); obs.mark_validated()
@@ -526,7 +526,7 @@ class TestObservationRepository:
         assert any(o.id == obs.id for o in repo.list_accepted())
 
     def test_exists(self):
-        from iios.observation.repositories.observation_repository import ObservationRepository
+        from enterprise_ai_platform.observation.repositories.observation_repository import ObservationRepository
         repo = ObservationRepository()
         obs  = _make_obs()
         assert not repo.exists(obs.id)
@@ -540,8 +540,8 @@ class TestObservationRepository:
 
 class TestObservationQuery:
     def test_fluent_builder(self):
-        from iios.observation.repositories.observation_query import ObservationQuery
-        from iios.observation.observation_constants import ObservationStatus, ObservationType
+        from enterprise_ai_platform.observation.repositories.observation_query import ObservationQuery
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus, ObservationType
         q = (ObservationQuery()
              .with_type(ObservationType.MARKET_DATA)
              .with_status(ObservationStatus.ACCEPTED)
@@ -550,14 +550,14 @@ class TestObservationQuery:
         assert q.page_size == 10
 
     def test_matches_filter(self):
-        from iios.observation.repositories.observation_query import ObservationQuery
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.repositories.observation_query import ObservationQuery
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         q   = ObservationQuery().with_type(ObservationType.MARKET_DATA)
         obs = _make_obs()  # UNKNOWN type by default
         assert not q.matches(obs)
 
     def test_matches_confidence_range(self):
-        from iios.observation.repositories.observation_query import ObservationQuery
+        from enterprise_ai_platform.observation.repositories.observation_query import ObservationQuery
         q   = ObservationQuery().with_confidence(0.60, 1.00)
         obs = _make_obs()
         obs.metadata.confidence = 0.80
@@ -572,28 +572,28 @@ class TestObservationQuery:
 
 class TestObservationValidator:
     def test_valid_obs_passes(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
         v   = ObservationValidator()
         obs = _make_obs(content={"price": 100.0}, title="valid")
         r   = v.validate(obs)
         assert r.passed
 
     def test_none_content_fails(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
         v   = ObservationValidator()
         obs = _make_obs(content=None)
         r   = v.validate(obs)
         assert r.failed
 
     def test_expired_obs_fails(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
         v   = ObservationValidator()
         obs = _make_obs(ttl_seconds=-1)
         r   = v.validate(obs)
         assert r.failed
 
     def test_confidence_out_of_range_fails(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
         v   = ObservationValidator()
         obs = _make_obs()
         obs.metadata.confidence = 1.5
@@ -601,16 +601,16 @@ class TestObservationValidator:
         assert r.failed
 
     def test_strict_raises_on_violation(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
-        from iios.observation.observation_exceptions import ObservationValidationError
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationValidationError
         v   = ObservationValidator()
         obs = _make_obs(content=None)
         with pytest.raises(ObservationValidationError):
             v.validate(obs, strict=True)
 
     def test_unknown_type_is_warning(self):
-        from iios.observation.validators.observation_validator import ObservationValidator
-        from iios.observation.observation_constants import ValidationOutcome
+        from enterprise_ai_platform.observation.validators.observation_validator import ObservationValidator
+        from enterprise_ai_platform.observation.observation_constants import ValidationOutcome
         v   = ObservationValidator()
         obs = _make_obs()  # UNKNOWN type by default
         r   = v.validate(obs)
@@ -623,8 +623,8 @@ class TestObservationValidator:
 
 class TestObservationClassifier:
     def test_explicit_type_high_confidence(self):
-        from iios.observation.classifiers.observation_classifier import ObservationClassifier
-        from iios.observation.observation_constants import ObservationType, ObservationDomain
+        from enterprise_ai_platform.observation.classifiers.observation_classifier import ObservationClassifier
+        from enterprise_ai_platform.observation.observation_constants import ObservationType, ObservationDomain
         c   = ObservationClassifier()
         obs = _make_obs(obs_type=ObservationType.MARKET_DATA, instrument="NIFTY")
         r   = c.classify(obs)
@@ -633,8 +633,8 @@ class TestObservationClassifier:
         assert r.confidence >= 0.90
 
     def test_unknown_type_gets_inferred(self):
-        from iios.observation.classifiers.observation_classifier import ObservationClassifier
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.classifiers.observation_classifier import ObservationClassifier
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         c   = ObservationClassifier()
         # content keys hint at MARKET_DATA
         obs = _make_obs(
@@ -645,8 +645,8 @@ class TestObservationClassifier:
         assert r.obs_type != ObservationType.UNKNOWN
 
     def test_tags_added(self):
-        from iios.observation.classifiers.observation_classifier import ObservationClassifier
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.classifiers.observation_classifier import ObservationClassifier
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         c   = ObservationClassifier()
         obs = _make_obs(obs_type=ObservationType.SIGNAL, instrument="RELIANCE")
         r   = c.classify(obs)
@@ -659,21 +659,21 @@ class TestObservationClassifier:
 
 class TestObservationEnricher:
     def test_enrichment_updates_quality(self):
-        from iios.observation.enrichment.observation_enricher import ObservationEnricher
+        from enterprise_ai_platform.observation.enrichment.observation_enricher import ObservationEnricher
         e   = ObservationEnricher()
         obs = _make_obs(content={"price": 100}, title="Rich", tags=["nifty"])
         r   = e.enrich(obs)
         assert r.quality is not None
 
     def test_tags_normalised(self):
-        from iios.observation.enrichment.observation_enricher import ObservationEnricher
+        from enterprise_ai_platform.observation.enrichment.observation_enricher import ObservationEnricher
         e   = ObservationEnricher()
         obs = _make_obs(tags=["NIFTY", "NSE", "NIFTY"])
         e.enrich(obs)
         assert "nifty" in obs.metadata.tags
 
     def test_observed_at_filled(self):
-        from iios.observation.enrichment.observation_enricher import ObservationEnricher
+        from enterprise_ai_platform.observation.enrichment.observation_enricher import ObservationEnricher
         e   = ObservationEnricher()
         obs = _make_obs()
         obs.metadata.observed_at = None
@@ -681,7 +681,7 @@ class TestObservationEnricher:
         assert obs.metadata.observed_at is not None
 
     def test_custom_plugin_called(self):
-        from iios.observation.enrichment.observation_enricher import ObservationEnricher
+        from enterprise_ai_platform.observation.enrichment.observation_enricher import ObservationEnricher
         e      = ObservationEnricher()
         called = []
 
@@ -694,7 +694,7 @@ class TestObservationEnricher:
         assert obs.id in called
 
     def test_enrich_batch(self):
-        from iios.observation.enrichment.observation_enricher import ObservationEnricher
+        from enterprise_ai_platform.observation.enrichment.observation_enricher import ObservationEnricher
         e    = ObservationEnricher()
         batch = [_make_obs(title=f"b{i}") for i in range(5)]
         results = e.enrich_batch(batch)
@@ -707,8 +707,8 @@ class TestObservationEnricher:
 
 class TestObservationPipeline:
     def test_valid_obs_accepted(self):
-        from iios.observation.pipeline.observation_pipeline import ObservationPipeline
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.pipeline.observation_pipeline import ObservationPipeline
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         p   = ObservationPipeline()
         obs = _make_obs(content={"price": 100}, title="Pipeline test")
         r   = p.process(obs)
@@ -716,8 +716,8 @@ class TestObservationPipeline:
         assert obs.status == ObservationStatus.ACCEPTED
 
     def test_invalid_obs_rejected(self):
-        from iios.observation.pipeline.observation_pipeline import ObservationPipeline
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.pipeline.observation_pipeline import ObservationPipeline
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         p   = ObservationPipeline()
         obs = _make_obs(content=None)
         r   = p.process(obs)
@@ -725,15 +725,15 @@ class TestObservationPipeline:
         assert obs.status == ObservationStatus.REJECTED
 
     def test_total_ms_recorded(self):
-        from iios.observation.pipeline.observation_pipeline import ObservationPipeline
+        from enterprise_ai_platform.observation.pipeline.observation_pipeline import ObservationPipeline
         p   = ObservationPipeline()
         obs = _make_obs(content={"x": 1})
         r   = p.process(obs)
         assert r.total_ms >= 0.0
 
     def test_batch_processing(self):
-        from iios.observation.pipeline.observation_pipeline import ObservationPipeline
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.pipeline.observation_pipeline import ObservationPipeline
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         p     = ObservationPipeline()
         batch = [_make_obs(title=f"batch{i}") for i in range(4)]
         results = p.process_batch(batch)
@@ -747,15 +747,15 @@ class TestObservationPipeline:
 
 class TestObservationQualityAssessor:
     def test_score_returns_oqi(self):
-        from iios.observation.quality.observation_quality import ObservationQualityAssessor
+        from enterprise_ai_platform.observation.quality.observation_quality import ObservationQualityAssessor
         a   = ObservationQualityAssessor()
         obs = _make_obs(content={"price": 100}, title="HQ")
         s   = a.score(obs)
         assert 0.0 <= s.oqi <= 1.0
 
     def test_high_quality_obs(self):
-        from iios.observation.quality.observation_quality import ObservationQualityAssessor
-        from iios.observation.observation_constants import ObservationSource
+        from enterprise_ai_platform.observation.quality.observation_quality import ObservationQualityAssessor
+        from enterprise_ai_platform.observation.observation_constants import ObservationSource
         a   = ObservationQualityAssessor()
         f   = _make_obs(
             content    = {"price": 100, "vol": 5000},
@@ -770,8 +770,8 @@ class TestObservationQualityAssessor:
         assert s.oqi >= 0.50
 
     def test_tier_matches_oqi(self):
-        from iios.observation.quality.observation_quality import ObservationQualityAssessor
-        from iios.observation.observation_constants import ObservationQuality
+        from enterprise_ai_platform.observation.quality.observation_quality import ObservationQualityAssessor
+        from enterprise_ai_platform.observation.observation_constants import ObservationQuality
         a   = ObservationQualityAssessor()
         obs = _make_obs(content={"x": 1})
         s   = a.score(obs)
@@ -781,14 +781,14 @@ class TestObservationQualityAssessor:
         else: assert s.tier == ObservationQuality.POOR
 
     def test_passes_threshold(self):
-        from iios.observation.quality.observation_quality import ObservationQualityAssessor
+        from enterprise_ai_platform.observation.quality.observation_quality import ObservationQualityAssessor
         a   = ObservationQualityAssessor()
         obs = _make_obs(content={"x": 1}, title="ok")
         s   = a.score(obs)
         assert isinstance(s.passes(0.0), bool)
 
     def test_dimensions_count(self):
-        from iios.observation.quality.observation_quality import ObservationQualityAssessor
+        from enterprise_ai_platform.observation.quality.observation_quality import ObservationQualityAssessor
         a   = ObservationQualityAssessor()
         obs = _make_obs()
         s   = a.score(obs)
@@ -801,14 +801,14 @@ class TestObservationQualityAssessor:
 
 class TestObservationFactory:
     def test_create_basic(self):
-        from iios.observation.observation_factory import ObservationFactory
+        from enterprise_ai_platform.observation.observation_factory import ObservationFactory
         f   = ObservationFactory()
         obs = f.create(content={"x": 1}, title="basic")
         assert obs.title == "basic"
 
     def test_create_market_data(self):
-        from iios.observation.observation_factory import ObservationFactory
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.observation_factory import ObservationFactory
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         f   = ObservationFactory()
         obs = f.create_market_data(
             content={"open": 100, "close": 105}, instrument="NIFTY"
@@ -817,14 +817,14 @@ class TestObservationFactory:
         assert obs.source_info.instrument == "NIFTY"
 
     def test_create_signal(self):
-        from iios.observation.observation_factory import ObservationFactory
-        from iios.observation.observation_constants import ObservationType
+        from enterprise_ai_platform.observation.observation_factory import ObservationFactory
+        from enterprise_ai_platform.observation.observation_constants import ObservationType
         f   = ObservationFactory()
         obs = f.create_signal(content={"direction": "BUY"}, instrument="RELIANCE")
         assert obs.obs_type == ObservationType.SIGNAL
 
     def test_create_batch(self):
-        from iios.observation.observation_factory import ObservationFactory
+        from enterprise_ai_platform.observation.observation_factory import ObservationFactory
         f  = ObservationFactory()
         bs = f.create_batch([
             {"content": {"p": 1}, "title": "a"},
@@ -834,7 +834,7 @@ class TestObservationFactory:
         assert bs[0].title == "a"
 
     def test_singleton(self):
-        from iios.observation.observation_factory import get_observation_factory
+        from enterprise_ai_platform.observation.observation_factory import get_observation_factory
         assert get_observation_factory() is get_observation_factory()
 
 
@@ -844,13 +844,13 @@ class TestObservationFactory:
 
 class TestObservationContext:
     def test_default_actor(self):
-        from iios.observation.observation_context import get_observation_context
-        from iios.observation.observation_constants import SYSTEM_OBSERVER
+        from enterprise_ai_platform.observation.observation_context import get_observation_context
+        from enterprise_ai_platform.observation.observation_constants import SYSTEM_OBSERVER
         ctx = get_observation_context()
         assert ctx.actor == SYSTEM_OBSERVER
 
     def test_context_manager(self):
-        from iios.observation.observation_context import (
+        from enterprise_ai_platform.observation.observation_context import (
             get_observation_context, current_obs_actor,
         )
         ctx = get_observation_context()
@@ -859,7 +859,7 @@ class TestObservationContext:
         assert current_obs_actor() != "test_actor"
 
     def test_nested_context(self):
-        from iios.observation.observation_context import get_observation_context
+        from enterprise_ai_platform.observation.observation_context import get_observation_context
         ctx = get_observation_context()
         with ctx.operation(actor="outer"):
             with ctx.operation(actor="inner"):
@@ -867,7 +867,7 @@ class TestObservationContext:
             assert ctx.actor == "outer"
 
     def test_thread_isolation(self):
-        from iios.observation.observation_context import (
+        from enterprise_ai_platform.observation.observation_context import (
             get_observation_context, current_obs_actor,
         )
         ctx    = get_observation_context()
@@ -883,7 +883,7 @@ class TestObservationContext:
         t.join()
         assert results == ["thread_actor"]
         # main thread should still have default
-        from iios.observation.observation_constants import SYSTEM_OBSERVER
+        from enterprise_ai_platform.observation.observation_constants import SYSTEM_OBSERVER
         assert current_obs_actor() == SYSTEM_OBSERVER
 
 
@@ -893,33 +893,33 @@ class TestObservationContext:
 
 class TestObservationRegistry:
     def test_auto_registers_components(self):
-        from iios.observation.observation_registry import ObservationRegistry
+        from enterprise_ai_platform.observation.observation_registry import ObservationRegistry
         reg = ObservationRegistry()
         assert reg.has("factory")
         assert reg.has("pipeline")
         assert reg.has("validator")
 
     def test_register_custom(self):
-        from iios.observation.observation_registry import ObservationRegistry
+        from enterprise_ai_platform.observation.observation_registry import ObservationRegistry
         reg = ObservationRegistry()
         reg.register("my_component", object())
         assert reg.has("my_component")
 
     def test_get_missing_raises(self):
-        from iios.observation.observation_registry import ObservationRegistry
+        from enterprise_ai_platform.observation.observation_registry import ObservationRegistry
         reg = ObservationRegistry()
         with pytest.raises(KeyError):
             reg.get("no_such_thing")
 
     def test_names_returns_list(self):
-        from iios.observation.observation_registry import ObservationRegistry
+        from enterprise_ai_platform.observation.observation_registry import ObservationRegistry
         reg = ObservationRegistry()
         names = reg.names()
         assert isinstance(names, list)
         assert len(names) > 0
 
     def test_status_dict(self):
-        from iios.observation.observation_registry import ObservationRegistry
+        from enterprise_ai_platform.observation.observation_registry import ObservationRegistry
         reg = ObservationRegistry()
         s   = reg.status()
         assert "factory" in s
@@ -931,23 +931,23 @@ class TestObservationRegistry:
 
 class TestObservationManager:
     def test_ingest_returns_accepted(self):
-        from iios.observation.observation_manager import ObservationManager
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         mgr = ObservationManager()
         obs = _make_obs(content={"p": 1}, title="ingest test")
         result = mgr.ingest(obs)
         assert result.status == ObservationStatus.ACCEPTED
 
     def test_ingest_bad_obs_rejected(self):
-        from iios.observation.observation_manager import ObservationManager
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         mgr = ObservationManager()
         obs = _make_obs(content=None)
         result = mgr.ingest(obs)
         assert result.status == ObservationStatus.REJECTED
 
     def test_get_after_ingest(self):
-        from iios.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
         mgr = ObservationManager()
         obs = _make_obs(content={"p": 1}, title="get test")
         mgr.ingest(obs)
@@ -955,7 +955,7 @@ class TestObservationManager:
         assert fetched.id == obs.id
 
     def test_ingest_batch(self):
-        from iios.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
         mgr   = ObservationManager()
         batch = [_make_obs(content={"i": i}, title=f"obs{i}") for i in range(5)]
         acc, rej = mgr.ingest_batch(batch)
@@ -963,7 +963,7 @@ class TestObservationManager:
         assert len(rej) == 0
 
     def test_statistics(self):
-        from iios.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
         mgr = ObservationManager()
         obs = _make_obs(content={"p": 1})
         mgr.ingest(obs)
@@ -971,21 +971,21 @@ class TestObservationManager:
         assert s.total_created >= 1
 
     def test_duplicate_skip(self):
-        from iios.observation.observation_manager import ObservationManager
-        from iios.observation.observation_constants import DuplicatePolicy, ObservationStatus
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_constants import DuplicatePolicy, ObservationStatus
         mgr = ObservationManager(duplicate_policy=DuplicatePolicy.SKIP)
         obs = _make_obs(content={"price": 100.0}, title="dup test")
         mgr.ingest(obs)
 
         # Create obs with same content (same checksum)
-        from iios.observation.observation_factory import get_observation_factory
+        from enterprise_ai_platform.observation.observation_factory import get_observation_factory
         obs2 = get_observation_factory().create(content={"price": 100.0}, title="dup test")
         result = mgr.ingest(obs2)
         # Duplicate policy SKIP → rejected without error
         assert result.status == ObservationStatus.REJECTED
 
     def test_list_accepted(self):
-        from iios.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
         mgr = ObservationManager()
         obs = _make_obs(content={"p": 1}, title="accept me")
         mgr.ingest(obs)
@@ -993,7 +993,7 @@ class TestObservationManager:
         assert any(o.id == obs.id for o in accepted)
 
     def test_expire_stale(self):
-        from iios.observation.observation_manager import ObservationManager
+        from enterprise_ai_platform.observation.observation_manager import ObservationManager
         mgr = ObservationManager()
         obs = _make_obs(content={"p": 1}, ttl_seconds=1)
         mgr.ingest(obs)
@@ -1008,14 +1008,14 @@ class TestObservationManager:
 
 class TestObservationEngine:
     def test_not_initialized_raises(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_exceptions import ObservationEngineNotInitializedError
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationEngineNotInitializedError
         engine = ObservationEngine()
         with pytest.raises(ObservationEngineNotInitializedError):
             engine.observe(content={"x": 1})
 
     def test_initialize_and_status(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         status = engine.status()
@@ -1023,8 +1023,8 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_observe_returns_accepted(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus, ObservationType
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus, ObservationType
         engine = ObservationEngine()
         engine.initialize()
         obs = engine.observe(
@@ -1038,8 +1038,8 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_observe_market_data(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         engine = ObservationEngine()
         engine.initialize()
         obs = engine.observe_market_data(
@@ -1051,8 +1051,8 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_observe_signal(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         engine = ObservationEngine()
         engine.initialize()
         obs = engine.observe_signal(
@@ -1063,7 +1063,7 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_observe_batch(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         acc, rej = engine.observe_batch([
@@ -1074,7 +1074,7 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_get_observed(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         obs = engine.observe(content={"x": 1}, title="get me")
@@ -1083,7 +1083,7 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_statistics_after_observe(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         engine.observe(content={"x": 1}, title="stat test")
@@ -1092,7 +1092,7 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_health(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         h = engine.health()
@@ -1100,8 +1100,8 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_shutdown_and_reinitialize(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_exceptions import ObservationEngineNotInitializedError
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_exceptions import ObservationEngineNotInitializedError
         engine = ObservationEngine()
         engine.initialize()
         engine.shutdown()
@@ -1109,9 +1109,9 @@ class TestObservationEngine:
             engine.observe(content={"x": 1})
 
     def test_find(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.repositories.observation_query import ObservationQuery
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.repositories.observation_query import ObservationQuery
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         engine = ObservationEngine()
         engine.initialize()
         engine.observe(content={"p": 1}, title="findable")
@@ -1121,13 +1121,13 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_singleton(self):
-        from iios.observation.observation_engine import get_observation_engine
+        from enterprise_ai_platform.observation.observation_engine import get_observation_engine
         e1 = get_observation_engine()
         e2 = get_observation_engine()
         assert e1 is e2
 
     def test_double_initialize_safe(self):
-        from iios.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
         engine = ObservationEngine()
         engine.initialize()
         engine.initialize()  # should not raise
@@ -1135,8 +1135,8 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_archive(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
         engine = ObservationEngine()
         engine.initialize()
         obs = engine.observe(content={"p": 1}, title="archive me")
@@ -1146,9 +1146,9 @@ class TestObservationEngine:
         engine.shutdown()
 
     def test_submit_prebuilt(self):
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus
-        from iios.observation.observation_factory import get_observation_factory
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_factory import get_observation_factory
         engine = ObservationEngine()
         engine.initialize()
         obs = get_observation_factory().create(content={"p": 1}, title="prebuilt")
@@ -1158,8 +1158,8 @@ class TestObservationEngine:
 
     def test_concurrency(self):
         """Multiple threads can ingest observations concurrently."""
-        from iios.observation.observation_engine import ObservationEngine
-        from iios.observation.observation_constants import ObservationStatus
+        from enterprise_ai_platform.observation.observation_engine import ObservationEngine
+        from enterprise_ai_platform.observation.observation_constants import ObservationStatus
 
         engine = ObservationEngine()
         engine.initialize()

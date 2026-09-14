@@ -9,7 +9,7 @@ from typing import List
 
 import pytest
 
-from iios.common.errors.failure_metrics import (
+from enterprise_ai_platform.common.errors.failure_metrics import (
     EngineMetricsSnapshot,
     FailureMetricsSnapshot,
     FailureTrendEntry,
@@ -59,27 +59,27 @@ class TestFrozenSnapshots:
 class TestRecordFailure:
 
     def test_increments_failure_count(self, tracker):
-        tracker.record_failure("iios:test", ValueError)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_failure("enterprise_ai_platform:test", ValueError)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.failures == 1
 
     def test_multiple_failures_accumulate(self, tracker):
         for _ in range(5):
-            tracker.record_failure("iios:test", ValueError)
-        snap = tracker.engine_snapshot("iios:test")
+            tracker.record_failure("enterprise_ai_platform:test", ValueError)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.failures == 5
 
     def test_different_engines_independent(self, tracker):
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-b", RuntimeError)
-        snap_a = tracker.engine_snapshot("iios:eng-a")
-        snap_b = tracker.engine_snapshot("iios:eng-b")
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-b", RuntimeError)
+        snap_a = tracker.engine_snapshot("enterprise_ai_platform:eng-a")
+        snap_b = tracker.engine_snapshot("enterprise_ai_platform:eng-b")
         assert snap_a.failures == 1
         assert snap_b.failures == 1
 
     def test_exc_type_optional(self, tracker):
-        tracker.record_failure("iios:test")   # no exc_type
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_failure("enterprise_ai_platform:test")   # no exc_type
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.failures == 1
 
 
@@ -88,19 +88,19 @@ class TestRecordFailure:
 class TestRecordRecovery:
 
     def test_increments_recovery_count(self, tracker):
-        tracker.record_recovery("iios:test", 1.0, succeeded=True)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=True)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recoveries == 1
 
     def test_success_increments_recovery_successes(self, tracker):
-        tracker.record_recovery("iios:test", 1.0, succeeded=True)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=True)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recovery_successes == 1
         assert snap.recovery_failures  == 0
 
     def test_failure_increments_recovery_failures(self, tracker):
-        tracker.record_recovery("iios:test", 0.5, succeeded=False)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 0.5, succeeded=False)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recovery_successes == 0
         assert snap.recovery_failures  == 1
 
@@ -110,14 +110,14 @@ class TestRecordRecovery:
 class TestRecordRetry:
 
     def test_increments_retry_count(self, tracker):
-        tracker.record_retry("iios:test")
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_retry("enterprise_ai_platform:test")
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.retries == 1
 
     def test_multiple_retries(self, tracker):
         for _ in range(7):
-            tracker.record_retry("iios:test")
-        snap = tracker.engine_snapshot("iios:test")
+            tracker.record_retry("enterprise_ai_platform:test")
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.retries == 7
 
 
@@ -131,21 +131,21 @@ class TestRecoverySuccessRate:
 
     def test_one_hundred_percent_when_all_succeed(self, tracker):
         for _ in range(5):
-            tracker.record_recovery("iios:test", 1.0, succeeded=True)
-        snap = tracker.engine_snapshot("iios:test")
+            tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=True)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recovery_success_rate == pytest.approx(1.0)
 
     def test_zero_when_all_fail(self, tracker):
         for _ in range(3):
-            tracker.record_recovery("iios:test", 0.5, succeeded=False)
-        snap = tracker.engine_snapshot("iios:test")
+            tracker.record_recovery("enterprise_ai_platform:test", 0.5, succeeded=False)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recovery_success_rate == 0.0
 
     def test_partial_rate(self, tracker):
-        tracker.record_recovery("iios:test", 1.0, succeeded=True)
-        tracker.record_recovery("iios:test", 1.0, succeeded=True)
-        tracker.record_recovery("iios:test", 1.0, succeeded=False)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=True)
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=True)
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=False)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.recovery_success_rate == pytest.approx(2 / 3, rel=0.01)
 
 
@@ -154,14 +154,14 @@ class TestRecoverySuccessRate:
 class TestMTTR:
 
     def test_zero_when_no_successful_recoveries(self, tracker):
-        tracker.record_recovery("iios:test", 1.0, succeeded=False)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 1.0, succeeded=False)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.mean_time_to_recovery == 0.0
 
     def test_mttr_calculated_correctly(self, tracker):
-        tracker.record_recovery("iios:test", 2.0, succeeded=True)
-        tracker.record_recovery("iios:test", 4.0, succeeded=True)
-        snap = tracker.engine_snapshot("iios:test")
+        tracker.record_recovery("enterprise_ai_platform:test", 2.0, succeeded=True)
+        tracker.record_recovery("enterprise_ai_platform:test", 4.0, succeeded=True)
+        snap = tracker.engine_snapshot("enterprise_ai_platform:test")
         assert snap.mean_time_to_recovery == pytest.approx(3.0)
 
 
@@ -170,18 +170,18 @@ class TestMTTR:
 class TestPlatformSnapshot:
 
     def test_total_failures_aggregated(self, tracker):
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-b", RuntimeError)
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-b", RuntimeError)
         snap = tracker.snapshot()
         assert snap.total_failures == 3
 
     def test_engines_dict_populated(self, tracker):
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-b", RuntimeError)
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-b", RuntimeError)
         snap = tracker.snapshot()
-        assert "iios:eng-a" in snap.engines
-        assert "iios:eng-b" in snap.engines
+        assert "enterprise_ai_platform:eng-a" in snap.engines
+        assert "enterprise_ai_platform:eng-b" in snap.engines
 
     def test_empty_snapshot_fields(self):
         fresh = FailureTracker()
@@ -208,8 +208,8 @@ class TestFailureTrend:
         assert all(isinstance(e, FailureTrendEntry) for e in trend)
 
     def test_recent_failures_appear_in_last_bucket(self, tracker):
-        tracker.record_failure("iios:test", ValueError)
-        trend = tracker.failure_trend("iios:test", window_sec=5.0, buckets=5)
+        tracker.record_failure("enterprise_ai_platform:test", ValueError)
+        trend = tracker.failure_trend("enterprise_ai_platform:test", window_sec=5.0, buckets=5)
         # Last bucket should have at least 1 failure
         total = sum(e.failure_count for e in trend)
         assert total >= 1
@@ -219,8 +219,8 @@ class TestFailureTrend:
         assert trend == []
 
     def test_platform_wide_trend(self, tracker):
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-b", RuntimeError)
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-b", RuntimeError)
         trend = tracker.failure_trend("", window_sec=5.0, buckets=5)
         total = sum(e.failure_count for e in trend)
         assert total >= 2
@@ -231,15 +231,15 @@ class TestFailureTrend:
 class TestReset:
 
     def test_reset_all_clears_counters(self, tracker):
-        tracker.record_failure("iios:test", ValueError)
+        tracker.record_failure("enterprise_ai_platform:test", ValueError)
         tracker.reset()
         snap = tracker.snapshot()
         assert snap.total_failures == 0
 
     def test_reset_specific_engine(self, tracker):
-        tracker.record_failure("iios:eng-a", ValueError)
-        tracker.record_failure("iios:eng-b", RuntimeError)
-        tracker.reset("iios:eng-a")
+        tracker.record_failure("enterprise_ai_platform:eng-a", ValueError)
+        tracker.record_failure("enterprise_ai_platform:eng-b", RuntimeError)
+        tracker.reset("enterprise_ai_platform:eng-a")
         snap = tracker.snapshot()
         assert snap.total_failures == 1   # only eng-b remains
 
@@ -276,7 +276,7 @@ class TestThreadSafety:
                 tracker.record_failure(engine_id, ValueError)
 
         threads = [
-            threading.Thread(target=worker, args=(f"iios:eng-{i}",))
+            threading.Thread(target=worker, args=(f"enterprise_ai_platform:eng-{i}",))
             for i in range(5)
         ]
         for t in threads: t.start()

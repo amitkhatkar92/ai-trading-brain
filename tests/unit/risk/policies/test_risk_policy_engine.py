@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from iios.risk.policies import (
+from enterprise_ai_platform.risk.policies import (
     # Constants
     ACTION_SEVERITY,
     DEFAULT_MAX_POLICIES,
@@ -259,7 +259,7 @@ class TestExceptions:
         assert "audit fail" in str(err)
 
     def test_exceptions_are_iios_error_subclasses(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         for cls in (
             RiskPolicyEngineNotRunningError,
             RiskPolicyNotFoundError,

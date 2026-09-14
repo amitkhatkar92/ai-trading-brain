@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.correlation.models import (
+from enterprise_ai_platform.investment.market.correlation.models import (
     AssetClass,
     CorrelationEventType,
     CorrelationMatrix,
@@ -14,10 +14,10 @@ from iios.investment.market.correlation.models import (
     RiskLevel,
     SystemicRiskMetrics,
 )
-from iios.investment.market.correlation.correlation_statistics import CorrelationStatistics
-from iios.investment.market.correlation.correlation_classifier import CorrelationRegimeClassifier
-from iios.investment.market.correlation.regime_transition import CorrelationRegimeTransitionDetector
-from iios.investment.market.correlation.correlation_regime import build_regime_snapshot
+from enterprise_ai_platform.investment.market.correlation.correlation_statistics import CorrelationStatistics
+from enterprise_ai_platform.investment.market.correlation.correlation_classifier import CorrelationRegimeClassifier
+from enterprise_ai_platform.investment.market.correlation.regime_transition import CorrelationRegimeTransitionDetector
+from enterprise_ai_platform.investment.market.correlation.correlation_regime import build_regime_snapshot
 
 
 def _matrix(avg_corr: float):

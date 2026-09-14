@@ -32,7 +32,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.portfolio.snapshot import (
+from enterprise_ai_platform.portfolio.snapshot import (
     # constants
     SNAPSHOT_SYSTEM_ID,
     VERSION,
@@ -165,7 +165,7 @@ def factory() -> PortfolioSnapshotFactory:
 class TestConstants:
     def test_system_id_is_string(self):
         assert isinstance(SNAPSHOT_SYSTEM_ID, str)
-        assert SNAPSHOT_SYSTEM_ID.startswith("iios:")
+        assert SNAPSHOT_SYSTEM_ID.startswith("enterprise_ai_platform:")
 
     def test_version_string(self):
         assert isinstance(VERSION, str)

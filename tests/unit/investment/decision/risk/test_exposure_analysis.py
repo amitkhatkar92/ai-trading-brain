@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-from iios.investment.decision.risk.capital_exposure import CapitalExposureAnalyzer
-from iios.investment.decision.risk.concentration_analysis import ConcentrationAnalyzer
-from iios.investment.decision.risk.exposure_engine import ExposureEngine
-from iios.investment.decision.risk.position_exposure import PositionExposureAnalyzer
-from iios.investment.decision.risk.risk_constants import ExposureLevel
+from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+from enterprise_ai_platform.investment.decision.risk.capital_exposure import CapitalExposureAnalyzer
+from enterprise_ai_platform.investment.decision.risk.concentration_analysis import ConcentrationAnalyzer
+from enterprise_ai_platform.investment.decision.risk.exposure_engine import ExposureEngine
+from enterprise_ai_platform.investment.decision.risk.position_exposure import PositionExposureAnalyzer
+from enterprise_ai_platform.investment.decision.risk.risk_constants import ExposureLevel
 
 
 # ─── PositionExposureAnalyzer ────────────────────────────────────────────────

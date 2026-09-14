@@ -12,7 +12,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from iios.bootstrap.startup_state import (
+from enterprise_ai_platform.bootstrap.startup_state import (
     BootstrapError,
     BootstrapStage,
     ShutdownError,

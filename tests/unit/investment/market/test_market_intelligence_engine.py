@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from iios.investment.market import (
+from enterprise_ai_platform.investment.market import (
     # constants
     BreadthCondition, CorrelationRegime, LiquidityLevel, MarketPhase,
     MarketRegime, MarketStatus, MarketStrength, SentimentLevel,
@@ -1222,7 +1222,7 @@ class TestConcurrency:
 
 class TestPackageImports:
     def test_all_symbols_importable(self):
-        import iios.investment.market as pkg
+        import enterprise_ai_platform.investment.market as pkg
         for name in pkg.__all__:
             assert hasattr(pkg, name), f"Missing from __all__: {name}"
 
@@ -1232,5 +1232,5 @@ class TestPackageImports:
         assert issubclass(SnapshotNotFoundError,          MarketIntelligenceError)
 
     def test_version(self):
-        import iios.investment.market as pkg
+        import enterprise_ai_platform.investment.market as pkg
         assert pkg.__version__ == "1.0.0"

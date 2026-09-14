@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.breadth.models import (
+from enterprise_ai_platform.investment.market.breadth.models import (
     BreadthData,
     BreadthEvent,
     BreadthEventType,
@@ -13,8 +13,8 @@ from iios.investment.market.breadth.models import (
     MarketHealthSnapshot,
     ParticipationSnapshot,
 )
-from iios.investment.market.breadth.breadth_classifier import BreadthClassifier
-from iios.investment.market.breadth.breadth_transition import BreadthTransitionDetector
+from enterprise_ai_platform.investment.market.breadth.breadth_classifier import BreadthClassifier
+from enterprise_ai_platform.investment.market.breadth.breadth_transition import BreadthTransitionDetector
 
 
 def _bd(pct: float, stability: float = 0.70) -> BreadthData:
@@ -120,7 +120,7 @@ class TestBreadthTransitionDetector:
         assert td.current_regime == BreadthRegimeType.UNKNOWN
 
     def test_first_update_triggers_transition(self):
-        from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+        from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
         td = BreadthTransitionDetector()
         snap = build_regime_snapshot(
             BreadthRegimeType.BROAD_RALLY, 0.85, 1, None, 0.10, 80.0
@@ -130,7 +130,7 @@ class TestBreadthTransitionDetector:
         assert any(e.event_type == BreadthEventType.REGIME_CHANGE for e in events)
 
     def test_no_event_when_regime_unchanged(self):
-        from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+        from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
         td = BreadthTransitionDetector()
         snap = build_regime_snapshot(
             BreadthRegimeType.NEUTRAL, 0.70, 1, None, 0.10, 50.0
@@ -140,7 +140,7 @@ class TestBreadthTransitionDetector:
         assert events == []
 
     def test_duration_increments(self):
-        from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+        from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
         td = BreadthTransitionDetector()
         snap = build_regime_snapshot(
             BreadthRegimeType.NEUTRAL, 0.70, 1, None, 0.10, 50.0
@@ -151,7 +151,7 @@ class TestBreadthTransitionDetector:
         assert td.duration_bars >= 4
 
     def test_health_improvement_event_on_upward_transition(self):
-        from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+        from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
         td = BreadthTransitionDetector()
         low = build_regime_snapshot(BreadthRegimeType.WEAK_PARTICIPATION, 0.60, 1, None, 0.20, 30.0)
         td.update(low, 0, "TEST")
@@ -161,7 +161,7 @@ class TestBreadthTransitionDetector:
         assert BreadthEventType.HEALTH_IMPROVEMENT in ev_types
 
     def test_previous_regime_tracked(self):
-        from iios.investment.market.breadth.breadth_regime import build_regime_snapshot
+        from enterprise_ai_platform.investment.market.breadth.breadth_regime import build_regime_snapshot
         td = BreadthTransitionDetector()
         snap1 = build_regime_snapshot(BreadthRegimeType.NEUTRAL, 0.70, 1, None, 0.10, 50.0)
         td.update(snap1, 0, "TEST")

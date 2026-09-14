@@ -6,16 +6,16 @@ import uuid
 import pytest
 import pytest_asyncio
 
-from iios.investment.decision.confidence.confidence_constants import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_constants import (
     ConfidenceEngineStatus,
     ConfidenceLevel,
 )
-from iios.investment.decision.confidence.confidence_pipeline import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_pipeline import (
     BaseConfidenceModule,
     ConfidenceContext,
 )
-from iios.investment.decision.confidence.confidence_snapshot import ConfidenceSnapshot
-from iios.investment.decision.confidence.decision_confidence_engine import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_snapshot import ConfidenceSnapshot
+from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import (
     DecisionConfidenceEngine,
 )
 
@@ -151,8 +151,8 @@ class TestVersionTracking:
     def test_different_subjects_independent_versions(
         self, make_evidence_snapshot, make_ev_item, rich_reasoning_snapshot
     ):
-        from iios.investment.decision.evidence.evidence_constants import EvidenceSourceType
-        from iios.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
+        from enterprise_ai_platform.investment.decision.evidence.evidence_constants import EvidenceSourceType
+        from enterprise_ai_platform.investment.decision.reasoning.decision_reasoning_engine import DecisionReasoningEngine
 
         ev1 = make_evidence_snapshot(
             [make_ev_item("p", 100, EvidenceSourceType.MARKET, decision_id="D_A", subject_id="AAA"),
@@ -280,7 +280,7 @@ class TestPluggableModule:
             async def execute(self, ctx: ConfidenceContext) -> None:
                 executed.append(True)
 
-        from iios.investment.decision.confidence.confidence_pipeline import ConfidencePipeline
+        from enterprise_ai_platform.investment.decision.confidence.confidence_pipeline import ConfidencePipeline
         pipeline = ConfidencePipeline(extra_modules=[StubModule()])
         engine   = DecisionConfidenceEngine(pipeline=pipeline)
         engine.start()

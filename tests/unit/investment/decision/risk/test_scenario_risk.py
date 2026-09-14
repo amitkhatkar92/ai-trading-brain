@@ -5,11 +5,11 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.risk.risk_constants import ScenarioType
-from iios.investment.decision.risk.scenario_registry import ScenarioRegistry
-from iios.investment.decision.risk.scenario_risk import ScenarioRiskAnalyzer, ScenarioRiskResult
-from iios.investment.decision.risk.scenario_statistics import ScenarioStatisticsTracker
-from iios.investment.decision.risk.stress_scenarios import DEFAULT_SCENARIOS, StressScenario
+from enterprise_ai_platform.investment.decision.risk.risk_constants import ScenarioType
+from enterprise_ai_platform.investment.decision.risk.scenario_registry import ScenarioRegistry
+from enterprise_ai_platform.investment.decision.risk.scenario_risk import ScenarioRiskAnalyzer, ScenarioRiskResult
+from enterprise_ai_platform.investment.decision.risk.scenario_statistics import ScenarioStatisticsTracker
+from enterprise_ai_platform.investment.decision.risk.stress_scenarios import DEFAULT_SCENARIOS, StressScenario
 
 
 # ─── StressScenario ───────────────────────────────────────────────────────────

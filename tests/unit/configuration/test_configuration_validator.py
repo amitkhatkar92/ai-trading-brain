@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.configuration.configuration_exception import (
+from enterprise_ai_platform.configuration.configuration_exception import (
     ConfigurationValidationError,
     FieldValidationError,
 )
-from iios.configuration.configuration_schema import FieldSpec, SectionSchema, IIOS_SCHEMA
-from iios.configuration.configuration_validator import (
+from enterprise_ai_platform.configuration.configuration_schema import FieldSpec, SectionSchema, IIOS_SCHEMA
+from enterprise_ai_platform.configuration.configuration_validator import (
     ConfigurationValidator,
     ValidationReport,
 )

@@ -3,29 +3,29 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.decision.confidence.confidence_constants import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_constants import (
     CalibrationStatus,
     ConfidenceDimension,
     ConfidenceLevel,
     ConfidenceQualityGrade,
 )
-from iios.investment.decision.confidence.confidence_health import ConfidenceHealthMonitor
-from iios.investment.decision.confidence.confidence_quality import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_health import ConfidenceHealthMonitor
+from enterprise_ai_platform.investment.decision.confidence.confidence_quality import (
     ConfidenceQualityEvaluator,
 )
-from iios.investment.decision.confidence.confidence_score import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_score import (
     ConfidenceScore,
     compute_confidence_score,
 )
-from iios.investment.decision.confidence.confidence_statistics import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_statistics import (
     ConfidenceStatisticsTracker,
 )
-from iios.investment.decision.confidence.confidence_validator import ConfidenceValidator
-from iios.investment.decision.confidence.decision_confidence import (
+from enterprise_ai_platform.investment.decision.confidence.confidence_validator import ConfidenceValidator
+from enterprise_ai_platform.investment.decision.confidence.decision_confidence import (
     DecisionConfidence,
     build_decision_confidence,
 )
-from iios.investment.decision.confidence.overall_confidence import (
+from enterprise_ai_platform.investment.decision.confidence.overall_confidence import (
     OverallConfidenceEstimator,
 )
 
@@ -127,10 +127,10 @@ class TestOverallConfidenceEstimator:
     def test_estimate_returns_result(
         self, rich_evidence_snapshot, rich_reasoning_snapshot,
     ):
-        from iios.investment.decision.confidence.evidence_confidence import EvidenceConfidenceEstimator
-        from iios.investment.decision.confidence.reasoning_confidence import ReasoningConfidenceEstimator
-        from iios.investment.decision.confidence.historical_confidence import HistoricalConfidenceAnalyzer
-        from iios.investment.decision.confidence.calibration_engine import CalibrationEngine
+        from enterprise_ai_platform.investment.decision.confidence.evidence_confidence import EvidenceConfidenceEstimator
+        from enterprise_ai_platform.investment.decision.confidence.reasoning_confidence import ReasoningConfidenceEstimator
+        from enterprise_ai_platform.investment.decision.confidence.historical_confidence import HistoricalConfidenceAnalyzer
+        from enterprise_ai_platform.investment.decision.confidence.calibration_engine import CalibrationEngine
 
         ev_result  = EvidenceConfidenceEstimator().estimate(rich_evidence_snapshot)
         re_result  = ReasoningConfidenceEstimator().estimate(rich_reasoning_snapshot)
@@ -156,7 +156,7 @@ class TestOverallConfidenceEstimator:
 
 class TestConfidenceValidator:
     def test_valid_snapshot(self, rich_evidence_snapshot, rich_reasoning_snapshot):
-        from iios.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
+        from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
         engine = DecisionConfidenceEngine()
         engine.start()
         snap = engine.estimate_sync(rich_evidence_snapshot, rich_reasoning_snapshot)
@@ -165,7 +165,7 @@ class TestConfidenceValidator:
         assert isinstance(result.is_valid, bool)
 
     def test_to_dict(self, rich_evidence_snapshot, rich_reasoning_snapshot):
-        from iios.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
+        from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
         engine = DecisionConfidenceEngine()
         engine.start()
         snap = engine.estimate_sync(rich_evidence_snapshot, rich_reasoning_snapshot)
@@ -180,7 +180,7 @@ class TestConfidenceValidator:
 
 class TestConfidenceQualityEvaluator:
     def test_evaluate_returns_report(self, rich_evidence_snapshot, rich_reasoning_snapshot):
-        from iios.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
+        from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
         engine = DecisionConfidenceEngine()
         engine.start()
         snap = engine.estimate_sync(rich_evidence_snapshot, rich_reasoning_snapshot)
@@ -189,7 +189,7 @@ class TestConfidenceQualityEvaluator:
         assert 0.0 <= report.overall_quality <= 100.0
 
     def test_grade_set(self, rich_evidence_snapshot, rich_reasoning_snapshot):
-        from iios.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
+        from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
         engine = DecisionConfidenceEngine()
         engine.start()
         snap = engine.estimate_sync(rich_evidence_snapshot, rich_reasoning_snapshot)
@@ -197,7 +197,7 @@ class TestConfidenceQualityEvaluator:
         assert report.grade in list(ConfidenceQualityGrade)
 
     def test_to_dict(self, rich_evidence_snapshot, rich_reasoning_snapshot):
-        from iios.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
+        from enterprise_ai_platform.investment.decision.confidence.decision_confidence_engine import DecisionConfidenceEngine
         engine = DecisionConfidenceEngine()
         engine.start()
         snap = engine.estimate_sync(rich_evidence_snapshot, rich_reasoning_snapshot)

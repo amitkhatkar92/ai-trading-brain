@@ -1,10 +1,10 @@
 """tests/unit/investment/strategy/debate/test_debate_session.py"""
 import pytest
-from iios.investment.strategy.debate.debate_constants import DebatePhase, DebateStatus
-from iios.investment.strategy.debate.debate_state import DebateState, DebateStateError
-from iios.investment.strategy.debate.debate_session import DebateSession
-from iios.investment.strategy.debate.debate_history import DebateHistory
-from iios.investment.strategy.debate.debate_context import DebateContext
+from enterprise_ai_platform.investment.strategy.debate.debate_constants import DebatePhase, DebateStatus
+from enterprise_ai_platform.investment.strategy.debate.debate_state import DebateState, DebateStateError
+from enterprise_ai_platform.investment.strategy.debate.debate_session import DebateSession
+from enterprise_ai_platform.investment.strategy.debate.debate_history import DebateHistory
+from enterprise_ai_platform.investment.strategy.debate.debate_context import DebateContext
 
 
 class TestDebateState:

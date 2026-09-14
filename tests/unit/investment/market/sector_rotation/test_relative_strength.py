@@ -3,14 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.models import SectorPerformance
-from iios.investment.market.sector_rotation.relative_strength_engine import (
+from enterprise_ai_platform.investment.market.sector_rotation.models import SectorPerformance
+from enterprise_ai_platform.investment.market.sector_rotation.relative_strength_engine import (
     RelativeStrengthEngine,
 )
-from iios.investment.market.sector_rotation.relative_strength_ranker import (
+from enterprise_ai_platform.investment.market.sector_rotation.relative_strength_ranker import (
     rank_sectors_by_rs,
 )
-from iios.investment.market.sector_rotation.relative_strength_score import (
+from enterprise_ai_platform.investment.market.sector_rotation.relative_strength_score import (
     compute_rs_score,
 )
 

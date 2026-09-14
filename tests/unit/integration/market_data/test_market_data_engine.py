@@ -32,7 +32,7 @@ def _run(coro):
 
 # ── imports under test ────────────────────────────────────────────────────────
 
-from iios.integration.market_data.market_data_constants import (
+from enterprise_ai_platform.integration.market_data.market_data_constants import (
     AnomalyType,
     CandleInterval,
     DataQuality,
@@ -48,7 +48,7 @@ from iios.integration.market_data.market_data_constants import (
     DEFAULT_CONNECT_TIMEOUT_SEC,
     MARKET_DATA_ENGINE_VERSION,
 )
-from iios.integration.market_data.market_data_exceptions import (
+from enterprise_ai_platform.integration.market_data.market_data_exceptions import (
     HistoricalDataNotAvailableError,
     MarketDataEngineAlreadyRunningError,
     MarketDataEngineNotRunningError,
@@ -63,69 +63,69 @@ from iios.integration.market_data.market_data_exceptions import (
     SubscriptionCapacityError,
     SubscriptionNotFoundError,
 )
-from iios.integration.market_data.market_data_engine import (
+from enterprise_ai_platform.integration.market_data.market_data_engine import (
     MarketDataEngine,
     get_market_data_engine,
     reset_market_data_engine,
 )
-from iios.integration.market_data.market_data_context import (
+from enterprise_ai_platform.integration.market_data.market_data_context import (
     MarketDataContextState,
     market_data_context,
 )
-from iios.integration.market_data.market_data_factory import MarketDataFactory
-from iios.integration.market_data.market_data_registry import MarketDataRegistry
+from enterprise_ai_platform.integration.market_data.market_data_factory import MarketDataFactory
+from enterprise_ai_platform.integration.market_data.market_data_registry import MarketDataRegistry
 
 # Core models
-from iios.integration.market_data.core.market_tick      import MarketTick
-from iios.integration.market_data.core.market_quote     import MarketQuote
-from iios.integration.market_data.core.market_trade     import MarketTrade, TradeSide
-from iios.integration.market_data.core.market_candle    import MarketCandle
-from iios.integration.market_data.core.order_book       import OrderBook, OrderBookLevel
-from iios.integration.market_data.core.market_snapshot  import MarketSnapshot
-from iios.integration.market_data.core.market_event     import MarketEvent
-from iios.integration.market_data.core.market_statistics import MarketStatistics
+from enterprise_ai_platform.integration.market_data.core.market_tick      import MarketTick
+from enterprise_ai_platform.integration.market_data.core.market_quote     import MarketQuote
+from enterprise_ai_platform.integration.market_data.core.market_trade     import MarketTrade, TradeSide
+from enterprise_ai_platform.integration.market_data.core.market_candle    import MarketCandle
+from enterprise_ai_platform.integration.market_data.core.order_book       import OrderBook, OrderBookLevel
+from enterprise_ai_platform.integration.market_data.core.market_snapshot  import MarketSnapshot
+from enterprise_ai_platform.integration.market_data.core.market_event     import MarketEvent
+from enterprise_ai_platform.integration.market_data.core.market_statistics import MarketStatistics
 
 # Providers
-from iios.integration.market_data.providers.base_market_data_provider import BaseMarketDataProvider
-from iios.integration.market_data.providers.provider_capabilities     import ProviderCapabilities
-from iios.integration.market_data.providers.provider_metadata         import ProviderMetadata
-from iios.integration.market_data.providers.provider_health           import ProviderHealth
-from iios.integration.market_data.providers.market_data_session       import MarketDataSession, SubscriptionHandle
-from iios.integration.market_data.providers.paper_market_provider     import PaperMarketProvider
-from iios.integration.market_data.providers.yahoo_finance_provider    import YahooFinanceProvider
-from iios.integration.market_data.providers.nse_provider              import NSEProvider
-from iios.integration.market_data.providers.polygon_provider          import PolygonProvider
-from iios.integration.market_data.providers.alpha_vantage_provider    import AlphaVantageProvider
-from iios.integration.market_data.providers.twelve_data_provider      import TwelveDataProvider
+from enterprise_ai_platform.integration.market_data.providers.base_market_data_provider import BaseMarketDataProvider
+from enterprise_ai_platform.integration.market_data.providers.provider_capabilities     import ProviderCapabilities
+from enterprise_ai_platform.integration.market_data.providers.provider_metadata         import ProviderMetadata
+from enterprise_ai_platform.integration.market_data.providers.provider_health           import ProviderHealth
+from enterprise_ai_platform.integration.market_data.providers.market_data_session       import MarketDataSession, SubscriptionHandle
+from enterprise_ai_platform.integration.market_data.providers.paper_market_provider     import PaperMarketProvider
+from enterprise_ai_platform.integration.market_data.providers.yahoo_finance_provider    import YahooFinanceProvider
+from enterprise_ai_platform.integration.market_data.providers.nse_provider              import NSEProvider
+from enterprise_ai_platform.integration.market_data.providers.polygon_provider          import PolygonProvider
+from enterprise_ai_platform.integration.market_data.providers.alpha_vantage_provider    import AlphaVantageProvider
+from enterprise_ai_platform.integration.market_data.providers.twelve_data_provider      import TwelveDataProvider
 
 # Streaming
-from iios.integration.market_data.streaming.stream_buffer        import StreamBuffer
-from iios.integration.market_data.streaming.subscription_manager import SubscriptionManager, SubscriptionRecord
-from iios.integration.market_data.streaming.stream_router        import StreamRouter
-from iios.integration.market_data.streaming.stream_dispatcher    import StreamDispatcher
-from iios.integration.market_data.streaming.stream_manager       import StreamManager
+from enterprise_ai_platform.integration.market_data.streaming.stream_buffer        import StreamBuffer
+from enterprise_ai_platform.integration.market_data.streaming.subscription_manager import SubscriptionManager, SubscriptionRecord
+from enterprise_ai_platform.integration.market_data.streaming.stream_router        import StreamRouter
+from enterprise_ai_platform.integration.market_data.streaming.stream_dispatcher    import StreamDispatcher
+from enterprise_ai_platform.integration.market_data.streaming.stream_manager       import StreamManager
 
 # Validation
-from iios.integration.market_data.validation.quality_report      import QualityReport, QualityIssue
-from iios.integration.market_data.validation.gap_detector        import GapDetector
-from iios.integration.market_data.validation.duplicate_detector  import DuplicateDetector
-from iios.integration.market_data.validation.anomaly_detector    import AnomalyDetector
-from iios.integration.market_data.validation.market_validator    import MarketValidator
+from enterprise_ai_platform.integration.market_data.validation.quality_report      import QualityReport, QualityIssue
+from enterprise_ai_platform.integration.market_data.validation.gap_detector        import GapDetector
+from enterprise_ai_platform.integration.market_data.validation.duplicate_detector  import DuplicateDetector
+from enterprise_ai_platform.integration.market_data.validation.anomaly_detector    import AnomalyDetector
+from enterprise_ai_platform.integration.market_data.validation.market_validator    import MarketValidator
 
 # Normalization
-from iios.integration.market_data.normalization.market_normalizer import MarketNormalizer
+from enterprise_ai_platform.integration.market_data.normalization.market_normalizer import MarketNormalizer
 
 # Cache
-from iios.integration.market_data.cache.market_data_cache import MarketDataCache
+from enterprise_ai_platform.integration.market_data.cache.market_data_cache import MarketDataCache
 
 # Distribution
-from iios.integration.market_data.distribution.market_event_publisher import MarketEventPublisher
+from enterprise_ai_platform.integration.market_data.distribution.market_event_publisher import MarketEventPublisher
 
 # Historical
-from iios.integration.market_data.historical.historical_data_manager import HistoricalDataManager
+from enterprise_ai_platform.integration.market_data.historical.historical_data_manager import HistoricalDataManager
 
 # Monitoring
-from iios.integration.market_data.monitoring.market_data_monitor import MarketDataMonitor
+from enterprise_ai_platform.integration.market_data.monitoring.market_data_monitor import MarketDataMonitor
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -1447,7 +1447,7 @@ class TestMarketDataManager:
         cache      = MarketDataFactory.create_cache()
         historical = MarketDataFactory.create_historical_manager()
         monitor    = MarketDataFactory.create_monitor()
-        from iios.integration.market_data.market_data_manager import MarketDataManager
+        from enterprise_ai_platform.integration.market_data.market_data_manager import MarketDataManager
         return MarketDataManager(
             registry=registry, stream_manager=sm, publisher=publisher,
             normalizer=normalizer, validator=validator, cache=cache,

@@ -9,9 +9,9 @@ from typing import List
 
 import pytest
 
-from iios.investment.strategy.evaluation.trade import Trade
-from iios.investment.strategy.evaluation.equity_curve import EquityCurve, EquityPoint
-from iios.investment.strategy.evaluation.evaluation_input import EvaluationInput
+from enterprise_ai_platform.investment.strategy.evaluation.trade import Trade
+from enterprise_ai_platform.investment.strategy.evaluation.equity_curve import EquityCurve, EquityPoint
+from enterprise_ai_platform.investment.strategy.evaluation.evaluation_input import EvaluationInput
 
 
 def _dt(days_offset: int) -> datetime:

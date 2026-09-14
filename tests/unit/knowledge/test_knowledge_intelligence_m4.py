@@ -45,7 +45,7 @@ from typing import Any, Dict, List
 
 import pytest
 
-from iios.knowledge.intelligence.constants import (
+from enterprise_ai_platform.knowledge.intelligence.constants import (
     ClusteringAlgorithm,
     EntityType,
     IntelligenceEngineState,
@@ -56,14 +56,14 @@ from iios.knowledge.intelligence.constants import (
     RetrievalMode,
     SimilarityMetric,
 )
-from iios.knowledge.intelligence.embedding_engine import (
+from enterprise_ai_platform.knowledge.intelligence.embedding_engine import (
     EmbeddingEngine,
     EmbeddingVector,
     _stub_embed,
 )
-from iios.knowledge.intelligence.embedding_registry import EmbeddingRegistry
-from iios.knowledge.intelligence.entity_resolution_engine import EntityResolutionEngine
-from iios.knowledge.intelligence.exceptions import (
+from enterprise_ai_platform.knowledge.intelligence.embedding_registry import EmbeddingRegistry
+from enterprise_ai_platform.knowledge.intelligence.entity_resolution_engine import EntityResolutionEngine
+from enterprise_ai_platform.knowledge.intelligence.exceptions import (
     EmbeddingError,
     EnrichmentError,
     EntityResolutionError,
@@ -75,48 +75,48 @@ from iios.knowledge.intelligence.exceptions import (
     RetrievalError,
     VectorIndexError,
 )
-from iios.knowledge.intelligence.hybrid_search_engine import HybridSearchEngine
-from iios.knowledge.intelligence.knowledge_clustering_engine import (
+from enterprise_ai_platform.knowledge.intelligence.hybrid_search_engine import HybridSearchEngine
+from enterprise_ai_platform.knowledge.intelligence.knowledge_clustering_engine import (
     KnowledgeClusteringEngine,
 )
-from iios.knowledge.intelligence.knowledge_enrichment_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_enrichment_engine import (
     KnowledgeEnrichmentEngine,
 )
-from iios.knowledge.intelligence.knowledge_graph_builder import KnowledgeGraphBuilder
-from iios.knowledge.intelligence.knowledge_graph_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_graph_builder import KnowledgeGraphBuilder
+from enterprise_ai_platform.knowledge.intelligence.knowledge_graph_engine import (
     KnowledgeEntity,
     KnowledgeGraph,
     KnowledgeRelationship,
 )
-from iios.knowledge.intelligence.knowledge_graph_registry import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_graph_registry import (
     KnowledgeGraphRegistry,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_context import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_context import (
     KnowledgeIntelligenceContext,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_engine import (
     KnowledgeIntelligenceEngine,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_events import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_events import (
     IntelligenceEvent,
     IntelligenceEventBus,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_factory import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_factory import (
     KnowledgeIntelligenceFactory,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_history import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_history import (
     KnowledgeIntelligenceHistory,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_manager import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_manager import (
     KnowledgeIntelligenceManager,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_registry import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_registry import (
     KnowledgeIntelligenceRegistry,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_request import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_request import (
     KnowledgeIntelligenceRequest,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_response import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_response import (
     EnterpriseMemorySummary,
     KnowledgeIntelligenceReport,
     KnowledgeIntelligenceResponse,
@@ -127,34 +127,34 @@ from iios.knowledge.intelligence.knowledge_intelligence_response import (
     KnowledgeRetrievalResult,
     KnowledgeSimilarityReport,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_statistics import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_statistics import (
     KnowledgeIntelligenceStatistics,
 )
-from iios.knowledge.intelligence.knowledge_intelligence_validator import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_intelligence_validator import (
     IntelligenceValidationReport,
     KnowledgeIntelligenceValidator,
     ValidationResult,
 )
-from iios.knowledge.intelligence.knowledge_memory_engine import KnowledgeMemoryEngine
-from iios.knowledge.intelligence.knowledge_reasoning_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_memory_engine import KnowledgeMemoryEngine
+from enterprise_ai_platform.knowledge.intelligence.knowledge_reasoning_engine import (
     KnowledgeReasoningEngine,
 )
-from iios.knowledge.intelligence.knowledge_recommendation_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_recommendation_engine import (
     KnowledgeRecommendationEngine,
 )
-from iios.knowledge.intelligence.knowledge_similarity_engine import (
+from enterprise_ai_platform.knowledge.intelligence.knowledge_similarity_engine import (
     KnowledgeSimilarityEngine,
 )
-from iios.knowledge.intelligence.relationship_engine import RelationshipEngine
-from iios.knowledge.intelligence.reranking_engine import RerankingEngine
-from iios.knowledge.intelligence.retrieval_engine import RetrievalEngine
-from iios.knowledge.intelligence.semantic_analysis_engine import SemanticAnalysisEngine
-from iios.knowledge.intelligence.vector_index_engine import (
+from enterprise_ai_platform.knowledge.intelligence.relationship_engine import RelationshipEngine
+from enterprise_ai_platform.knowledge.intelligence.reranking_engine import RerankingEngine
+from enterprise_ai_platform.knowledge.intelligence.retrieval_engine import RetrievalEngine
+from enterprise_ai_platform.knowledge.intelligence.semantic_analysis_engine import SemanticAnalysisEngine
+from enterprise_ai_platform.knowledge.intelligence.vector_index_engine import (
     VectorIndex,
     VectorIndexEngine,
     VectorSearchResult,
 )
-from iios.knowledge.intelligence.vector_store_manager import VectorStoreManager
+from enterprise_ai_platform.knowledge.intelligence.vector_store_manager import VectorStoreManager
 
 
 # ════════════════════════════════════════════════════════════════════════
@@ -1294,7 +1294,7 @@ class TestEngineLifecycle:
     def test_double_start_raises(self):
         eng = _make_engine()
         eng.start()
-        from iios.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
+        from enterprise_ai_platform.investment.workflow.engine_lifecycle import EngineAlreadyRunningError
         with pytest.raises(EngineAlreadyRunningError):
             eng.start()
         eng.stop()
@@ -1558,21 +1558,21 @@ class TestConcurrency:
 
 class TestRegression:
     def test_m1_lifecycle_importable(self):
-        from iios.knowledge.lifecycle import KnowledgeLifecycle
+        from enterprise_ai_platform.knowledge.lifecycle import KnowledgeLifecycle
         assert KnowledgeLifecycle is not None
 
     def test_m2_engine_importable(self):
-        from iios.knowledge.engine import KnowledgeEngine
+        from enterprise_ai_platform.knowledge.engine import KnowledgeEngine
         assert KnowledgeEngine is not None
 
     def test_m3_policy_importable(self):
-        from iios.knowledge.policies import KnowledgeGovernancePolicyEngine
+        from enterprise_ai_platform.knowledge.policies import KnowledgeGovernancePolicyEngine
         assert KnowledgeGovernancePolicyEngine is not None
 
     def test_m4_package_importable(self):
-        from iios.knowledge.intelligence import KnowledgeIntelligenceEngine
+        from enterprise_ai_platform.knowledge.intelligence import KnowledgeIntelligenceEngine
         assert KnowledgeIntelligenceEngine is not None
 
     def test_no_cross_contamination(self):
-        from iios.knowledge.intelligence import INTELLIGENCE_SYSTEM_ID
+        from enterprise_ai_platform.knowledge.intelligence import INTELLIGENCE_SYSTEM_ID
         assert "intelligence" in INTELLIGENCE_SYSTEM_ID

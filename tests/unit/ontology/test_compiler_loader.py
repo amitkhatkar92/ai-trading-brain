@@ -38,35 +38,35 @@ import pytest
 
 def _reset_compiler_subsystem() -> None:
     """Reset every compiler/loader singleton."""
-    from iios.ontology.compiler.compiler_manager    import reset_compiler_manager
-    from iios.ontology.compiler.compiler_registry   import reset_compiler_registry
-    from iios.ontology.compiler.compiler_factory    import reset_compiler_factory
-    from iios.ontology.compiler.compiler_context    import reset_compiler_context
-    from iios.ontology.compiler.dependency_resolver import reset_dependency_resolver
-    from iios.ontology.compiler.metadata_generator  import reset_metadata_generator
-    from iios.ontology.compiler.ontology_compiler   import reset_ontology_compiler
-    from iios.ontology.loader.compiled_loader       import reset_compiled_loader
-    from iios.ontology.loader.runtime_loader        import reset_runtime_loader
-    from iios.ontology.loader.incremental_loader    import reset_incremental_loader
-    from iios.ontology.loader.cache_loader          import reset_cache_loader
-    from iios.ontology.loader.ontology_loader       import reset_ontology_loader
-    from iios.ontology.cache.ontology_cache         import reset_ontology_cache
-    from iios.ontology.registry.ontology_registry_manager import reset_registry_manager
-    from iios.ontology.registry.entity_registry          import reset_entity_registry
-    from iios.ontology.registry.relationship_registry    import reset_relationship_registry
-    from iios.ontology.registry.event_registry           import reset_event_registry
-    from iios.ontology.registry.observation_registry     import reset_observation_registry
-    from iios.ontology.registry.knowledge_registry       import reset_knowledge_ont_registry
-    from iios.ontology.ontology_registry                 import reset_ontology_registry
-    from iios.ontology.ontology_manager                  import reset_ontology_manager
-    from iios.ontology.ontology_runtime_engine           import reset_ontology_engine
-    from iios.ontology.ontology_context                  import reset_ontology_context
-    from iios.ontology.ontology_factory                  import reset_ontology_factory
-    from iios.ontology.graph.ontology_graph              import reset_ontology_graph
-    from iios.ontology.query.ontology_query              import reset_query_engine
-    from iios.ontology.services.lookup_service           import reset_lookup_service
-    from iios.ontology.services.hierarchy_service        import reset_hierarchy_service
-    from iios.ontology.services.statistics_service       import reset_statistics_service
+    from enterprise_ai_platform.ontology.compiler.compiler_manager    import reset_compiler_manager
+    from enterprise_ai_platform.ontology.compiler.compiler_registry   import reset_compiler_registry
+    from enterprise_ai_platform.ontology.compiler.compiler_factory    import reset_compiler_factory
+    from enterprise_ai_platform.ontology.compiler.compiler_context    import reset_compiler_context
+    from enterprise_ai_platform.ontology.compiler.dependency_resolver import reset_dependency_resolver
+    from enterprise_ai_platform.ontology.compiler.metadata_generator  import reset_metadata_generator
+    from enterprise_ai_platform.ontology.compiler.ontology_compiler   import reset_ontology_compiler
+    from enterprise_ai_platform.ontology.loader.compiled_loader       import reset_compiled_loader
+    from enterprise_ai_platform.ontology.loader.runtime_loader        import reset_runtime_loader
+    from enterprise_ai_platform.ontology.loader.incremental_loader    import reset_incremental_loader
+    from enterprise_ai_platform.ontology.loader.cache_loader          import reset_cache_loader
+    from enterprise_ai_platform.ontology.loader.ontology_loader       import reset_ontology_loader
+    from enterprise_ai_platform.ontology.cache.ontology_cache         import reset_ontology_cache
+    from enterprise_ai_platform.ontology.registry.ontology_registry_manager import reset_registry_manager
+    from enterprise_ai_platform.ontology.registry.entity_registry          import reset_entity_registry
+    from enterprise_ai_platform.ontology.registry.relationship_registry    import reset_relationship_registry
+    from enterprise_ai_platform.ontology.registry.event_registry           import reset_event_registry
+    from enterprise_ai_platform.ontology.registry.observation_registry     import reset_observation_registry
+    from enterprise_ai_platform.ontology.registry.knowledge_registry       import reset_knowledge_ont_registry
+    from enterprise_ai_platform.ontology.ontology_registry                 import reset_ontology_registry
+    from enterprise_ai_platform.ontology.ontology_manager                  import reset_ontology_manager
+    from enterprise_ai_platform.ontology.ontology_runtime_engine           import reset_ontology_engine
+    from enterprise_ai_platform.ontology.ontology_context                  import reset_ontology_context
+    from enterprise_ai_platform.ontology.ontology_factory                  import reset_ontology_factory
+    from enterprise_ai_platform.ontology.graph.ontology_graph              import reset_ontology_graph
+    from enterprise_ai_platform.ontology.query.ontology_query              import reset_query_engine
+    from enterprise_ai_platform.ontology.services.lookup_service           import reset_lookup_service
+    from enterprise_ai_platform.ontology.services.hierarchy_service        import reset_hierarchy_service
+    from enterprise_ai_platform.ontology.services.statistics_service       import reset_statistics_service
 
     reset_compiler_manager()
     reset_compiler_registry()
@@ -108,14 +108,14 @@ def clean_state():
 
 def _load_info_doc():
     """Load the INFORMATION_ONTOLOGY document."""
-    from iios.ontology.loader.ontology_loader import get_ontology_loader
-    from iios.ontology.ontology_constants import ONT_INFORMATION
+    from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+    from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
     return get_ontology_loader().load_builtin(ONT_INFORMATION)
 
 
 def _compile_info():
     """Compile the INFORMATION_ONTOLOGY and return CompiledOntology."""
-    from iios.ontology.compiler.ontology_compiler import get_ontology_compiler
+    from enterprise_ai_platform.ontology.compiler.ontology_compiler import get_ontology_compiler
     doc = _load_info_doc()
     return get_ontology_compiler().compile(doc)
 
@@ -126,45 +126,45 @@ def _compile_info():
 
 class TestCompilerConstants:
     def test_compilation_strategy_values(self):
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
         assert CompilationStrategy.SEQUENTIAL.value == "sequential"
         assert CompilationStrategy.PARALLEL.value   == "parallel"
         assert CompilationStrategy.INCREMENTAL.value == "incremental"
 
     def test_load_phase_values(self):
-        from iios.ontology.compiler.compiler_constants import LoadPhase
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import LoadPhase
         assert LoadPhase.COMPILING.value  == "compiling"
         assert LoadPhase.COMPLETE.value   == "complete"
         assert LoadPhase.FAILED.value     == "failed"
 
     def test_dependency_kind_values(self):
-        from iios.ontology.compiler.compiler_constants import DependencyKind
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import DependencyKind
         assert DependencyKind.IMPORT.value      == "import"
         assert DependencyKind.INHERITANCE.value  == "inheritance"
         assert DependencyKind.RELATIONSHIP.value == "relationship"
 
     def test_cache_strategy_values(self):
-        from iios.ontology.compiler.compiler_constants import CacheStrategy
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CacheStrategy
         assert CacheStrategy.MEMORY.value     == "memory"
         assert CacheStrategy.PERSISTENT.value == "persistent"
         assert CacheStrategy.TWO_LEVEL.value  == "two_level"
 
     def test_incremental_mode_values(self):
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
         assert IncrementalMode.HASH_BASED.value    == "hash_based"
         assert IncrementalMode.VERSION_BASED.value == "version_based"
         assert IncrementalMode.ALWAYS.value        == "always"
 
     def test_compiler_version_nonempty(self):
-        from iios.ontology.compiler.compiler_constants import COMPILER_VERSION
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import COMPILER_VERSION
         assert len(COMPILER_VERSION) > 0
 
     def test_builtin_compile_order_length(self):
-        from iios.ontology.compiler.compiler_constants import BUILTIN_COMPILE_ORDER
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import BUILTIN_COMPILE_ORDER
         assert len(BUILTIN_COMPILE_ORDER) == 7
 
     def test_numeric_constants_positive(self):
-        from iios.ontology.compiler.compiler_constants import (
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import (
             MAX_PARALLEL_COMPILATIONS, MAX_DEPENDENCY_DEPTH,
             COMPILATION_TIMEOUT_MS, INCREMENTAL_BATCH_SIZE,
         )
@@ -180,7 +180,7 @@ class TestCompilerConstants:
 
 class TestCompilerExceptions:
     def test_base_hierarchy(self):
-        from iios.ontology.compiler.compiler_exceptions import (
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import (
             CompilerError, DependencyError, CompilationError,
             LoaderError, MetadataError, CompilerRegistryError,
         )
@@ -191,49 +191,49 @@ class TestCompilerExceptions:
         assert issubclass(CompilerRegistryError, CompilerError)
 
     def test_base_has_code(self):
-        from iios.ontology.compiler.compiler_exceptions import CompilerError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import CompilerError
         exc = CompilerError("test", code="CMP-999")
         assert exc.code    == "CMP-999"
         assert "CMP-999" in str(exc)
 
     def test_circular_dependency_carries_chain(self):
-        from iios.ontology.compiler.compiler_exceptions import CircularDependencyError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import CircularDependencyError
         chain = ["A", "B", "C", "A"]
         exc   = CircularDependencyError(chain)
         assert exc.chain == chain
         assert "CMP-011" in exc.code
 
     def test_unresolved_dependency_carries_names(self):
-        from iios.ontology.compiler.compiler_exceptions import UnresolvedDependencyError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import UnresolvedDependencyError
         exc = UnresolvedDependencyError("OntX", "OntY")
         assert exc.dep_name == "OntX"
         assert exc.requirer == "OntY"
 
     def test_compilation_timeout_carries_ms(self):
-        from iios.ontology.compiler.compiler_exceptions import CompilationTimeoutError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import CompilationTimeoutError
         exc = CompilationTimeoutError("MyOnt", 5000.0)
         assert exc.ont_name   == "MyOnt"
         assert exc.timeout_ms == 5000.0
 
     def test_hash_mismatch_carries_values(self):
-        from iios.ontology.compiler.compiler_exceptions import HashMismatchError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import HashMismatchError
         exc = HashMismatchError("MyOnt", "abc", "def")
         assert exc.expected == "abc"
         assert exc.actual   == "def"
 
     def test_duplicate_compilation_error(self):
-        from iios.ontology.compiler.compiler_exceptions import DuplicateCompilationError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import DuplicateCompilationError
         exc = DuplicateCompilationError("MyOnt")
         assert exc.name == "MyOnt"
 
     def test_cold_start_error(self):
-        from iios.ontology.compiler.compiler_exceptions import ColdStartError, LoaderError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import ColdStartError, LoaderError
         exc = ColdStartError("disk missing")
         assert isinstance(exc, LoaderError)
         assert "CMP-031" in exc.code
 
     def test_hot_reload_error(self):
-        from iios.ontology.compiler.compiler_exceptions import HotReloadError, LoaderError
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import HotReloadError, LoaderError
         exc = HotReloadError("OntA", "compile failed")
         assert isinstance(exc, LoaderError)
         assert exc.ont_name == "OntA"
@@ -245,14 +245,14 @@ class TestCompilerExceptions:
 
 class TestCompilerContext:
     def test_initial_state(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context
         ctx = get_compiler_context()
         assert ctx.operation_id     is None
         assert ctx.current_ontology is None
         assert ctx.current_pass     is None
 
     def test_compilation_cm(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context
         ctx = get_compiler_context()
         with ctx.compilation("TestOnt", actor="test_actor"):
             assert ctx.current_ontology == "TestOnt"
@@ -261,7 +261,7 @@ class TestCompilerContext:
         assert ctx.current_ontology is None
 
     def test_pass_cm(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context
         ctx = get_compiler_context()
         with ctx.compilation("TestOnt"):
             with ctx.pass_("cycle_check"):
@@ -269,7 +269,7 @@ class TestCompilerContext:
             assert ctx.current_pass is None
 
     def test_add_diagnostic(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
         ctx = get_compiler_context()
         with ctx.compilation("TestOnt"):
             ctx.add_diagnostic(DiagnosticLevel.WARNING, "test warning")
@@ -278,7 +278,7 @@ class TestCompilerContext:
             assert len(ctx.errors())   == 1
 
     def test_elapsed_ms(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context
         ctx = get_compiler_context()
         with ctx.compilation("TestOnt"):
             time.sleep(0.01)
@@ -286,7 +286,7 @@ class TestCompilerContext:
         assert ms >= 5.0  # at least 5ms
 
     def test_nested_compilation_isolates_diagnostics(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
         ctx = get_compiler_context()
         with ctx.compilation("Outer"):
             ctx.add_diagnostic(DiagnosticLevel.WARNING, "outer warning")
@@ -299,7 +299,7 @@ class TestCompilerContext:
             assert len(ctx.warnings()) == 1
 
     def test_thread_isolation(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context, DiagnosticLevel
         ctx     = get_compiler_context()
         results: list = []
         lock    = threading.Lock()
@@ -320,7 +320,7 @@ class TestCompilerContext:
         assert all(warn_count == 0 for _, warn_count in results)
 
     def test_singleton(self):
-        from iios.ontology.compiler.compiler_context import get_compiler_context
+        from enterprise_ai_platform.ontology.compiler.compiler_context import get_compiler_context
         assert get_compiler_context() is get_compiler_context()
 
 
@@ -330,20 +330,20 @@ class TestCompilerContext:
 
 class TestDependencyResolver:
     def _load_all_docs(self):
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
         loader   = get_ontology_loader()
         doc_list = loader.load_all_builtins()
         return {d.name: d for d in doc_list}
 
     def test_build_graph_nodes(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         graph    = resolver.build_graph(docs)
         assert graph.nodes == set(docs.keys())
 
     def test_build_graph_has_edges(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         graph    = resolver.build_graph(docs)
@@ -353,7 +353,7 @@ class TestDependencyResolver:
         assert len(graph.nodes) == 7
 
     def test_topological_order_valid(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         graph    = resolver.build_graph(docs)
@@ -362,8 +362,8 @@ class TestDependencyResolver:
         assert set(order) == set(docs.keys())
 
     def test_topological_order_information_first(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         graph    = resolver.build_graph(docs)
@@ -372,8 +372,8 @@ class TestDependencyResolver:
         assert order[0] == ONT_INFORMATION
 
     def test_cycle_detection_raises(self):
-        from iios.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
-        from iios.ontology.compiler.compiler_exceptions import CircularDependencyError
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
+        from enterprise_ai_platform.ontology.compiler.compiler_exceptions import CircularDependencyError
         graph = DependencyGraph()
         graph.add_edge(DependencyEdge("A", "B", DependencyKind.IMPORT))
         graph.add_edge(DependencyEdge("B", "C", DependencyKind.IMPORT))
@@ -383,7 +383,7 @@ class TestDependencyResolver:
             resolver.check_circular(graph)
 
     def test_no_cycle_passes(self):
-        from iios.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
         graph = DependencyGraph()
         graph.add_edge(DependencyEdge("A", "B", DependencyKind.IMPORT))
         graph.add_edge(DependencyEdge("B", "C", DependencyKind.IMPORT))
@@ -391,7 +391,7 @@ class TestDependencyResolver:
         resolver.check_circular(graph)  # Must not raise
 
     def test_transitive_dependencies(self):
-        from iios.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import DependencyGraph, DependencyEdge, DependencyKind, DependencyResolver
         graph = DependencyGraph()
         graph.add_edge(DependencyEdge("A", "B", DependencyKind.IMPORT))
         graph.add_edge(DependencyEdge("B", "C", DependencyKind.IMPORT))
@@ -401,7 +401,7 @@ class TestDependencyResolver:
         assert "C" in trans
 
     def test_graph_stats(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         graph    = resolver.build_graph(docs)
@@ -410,9 +410,9 @@ class TestDependencyResolver:
         assert s["total_nodes"] == 7
 
     def test_build_external_types_map(self):
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
-        from iios.ontology.compiler.ontology_compiler  import get_ontology_compiler
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.compiler.ontology_compiler  import get_ontology_compiler
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
         docs     = self._load_all_docs()
         resolver = get_dependency_resolver()
         compiler = get_ontology_compiler()
@@ -435,7 +435,7 @@ class TestDependencyResolver:
 
 class TestMetadataGenerator:
     def test_generate_returns_metadata(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled, duration_ms=12.5)
@@ -447,7 +447,7 @@ class TestMetadataGenerator:
         assert meta.duration_ms  == 12.5
 
     def test_generate_to_dict(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled)
@@ -460,7 +460,7 @@ class TestMetadataGenerator:
         assert "compiler_version" in d
 
     def test_metadata_roundtrip(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator, CompilationMetadata
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator, CompilationMetadata
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled)
@@ -472,7 +472,7 @@ class TestMetadataGenerator:
         assert meta2.build_id    == meta.build_id
 
     def test_same_source_same_build_id(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta1    = gen.generate(compiled)
@@ -480,14 +480,14 @@ class TestMetadataGenerator:
         assert meta1.build_id == meta2.build_id  # deterministic
 
     def test_validate_passes_for_matching(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled)
         assert gen.validate(compiled, meta) is True
 
     def test_chain_hash(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled1 = _compile_info()
         compiled2 = _compile_info()
         gen       = get_metadata_generator()
@@ -499,14 +499,14 @@ class TestMetadataGenerator:
         assert gen.chain_hash([meta1, meta2]) == gen.chain_hash([meta2, meta1])
 
     def test_dependency_ids_stored(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled, dependency_ids=["dep1", "dep2"])
         assert meta.dependency_ids == ["dep1", "dep2"]
 
     def test_tags_stored(self):
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         meta     = gen.generate(compiled, tags=["builtin", "core"])
@@ -519,15 +519,15 @@ class TestMetadataGenerator:
 
 class TestCompilerRegistry:
     def test_register_start(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
         reg = get_compiler_registry()
         rec = reg.register_start("TestOnt")
         assert rec.name  == "TestOnt"
         assert rec.phase.value == "compiling"
 
     def test_register_success(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         reg      = get_compiler_registry()
         compiled = _compile_info()
         meta     = get_metadata_generator().generate(compiled, duration_ms=10.0)
@@ -538,7 +538,7 @@ class TestCompilerRegistry:
         assert reg.is_compiled(compiled.name)
 
     def test_register_failure(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
         reg = get_compiler_registry()
         reg.register_start("FailOnt")
         rec = reg.register_failure("FailOnt", "some error", 5.0)
@@ -547,8 +547,8 @@ class TestCompilerRegistry:
         assert "FailOnt" in reg.failed_names()
 
     def test_get_metadata(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         reg      = get_compiler_registry()
         compiled = _compile_info()
         meta     = get_metadata_generator().generate(compiled)
@@ -559,8 +559,8 @@ class TestCompilerRegistry:
         assert stored.build_id == meta.build_id
 
     def test_stats(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         reg      = get_compiler_registry()
         compiled = _compile_info()
         meta     = get_metadata_generator().generate(compiled)
@@ -574,7 +574,7 @@ class TestCompilerRegistry:
         assert s["total_registered"] == 2
 
     def test_attempt_increments_on_retry(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
         reg = get_compiler_registry()
         reg.register_start("Ont")
         reg.register_failure("Ont", "first fail")
@@ -582,7 +582,7 @@ class TestCompilerRegistry:
         assert rec.attempt == 2
 
     def test_clear(self):
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
         reg = get_compiler_registry()
         reg.register_start("Ont")
         reg.clear()
@@ -595,8 +595,8 @@ class TestCompilerRegistry:
 
 class TestCompilerFactory:
     def test_make_request(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
         doc = _load_info_doc()
         fac = get_compiler_factory()
         req = fac.make_request(doc, strategy=CompilationStrategy.PARALLEL, tags=["test"])
@@ -606,8 +606,8 @@ class TestCompilerFactory:
         assert req.operation_id != ""
 
     def test_make_result_success(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import LoadPhase
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import LoadPhase
         doc      = _load_info_doc()
         compiled = _compile_info()
         fac      = get_compiler_factory()
@@ -619,8 +619,8 @@ class TestCompilerFactory:
         assert d["success"] is True
 
     def test_make_batch(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
         doc = _load_info_doc()
         fac = get_compiler_factory()
         req = fac.make_request(doc)
@@ -629,8 +629,8 @@ class TestCompilerFactory:
         assert not batch.fail_fast
 
     def test_make_batch_result(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import LoadPhase
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import LoadPhase
         doc      = _load_info_doc()
         compiled = _compile_info()
         fac      = get_compiler_factory()
@@ -644,17 +644,17 @@ class TestCompilerFactory:
         assert len(br.compiled_ontologies) == 1
 
     def test_factory_components(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.ontology_compiler import OntologyCompiler
-        from iios.ontology.compiler.dependency_resolver import DependencyResolver
-        from iios.ontology.compiler.metadata_generator import MetadataGenerator
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.ontology_compiler import OntologyCompiler
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import DependencyResolver
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import MetadataGenerator
         fac = get_compiler_factory()
         assert isinstance(fac.make_compiler(), OntologyCompiler)
         assert isinstance(fac.make_dependency_resolver(), DependencyResolver)
         assert isinstance(fac.make_metadata_generator(), MetadataGenerator)
 
     def test_singleton(self):
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
         assert get_compiler_factory() is get_compiler_factory()
 
 
@@ -664,8 +664,8 @@ class TestCompilerFactory:
 
 class TestCompilerManager:
     def test_compile_one_success(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
         doc = _load_info_doc()
         fac = get_compiler_factory()
         req = fac.make_request(doc)
@@ -676,9 +676,9 @@ class TestCompilerManager:
         assert res.duration_ms >= 0
 
     def test_compile_one_caches_result(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.cache.ontology_cache import get_ontology_cache
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.cache.ontology_cache import get_ontology_cache
         doc = _load_info_doc()
         fac = get_compiler_factory()
         req = fac.make_request(doc)
@@ -687,8 +687,8 @@ class TestCompilerManager:
         assert get_ontology_cache().has(doc.name)
 
     def test_compile_one_no_overwrite_returns_cached(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
         doc = _load_info_doc()
         fac = get_compiler_factory()
         req = fac.make_request(doc, overwrite=False)
@@ -701,8 +701,8 @@ class TestCompilerManager:
         assert res2.duration_ms <= res1.duration_ms + 50
 
     def test_compile_builtins_all_succeed(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         mgr    = get_compiler_manager()
         result = mgr.compile_builtins()
         assert result.succeeded == len(BUILTIN_ONTOLOGY_NAMES)
@@ -711,8 +711,8 @@ class TestCompilerManager:
         assert mgr.is_initialized
 
     def test_compile_builtins_registers_types(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.registry.ontology_registry_manager import get_registry_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
         mgr = get_compiler_manager()
         mgr.compile_builtins()
         reg    = get_registry_manager()
@@ -720,11 +720,11 @@ class TestCompilerManager:
         assert stats["total_types"] > 0
 
     def test_compile_batch_sequential(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
         loader = get_ontology_loader()
         info   = loader.load_builtin(ONT_INFORMATION)
         entity = loader.load_builtin(ONT_ENTITY)
@@ -739,11 +739,11 @@ class TestCompilerManager:
         assert br.all_succeeded
 
     def test_compile_batch_parallel(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         loader = get_ontology_loader()
         doc    = loader.load_builtin(ONT_INFORMATION)
         fac    = get_compiler_factory()
@@ -755,22 +755,22 @@ class TestCompilerManager:
         assert br.succeeded >= 1
 
     def test_get_or_compile_lazy(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         mgr      = get_compiler_manager()
         compiled = mgr.get_or_compile(ONT_INFORMATION)
         assert compiled is not None
         assert compiled.name == ONT_INFORMATION
 
     def test_compile_selective(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
         mgr    = get_compiler_manager()
         result = mgr.compile_selective([ONT_INFORMATION, ONT_ENTITY])
         assert result.succeeded >= 1
 
     def test_stats(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         mgr = get_compiler_manager()
         mgr.compile_builtins()
         s = mgr.stats()
@@ -780,7 +780,7 @@ class TestCompilerManager:
         assert s["initialized"] is True
 
     def test_health(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         mgr = get_compiler_manager()
         mgr.compile_builtins()
         h = mgr.health()
@@ -788,7 +788,7 @@ class TestCompilerManager:
         assert h["initialized"] is True
 
     def test_singleton(self):
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         assert get_compiler_manager() is get_compiler_manager()
 
 
@@ -798,8 +798,8 @@ class TestCompilerManager:
 
 class TestCompiledLoader:
     def test_load_from_memory_after_cache_put(self):
-        from iios.ontology.loader.compiled_loader import get_compiled_loader
-        from iios.ontology.cache.ontology_cache  import get_ontology_cache
+        from enterprise_ai_platform.ontology.loader.compiled_loader import get_compiled_loader
+        from enterprise_ai_platform.ontology.cache.ontology_cache  import get_ontology_cache
         compiled = _compile_info()
         get_ontology_cache().put(compiled.name, compiled)
         cl = get_compiled_loader()
@@ -808,13 +808,13 @@ class TestCompiledLoader:
         assert loaded.name == compiled.name
 
     def test_load_from_memory_miss_returns_none(self):
-        from iios.ontology.loader.compiled_loader import get_compiled_loader
+        from enterprise_ai_platform.ontology.loader.compiled_loader import get_compiled_loader
         cl = get_compiled_loader()
         assert cl.load_from_memory("NONEXISTENT") is None
 
     def test_is_cached(self):
-        from iios.ontology.loader.compiled_loader import get_compiled_loader
-        from iios.ontology.cache.ontology_cache  import get_ontology_cache
+        from enterprise_ai_platform.ontology.loader.compiled_loader import get_compiled_loader
+        from enterprise_ai_platform.ontology.cache.ontology_cache  import get_ontology_cache
         compiled = _compile_info()
         get_ontology_cache().put(compiled.name, compiled)
         cl = get_compiled_loader()
@@ -822,8 +822,8 @@ class TestCompiledLoader:
         assert not cl.is_cached("NOT_THERE")
 
     def test_save_and_load_from_disk(self):
-        from iios.ontology.loader.compiled_loader import CompiledLoader
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.loader.compiled_loader import CompiledLoader
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         meta     = get_metadata_generator().generate(compiled)
 
@@ -839,14 +839,14 @@ class TestCompiledLoader:
             assert len(loaded.alias_index) == len(compiled.alias_index)
 
     def test_disk_cache_miss_returns_none(self):
-        from iios.ontology.loader.compiled_loader import CompiledLoader
+        from enterprise_ai_platform.ontology.loader.compiled_loader import CompiledLoader
         with tempfile.TemporaryDirectory() as tmpdir:
             cl     = CompiledLoader(cache_dir=tmpdir)
             loaded = cl.load_from_disk("NOT_THERE")
             assert loaded is None
 
     def test_serialization_preserves_children(self):
-        from iios.ontology.loader.compiled_loader import CompiledLoader
+        from enterprise_ai_platform.ontology.loader.compiled_loader import CompiledLoader
         compiled = _compile_info()
         with tempfile.TemporaryDirectory() as tmpdir:
             cl   = CompiledLoader(cache_dir=tmpdir)
@@ -856,9 +856,9 @@ class TestCompiledLoader:
             assert set(loaded.children.keys()) == set(compiled.children.keys())
 
     def test_load_two_level_hits_memory_first(self):
-        from iios.ontology.loader.compiled_loader import CompiledLoader
-        from iios.ontology.cache.ontology_cache   import get_ontology_cache
-        from iios.ontology.compiler.compiler_constants import CacheStrategy
+        from enterprise_ai_platform.ontology.loader.compiled_loader import CompiledLoader
+        from enterprise_ai_platform.ontology.cache.ontology_cache   import get_ontology_cache
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CacheStrategy
         compiled = _compile_info()
         get_ontology_cache().put(compiled.name, compiled)
 
@@ -875,8 +875,8 @@ class TestCompiledLoader:
 
 class TestRuntimeLoader:
     def test_cold_start_succeeds(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
         loader = get_runtime_loader()
         result = loader.cold_start()
         assert result.all_succeeded
@@ -885,7 +885,7 @@ class TestRuntimeLoader:
         assert loader.is_initialized
 
     def test_cold_start_result_to_dict(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
         loader = get_runtime_loader()
         result = loader.cold_start()
         d      = result.to_dict()
@@ -895,29 +895,29 @@ class TestRuntimeLoader:
         assert "loaded_names" in d
 
     def test_selective_load(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
         loader = get_runtime_loader()
         result = loader.selective_load([ONT_INFORMATION, ONT_ENTITY])
         assert result.strategy  == "selective"
         assert result.succeeded >= 1
 
     def test_lazy_load_returns_compiled(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
         loader   = get_runtime_loader()
         compiled = loader.lazy_load(ONT_INFORMATION)
         assert compiled is not None
         assert compiled.name == ONT_INFORMATION
 
     def test_lazy_load_unknown_returns_none(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
         loader   = get_runtime_loader()
         compiled = loader.lazy_load("DOES_NOT_EXIST_AT_ALL")
         assert compiled is None
 
     def test_stats(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
         loader = get_runtime_loader()
         loader.cold_start()
         s = loader.stats()
@@ -925,7 +925,7 @@ class TestRuntimeLoader:
         assert s["initialized"] is True
 
     def test_singleton(self):
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
         assert get_runtime_loader() is get_runtime_loader()
 
 
@@ -935,13 +935,13 @@ class TestRuntimeLoader:
 
 class TestIncrementalLoader:
     def _all_docs(self):
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
         loader = get_ontology_loader()
         return {d.name: d for d in loader.load_all_builtins()}
 
     def test_detect_changes_all_new(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
         docs = self._all_docs()
         inc  = get_incremental_loader()
         changed = inc.detect_changes(docs, mode=IncrementalMode.HASH_BASED)
@@ -949,9 +949,9 @@ class TestIncrementalLoader:
         assert set(changed) == set(docs.keys())
 
     def test_detect_changes_none_after_record(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         docs = self._all_docs()
         inc  = get_incremental_loader()
         meta_gen = get_metadata_generator()
@@ -962,9 +962,9 @@ class TestIncrementalLoader:
         assert len(changed) == 0  # Nothing changed
 
     def test_detect_changes_always_mode(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         docs = self._all_docs()
         inc  = get_incremental_loader()
         meta_gen = get_metadata_generator()
@@ -976,8 +976,8 @@ class TestIncrementalLoader:
         assert set(changed) == set(docs.keys())
 
     def test_incremental_compile_all_first_run(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
         docs = self._all_docs()
         inc  = get_incremental_loader()
         res  = inc.incremental_compile(documents=docs, mode=IncrementalMode.HASH_BASED)
@@ -985,8 +985,8 @@ class TestIncrementalLoader:
         assert res.all_succeeded
 
     def test_incremental_compile_no_changes(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
         docs = self._all_docs()
         inc  = get_incremental_loader()
         # First run: compile all
@@ -997,8 +997,8 @@ class TestIncrementalLoader:
         assert len(res.skipped)    == len(docs)
 
     def test_snapshot_and_reset(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         docs     = self._all_docs()
         inc      = get_incremental_loader()
         meta_gen = get_metadata_generator()
@@ -1010,7 +1010,7 @@ class TestIncrementalLoader:
         assert len(inc.snapshot()) == 0
 
     def test_singleton(self):
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
         assert get_incremental_loader() is get_incremental_loader()
 
 
@@ -1020,7 +1020,7 @@ class TestIncrementalLoader:
 
 class TestCacheLoader:
     def test_put_and_get(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1029,7 +1029,7 @@ class TestCacheLoader:
         assert loaded.name == compiled.name
 
     def test_versioned_get(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1038,7 +1038,7 @@ class TestCacheLoader:
         assert loaded is not None
 
     def test_has_by_name(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1046,7 +1046,7 @@ class TestCacheLoader:
         assert not cl.has("NOPE")
 
     def test_has_by_version(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1054,7 +1054,7 @@ class TestCacheLoader:
         assert not cl.has(compiled.name, version="99.0.0")
 
     def test_invalidate_by_name(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1062,7 +1062,7 @@ class TestCacheLoader:
         assert not cl.has(compiled.name)
 
     def test_ttl_expiry(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader(default_ttl_seconds=0.01)
         cl.put(compiled)
@@ -1070,7 +1070,7 @@ class TestCacheLoader:
         assert cl.get(compiled.name, version=compiled.document.version) is None
 
     def test_invalidate_expired(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader(default_ttl_seconds=0.01)
         cl.put(compiled)
@@ -1079,7 +1079,7 @@ class TestCacheLoader:
         assert removed >= 1
 
     def test_prime(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         stored   = cl.prime([compiled])
@@ -1087,15 +1087,15 @@ class TestCacheLoader:
         assert cl.has(compiled.name)
 
     def test_prime_from_registry(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         get_compiler_manager().compile_builtins()
         cl     = CacheLoader()
         primed = cl.prime_from_registry()
         assert primed > 0
 
     def test_hit_rate(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader()
         cl.put(compiled)
@@ -1106,7 +1106,7 @@ class TestCacheLoader:
         assert 0.0 < hr <= 1.0
 
     def test_stats(self):
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         cl = CacheLoader()
         s  = cl.stats()
         assert "versioned_entries" in s
@@ -1114,7 +1114,7 @@ class TestCacheLoader:
         assert "max_entries"       in s
 
     def test_singleton(self):
-        from iios.ontology.loader.cache_loader import get_cache_loader
+        from enterprise_ai_platform.ontology.loader.cache_loader import get_cache_loader
         assert get_cache_loader() is get_cache_loader()
 
 
@@ -1125,15 +1125,15 @@ class TestCacheLoader:
 class TestConcurrency:
     def test_parallel_manager_compile_builtins(self):
         """CompilerManager.compile_builtins runs without data races."""
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
         mgr    = get_compiler_manager()
         result = mgr.compile_builtins(strategy=CompilationStrategy.SEQUENTIAL)
         assert result.all_succeeded
 
     def test_concurrent_singleton_access(self):
         """Multiple threads obtaining singletons get same objects."""
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         ids: list[int] = []
         lock = threading.Lock()
 
@@ -1150,7 +1150,7 @@ class TestConcurrency:
 
     def test_concurrent_cache_writes(self):
         """Cache loader can be written to from multiple threads."""
-        from iios.ontology.loader.cache_loader import CacheLoader
+        from enterprise_ai_platform.ontology.loader.cache_loader import CacheLoader
         compiled = _compile_info()
         cl       = CacheLoader(max_entries=64)
         errors:  list[Exception] = []
@@ -1168,7 +1168,7 @@ class TestConcurrency:
 
     def test_concurrent_metadata_generation(self):
         """MetadataGenerator is thread-safe (stateless)."""
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
         compiled = _compile_info()
         gen      = get_metadata_generator()
         results: list = []
@@ -1187,11 +1187,11 @@ class TestConcurrency:
 
     def test_compiler_manager_parallel_batch(self):
         """Parallel batch compilation produces correct results."""
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_factory import get_compiler_factory
-        from iios.ontology.compiler.compiler_constants import CompilationStrategy
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_factory import get_compiler_factory
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import CompilationStrategy
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION
 
         loader = get_ontology_loader()
         fac    = get_compiler_factory()
@@ -1213,9 +1213,9 @@ class TestEndToEnd:
         """
         Full pipeline: cold start → types registered → runtime queries work.
         """
-        from iios.ontology.loader.runtime_loader import get_runtime_loader
-        from iios.ontology.registry.ontology_registry_manager import get_registry_manager
-        from iios.ontology.query.ontology_query import OntologyQuery
+        from enterprise_ai_platform.ontology.loader.runtime_loader import get_runtime_loader
+        from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
+        from enterprise_ai_platform.ontology.query.ontology_query import OntologyQuery
 
         loader = get_runtime_loader()
         result = loader.cold_start()
@@ -1225,22 +1225,22 @@ class TestEndToEnd:
         types = reg.list_all_types()
         assert len(types) > 0
 
-        qr = OntologyQuery().in_namespace("iios.entity").not_abstract().build().execute()
+        qr = OntologyQuery().in_namespace("enterprise_ai_platform.entity").not_abstract().build().execute()
         assert len(qr) > 0
 
     def test_full_pipeline_via_compiler_manager(self):
         """
         Full pipeline via CompilerManager: compile builtins → lookup types.
         """
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.registry.ontology_registry_manager import get_registry_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.registry.ontology_registry_manager import get_registry_manager
 
         mgr    = get_compiler_manager()
         result = mgr.compile_builtins()
         assert result.all_succeeded
 
         reg = get_registry_manager()
-        td  = reg.get_type("iios.entity.Instrument")
+        td  = reg.get_type("enterprise_ai_platform.entity.Instrument")
         assert td is not None
         assert td.name == "Instrument"
 
@@ -1248,9 +1248,9 @@ class TestEndToEnd:
         """
         Dependency resolver produces order where info comes before entity.
         """
-        from iios.ontology.compiler.dependency_resolver import get_dependency_resolver
-        from iios.ontology.loader.ontology_loader import get_ontology_loader
-        from iios.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
+        from enterprise_ai_platform.ontology.compiler.dependency_resolver import get_dependency_resolver
+        from enterprise_ai_platform.ontology.loader.ontology_loader import get_ontology_loader
+        from enterprise_ai_platform.ontology.ontology_constants import ONT_INFORMATION, ONT_ENTITY
 
         loader = get_ontology_loader()
         docs   = {d.name: d for d in loader.load_all_builtins()}
@@ -1261,9 +1261,9 @@ class TestEndToEnd:
 
     def test_metadata_generated_for_all_builtins(self):
         """After compile_builtins, every builtin has metadata in the registry."""
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
-        from iios.ontology.compiler.compiler_registry import get_compiler_registry
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_registry import get_compiler_registry
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
 
         get_compiler_manager().compile_builtins()
         reg = get_compiler_registry()
@@ -1275,11 +1275,11 @@ class TestEndToEnd:
 
     def test_incremental_noop_after_cold_start(self):
         """After cold start, incremental load detects no changes."""
-        from iios.ontology.loader.runtime_loader    import get_runtime_loader
-        from iios.ontology.loader.incremental_loader import get_incremental_loader
-        from iios.ontology.compiler.compiler_constants import IncrementalMode
-        from iios.ontology.loader.ontology_loader   import get_ontology_loader
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.loader.runtime_loader    import get_runtime_loader
+        from enterprise_ai_platform.ontology.loader.incremental_loader import get_incremental_loader
+        from enterprise_ai_platform.ontology.compiler.compiler_constants import IncrementalMode
+        from enterprise_ai_platform.ontology.loader.ontology_loader   import get_ontology_loader
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
 
         # Cold start first
         get_runtime_loader().cold_start()
@@ -1301,7 +1301,7 @@ class TestEndToEnd:
         """
         Second cold start (overwrite=False) returns cached results for all ontologies.
         """
-        from iios.ontology.compiler.compiler_manager import get_compiler_manager
+        from enterprise_ai_platform.ontology.compiler.compiler_manager import get_compiler_manager
         mgr     = get_compiler_manager()
         result1 = mgr.compile_builtins(overwrite=False)
         result2 = mgr.compile_builtins(overwrite=False)
@@ -1312,10 +1312,10 @@ class TestEndToEnd:
 
     def test_chain_hash_consistent_after_recompile(self):
         """Chain hash is the same across two compilations of the same source."""
-        from iios.ontology.compiler.metadata_generator import get_metadata_generator
-        from iios.ontology.compiler.compiler_registry  import get_compiler_registry
-        from iios.ontology.compiler.compiler_manager   import get_compiler_manager
-        from iios.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
+        from enterprise_ai_platform.ontology.compiler.metadata_generator import get_metadata_generator
+        from enterprise_ai_platform.ontology.compiler.compiler_registry  import get_compiler_registry
+        from enterprise_ai_platform.ontology.compiler.compiler_manager   import get_compiler_manager
+        from enterprise_ai_platform.ontology.ontology_constants import BUILTIN_ONTOLOGY_NAMES
 
         mgr = get_compiler_manager()
         mgr.compile_builtins(overwrite=True)

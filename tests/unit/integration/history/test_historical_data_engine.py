@@ -1,6 +1,6 @@
 """tests/unit/integration/history/test_historical_data_engine.py
 
-Comprehensive test suite for iios/integration/history/
+Comprehensive test suite for enterprise_ai_platform/integration/history/
 
 Run with:
     python -m pytest tests/unit/integration/history/ -q
@@ -21,7 +21,7 @@ import pytest
 def _run(coro): return asyncio.run(coro)
 
 # ── Imports ───────────────────────────────────────────────────────────────────
-from iios.integration.history.history_constants import (
+from enterprise_ai_platform.integration.history.history_constants import (
     AnalyticsInterval,
     CompressionType,
     DataFormat,
@@ -47,7 +47,7 @@ from iios.integration.history.history_constants import (
     DEFAULT_CACHE_MAX_RECORDS,
     DEFAULT_CACHE_TTL_SEC,
 )
-from iios.integration.history.history_exceptions import (
+from enterprise_ai_platform.integration.history.history_exceptions import (
     ChecksumMismatchError,
     DatasetAlreadyExistsError,
     DatasetNotFoundError,
@@ -71,37 +71,37 @@ from iios.integration.history.history_exceptions import (
     StorageError,
     StorageNotFoundError,
 )
-from iios.integration.history.core.historical_record   import HistoricalRecord
-from iios.integration.history.core.historical_dataset  import HistoricalDataset
-from iios.integration.history.core.historical_snapshot import HistoricalSnapshot
-from iios.integration.history.core.historical_partition import HistoricalPartition
-from iios.integration.history.core.historical_index    import HistoricalIndex, HistoricalIndexEntry
-from iios.integration.history.compression              import DataCompressor
-from iios.integration.history.cache                    import HistoryCache
-from iios.integration.history.storage.storage_backend  import InMemoryStorageBackend
-from iios.integration.history.indexing.dataset_index   import DatasetIndexManager
-from iios.integration.history.replay.replay_session    import ReplaySession
-from iios.integration.history.replay.replay_scheduler  import ReplayScheduler
-from iios.integration.history.replay.replay_controller import ReplayController
-from iios.integration.history.replay.replay_engine     import ReplayEngine
-from iios.integration.history.timeline.timeline_event  import TimelineEvent
-from iios.integration.history.timeline.timeline_cursor import TimelineCursor
-from iios.integration.history.timeline.timeline        import Timeline
-from iios.integration.history.timeline.timeline_controller import TimelineController
-from iios.integration.history.simulation.simulation_clock  import SimulationClock
-from iios.integration.history.simulation.scenario_loader   import Scenario, ScenarioLoader
-from iios.integration.history.simulation.dataset_loader    import DatasetLoader
-from iios.integration.history.simulation.simulation_controller import SimulationController
-from iios.integration.history.history_registry             import HistoryRegistry
-from iios.integration.history.history_context              import HistoryContext
-from iios.integration.history.history_factory              import HistoryFactory
-from iios.integration.history.history_manager              import HistoryManager
-from iios.integration.history.query.historical_filter      import HistoricalFilter, FieldFilter
-from iios.integration.history.query.dataset_selector       import DatasetSelector
-from iios.integration.history.query.historical_search      import HistoricalSearch
-from iios.integration.history.query.query_engine           import QueryEngine
-from iios.integration.history.analytics.history_analytics  import HistoryAnalytics
-from iios.integration.history.historical_data_engine       import (
+from enterprise_ai_platform.integration.history.core.historical_record   import HistoricalRecord
+from enterprise_ai_platform.integration.history.core.historical_dataset  import HistoricalDataset
+from enterprise_ai_platform.integration.history.core.historical_snapshot import HistoricalSnapshot
+from enterprise_ai_platform.integration.history.core.historical_partition import HistoricalPartition
+from enterprise_ai_platform.integration.history.core.historical_index    import HistoricalIndex, HistoricalIndexEntry
+from enterprise_ai_platform.integration.history.compression              import DataCompressor
+from enterprise_ai_platform.integration.history.cache                    import HistoryCache
+from enterprise_ai_platform.integration.history.storage.storage_backend  import InMemoryStorageBackend
+from enterprise_ai_platform.integration.history.indexing.dataset_index   import DatasetIndexManager
+from enterprise_ai_platform.integration.history.replay.replay_session    import ReplaySession
+from enterprise_ai_platform.integration.history.replay.replay_scheduler  import ReplayScheduler
+from enterprise_ai_platform.integration.history.replay.replay_controller import ReplayController
+from enterprise_ai_platform.integration.history.replay.replay_engine     import ReplayEngine
+from enterprise_ai_platform.integration.history.timeline.timeline_event  import TimelineEvent
+from enterprise_ai_platform.integration.history.timeline.timeline_cursor import TimelineCursor
+from enterprise_ai_platform.integration.history.timeline.timeline        import Timeline
+from enterprise_ai_platform.integration.history.timeline.timeline_controller import TimelineController
+from enterprise_ai_platform.integration.history.simulation.simulation_clock  import SimulationClock
+from enterprise_ai_platform.integration.history.simulation.scenario_loader   import Scenario, ScenarioLoader
+from enterprise_ai_platform.integration.history.simulation.dataset_loader    import DatasetLoader
+from enterprise_ai_platform.integration.history.simulation.simulation_controller import SimulationController
+from enterprise_ai_platform.integration.history.history_registry             import HistoryRegistry
+from enterprise_ai_platform.integration.history.history_context              import HistoryContext
+from enterprise_ai_platform.integration.history.history_factory              import HistoryFactory
+from enterprise_ai_platform.integration.history.history_manager              import HistoryManager
+from enterprise_ai_platform.integration.history.query.historical_filter      import HistoricalFilter, FieldFilter
+from enterprise_ai_platform.integration.history.query.dataset_selector       import DatasetSelector
+from enterprise_ai_platform.integration.history.query.historical_search      import HistoricalSearch
+from enterprise_ai_platform.integration.history.query.query_engine           import QueryEngine
+from enterprise_ai_platform.integration.history.analytics.history_analytics  import HistoryAnalytics
+from enterprise_ai_platform.integration.history.historical_data_engine       import (
     HistoricalDataEngine,
     get_historical_data_engine,
     reset_historical_data_engine,

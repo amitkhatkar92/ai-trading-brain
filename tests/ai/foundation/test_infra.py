@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import pytest
 
-from iios.ai.foundation.config import (
+from enterprise_ai_platform.ai.foundation.config import (
     FeatureFlags,
     AIFrameworkConfiguration,
     RuntimeConfiguration,
     EnvironmentConfigurationLoader,
 )
-from iios.ai.foundation.health import (
+from enterprise_ai_platform.ai.foundation.health import (
     HealthLevel,
     HealthStatus,
     ReadinessStatus,
@@ -17,7 +17,7 @@ from iios.ai.foundation.health import (
     HealthCheck,
     HealthReporter,
 )
-from iios.ai.foundation.exceptions import (
+from enterprise_ai_platform.ai.foundation.exceptions import (
     AIException,
     AIConfigurationException,
     AIMissingConfigurationException,
@@ -31,8 +31,8 @@ from iios.ai.foundation.exceptions import (
     AIResponseValidationError,
     AIPolicyViolationError,
 )
-from iios.ai.foundation.container import AIContainer
-from iios.ai.foundation.observability import (
+from enterprise_ai_platform.ai.foundation.container import AIContainer
+from enterprise_ai_platform.ai.foundation.observability import (
     CorrelationContext,
     StructuredLogger,
     ExecutionTimer,
@@ -185,7 +185,7 @@ class TestHealthReporter:
 
 class TestExceptionHierarchy:
     def test_all_are_subclass_of_ai_exception(self):
-        from iios.common.errors.exceptions import IIOSError
+        from enterprise_ai_platform.common.errors.exceptions import IIOSError
         assert issubclass(AIException, IIOSError)
         assert issubclass(AIMissingConfigurationException, AIException)
         assert issubclass(AISessionNotFoundError, AIException)
@@ -255,7 +255,7 @@ class TestAIContainer:
     def test_pipeline_runs_through_container(self):
         container = AIContainer()
         container.build()
-        from iios.ai.foundation.request import RequestMetadata, AIRequest, AIExecutionRequest
+        from enterprise_ai_platform.ai.foundation.request import RequestMetadata, AIRequest, AIExecutionRequest
         meta     = RequestMetadata.create("s-001", "a3")
         req      = AIRequest.create(meta, [{"role": "user", "content": "Q"}], max_tokens=50)
         exec_req = AIExecutionRequest(request=req)

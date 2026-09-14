@@ -7,27 +7,27 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.portfolio.core.asset_support import (
+from enterprise_ai_platform.investment.portfolio.core.asset_support import (
     ASSET_SUPPORT_MATRIX,
     get_asset_descriptor,
 )
-from iios.investment.portfolio.core.configuration_engine import ConfigurationEngine
-from iios.investment.portfolio.core.configuration_profiles import (
+from enterprise_ai_platform.investment.portfolio.core.configuration_engine import ConfigurationEngine
+from enterprise_ai_platform.investment.portfolio.core.configuration_profiles import (
     get_default_profile,
     get_profile,
     list_profiles,
 )
-from iios.investment.portfolio.core.investment_style import (
+from enterprise_ai_platform.investment.portfolio.core.investment_style import (
     InvestmentStyle,
     InvestmentHorizon,
     STYLE_REGISTRY,
 )
-from iios.investment.portfolio.core.parameter_registry import (
+from enterprise_ai_platform.investment.portfolio.core.parameter_registry import (
     PARAMETER_REGISTRY,
     ParameterDefinition,
     ParameterType,
 )
-from iios.investment.portfolio.core.parameter_validation import (
+from enterprise_ai_platform.investment.portfolio.core.parameter_validation import (
     AllowedValuesRule,
     MaxValueRule,
     MinValueRule,
@@ -36,22 +36,22 @@ from iios.investment.portfolio.core.parameter_validation import (
     RequiredRule,
     ValidationOutcome,
 )
-from iios.investment.portfolio.core.portfolio_configuration import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_configuration import (
     AllocationPolicy,
     CapitalLimits,
     PortfolioConfigurationError,
     PortfolioConfiguration,
     RiskPolicy,
 )
-from iios.investment.portfolio.core.portfolio_metadata import build_metadata
-from iios.investment.portfolio.core.portfolio_types import (
+from enterprise_ai_platform.investment.portfolio.core.portfolio_metadata import build_metadata
+from enterprise_ai_platform.investment.portfolio.core.portfolio_types import (
     PortfolioCapability,
     PortfolioDomain,
     PortfolioLifecycleState,
     FrameworkStatus,
     ValidationOutcome as VO,
 )
-from iios.investment.portfolio.portfolio_constants import AssetClass
+from enterprise_ai_platform.investment.portfolio.portfolio_constants import AssetClass
 
 
 class TestPortfolioLifecycleState:

@@ -7,12 +7,12 @@ import threading
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.integration import (
+from enterprise_ai_platform.investment.company.integration import (
     CompanyIntelligenceIntegrationEngine,
     CompanyIntelligenceSnapshot,
     SCORED_ENGINES,
 )
-from iios.investment.company.integration.company_state import EngineStatus
+from enterprise_ai_platform.investment.company.integration.company_state import EngineStatus
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -225,12 +225,12 @@ class TestQueryAPIs:
         assert s is not None and 0.0 <= s <= 100.0
 
     def test_get_summary(self):
-        from iios.investment.company.integration.company_summary import CompanySummary
+        from enterprise_ai_platform.investment.company.integration.company_summary import CompanySummary
         summary = self.engine.get_summary("TCS")
         assert isinstance(summary, CompanySummary)
 
     def test_get_validation_report(self):
-        from iios.investment.company.integration.validation_report import ValidationReport
+        from enterprise_ai_platform.investment.company.integration.validation_report import ValidationReport
         report = self.engine.get_validation_report("TCS")
         assert isinstance(report, ValidationReport)
 
@@ -239,7 +239,7 @@ class TestQueryAPIs:
         assert isinstance(conflicts, list)
 
     def test_get_quality(self):
-        from iios.investment.company.integration.company_quality import CompanyQualityScore
+        from enterprise_ai_platform.investment.company.integration.company_quality import CompanyQualityScore
         q = self.engine.get_quality("TCS")
         assert isinstance(q, CompanyQualityScore)
 

@@ -23,7 +23,7 @@ def _run(coro):
 
 # ── Imports under test ────────────────────────────────────────────────────────
 
-from iios.integration.news.news_constants import (
+from enterprise_ai_platform.integration.news.news_constants import (
     NewsCategory, NewsImportance, NewsUrgency, NewsLanguage, NewsRegion,
     SentimentLabel, NewsEventType, EventImpact, AlternativeDataType,
     NewsProviderStatus, NewsEngineStatus, SentimentScope,
@@ -31,7 +31,7 @@ from iios.integration.news.news_constants import (
     MIN_ARTICLE_TITLE_LEN, MIN_ARTICLE_BODY_LEN,
     DEFAULT_MAX_PROVIDERS, DEFAULT_STREAM_BUFFER_SIZE, DEFAULT_STALE_ARTICLE_SEC,
 )
-from iios.integration.news.news_exceptions import (
+from enterprise_ai_platform.integration.news.news_exceptions import (
     NewsDataError, NewsProviderConnectionError, NewsProviderAuthenticationError,
     NewsProviderNotConnectedError, NewsProviderNotFoundError,
     NewsProviderAlreadyRegisteredError, NoNewsProviderAvailableError,
@@ -41,39 +41,39 @@ from iios.integration.news.news_exceptions import (
     ClassificationError, AlternativeDataError, AlternativeDatasetNotFoundError,
     NewsEngineNotRunningError, NewsEngineAlreadyRunningError, NewsRegistryError,
 )
-from iios.integration.news.core.news_article       import NewsArticle
-from iios.integration.news.core.news_event         import NewsEvent
-from iios.integration.news.core.news_headline      import NewsHeadline
-from iios.integration.news.core.news_source        import NewsSource
-from iios.integration.news.core.news_metadata      import NewsMetadata
-from iios.integration.news.core.news_statistics    import NewsStatistics
-from iios.integration.news.core.news_category_model import NewsCategoryNode
-from iios.integration.news.providers.provider_capabilities import NewsProviderCapabilities
-from iios.integration.news.providers.provider_health       import NewsProviderHealth
-from iios.integration.news.providers.news_session          import NewsSession
-from iios.integration.news.providers.paper_news_provider   import PaperNewsProvider
-from iios.integration.news.providers.reuters_provider      import ReutersProvider
-from iios.integration.news.providers.bloomberg_provider    import BloombergProvider
-from iios.integration.news.classification.topic_classifier import TopicClassifier
-from iios.integration.news.classification.entity_extractor import EntityExtractor
-from iios.integration.news.classification.tag_generator    import TagGenerator
-from iios.integration.news.classification.sentiment_router import SentimentRouter
-from iios.integration.news.classification.classification_engine import ClassificationEngine
-from iios.integration.news.sentiment.sentiment_result     import SentimentResult
-from iios.integration.news.sentiment.sentiment_registry   import BaseSentimentProvider, SentimentRegistry
-from iios.integration.news.sentiment.sentiment_statistics import SentimentStatistics
-from iios.integration.news.sentiment.sentiment_engine     import SentimentEngine
-from iios.integration.news.alternative.alternative_dataset import AlternativeDataset, AlternativeEvent
-from iios.integration.news.alternative.alternative_source  import AlternativeSource
-from iios.integration.news.alternative.alternative_data_engine import AlternativeDataEngine
-from iios.integration.news.normalization.news_normalizer   import NewsNormalizer
-from iios.integration.news.news_registry   import NewsRegistry
-from iios.integration.news.news_context    import NewsContext
-from iios.integration.news.news_factory    import NewsFactory
-from iios.integration.news.news_engine     import NewsEngine, get_news_engine, reset_news_engine
-from iios.integration.news.monitoring.news_monitor import NewsMonitor
-from iios.integration.news.distribution.news_event_publisher import NewsEventPublisher
-from iios.integration.news.cache import NewsDataCache
+from enterprise_ai_platform.integration.news.core.news_article       import NewsArticle
+from enterprise_ai_platform.integration.news.core.news_event         import NewsEvent
+from enterprise_ai_platform.integration.news.core.news_headline      import NewsHeadline
+from enterprise_ai_platform.integration.news.core.news_source        import NewsSource
+from enterprise_ai_platform.integration.news.core.news_metadata      import NewsMetadata
+from enterprise_ai_platform.integration.news.core.news_statistics    import NewsStatistics
+from enterprise_ai_platform.integration.news.core.news_category_model import NewsCategoryNode
+from enterprise_ai_platform.integration.news.providers.provider_capabilities import NewsProviderCapabilities
+from enterprise_ai_platform.integration.news.providers.provider_health       import NewsProviderHealth
+from enterprise_ai_platform.integration.news.providers.news_session          import NewsSession
+from enterprise_ai_platform.integration.news.providers.paper_news_provider   import PaperNewsProvider
+from enterprise_ai_platform.integration.news.providers.reuters_provider      import ReutersProvider
+from enterprise_ai_platform.integration.news.providers.bloomberg_provider    import BloombergProvider
+from enterprise_ai_platform.integration.news.classification.topic_classifier import TopicClassifier
+from enterprise_ai_platform.integration.news.classification.entity_extractor import EntityExtractor
+from enterprise_ai_platform.integration.news.classification.tag_generator    import TagGenerator
+from enterprise_ai_platform.integration.news.classification.sentiment_router import SentimentRouter
+from enterprise_ai_platform.integration.news.classification.classification_engine import ClassificationEngine
+from enterprise_ai_platform.integration.news.sentiment.sentiment_result     import SentimentResult
+from enterprise_ai_platform.integration.news.sentiment.sentiment_registry   import BaseSentimentProvider, SentimentRegistry
+from enterprise_ai_platform.integration.news.sentiment.sentiment_statistics import SentimentStatistics
+from enterprise_ai_platform.integration.news.sentiment.sentiment_engine     import SentimentEngine
+from enterprise_ai_platform.integration.news.alternative.alternative_dataset import AlternativeDataset, AlternativeEvent
+from enterprise_ai_platform.integration.news.alternative.alternative_source  import AlternativeSource
+from enterprise_ai_platform.integration.news.alternative.alternative_data_engine import AlternativeDataEngine
+from enterprise_ai_platform.integration.news.normalization.news_normalizer   import NewsNormalizer
+from enterprise_ai_platform.integration.news.news_registry   import NewsRegistry
+from enterprise_ai_platform.integration.news.news_context    import NewsContext
+from enterprise_ai_platform.integration.news.news_factory    import NewsFactory
+from enterprise_ai_platform.integration.news.news_engine     import NewsEngine, get_news_engine, reset_news_engine
+from enterprise_ai_platform.integration.news.monitoring.news_monitor import NewsMonitor
+from enterprise_ai_platform.integration.news.distribution.news_event_publisher import NewsEventPublisher
+from enterprise_ai_platform.integration.news.cache import NewsDataCache
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -533,7 +533,7 @@ class TestPaperNewsProvider(unittest.TestCase):
         self.assertIsInstance(caps, NewsProviderCapabilities)
 
     def test_metadata(self):
-        from iios.integration.news.providers.provider_metadata import NewsProviderMetadata
+        from enterprise_ai_platform.integration.news.providers.provider_metadata import NewsProviderMetadata
         self.assertIsInstance(self.p.metadata, NewsProviderMetadata)
 
 

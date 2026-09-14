@@ -7,7 +7,7 @@ import threading
 import pytest
 from unittest.mock import MagicMock
 
-from iios.investment.company.ownership import (
+from enterprise_ai_platform.investment.company.ownership import (
     OwnershipIntelligenceEngine, OwnershipSnapshot,
     OwnershipPlugin, OwnershipPluginRegistry,
     InsiderActivityLabel, OwnershipRiskLabel,

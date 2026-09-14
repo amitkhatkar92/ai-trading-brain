@@ -1,20 +1,20 @@
 """test_validation.py — AllocationValidator, readiness."""
 import pytest
-from iios.investment.portfolio.allocation.allocation_plan import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_plan import (
     AllocationPlan,
     CashAllocation,
     PositionAllocation,
 )
-from iios.investment.portfolio.allocation.allocation_types import AllocationDirection
-from iios.investment.portfolio.allocation.allocation_validator import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_types import AllocationDirection
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_validator import (
     AllocationValidator,
     FindingOutcome,
     build_allocation_report,
 )
-from iios.investment.portfolio.allocation.allocation_readiness import (
+from enterprise_ai_platform.investment.portfolio.allocation.allocation_readiness import (
     AllocationReadinessValidator,
 )
-from iios.investment.portfolio.allocation.exposure_limits import ExposureCheck, ExposureOutcome
+from enterprise_ai_platform.investment.portfolio.allocation.exposure_limits import ExposureCheck, ExposureOutcome
 
 
 # ---------------------------------------------------------------------------

@@ -4,8 +4,8 @@ Tests for StrategyRiskInput and risk_statistics functions.
 import math
 import pytest
 from tests.unit.investment.strategy.risk.conftest import make_risk_input
-from iios.investment.strategy.risk.risk_input import StrategyRiskInput
-from iios.investment.strategy.risk.risk_statistics import (
+from enterprise_ai_platform.investment.strategy.risk.risk_input import StrategyRiskInput
+from enterprise_ai_platform.investment.strategy.risk.risk_statistics import (
     clamp,
     parametric_var,
     parametric_cvar,

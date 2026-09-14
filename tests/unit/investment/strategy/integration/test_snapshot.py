@@ -6,12 +6,12 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.strategy.integration.aggregation_engine import AggregationEngine
-from iios.investment.strategy.integration.aggregation_state import make_update
-from iios.investment.strategy.integration.conflict_classifier import Conflict, ConflictClassifier
-from iios.investment.strategy.integration.conflict_engine import ConflictEngine
-from iios.investment.strategy.integration.consistency_validator import ConsistencyValidator
-from iios.investment.strategy.integration.integration_constants import (
+from enterprise_ai_platform.investment.strategy.integration.aggregation_engine import AggregationEngine
+from enterprise_ai_platform.investment.strategy.integration.aggregation_state import make_update
+from enterprise_ai_platform.investment.strategy.integration.conflict_classifier import Conflict, ConflictClassifier
+from enterprise_ai_platform.investment.strategy.integration.conflict_engine import ConflictEngine
+from enterprise_ai_platform.investment.strategy.integration.consistency_validator import ConsistencyValidator
+from enterprise_ai_platform.investment.strategy.integration.integration_constants import (
     ConflictSeverity,
     ConflictType,
     IntelligenceSource,
@@ -19,13 +19,13 @@ from iios.investment.strategy.integration.integration_constants import (
     SnapshotStatus,
     ValidationStatus,
 )
-from iios.investment.strategy.integration.snapshot_cache import SnapshotCache
-from iios.investment.strategy.integration.strategy_snapshot import build_snapshot
-from iios.investment.strategy.integration.strategy_statistics import StrategyStatisticsTracker
-from iios.investment.strategy.integration.strategy_summary import build_strategy_summary
-from iios.investment.strategy.integration.strategy_confidence import ConfidenceCalculator
-from iios.investment.strategy.integration.strategy_quality import QualityFramework
-from iios.investment.strategy.integration.validation_report import build_validation_report
+from enterprise_ai_platform.investment.strategy.integration.snapshot_cache import SnapshotCache
+from enterprise_ai_platform.investment.strategy.integration.strategy_snapshot import build_snapshot
+from enterprise_ai_platform.investment.strategy.integration.strategy_statistics import StrategyStatisticsTracker
+from enterprise_ai_platform.investment.strategy.integration.strategy_summary import build_strategy_summary
+from enterprise_ai_platform.investment.strategy.integration.strategy_confidence import ConfidenceCalculator
+from enterprise_ai_platform.investment.strategy.integration.strategy_quality import QualityFramework
+from enterprise_ai_platform.investment.strategy.integration.validation_report import build_validation_report
 from tests.unit.investment.strategy.integration.conftest import (
     make_eval_update,
     make_risk_update,
@@ -92,7 +92,7 @@ class TestStrategySnapshot:
 
     def test_invalid_status_on_validation_failure(self):
         from datetime import datetime, timezone
-        from iios.investment.strategy.integration.consistency_rules import RuleCheckResult
+        from enterprise_ai_platform.investment.strategy.integration.consistency_rules import RuleCheckResult
         sid, state, eng = make_full_state("SNAP2")
         crit = RuleCheckResult(
             rule_id="R001", rule_name="t", passed=False,

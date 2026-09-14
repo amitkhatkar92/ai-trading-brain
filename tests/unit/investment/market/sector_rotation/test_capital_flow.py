@@ -3,20 +3,20 @@ from __future__ import annotations
 
 import pytest
 
-from iios.investment.market.sector_rotation.capital_flow_engine import CapitalFlowEngine
-from iios.investment.market.sector_rotation.flow_profile import build_flow_profile
-from iios.investment.market.sector_rotation.flow_statistics import (
+from enterprise_ai_platform.investment.market.sector_rotation.capital_flow_engine import CapitalFlowEngine
+from enterprise_ai_platform.investment.market.sector_rotation.flow_profile import build_flow_profile
+from enterprise_ai_platform.investment.market.sector_rotation.flow_statistics import (
     flow_dispersion,
     top_inflow_sectors,
     top_outflow_sectors,
 )
-from iios.investment.market.sector_rotation.flow_tracker import FlowTracker
-from iios.investment.market.sector_rotation.models import (
+from enterprise_ai_platform.investment.market.sector_rotation.flow_tracker import FlowTracker
+from enterprise_ai_platform.investment.market.sector_rotation.models import (
     CapitalFlowProfile,
     FlowType,
     SecurityData,
 )
-from iios.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
+from enterprise_ai_platform.investment.market.sector_rotation.sector_taxonomy import SectorTaxonomy
 
 
 def _sec(r: float, vol: float = 1_200_000, avg_vol: float = 1_000_000) -> SecurityData:

@@ -9,20 +9,20 @@ from contextlib import contextmanager
 
 import pytest
 
-from iios.investment.strategy.lifecycle.resource_limits import (
+from enterprise_ai_platform.investment.strategy.lifecycle.resource_limits import (
     ResourceLimits,
     ResourceProfile,
 )
-from iios.investment.strategy.lifecycle.resource_statistics import (
+from enterprise_ai_platform.investment.strategy.lifecycle.resource_statistics import (
     ResourceSnapshot,
     ResourceStatistics,
 )
-from iios.investment.strategy.lifecycle.resource_allocator import (
+from enterprise_ai_platform.investment.strategy.lifecycle.resource_allocator import (
     AllocationError,
     AllocationTicket,
     ResourceAllocator,
 )
-from iios.investment.strategy.lifecycle.resource_manager import ResourceManager
+from enterprise_ai_platform.investment.strategy.lifecycle.resource_manager import ResourceManager
 
 
 # ── ResourceLimits ────────────────────────────────────────────────────────────

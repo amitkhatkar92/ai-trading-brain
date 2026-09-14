@@ -1,15 +1,15 @@
 """
 tests/unit/monitoring/test_alert_manager.py
 =============================================
-Tests for iios.monitoring.alert_manager
+Tests for enterprise_ai_platform.monitoring.alert_manager
 """
 from __future__ import annotations
 
 import time
 import pytest
 
-from iios.monitoring.alert_manager import AlertManager, _reset_alert_manager, get_alert_manager
-from iios.monitoring.monitoring_constants import AlertLevel, AlertStatus
+from enterprise_ai_platform.monitoring.alert_manager import AlertManager, _reset_alert_manager, get_alert_manager
+from enterprise_ai_platform.monitoring.monitoring_constants import AlertLevel, AlertStatus
 
 
 @pytest.fixture()
