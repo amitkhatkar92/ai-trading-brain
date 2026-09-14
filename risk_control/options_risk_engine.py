@@ -145,6 +145,51 @@ class OptionsRiskEngine:
                 )
                 return False
 
+        # ── Self-learning bridge: validated options knowledge -> bounded
+        # lot adjustment (Plan B self-learning ecosystem, Phase 1). Reuses
+        # OptionsKnowledgeStore's existing, already-live, evidence-gated
+        # state machine (KS_AUTHENTICATED requires >=40 real outcomes +
+        # walk-forward Sharpe>0 -- fully automatic, zero human step) as the
+        # ONLY trust signal. No new parallel validation is introduced here.
+        # Sizing is a more consequential lever than a confidence nudge, so
+        # this deliberately gates size-UP on the highest tier
+        # (KS_AUTHENTICATED) rather than KS_VALIDATED (already used for
+        # confidence in options_opportunity_ai.py). Size-DOWN on KS_DEGRADED
+        # is always safe (reduces risk) so it applies without a stricter bar.
+        try:
+            from knowledge_system.options_knowledge_store import (
+                get_options_knowledge_store, KS_AUTHENTICATED, KS_DEGRADED,
+            )
+            from knowledge_system.options_feature_extractor import _ivr_band, _dte_band
+
+            regime_str = str(
+                snapshot.regime.value if snapshot is not None and hasattr(snapshot.regime, "value")
+                else getattr(snapshot, "regime", "")
+            )
+            ctx_key = f"{regime_str}|{_ivr_band(float(meta.get('iv_rank', 50)))}|{_dte_band(dte)}"
+            influence, ks_state = get_options_knowledge_store().get_influence(stype, ctx_key)
+
+            if ks_state == KS_AUTHENTICATED and influence > 0 and lots < OPTIONS_MAX_LOTS_PER_TRADE:
+                candidate_lots = lots + 1
+                candidate_loss = candidate_lots * max_loss_per_lot
+                if candidate_loss <= remaining_capacity:
+                    log.info(
+                        "[OptionsRiskEngine] KS bridge: %s AUTHENTICATED influence=+%.3f — "
+                        "sizing %d -> %d lots.", stype, influence, lots, candidate_lots,
+                    )
+                    lots = candidate_lots
+                    trade_max_loss = candidate_loss
+            elif ks_state == KS_DEGRADED and lots > 1:
+                candidate_lots = lots - 1
+                log.info(
+                    "[OptionsRiskEngine] KS bridge: %s DEGRADED influence=%.3f — "
+                    "sizing %d -> %d lots (defensive).", stype, influence, lots, candidate_lots,
+                )
+                lots = candidate_lots
+                trade_max_loss = lots * max_loss_per_lot
+        except Exception as _ks_bridge_exc:
+            log.debug("[OptionsRiskEngine] KS bridge skipped (non-fatal): %s", _ks_bridge_exc)
+
         # ── Gate 3: VIX guard for credit strategies ───────────────────
         if stype == "IRON_CONDOR" and vix > VIX_SELL_LIMIT:
             log.info(
