@@ -558,6 +558,20 @@ class KnowledgeDecisionAuthority:
         scanner_conf = float(obs.get("scanner_confidence", 0.0))
         relevance = min(max(scanner_conf / 10.0, 0.1), 1.0)
 
+        # Self-learning ecosystem Phase 2 KDA bridge: bounded +/-0.05 nudge from
+        # CONFIRMED ARS hypotheses for this symbol only. Fail-open; dormant until
+        # a hypothesis actually reaches CONFIRMED with subject fields populated.
+        try:
+            from autonomous_research.hypothesis_registry import HypothesisRegistry
+            from autonomous_research.knowledge_provider import KnowledgeProvider
+            symbol_ = str(obs.get("symbol", "UNKNOWN"))
+            ars_adj = HypothesisRegistry(knowledge_provider=KnowledgeProvider()).get_confirmed_adjustment(
+                "SYMBOL", symbol_, max_delta=0.05
+            )
+        except Exception:
+            ars_adj = 0.0
+        relevance = min(max(relevance + ars_adj, 0.1), 1.0)
+
         oos_q = _oos_quality(oos_status)
 
         # Source independence: needs at least 3 truly distinct sources for full score
