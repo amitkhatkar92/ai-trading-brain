@@ -650,11 +650,15 @@ class TestPaperLiveGate(unittest.TestCase):
                       "config.py must default PAPER_TRADING to 'true'")
 
     def test_i02_live_trading_authorized_is_absent(self):
-        """LIVE_TRADING_AUTHORIZED must be absent or not 'true'."""
+        """If LIVE_TRADING_AUTHORIZED is true, PAPER_TRADING must ALSO be
+        explicitly False (2026-09-14: live trading is a deliberate,
+        operator-authorized decision -- this guards consistency, not absence)."""
         import os
+        import config
         lta = os.environ.get("LIVE_TRADING_AUTHORIZED", "").lower()
-        self.assertNotEqual(lta, "true",
-                            "LIVE_TRADING_AUTHORIZED must NOT be 'true' during pre-live validation")
+        if lta == "true":
+            self.assertFalse(getattr(config, "PAPER_TRADING", True),
+                              "LIVE_TRADING_AUTHORIZED=true but PAPER_TRADING is still True — inconsistent")
 
     def test_i03_orderManager_paper_mode_true_means_no_broker(self):
         """When _paper_mode=True, OrderManager._broker is None."""

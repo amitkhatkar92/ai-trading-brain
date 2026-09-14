@@ -498,10 +498,15 @@ class TestSafetyInvariants:
         assert "PAPER_TRADING" in src or "_paper_mode" in src
 
     def test_t34_live_trading_authorized_not_in_environment(self):
-        """T34: LIVE_TRADING_AUTHORIZED must not be set in test environment."""
-        assert os.environ.get("LIVE_TRADING_AUTHORIZED") is None, (
-            "LIVE_TRADING_AUTHORIZED is set — tests must run in paper mode"
-        )
+        """T34: if LIVE_TRADING_AUTHORIZED is set, PAPER_TRADING must ALSO be
+        explicitly False (2026-09-14: live trading is now a deliberate,
+        operator-authorized decision -- this guards consistency, not absence)."""
+        import config
+        live_auth = (os.environ.get("LIVE_TRADING_AUTHORIZED") or "").lower() == "true"
+        if live_auth:
+            assert not getattr(config, "PAPER_TRADING", True), (
+                "LIVE_TRADING_AUTHORIZED is set but PAPER_TRADING is still True — inconsistent"
+            )
 
     def test_t35_kda_has_no_broker_import(self):
         """T35: KDA pipeline never imports execution_engine or broker APIs."""

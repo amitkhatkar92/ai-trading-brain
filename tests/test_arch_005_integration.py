@@ -377,16 +377,24 @@ class TestCaseH_SafetyInvariants:
         assert _ORDER_COUNT == initial
 
     def test_h03_paper_trading_config_true(self):
-        """H03: LIVE_TRADING_AUTHORIZED not set (VPS enforces PAPER_TRADING=True via env)."""
-        # PAPER_TRADING config value may differ between local dev and VPS.
-        # The invariant is that LIVE_TRADING_AUTHORIZED must be absent.
-        assert os.environ.get("LIVE_TRADING_AUTHORIZED") is None, (
-            "LIVE_TRADING_AUTHORIZED must not be set in env"
-        )
+        """H03: if PAPER_TRADING=False, LIVE_TRADING_AUTHORIZED must ALSO be
+        explicitly true (2026-09-14: live trading is a deliberate,
+        operator-authorized decision -- this guards against a half-flipped
+        accidental state, not against live trading itself)."""
+        import config
+        paper = getattr(config, "PAPER_TRADING", True)
+        live_auth = (os.environ.get("LIVE_TRADING_AUTHORIZED") or "").lower() == "true"
+        if not paper:
+            assert live_auth, "PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED not set — inconsistent"
 
     def test_h04_live_trading_not_authorized(self):
-        """H04: LIVE_TRADING_AUTHORIZED not set in environment."""
-        assert os.environ.get("LIVE_TRADING_AUTHORIZED") is None
+        """H04: if LIVE_TRADING_AUTHORIZED is true, PAPER_TRADING must ALSO be explicitly False."""
+        import config
+        live_auth = (os.environ.get("LIVE_TRADING_AUTHORIZED") or "").lower() == "true"
+        if live_auth:
+            assert not getattr(config, "PAPER_TRADING", True), (
+                "LIVE_TRADING_AUTHORIZED=true but PAPER_TRADING is still True — inconsistent"
+            )
 
     def test_h05_evaluate_never_raises(self):
         """H05: KDA.evaluate() never raises — returns fallback record on error."""

@@ -260,24 +260,31 @@ def test_T12b_no_lookahead_in_kda_result():
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_T13_paper_trading_or_no_live_auth():
-    """PAPER_TRADING=True OR LIVE_TRADING_AUTHORIZED absent."""
+    """If PAPER_TRADING=False, LIVE_TRADING_AUTHORIZED must ALSO be explicitly true.
+
+    2026-09-14: live trading is a deliberate, operator-authorized decision.
+    This guards against a half-flipped state, not against live trading itself.
+    """
     import config, os
     paper = getattr(config, "PAPER_TRADING", True)
     live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() == "true"
     if not paper:
-        assert not live_auth, "LIVE_TRADING_AUTHORIZED set while PAPER_TRADING=False — dangerous"
+        assert live_auth, "PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED not set — inconsistent"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# T14 — LIVE_TRADING_AUTHORIZED absent
+# T14 — LIVE_TRADING_AUTHORIZED consistency
 # ─────────────────────────────────────────────────────────────────────────────
 
 def test_T14_live_trading_authorized_absent():
-    """LIVE_TRADING_AUTHORIZED must not be set."""
-    import os
-    assert os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() != "true", (
-        "LIVE_TRADING_AUTHORIZED is set — live order risk present"
-    )
+    """If LIVE_TRADING_AUTHORIZED is true, PAPER_TRADING must ALSO be explicitly False."""
+    import config, os
+    live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() == "true"
+    paper = getattr(config, "PAPER_TRADING", True)
+    if live_auth:
+        assert not paper, (
+            "LIVE_TRADING_AUTHORIZED=true but PAPER_TRADING is still True — inconsistent"
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

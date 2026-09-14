@@ -380,26 +380,39 @@ class TestT5ResponsibilityOwnership:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class TestT6PaperTradingSafety:
-    """Verify PAPER_TRADING cannot be disabled by knowledge/learning components."""
+    """Verify live trading can only be reached through the explicit, consistent
+    double-gate — never an accidental half-flipped state.
+
+    2026-09-14: the operator made a deliberate, informed decision to run this
+    system live (PAPER_TRADING=False + LIVE_TRADING_AUTHORIZED=true) in order
+    to observe real market behaviour. These tests no longer forbid live
+    trading; they guard against the actually dangerous case — one flag set
+    without the other."""
 
     def test_paper_trading_is_true_in_config(self):
-        """PAPER_TRADING=True OR LIVE_TRADING_AUTHORIZED must be absent (defence-in-depth)."""
+        """If PAPER_TRADING=False, LIVE_TRADING_AUTHORIZED must ALSO be explicitly true."""
         import config, os
         paper = getattr(config, "PAPER_TRADING", True)
         live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() == "true"
         # Critical invariant: live orders only flow when BOTH PAPER_TRADING=False AND LIVE_TRADING_AUTHORIZED=true.
-        # In test environments, PAPER_TRADING may be False but LIVE_TRADING_AUTHORIZED must always be absent.
+        # A half-flipped state (paper mode off but authorization missing) is the
+        # dangerous, accidental case this guards against.
         if not paper:
-            assert not live_auth, (
-                "LIVE_TRADING_AUTHORIZED is set — live order risk present"
+            assert live_auth, (
+                "PAPER_TRADING=False but LIVE_TRADING_AUTHORIZED is not explicitly "
+                "true — accidental/incomplete live-trading configuration"
             )
 
     def test_live_trading_authorized_absent(self):
-        """LIVE_TRADING_AUTHORIZED must NOT be present in config."""
-        import config
-        assert not getattr(config, "LIVE_TRADING_AUTHORIZED", False), (
-            "LIVE_TRADING_AUTHORIZED must be absent or False"
-        )
+        """If LIVE_TRADING_AUTHORIZED is true, PAPER_TRADING must ALSO be explicitly False."""
+        import config, os
+        live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "").lower() == "true"
+        paper = getattr(config, "PAPER_TRADING", True)
+        if live_auth:
+            assert not paper, (
+                "LIVE_TRADING_AUTHORIZED=true but PAPER_TRADING is still True — "
+                "inconsistent live-trading configuration"
+            )
 
     def test_knowledge_pipeline_does_not_import_order_manager(self):
         """KnowledgeDecisionPipeline must NOT import OrderManager."""

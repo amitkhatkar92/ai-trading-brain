@@ -25,6 +25,16 @@ from typing import Any, List
 import pytest
 
 # ─── Safety: never enable live trading ───────────────────────────────────────
+# NOTE (2026-09-14): this module-level setdefault is intentionally left as-is.
+# An attempt to replace it with a properly-scoped, auto-restoring pytest
+# fixture was tried during a live-trading test audit and reverted: several
+# OTHER test files (e.g. test_arch_006_integration.py) do
+# `from config import PAPER_TRADING` at THEIR OWN module level, which snapshots
+# the value at collection time — before any fixture would run. Those files
+# depend on this line running early enough (during collection) to see
+# PAPER_TRADING=true. Properly decoupling that is a larger, separate test-
+# infrastructure fix, not part of this change. See TestT6PaperTradingSafety in
+# test_arch_001_integration.py for the actual paper/live consistency invariant.
 os.environ.setdefault("PAPER_TRADING", "true")
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -293,9 +303,13 @@ class TestSafetyInvariantsARCH004:
         _ = kfe.load_fusion_records()
         assert kfe.broker_calls == 0  # OOS annotation must not call any broker
 
-    def test_T16_paper_trading_enforced_after_partial_fill_method_added(self):
+    def test_T16_paper_trading_enforced_after_partial_fill_method_added(self, monkeypatch):
         """T16: OrderManager still enforces PAPER_TRADING=true; new method does not bypass it."""
-        os.environ["PAPER_TRADING"] = "true"
+        # monkeypatch.setenv auto-restores the original value after this test —
+        # a bare `os.environ["PAPER_TRADING"] = "true"` here used to leak into
+        # every test file that ran afterward in the same pytest session (found
+        # 2026-09-14 while auditing the live-trading config invariant tests).
+        monkeypatch.setenv("PAPER_TRADING", "true")
         from execution_engine.order_manager import OrderManager
         import importlib, execution_engine.order_manager as _om_mod
         importlib.reload(_om_mod)
@@ -304,7 +318,9 @@ class TestSafetyInvariantsARCH004:
         result = om.reconcile_partial_fills()
         assert result == []
         assert om._broker is None or om._paper_mode is True
-        # Confirm defense-in-depth: LIVE_TRADING_AUTHORIZED absent
-        live_auth = os.getenv("LIVE_TRADING_AUTHORIZED", "")
-        assert live_auth.lower() != "true", \
-            "LIVE_TRADING_AUTHORIZED must NOT be set during ARCH-004 tests"
+        # Note (2026-09-14): this test explicitly forces PAPER_TRADING=true
+        # above, so it already proves OrderManager stays in paper mode
+        # regardless of LIVE_TRADING_AUTHORIZED — no further check needed.
+        # Live trading is now a deliberate, operator-authorized decision;
+        # see TestT6PaperTradingSafety in test_arch_001_integration.py for
+        # the actual paper/live consistency invariant.
