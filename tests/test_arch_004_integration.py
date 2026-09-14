@@ -24,18 +24,31 @@ from typing import Any, List
 
 import pytest
 
-# ─── Safety: never enable live trading ───────────────────────────────────────
-# NOTE (2026-09-14): this module-level setdefault is intentionally left as-is.
-# An attempt to replace it with a properly-scoped, auto-restoring pytest
-# fixture was tried during a live-trading test audit and reverted: several
-# OTHER test files (e.g. test_arch_006_integration.py) do
-# `from config import PAPER_TRADING` at THEIR OWN module level, which snapshots
-# the value at collection time — before any fixture would run. Those files
-# depend on this line running early enough (during collection) to see
-# PAPER_TRADING=true. Properly decoupling that is a larger, separate test-
-# infrastructure fix, not part of this change. See TestT6PaperTradingSafety in
-# test_arch_001_integration.py for the actual paper/live consistency invariant.
-os.environ.setdefault("PAPER_TRADING", "true")
+
+@pytest.fixture(autouse=True, scope="module")
+def _force_paper_trading_for_this_module():
+    """Force PAPER_TRADING=true for this file's tests only, then restore the
+    original value.
+
+    2026-09-14: this used to be a bare module-level
+    os.environ.setdefault("PAPER_TRADING", "true") with no cleanup, which
+    leaked into every test file collected afterward in the same pytest
+    session. A first attempt to fix this was reverted because
+    test_arch_006_integration.py depended on that leak (it read
+    `from config import PAPER_TRADING` at ITS OWN module level, snapshotting
+    whatever value existed at collection time). test_arch_006_integration.py
+    has since been given its own independent, self-sufficient fixture that
+    forces the value directly (see _isolate_paper_trading_for_this_file
+    there), so it no longer needs this file's leak — confirmed by full
+    combined-suite verification before this was re-applied.
+    """
+    original = os.environ.get("PAPER_TRADING")
+    os.environ["PAPER_TRADING"] = "true"
+    yield
+    if original is None:
+        os.environ.pop("PAPER_TRADING", None)
+    else:
+        os.environ["PAPER_TRADING"] = original
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -214,9 +227,15 @@ class TestPartialFillHandling:
 
     def test_T10_reconcile_partial_fills_noop_in_paper_mode(self):
         """T10: reconcile_partial_fills() returns empty list in paper mode (no broker)."""
-        os.environ["PAPER_TRADING"] = "true"
+        # OrderManager.__init__ reads the cached config.PAPER_TRADING module
+        # attribute (`getattr(_cfg, "PAPER_TRADING", True)`), not a fresh env
+        # lookup -- a raw os.environ mutation here does not affect it (found
+        # 2026-09-14 during the same audit that fixed test_arch_006's
+        # equivalent helpers). Patch the attribute directly instead.
+        from unittest.mock import patch
         from execution_engine.order_manager import OrderManager
-        om = OrderManager()
+        with patch("config.PAPER_TRADING", True):
+            om = OrderManager()
         assert om._paper_mode is True
         result = om.reconcile_partial_fills()
         assert result == []
@@ -305,11 +324,15 @@ class TestSafetyInvariantsARCH004:
 
     def test_T16_paper_trading_enforced_after_partial_fill_method_added(self, monkeypatch):
         """T16: OrderManager still enforces PAPER_TRADING=true; new method does not bypass it."""
-        # monkeypatch.setenv auto-restores the original value after this test —
-        # a bare `os.environ["PAPER_TRADING"] = "true"` here used to leak into
-        # every test file that ran afterward in the same pytest session (found
-        # 2026-09-14 while auditing the live-trading config invariant tests).
+        # OrderManager.__init__ reads the cached config.PAPER_TRADING module
+        # attribute (`getattr(_cfg, "PAPER_TRADING", True)`), not a fresh env
+        # lookup -- monkeypatch.setenv alone does not affect it (found
+        # 2026-09-14, same audit that fixed test_arch_006's equivalent
+        # helpers). Patch the attribute directly; monkeypatch auto-restores
+        # both after this test.
+        import config
         monkeypatch.setenv("PAPER_TRADING", "true")
+        monkeypatch.setattr(config, "PAPER_TRADING", True)
         from execution_engine.order_manager import OrderManager
         import importlib, execution_engine.order_manager as _om_mod
         importlib.reload(_om_mod)
