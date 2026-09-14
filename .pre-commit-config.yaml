@@ -163,3 +163,22 @@ repos:
         files: ^iios/
         exclude: ^iios/cli/|^iios/tools/|^iios/dashboard/|^tests/
         pass_filenames: true
+
+  # ===========================================================================
+  # OIOS-Specific: duplicate class-name guard (2026-09-14 housekeeping audit)
+  # oios/ is the subsystem actually wired into live trading
+  # (orchestrator/master_orchestrator.py) yet, unlike iios/, had zero automated
+  # protection against the exact class of bug documented in
+  # AI_PLATFORM_ARCHITECTURE_AUDIT_V1.md (two classes sharing a name across
+  # modules -> silent except/isinstance failures). Baseline file accepts the
+  # 3 pre-existing, manually-verified-harmless duplicates found during that
+  # audit; fails only on genuinely NEW duplicate class names going forward.
+  # ===========================================================================
+  - repo: local
+    hooks:
+      - id: oios-no-duplicate-class-names
+        name: "OIOS: no duplicate class names across modules"
+        language: system
+        entry: python scripts/check_oios_duplicate_symbols.py
+        files: ^oios/.*\.py$
+        pass_filenames: false

@@ -1,0 +1,13 @@
+{
+  "_comment": "Accepted pre-existing duplicate class names under oios/, found during the 2026-09-14 housekeeping/naming-sprawl audit. Each entry was manually verified to have NO isinstance()/except usage anywhere in the codebase (duck-typed consumption only in oios/scanners/signal_writer.py), so there is no active runtime bug today -- but the risk class is real (this exact pattern already caused a silent except-handling failure once in iios/, see AI_PLATFORM_ARCHITECTURE_AUDIT_V1.md). Do not add new entries here without the same verification. Prefer renaming/consolidating instead of growing this list.",
+  "accepted_duplicate_class_names": [
+    "PriceWindow",
+    "RawSignal",
+    "ScanResult"
+  ],
+  "_details": {
+    "PriceWindow": "oios/scanners/layer_1a.py and oios/scanners/layer_1b.py -- independent scanner-tier dataclasses, never cross-compared via isinstance/except.",
+    "RawSignal": "oios/scanners/layer_1a.py and oios/scanners/layer_1b.py -- independent scanner-tier dataclasses, never cross-compared via isinstance/except.",
+    "ScanResult": "oios/scanners/layer_1a.py and oios/scanners/layer_1b.py -- both passed to oios/scanners/signal_writer.py::write_scan_results(), which accesses fields via duck-typing only (no isinstance/type check on this parameter)."
+  }
+}
