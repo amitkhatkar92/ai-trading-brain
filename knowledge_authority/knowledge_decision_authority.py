@@ -68,6 +68,26 @@ _ESS_DECISION_ELIGIBLE = 100.0
 _STABILITY_DECISION_MIN = 0.6    # minimum stability for DECISION_ELIGIBLE
 _CONTRADICTION_DECISION_MIN = 0.4  # contradiction_factor must exceed this
 
+# KDA-CRE-001: _ESS_DECISION_ELIGIBLE / _STABILITY_DECISION_MIN /
+# _CONTRADICTION_DECISION_MIN above are the DEFAULT values only. The
+# effective value used at runtime is resolved via _effective_constants(),
+# which reads knowledge_authority/kda_constant_refinement_engine.py's
+# validated overrides when present and falls back to these exact defaults
+# on any error, missing file, or not-yet-overridden constant. This is the
+# only mechanism by which these 3 constants may change -- never a direct
+# edit here. See kda_constant_refinement_engine.py for the full safety
+# contract (shadow-tested, bounded, auto-rollback, fully automated).
+def _effective_constants() -> Dict[str, float]:
+    try:
+        from .kda_constant_refinement_engine import get_effective_constants
+        return get_effective_constants()
+    except Exception:
+        return {
+            "_ESS_DECISION_ELIGIBLE": _ESS_DECISION_ELIGIBLE,
+            "_STABILITY_DECISION_MIN": _STABILITY_DECISION_MIN,
+            "_CONTRADICTION_DECISION_MIN": _CONTRADICTION_DECISION_MIN,
+        }
+
 # Authority thresholds for decision roles
 _AUTHORITY_KNOWLEDGE_MIN = 0.50   # knowledge becomes decision authority
 _AUTHORITY_STRATEGY_MIN  = 0.20   # knowledge informs but defers to strategy
@@ -481,19 +501,24 @@ class KnowledgeDecisionAuthority:
         oos_status: str,
         contradiction_factor: float,
     ) -> EvidenceState:
+        consts = _effective_constants()
+        ess_decision_eligible = consts["_ESS_DECISION_ELIGIBLE"]
+        stability_min = consts["_STABILITY_DECISION_MIN"]
+        contradiction_min = consts["_CONTRADICTION_DECISION_MIN"]
+
         if ess < _ESS_DEVELOPING:
             return EvidenceState.INSUFFICIENT
         if ess < _ESS_USEFUL:
             return EvidenceState.DEVELOPING
         if ess < _ESS_VALIDATED:
             return EvidenceState.USEFUL
-        if ess < _ESS_DECISION_ELIGIBLE:
+        if ess < ess_decision_eligible:
             return EvidenceState.VALIDATED
-        # DECISION_ELIGIBLE requires: ESS ≥ 100, stability ≥ 0.6,
-        # OOS not failed, contradiction controlled
-        if (stability >= _STABILITY_DECISION_MIN
+        # DECISION_ELIGIBLE requires: ESS >= effective threshold, stability
+        # >= effective threshold, OOS not failed, contradiction controlled
+        if (stability >= stability_min
                 and oos_status.upper() != "FAILED"
-                and contradiction_factor >= _CONTRADICTION_DECISION_MIN):
+                and contradiction_factor >= contradiction_min):
             return EvidenceState.DECISION_ELIGIBLE
         return EvidenceState.VALIDATED
 
@@ -527,7 +552,7 @@ class KnowledgeDecisionAuthority:
         obs:                  Dict[str, Any],
         av:                   Optional[Any],
     ) -> KnowledgeAuthorityComponents:
-        evidence_strength = min(ess / _ESS_DECISION_ELIGIBLE, 1.0)
+        evidence_strength = min(ess / _effective_constants()["_ESS_DECISION_ELIGIBLE"], 1.0)
 
         # Relevance: scanner confidence / 10, bounded
         scanner_conf = float(obs.get("scanner_confidence", 0.0))

@@ -7040,6 +7040,25 @@ class MasterOrchestrator:
             except Exception as _kda_eod_exc:
                 log.debug("[KDA-003] EOD update error (non-critical): %s", _kda_eod_exc)
 
+        # ── KDA-CRE-001: autonomous constant refinement (fully automated) ────
+        # Checks whether any of KDA's 3 live evidence-gate constants
+        # (_ESS_DECISION_ELIGIBLE, _STABILITY_DECISION_MIN,
+        # _CONTRADICTION_DECISION_MIN) have enough new, statistically-
+        # validated evidence to justify a bounded, shadow-tested change.
+        # No human step at any transition. Self-inert until real outcome
+        # data clears its guardrails (evidence volume + dynamic cooldown).
+        try:
+            from knowledge_authority.kda_constant_refinement_engine import run_daily_refinement_check
+            _kda_cre = run_daily_refinement_check()
+            _kda_cre_acted = {
+                k: v for k, v in _kda_cre.get("per_constant", {}).items()
+                if v.get("status") not in ("WAITING_FOR_EVIDENCE", None)
+            }
+            if _kda_cre_acted:
+                log.info("[KDA-CRE] Constant refinement activity: %s", _kda_cre_acted)
+        except Exception as _kda_cre_exc:
+            log.debug("[KDA-CRE] refinement check error (non-critical): %s", _kda_cre_exc)
+
         # ── KLP→KSL: Knowledge evidence bridge (VPS-safe; no shadow JSONL needed) ──
         # Runs OUTSIDE the local shadow-file guard so completed KLP observations
         # reach the pattern/research pipeline on VPS.  Idempotent — re-runs

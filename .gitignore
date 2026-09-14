@@ -105,6 +105,7 @@ data/shadow_evidence_ledger.jsonl
 # ── Runtime state files — updated every cycle on VPS; wiping resets live state ──
 # fresh-deploy is graceful (system rebuilds empty state automatically).
 data/ksl/*.json
+data/kda_cre/
 data/research_question_queue.jsonl
 data/regime_probability_history.json
 data/scanner_memory.json
