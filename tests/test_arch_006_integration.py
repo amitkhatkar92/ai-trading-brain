@@ -24,6 +24,8 @@ from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch, PropertyMock
 from typing import Optional, List
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # ─── Minimal imports (avoid importing orchestrator which has heavy side effects) ───
@@ -35,6 +37,40 @@ from config import (
     TOTAL_CAPITAL, MAX_POSITIONS, MAX_RISK_PER_TRADE_PCT,
     PAPER_TRADING, MAX_DRAWDOWN_PCT,
 )
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _isolate_paper_trading_for_this_file():
+    """Force paper mode + an isolated journal for this entire file's run.
+
+    2026-09-14: a per-helper-call `with patch(...): om = OrderManager()`
+    (inside _make_paper_om/_make_isolated_om) only stays active for the
+    constructor call itself — _journal_write() re-reads the module-level
+    PAPER_TRADE_LOG constant fresh on every write, which happens later, after
+    the helper has already returned and the patch has already been undone.
+    That let several tests keep writing real OPEN positions for RELIANCE into
+    the production data/paper_trades.csv (found and cleaned up the same day
+    this fixture was added). A module-scoped autouse fixture keeps both
+    patches active for every test in this file, regardless of when
+    execute()/_journal_write() actually runs.
+    """
+    _tmp = os.path.join(tempfile.gettempdir(), f"test_arch006_module_{os.getpid()}.csv")
+    global _REAL_PAPER_TRADING
+    import config as _real_cfg
+    _REAL_PAPER_TRADING = _real_cfg.PAPER_TRADING
+    p1 = patch("config.PAPER_TRADING", True)
+    p2 = patch("execution_engine.order_manager.PAPER_TRADE_LOG", _tmp)
+    p1.start()
+    p2.start()
+    yield
+    p2.stop()
+    p1.stop()
+
+
+# Captured by the fixture above before it patches config.PAPER_TRADING for
+# test isolation -- test_i02 needs the REAL value to audit the actual
+# production consistency invariant, not the patched-for-tests one.
+_REAL_PAPER_TRADING: Optional[bool] = None
 
 
 # ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -63,18 +99,38 @@ def _make_decision(score=7.0, modifier=1.0):
 
 
 def _make_paper_om() -> OrderManager:
-    """OrderManager in paper mode (no broker)."""
-    om = OrderManager()
-    assert om._paper_mode or om._broker is None
+    """OrderManager in paper mode (no broker) — explicitly forced, never ambient.
+
+    2026-09-14: previously called OrderManager() unmocked and just asserted the
+    result landed in paper mode. That assumption silently broke once the real
+    system became deliberately live (PAPER_TRADING=false,
+    LIVE_TRADING_AUTHORIZED=true) — this helper was observed making a REAL
+    connection to the live Dhan broker during a test run before its own
+    assertion caught it. config.PAPER_TRADING is patched directly (not just
+    os.environ) because OrderManager.__init__ reads the already-cached config
+    module attribute (`getattr(_cfg, "PAPER_TRADING", True)`), not a fresh env
+    lookup — patching os.environ alone would not be sufficient.
+
+    Also isolates the trade journal to a temp file: this helper was also
+    observed writing a test-generated OPEN position for RELIANCE into the
+    real, production data/paper_trades.csv (a genuine test-isolation bug,
+    found and cleaned up the same day this fix was applied).
+    """
+    _tmp = os.path.join(tempfile.gettempdir(), f"test_arch006_paper_{os.getpid()}.csv")
+    with patch("config.PAPER_TRADING", True), \
+         patch("execution_engine.order_manager.PAPER_TRADE_LOG", _tmp):
+        om = OrderManager()
+    assert om._paper_mode and om._broker is None
     return om
 
 
 def _make_isolated_om() -> OrderManager:
     """OrderManager with a fresh temp journal — no production positions restored."""
     _tmp = os.path.join(tempfile.gettempdir(), f"test_arch006_{os.getpid()}.csv")
-    with patch("execution_engine.order_manager.PAPER_TRADE_LOG", _tmp):
+    with patch("execution_engine.order_manager.PAPER_TRADE_LOG", _tmp), \
+         patch("config.PAPER_TRADING", True):
         om = OrderManager()
-    assert om._paper_mode or om._broker is None
+    assert om._paper_mode and om._broker is None
     return om
 
 
@@ -510,8 +566,11 @@ class TestBrokerFailureFallback(unittest.TestCase):
             result = om.execute(sig, dec)
         # In paper mode the order should still be recorded (SL is software-tracked)
         if result is not None:
-            self.assertIn(result, om._orders)
-            self.assertEqual(om._orders[result].sl_order_id, "")
+            # execute() returns an OrderRecord, not an order_id — om._orders is
+            # keyed by order_id (found while auditing this file 2026-09-14;
+            # previously masked by an earlier, unrelated assertion failure).
+            self.assertIn(result.order_id, om._orders)
+            self.assertEqual(om._orders[result.order_id].sl_order_id, "")
 
     def test_f04_get_order_status_failure_is_swallowed_in_reconcile(self):
         """get_order_status exception in reconcile → logged, not raised."""
@@ -652,12 +711,17 @@ class TestPaperLiveGate(unittest.TestCase):
     def test_i02_live_trading_authorized_is_absent(self):
         """If LIVE_TRADING_AUTHORIZED is true, PAPER_TRADING must ALSO be
         explicitly False (2026-09-14: live trading is a deliberate,
-        operator-authorized decision -- this guards consistency, not absence)."""
+        operator-authorized decision -- this guards consistency, not absence).
+
+        Uses the REAL, pre-test-isolation PAPER_TRADING value (captured by
+        the module-scoped _isolate_paper_trading_for_this_file fixture before
+        it patches config.PAPER_TRADING for the rest of this file's tests) --
+        otherwise this audit would incorrectly see the patched-for-tests
+        value instead of the actual production config."""
         import os
-        import config
         lta = os.environ.get("LIVE_TRADING_AUTHORIZED", "").lower()
         if lta == "true":
-            self.assertFalse(getattr(config, "PAPER_TRADING", True),
+            self.assertFalse(_REAL_PAPER_TRADING,
                               "LIVE_TRADING_AUTHORIZED=true but PAPER_TRADING is still True — inconsistent")
 
     def test_i03_orderManager_paper_mode_true_means_no_broker(self):
