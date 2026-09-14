@@ -221,7 +221,7 @@ def _plan_cat_g(cause: RootCause, analysis: StockAnalysis) -> LearningAction:
 
 def _try_create_hypothesis(action: LearningAction) -> bool:
     """
-    Attempt to create a hypothesis in the HypothesisRegistry.
+    Attempt to create a hypothesis in the HypothesisRegistry (Category C).
     Returns True if successful.
     """
     try:
@@ -238,18 +238,104 @@ def _try_create_hypothesis(action: LearningAction) -> bool:
         reg.create_hypothesis(
             title=p["title"],
             research_question=p["research_question"],
-            rationale=(
+            description=(
                 f"PGA-001 miss identified on {p['date']}: "
                 f"{p['symbol']} moved {p['return_pct']:+.1f}% ({p['miss_type']}) "
                 f"without IIOS prediction. Primary cause: {p['primary_cause']}."
             ),
-            classification=HypothesisClassification.PREDICTIVE_SIGNAL,
+            origin="pga_learning",
             priority=HypothesisPriority.MEDIUM,
-            tags=[p["symbol"], "pga", "miss", p["date"]],
+            classification=HypothesisClassification.COVERAGE_GAP,
+            knowledge_gap=(
+                f"No signal generated for {p['symbol']} despite "
+                f"{p.get('dna_coverage', 0)} DNA patterns on record."
+            ),
+            expected_knowledge_gain=(
+                "Identify the missing feature/condition that would have "
+                "generated a signal for this setup."
+            ),
+            validation_method=(
+                "Backtest candidate feature/threshold changes against "
+                "historical misses of this same miss_type."
+            ),
+            created_by="pga_learning",
         )
         return True
     except Exception as e:
         log.debug("[PGA-Learning] Hypothesis creation failed for %s: %s",
+                  action.symbol, e)
+        return False
+
+
+def _try_create_hypothesis_cat_a(action: LearningAction) -> bool:
+    """
+    Category A (RiskFilter/PMCI threshold misses): register as a hypothesis
+    for future validation -- this deliberately does NOT adjust any live
+    risk or scanner threshold directly. The underlying evidence (a single
+    rejected signal that happened to become a mover) is counterfactual and
+    survivorship-biased on its own: PGA only ever sees rejections that
+    became movers, never the — presumably much larger — set of rejections
+    that were correctly avoided (see self_learning_ecosystem_master_plan.md
+    Phase 3 finding). Routing it into HypothesisRegistry's PROPOSED state
+    keeps it honestly gated behind a real control-population study before
+    anything acts on it. Returns True if successful.
+    """
+    try:
+        from autonomous_research.knowledge_provider import KnowledgeProvider
+        from autonomous_research.hypothesis_registry import HypothesisRegistry
+        from autonomous_research.hypothesis_models import (
+            HypothesisClassification, HypothesisPriority,
+        )
+
+        kp  = KnowledgeProvider()
+        reg = HypothesisRegistry(knowledge_provider=kp)
+
+        p   = action.payload
+        sym = p["symbol"]
+        cause = p.get("primary_cause", "Unknown")
+        move_pct = p.get("daily_return_pct", 0.0)
+
+        reg.create_hypothesis(
+            title=f"Did the {cause} threshold miss a real edge for {sym}?",
+            research_question=(
+                f"Would relaxing the {cause} threshold for setups like "
+                f"{sym}'s {move_pct:+.1f}% move capture more genuine edge, "
+                f"without also admitting a large number of losing trades?"
+            ),
+            description=(
+                f"PGA-001 Category A miss on {sym}: rejected by {cause}, "
+                f"DNA coverage={p.get('dna_coverage', 0)}, move={move_pct:+.1f}%. "
+                f"NOTE: this evidence is a single counterfactual instance (a "
+                f"rejection that happened to become a mover) — PGA does not "
+                f"track the base rate of rejections that were correctly "
+                f"avoided, so this hypothesis must NOT be acted on without a "
+                f"proper control-population study."
+            ),
+            origin="pga_learning_category_a",
+            priority=HypothesisPriority.LOW,
+            classification=HypothesisClassification.PERFORMANCE_GAP,
+            knowledge_gap=(
+                f"Unknown false-rejection rate of the {cause} threshold — "
+                f"PGA only observes rejections that became movers, not the "
+                f"full rejected population."
+            ),
+            expected_knowledge_gain=(
+                "A validated false-rejection rate for this threshold, "
+                "computed against a control population of ALL rejections "
+                "(not just missed movers), before any threshold change is "
+                "considered."
+            ),
+            validation_method=(
+                f"Requires a dedicated study comparing outcomes of ALL "
+                f"historical {cause} rejections (movers and non-movers "
+                f"alike) — not satisfied by this single-instance PGA "
+                f"observation alone."
+            ),
+            created_by="pga_learning",
+        )
+        return True
+    except Exception as e:
+        log.debug("[PGA-Learning] Category A hypothesis creation failed for %s: %s",
                   action.symbol, e)
         return False
 
@@ -361,8 +447,10 @@ def execute_actions(
     """
     Execute learning actions that interact with live IIOS subsystems.
     Dry-run mode skips all writes.
-    Only Category C (hypotheses) and Category B (IDR) are auto-executed.
-    Categories D/E/F/G require manual or scheduled confirmation.
+    Only Category C (hypotheses), Category A (hypothesis-for-validation,
+    self-learning ecosystem Phase 3 — never a live threshold change), and
+    Category B (IDR) are auto-executed. Categories D/E/F/G require manual
+    or scheduled confirmation.
     """
     if cfg.dry_run:
         log.info("[PGA-Learning] DRY RUN — no actions executed")
@@ -377,6 +465,16 @@ def execute_actions(
                 action.scheduled = ok
                 action.outcome = "HYPOTHESIS_CREATED" if ok else "HYPOTHESIS_FAILED"
 
+            elif action.category == "A" and action.target_system == TARGET_CALIBRATION:
+                # Self-learning ecosystem Phase 3: registers the miss as a
+                # hypothesis requiring further validation. Deliberately does
+                # NOT touch risk_manager_ai.MIN_RR_RATIO or any scanner
+                # weight directly — see _try_create_hypothesis_cat_a's
+                # docstring for why this evidence isn't sound enough for that.
+                ok = _try_create_hypothesis_cat_a(action)
+                action.scheduled = ok
+                action.outcome = "HYPOTHESIS_CREATED_FOR_VALIDATION" if ok else "HYPOTHESIS_FAILED"
+
             elif action.category == "B" and action.target_system == TARGET_IDR:
                 ok = _try_reinforce_idr(action)
                 action.scheduled = ok
@@ -389,7 +487,7 @@ def execute_actions(
                 action.outcome = "CLE_SCHEDULED"
 
             else:
-                # Categories A, D, E, F, G → logged for manual/scheduled execution
+                # Categories D, E, F, G → logged for manual/scheduled execution
                 action.outcome = "LOGGED_FOR_REVIEW"
 
         except Exception as e:

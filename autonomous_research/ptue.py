@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
-from datetime import datetime, date as _date
+from datetime import datetime, timezone, date as _date
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -55,7 +55,7 @@ from .ptue_models import (
 
 log = logging.getLogger(__name__)
 
-_TODAY = datetime.utcnow().strftime("%Y-%m-%d")
+_TODAY = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
 
 def _validate_date(date_str: str) -> str:
