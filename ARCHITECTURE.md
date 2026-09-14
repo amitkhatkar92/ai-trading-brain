@@ -521,3 +521,31 @@ All output appended to `logs/scheduler.log`.
 | New validation stage | Explicit instruction required — see `validation_engine/` |
 
 **Wrong way:** modifying orchestrator layer order, renaming classes, changing interface signatures, hand-editing `evolved_strategies.json`.
+
+---
+
+## 13. Subsystem Naming Glossary (Disambiguation)
+
+**Added 2026-09-14** as the safe resolution to a naming-sprawl audit finding.
+Several overlapping "knowledge/research/intelligence" subsystems accumulated
+organically and were never documented in this authoritative file — that
+absence was itself part of the confusion. Renaming or merging any of them is
+explicit-approval-only (see Change Policy in `.github/copilot-instructions.md`
+— renames are forbidden by default, and `oios/` alone has 26+ live import
+sites in `orchestrator/master_orchestrator.py`, so a rename is a real,
+hard-to-reverse production risk, not a safe default action). This glossary is
+the safe fix: it removes the ambiguity without touching a single import.
+
+| Acronym / name | Location | Wired into live trading? | What it actually is |
+|---|---|---|---|
+| **OIOS** | `oios/` | ✅ Yes — 26+ import sites in `master_orchestrator.py` | Research/behavior-tracking layer: velocity/transition engines, signal-birth scanners (`layer_1a`/`layer_1b`), outcome resolution. Shadow-safe — writes only to `data/market_behavior.db`, never touches execution/risk/sizing. |
+| **IIOS** | `iios/` | ❌ No — zero imports anywhere in the trading pipeline | A separate, still pre-"Wave 1" generic Enterprise AI Platform framework (see `A1`–`A10_*_IMPLEMENTATION_REPORT.md`). Has its own mature pre-commit governance (`iios-*` hooks in `.pre-commit-config.yaml`). Not part of this trading system's decision path. |
+| **ARS** | `autonomous_research/` | Research-only | Autonomous Research System — hypothesis registry, `ResearchCoordinator`, RC models/config. Feeds research findings, never trades directly. |
+| **KSL** | `scripts/knowledge_system/` | Shadow/research-only | Knowledge/Ranking Self-Learning Loop (RSL-001) — hypothesis validator + ranking adjustment engine for the C2 shadow selector. |
+| **KLP** | `opportunity_engine/klp_evaluator.py`, `klp_outcome_engine.py`, storage at `data/klp/` | ✅ feeds KDA | Knowledge Learning Pipeline — evaluates scanner signals against historical evidence, feeds `knowledge_authority/` (KDA). |
+| **KDA** | `knowledge_authority/` | ✅ Yes — sole final BUY/SELL/REJECT authority (see §4, Layer 5 note) | Knowledge Decision Authority — the actual live-trading decision authority. Not to be confused with KLP, KSL, or ARS above. |
+| **ODM** | `opportunity_engine/opportunity_density_monitor.py` (single file/class, not a subsystem) | ✅ Yes | `OpportunityDensityMonitor` — budget/tier enforcement on the scanner. |
+| **"Phase D" / "Phase E" / "Phase F"** | Collides across 3+ unrelated meanings — see below | Context-dependent | (1) Trading-engine scanner's 16:45 IST post-market scan (`market_scanner.py`); (2) OIOS's own internal build stages (`oios/db/migrations.py`'s `PHASE_D_DDL`, `oios/reporting/phase_d_shadow.py`/`phase_e_shadow.py`, `oios/phase_f/`); (3) `CandidateStore`'s unrelated "Phase-D score" (0.55 floor) in `kvs_audit_analysis.py`. **Always state which one you mean — never use "Phase D/E/F" unqualified.** |
+
+**If you want the actual rename/merge project:** it needs to be scoped and approved per-subsystem (one rename at a time, each verified with a full test run and, for `oios/`, a full orchestrator smoke-test) — not done as a single bulk pass. Ask explicitly when ready and name which subsystem to start with.
+
