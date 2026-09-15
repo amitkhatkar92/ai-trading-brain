@@ -345,16 +345,20 @@ def _try_create_hypothesis_cat_a(action: LearningAction) -> bool:
 
 def _try_reinforce_idr(action: LearningAction) -> bool:
     """
-    Attempt to record a reinforcing observation in the IDR repository.
-    Returns True if successful.
+    Record a reinforcing observation for this symbol/direction.
+
+    NOTE (root-cause fix, 2026-09-15): this previously called
+    IDRRepository.add_observation() — a method that never existed.
+    IDRRepository is a feature/pattern-keyed DNA store with no symbol
+    column in its schema, so it cannot record a per-symbol observation.
+    Uses pga_idr_bridge's isolated, advisory-only observation log instead
+    (see pga_idr_bridge.py docstring for the full rationale).
     """
     try:
-        from market_learning.idr_repository import IDRRepository
-        repo = IDRRepository()
+        from .pga_idr_bridge import record_reinforcement_observation
 
         p = action.payload
-        # Try adding an observation for this symbol/direction to reinforce or weaken DNA
-        repo.add_observation(
+        return record_reinforcement_observation(
             symbol=p["symbol"],
             direction=p.get("direction", "UP"),
             return_pct=p.get("return_pct", 0.0),
@@ -364,7 +368,6 @@ def _try_reinforce_idr(action: LearningAction) -> bool:
                 "dna_count": p.get("dna_count", 0),
             },
         )
-        return True
     except Exception as e:
         log.debug("[PGA-Learning] IDR observation failed for %s: %s",
                   action.symbol, e)
