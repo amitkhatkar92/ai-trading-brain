@@ -43,10 +43,11 @@ KBL stages:
                on whatever cadence a human or a future scheduler chooses.
 
 Post-roadmap addendum (2026-09-15): after each discovery run, also calls
-kde.kde_idr_evidence_bridge.evaluate_discoveries_for_idr_evidence() --
-shadow-only, never writes to the real IDR store (see that module's own
-docstring for the full safety rationale: IDR is live-consequential via
-PIG, unlike every other bridge target in this ecosystem).
+kde.kde_idr_evidence_bridge.evaluate_discoveries_for_idr_evidence() with
+this run's years_used -- fully automated, evidence-driven (reproducible
+across >=2 independent re-runs with genuinely new data, non-degrading
+score) auto-promotion into the real IDR store. See that module's own
+docstring for the full rationale and safety bounds.
 
 Real HKAP data must exist on disk first (run HKAPEngine.run(years=...)
 separately -- see the one-time seed script used to produce the first
@@ -113,7 +114,7 @@ def _run_impl(min_years: int) -> Dict[str, Any]:
 
     try:
         from kde.kde_idr_evidence_bridge import evaluate_discoveries_for_idr_evidence
-        evaluate_discoveries_for_idr_evidence(result.discoveries)
+        evaluate_discoveries_for_idr_evidence(result.discoveries, years_used=sorted(packages.keys()))
     except Exception as exc:
         log.debug("[HKAPKDEBridge] IDR evidence proposal generation skipped: %s", exc)
 

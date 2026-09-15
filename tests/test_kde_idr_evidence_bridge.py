@@ -4,26 +4,39 @@ tests/test_kde_idr_evidence_bridge.py
 Self-Learning Ecosystem -- Post-roadmap Item 4: KDE Discovery -> IDR
 evidence bridge (kde/kde_idr_evidence_bridge.py).
 
-T01  Discoveries below MIN_OVERALL_SCORE are skipped
+Design (revised 2026-09-15 per explicit user direction): promotion into
+the real, live-consequential IDR store is FULLY AUTOMATIC -- gated on
+computed reproducibility across independent re-runs with genuinely new
+data, non-degrading scores, and a minimum score threshold. No human
+names a discovery/dna_id pair for normal operation.
+
+T01  Discoveries below MIN_OVERALL_SCORE are skipped entirely
 T02  Discoveries with no dna_ids are skipped
-T03  Qualifying discovery produces one bounded proposal per dna_id
-T04  Evidence confidence/effect_size are capped at MAX_EVIDENCE_CONFIDENCE
+T03  First observation of a qualifying pattern creates a SHADOW proposal
+     and does NOT merge (only 1 confirmation so far)
+T04  A second observation with the SAME years_used (i.e. not genuinely
+     new data) does NOT count as a confirmation and does NOT merge
+T05  A second observation with DIFFERENT years_used and a non-degrading
+     score DOES auto-merge -- IDRRepository.add_evidence() is called
+     automatically, no human names the pair
+T06  A second observation whose score dropped by more than
+     DEGRADATION_TOLERANCE does NOT auto-merge
+T07  Evidence confidence/effect_size are capped at MAX_EVIDENCE_CONFIDENCE
      even for a perfect (1.0) discovery score
-T05  Re-evaluating the same discoveries does not create duplicate proposals
-T06  get_pending_proposals() excludes already-merged proposals, supports
+T08  Once ACTIVE (merged), further observations are recorded for audit
+     but never trigger a second merge (bounds total irreversible writes)
+T09  get_pending_proposals() excludes merged (ACTIVE) proposals, supports
      dna_id filter
-T07  request_live_merge() calls IDRRepository.add_evidence() exactly once
-     with the correct dna_id, marks the proposal merged, appends to the
-     merge ledger
-T08  request_live_merge() returns False for an unknown discovery/dna_id
-     pair and never touches IDRRepository
-T09  request_live_merge() fails open (False) if IDRRepository.add_evidence
-     raises
-T10  evaluate_discoveries_for_idr_evidence() fails open (empty list) if
-     given garbage input
-T11  Safety: no automatic caller anywhere in the repo invokes
-     request_live_merge() from an EOD/scheduler loop (source-text scan of
-     orchestrator/master_orchestrator.py and hkap/hkap_kde_bridge.py)
+T10  get_merge_history() reflects the automatic merge with
+     merged_by == "auto:kde_idr_evidence_bridge"
+T11  request_live_merge() manual override forces an immediate merge,
+     bypassing the reproducibility wait
+T12  request_live_merge() returns False for an unknown pair and never
+     touches IDRRepository
+T13  evaluate_discoveries_for_idr_evidence() fails open (empty list) on
+     garbage input, and fails open when IDRRepository.add_evidence raises
+T14  Safety: no automatic caller anywhere in the repo invokes
+     request_live_merge() from an EOD/scheduler loop (source-text scan)
 """
 from __future__ import annotations
 
@@ -60,112 +73,187 @@ def _discovery(discovery_id="KDE-S005-001", dna_ids=None, overall=0.75,
     )
 
 
+def _mock_repo():
+    return patch("market_learning.idr_repository.IDRRepository")
+
+
 def test_t01_below_threshold_skipped(_isolated_store):
     d = _discovery(overall=0.10)
-    result = bridge.evaluate_discoveries_for_idr_evidence([d])
+    result = bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2021])
     assert result == []
     assert bridge.get_pending_proposals() == []
 
 
 def test_t02_no_dna_ids_skipped(_isolated_store):
     d = _discovery(dna_ids=[], overall=0.90)
-    result = bridge.evaluate_discoveries_for_idr_evidence([d])
+    result = bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2021])
     assert result == []
 
 
-def test_t03_qualifying_discovery_one_proposal_per_dna_id(_isolated_store):
-    d = _discovery(dna_ids=["feat_a::UP", "feat_b::DOWN"], overall=0.80)
-    result = bridge.evaluate_discoveries_for_idr_evidence([d])
-    assert len(result) == 2
-    dna_ids_seen = {p["dna_id"] for p in result}
-    assert dna_ids_seen == {"feat_a::UP", "feat_b::DOWN"}
-    for p in result:
-        assert p["discovery_id"] == d.discovery_id
-        assert p["merged"] is False
-
-
-def test_t04_evidence_bounded_even_for_perfect_score(_isolated_store):
-    d = _discovery(overall=1.0)
-    result = bridge.evaluate_discoveries_for_idr_evidence([d])
+def test_t03_first_observation_shadow_no_merge(_isolated_store):
+    d = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    with _mock_repo() as MockRepo:
+        result = bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2020, 2021])
+    MockRepo.assert_not_called()
     assert len(result) == 1
-    assert result[0]["confidence"] <= bridge.MAX_EVIDENCE_CONFIDENCE
-    assert result[0]["effect_size"] <= bridge.MAX_EVIDENCE_CONFIDENCE
-    assert result[0]["sample_size"] <= bridge.MAX_EVIDENCE_SAMPLE
+    assert result[0]["status"] == bridge.STATUS_SHADOW
+    assert result[0]["merged"] is False
+    pending = bridge.get_pending_proposals()
+    assert len(pending) == 1
+    assert len(pending[0]["observations"]) == 1
 
 
-def test_t05_reevaluate_no_duplicates(_isolated_store):
-    d = _discovery(overall=0.80)
-    first = bridge.evaluate_discoveries_for_idr_evidence([d])
-    second = bridge.evaluate_discoveries_for_idr_evidence([d])
-    assert len(first) == 1
-    assert len(second) == 0
-    assert len(bridge.get_pending_proposals()) == 1
+def test_t04_same_years_used_no_confirmation(_isolated_store):
+    d = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    with _mock_repo() as MockRepo:
+        bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2020, 2021])
+    MockRepo.assert_not_called()
+    pending = bridge.get_pending_proposals()
+    assert len(pending) == 1
+    assert pending[0]["status"] == bridge.STATUS_SHADOW
 
 
-def test_t06_pending_proposals_filter_and_merged_exclusion(_isolated_store):
-    d1 = _discovery(discovery_id="KDE-A", dna_ids=["feat_a::UP"], overall=0.80)
-    d2 = _discovery(discovery_id="KDE-B", dna_ids=["feat_b::UP"], overall=0.80)
-    bridge.evaluate_discoveries_for_idr_evidence([d1, d2])
+def test_t05_new_years_used_nondegrading_autopromotes(_isolated_store):
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=0.82)
 
-    assert len(bridge.get_pending_proposals()) == 2
-    assert len(bridge.get_pending_proposals(dna_id="feat_a::UP")) == 1
-
-    with patch("market_learning.idr_repository.IDRRepository") as MockRepo:
-        MockRepo.return_value.add_evidence = MagicMock()
-        ok = bridge.request_live_merge("KDE-A", "feat_a::UP", operator="test")
-    assert ok is True
-    assert len(bridge.get_pending_proposals()) == 1
-    assert bridge.get_pending_proposals()[0]["dna_id"] == "feat_b::UP"
-
-
-def test_t07_request_live_merge_calls_add_evidence_correctly(_isolated_store):
-    d = _discovery(discovery_id="KDE-C", dna_ids=["feat_c::UP"], overall=0.80)
-    bridge.evaluate_discoveries_for_idr_evidence([d])
-
-    with patch("market_learning.idr_repository.IDRRepository") as MockRepo:
+    with _mock_repo() as MockRepo:
         mock_instance = MockRepo.return_value
         mock_instance.add_evidence = MagicMock()
-        ok = bridge.request_live_merge("KDE-C", "feat_c::UP", operator="alice")
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021, 2022])
 
-    assert ok is True
     mock_instance.add_evidence.assert_called_once()
     call_args = mock_instance.add_evidence.call_args
-    assert call_args[0][0] == "feat_c::UP"
+    assert call_args[0][0] == "feat_a::UP"
     ev = call_args[0][1]
-    assert ev.dna_id == "feat_c::UP"
     assert ev.confidence <= bridge.MAX_EVIDENCE_CONFIDENCE
 
+    assert bridge.get_pending_proposals() == []
     history = bridge.get_merge_history()
     assert len(history) == 1
-    assert history[0]["merged_by"] == "alice"
-    assert history[0]["merged"] is True
+    assert history[0]["merged_by"] == "auto:kde_idr_evidence_bridge"
+    assert history[0]["status"] == bridge.STATUS_ACTIVE
 
 
-def test_t08_unknown_pair_returns_false_never_touches_repo(_isolated_store):
-    with patch("market_learning.idr_repository.IDRRepository") as MockRepo:
+def test_t06_degrading_score_no_merge(_isolated_store):
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=0.60)  # drop of 0.20 > tolerance
+
+    with _mock_repo() as MockRepo:
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021, 2022])
+    MockRepo.return_value.add_evidence.assert_not_called()
+    pending = bridge.get_pending_proposals()
+    assert len(pending) == 1
+    assert pending[0]["status"] == bridge.STATUS_SHADOW
+
+
+def test_t07_evidence_bounded_even_for_perfect_score(_isolated_store):
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=1.0)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=1.0)
+    with _mock_repo() as MockRepo:
+        mock_instance = MockRepo.return_value
+        mock_instance.add_evidence = MagicMock()
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021])
+    ev = mock_instance.add_evidence.call_args[0][1]
+    assert ev.confidence <= bridge.MAX_EVIDENCE_CONFIDENCE
+    assert ev.effect_size <= bridge.MAX_EVIDENCE_CONFIDENCE
+    assert ev.sample_size <= bridge.MAX_EVIDENCE_SAMPLE
+
+
+def test_t08_active_never_merges_twice(_isolated_store):
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d3 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+
+    with _mock_repo() as MockRepo:
+        mock_instance = MockRepo.return_value
+        mock_instance.add_evidence = MagicMock()
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d3], years_used=[2020, 2021, 2022])
+
+    assert mock_instance.add_evidence.call_count == 1
+    history = bridge.get_merge_history()
+    assert len(history) == 1
+    # ledger is an append-only snapshot taken AT merge time (2 observations);
+    # the live proposals store keeps accumulating observations afterward for
+    # audit purposes even though no further merge is ever triggered.
+    assert len(history[0]["observations"]) == 2
+    all_proposals = bridge._read_jsonl(bridge._PROPOSALS_FILE)
+    assert len(all_proposals) == 1
+    assert len(all_proposals[0]["observations"]) == 3
+    assert all_proposals[0]["status"] == bridge.STATUS_ACTIVE
+
+
+def test_t09_pending_proposals_filter_and_active_exclusion(_isolated_store):
+    d1a = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d1b = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_b::UP"], overall=0.80)
+
+    with _mock_repo() as MockRepo:
+        MockRepo.return_value.add_evidence = MagicMock()
+        bridge.evaluate_discoveries_for_idr_evidence([d1a, d2], years_used=[2020])
+        bridge.evaluate_discoveries_for_idr_evidence([d1b], years_used=[2020, 2021])
+
+    # feat_a auto-merged (ACTIVE, excluded); feat_b still SHADOW (pending)
+    pending = bridge.get_pending_proposals()
+    assert len(pending) == 1
+    assert pending[0]["dna_id"] == "feat_b::UP"
+    assert bridge.get_pending_proposals(dna_id="feat_a::UP") == []
+
+
+def test_t10_merge_history_reflects_auto_merge(_isolated_store):
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    with _mock_repo() as MockRepo:
+        MockRepo.return_value.add_evidence = MagicMock()
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021])
+    history = bridge.get_merge_history()
+    assert len(history) == 1
+    assert history[0]["merged_by"] == "auto:kde_idr_evidence_bridge"
+
+
+def test_t11_manual_override_forces_immediate_merge(_isolated_store):
+    d = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    with _mock_repo() as MockRepo:
+        MockRepo.return_value.add_evidence = MagicMock()
+        bridge.evaluate_discoveries_for_idr_evidence([d], years_used=[2020])
+        assert bridge.get_pending_proposals()  # still shadow, only 1 observation
+
+        ok = bridge.request_live_merge("S005", "feat_a::UP", operator="alice")
+    assert ok is True
+    assert bridge.get_pending_proposals() == []
+    history = bridge.get_merge_history()
+    assert history[-1]["merged_by"] == "alice"
+
+
+def test_t12_unknown_pair_returns_false_never_touches_repo(_isolated_store):
+    with _mock_repo() as MockRepo:
         ok = bridge.request_live_merge("NOPE", "nope::UP")
     assert ok is False
     MockRepo.assert_not_called()
 
 
-def test_t09_request_live_merge_fails_open(_isolated_store):
-    d = _discovery(discovery_id="KDE-D", dna_ids=["feat_d::UP"], overall=0.80)
-    bridge.evaluate_discoveries_for_idr_evidence([d])
+def test_t13_fails_open_on_garbage_and_repo_exception(_isolated_store):
+    assert bridge.evaluate_discoveries_for_idr_evidence([object(), None, 42]) == []
 
-    with patch("market_learning.idr_repository.IDRRepository") as MockRepo:
+    d1 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_a::UP"], overall=0.80)
+    with _mock_repo() as MockRepo:
         MockRepo.return_value.add_evidence.side_effect = RuntimeError("boom")
-        ok = bridge.request_live_merge("KDE-D", "feat_d::UP")
-    assert ok is False
-    # still pending, not marked merged
-    assert len(bridge.get_pending_proposals(dna_id="feat_d::UP")) == 1
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020])
+        result = bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021])
+    # merge attempted and failed, but call never raised and proposal stays pending
+    assert result != []
+    assert bridge.get_pending_proposals()
 
 
-def test_t10_evaluate_fails_open_on_garbage_input(_isolated_store):
-    result = bridge.evaluate_discoveries_for_idr_evidence([object(), None, 42])
-    assert result == []
-
-
-def test_t11_no_automatic_live_merge_caller():
+def test_t14_no_automatic_live_merge_caller():
     orch_src = open("orchestrator/master_orchestrator.py", encoding="utf-8").read()
     bridge_src = open("hkap/hkap_kde_bridge.py", encoding="utf-8").read()
     assert "request_live_merge" not in orch_src
