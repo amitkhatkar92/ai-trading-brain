@@ -45,7 +45,7 @@ from .ph4_universe import (
     build_dynamic_watchlist_rows,
     build_universe_coverage_report,
 )
-from .ph5_daily_pipeline import run_daily_pipeline
+from .ph5_daily_pipeline import run_daily_pipeline, build_pipeline_result_from_live_stages
 from .ph6_knowledge_validity import build_knowledge_validity_report
 from .ph7_missed_opps import (
     classify_single_miss,
@@ -79,7 +79,7 @@ __all__ = [
     "compute_freshness", "is_signal_expired", "build_freshness_report",
     "load_raw_universe", "get_eligible_symbols", "get_eligible_symbol_list",
     "build_dynamic_watchlist_rows", "build_universe_coverage_report",
-    "run_daily_pipeline",
+    "run_daily_pipeline", "build_pipeline_result_from_live_stages",
     "build_knowledge_validity_report",
     "classify_single_miss", "classify_all_misses", "build_missed_opportunity_report",
     "get_learning_impact_summary",

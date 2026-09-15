@@ -1,12 +1,19 @@
 """
 production_readiness/ph5_daily_pipeline.py — Phase 5: Daily Automatic ILC Pipeline.
 
-Runs the complete post-market learning pipeline after each market close.
-Each stage is failure-isolated: one stage failing never stops the rest.
-Pipeline: PGA → ILC → GVA → SD Review → Verification → Reports
+run_daily_pipeline() runs the complete post-market learning pipeline
+(PGA -> ILC -> GVA -> SD Review -> Verification -> Reports) as one
+standalone, failure-isolated sequence. It is NOT called from
+orchestrator._do_eod_learning() -- that method already calls PGA and ILC
+directly as its own individual try/except blocks (confirmed via grep), so
+calling run_daily_pipeline() there too would duplicate execution of both.
+Kept as a standalone/manual utility (e.g. CLI, future out-of-band use).
 
-Called from orchestrator._do_eod_learning() — replaces the individual
-try/except wrappers that exist there today.
+build_pipeline_result_from_live_stages() (below) is the safe integration
+point actually used by the live orchestrator: it wraps the orchestrator's
+OWN already-executed PGA/ILC result dicts into a DailyPipelineResult
+without re-running anything, so production_readiness/ph9_certification.py's
+Daily_ILC_Operational check can see a real signal instead of always None.
 """
 from __future__ import annotations
 
@@ -152,3 +159,54 @@ def run_daily_pipeline(
         log.warning("[DailyPipeline] Failed stages: %s", ", ".join(failed_names))
 
     return result
+
+
+def build_pipeline_result_from_live_stages(
+    pga_result: Optional[Dict[str, Any]] = None,
+    ilc_result: Optional[Dict[str, Any]] = None,
+    report_date: Optional[str] = None,
+) -> DailyPipelineResult:
+    """
+    Build a DailyPipelineResult from the orchestrator's OWN already-executed
+    PGA/ILC results (predictive_gap.pga_runner.run_pga() /
+    institutional_learning.ilc_runner.run_ilc() output dicts) -- never
+    re-runs anything.
+
+    GVA/SD_review/verification/reports stages are left None: confirmed via
+    grep that master_orchestrator.py never calls them today, so
+    representing them as "ran" would be dishonest. None accurately means
+    "not attempted this cycle" (matches DailyPipelineResult's own
+    Optional[...] = None fields).
+
+    A stage dict is considered successful if it exists and its "status"
+    field (if present) is "OK" -- both run_pga()/run_ilc()'s real return
+    shape. Absence of the stage dict (None) means that stage either wasn't
+    reached this cycle or raised inside its own try/except upstream.
+    """
+    today = report_date or datetime.now().date().isoformat()
+
+    def _stage(name: str, result: Optional[Dict[str, Any]]) -> Optional[PipelineStageResult]:
+        if result is None:
+            return None
+        ok = str(result.get("status", "OK")).upper() == "OK"
+        return PipelineStageResult(
+            stage=name,
+            success=ok,
+            elapsed_seconds=0.0,
+            output=result if isinstance(result, dict) else {},
+            error="" if ok else str(result.get("status", "UNKNOWN")),
+        )
+
+    pga_stage = _stage("PGA", pga_result)
+    ilc_stage = _stage("ILC", ilc_result)
+    attempted = [s for s in (pga_stage, ilc_stage) if s is not None]
+
+    return DailyPipelineResult(
+        date=today,
+        total_elapsed_seconds=0.0,
+        stages_completed=sum(1 for s in attempted if s.success),
+        stages_failed=sum(1 for s in attempted if not s.success),
+        pga=pga_stage,
+        ilc=ilc_stage,
+    )
+

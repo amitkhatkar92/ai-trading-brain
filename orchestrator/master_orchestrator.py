@@ -7574,7 +7574,20 @@ class MasterOrchestrator:
         # Each phase is failure-isolated; never affects trading.
         try:
             from production_readiness.prr_runner import run_prr as _run_prr
-            _prr = _run_prr()
+            # Root-cause fix: feed PRR's own already-executed PGA/ILC results
+            # (computed above, this same cycle) into Phase 9's certification
+            # check instead of always leaving it None -- never re-runs PGA/ILC.
+            try:
+                from production_readiness.ph5_daily_pipeline import (
+                    build_pipeline_result_from_live_stages as _build_prr_pipeline,
+                )
+                _prr_pipeline = _build_prr_pipeline(
+                    pga_result=_pga if "_pga" in locals() else None,
+                    ilc_result=_ilc if "_ilc" in locals() else None,
+                )
+            except Exception:
+                _prr_pipeline = None
+            _prr = _run_prr(pipeline=_prr_pipeline)
             log.info(
                 "[PRR-001] Readiness: %s  ils=%.1f/100 gva=%.1f/100 "
                 "critical_failures=%d warnings=%d elapsed=%.1fs",

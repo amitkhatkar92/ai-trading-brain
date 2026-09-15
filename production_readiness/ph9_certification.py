@@ -130,11 +130,16 @@ def build_certificate(
     # ── C5: Daily ILC ran successfully ─────────────────────────────────────
     if pipeline:
         ilc_ok = pipeline.ilc and pipeline.ilc.success
+        # Root-cause fix: was hard-coded "/6" regardless of how many stages
+        # were actually attempted. The live orchestrator only feeds real
+        # PGA/ILC outcomes (GVA/SD_review/verification/reports are never run
+        # live) -- report the actual attempted total, not a fixed 6.
+        _attempted_total = pipeline.stages_completed + pipeline.stages_failed
         checks.append(_check(
             "Daily_ILC_Operational",
             bool(ilc_ok),
             (
-                f"Daily pipeline: {pipeline.stages_completed}/6 stages OK "
+                f"Daily pipeline: {pipeline.stages_completed}/{_attempted_total} stages OK "
                 f"in {pipeline.total_elapsed_seconds:.1f}s. "
                 f"ILC={'PASS' if ilc_ok else 'FAIL'}"
             ),

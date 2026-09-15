@@ -22,10 +22,17 @@ from typing import Any, Dict, Optional
 log = logging.getLogger(__name__)
 
 
-def _collect_prr_data(today: str, dry_run: bool = False) -> Dict[str, Any]:
+def _collect_prr_data(today: str, dry_run: bool = False, pipeline: Optional[Any] = None) -> Dict[str, Any]:
     """
     Run all PRR-001 phases and collect their outputs into a single dict.
     Each phase is failure-isolated.
+
+    `pipeline`: an optional DailyPipelineResult reflecting the orchestrator's
+    OWN already-executed PGA/ILC results for today (see
+    ph5_daily_pipeline.build_pipeline_result_from_live_stages()). Never
+    re-runs anything — if omitted, behaves exactly as before (pipeline=None,
+    Phase 9's Daily_ILC_Operational check falls back to its "not yet run"
+    INFO-only placeholder, unchanged from prior behavior).
     """
     data: Dict[str, Any] = {"date": today}
 
@@ -66,9 +73,15 @@ def _collect_prr_data(today: str, dry_run: bool = False) -> Dict[str, Any]:
         log.warning("[PRR] Phase 4 failed: %s", e)
         data["universe"] = None
 
-    # ── Phase 5: Daily Pipeline (included if already run; not re-run) ────
-    # Phase 5 is run separately by orchestrator; here we just slot the result in
-    data.setdefault("pipeline", None)
+    # ── Phase 5: Daily Pipeline ───────────────────────────────────────────
+    # Root-cause fix: previously always None (data.setdefault("pipeline", None)
+    # with nothing ever setting it), so Phase 9's Daily_ILC_Operational check
+    # could never see a real PGA/ILC outcome. Now accepts the orchestrator's
+    # own already-executed result via the `pipeline` argument above — never
+    # re-runs PGA/ILC itself (that would duplicate execution; confirmed via
+    # grep that GVA/SD_review/ILC-verification are never called live today,
+    # so those sub-fields correctly stay None rather than being fabricated).
+    data["pipeline"] = pipeline
 
     # ── Phase 6: Knowledge Validity ─────────────────────────────────────
     try:
@@ -122,16 +135,22 @@ def _collect_prr_data(today: str, dry_run: bool = False) -> Dict[str, Any]:
 def run_prr(
     report_date: Optional[str] = None,
     dry_run: bool = False,
+    pipeline: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """
     Top-level entry point — runs all 9 PRR phases, writes 9 reports.
     Returns a summary dict for the orchestrator to log.
+
+    `pipeline`: optional DailyPipelineResult from the orchestrator's own
+    already-executed PGA/ILC results (see ph5_daily_pipeline.
+    build_pipeline_result_from_live_stages()). Omit to preserve prior
+    behavior exactly (pipeline=None).
     """
     today = report_date or datetime.now().date().isoformat()
     t0 = time.monotonic()
     log.info("[PRR-001] ── Starting PRR pipeline for %s (dry_run=%s) ──", today, dry_run)
 
-    data = _collect_prr_data(today, dry_run=dry_run)
+    data = _collect_prr_data(today, dry_run=dry_run, pipeline=pipeline)
 
     # Write reports (non-dry-run only)
     if not dry_run:
