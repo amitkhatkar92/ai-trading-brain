@@ -7806,6 +7806,17 @@ class MasterOrchestrator:
         except Exception as _sbre_exc:
             log.debug("[SizingBoundsRE] refinement check error (non-critical): %s", _sbre_exc)
 
+        # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
+        # Read-only status check only -- never touches any open position.
+        # See analysis/capital_reserve_readiness_engine.py for why the
+        # actual swap mechanism is deliberately NOT built here.
+        try:
+            from analysis.capital_reserve_readiness_engine import run_daily_readiness_check as _run_reserve_check
+            _crre = _run_reserve_check()
+            log.info("[CapitalReserveReadiness] status=%s", _crre.get("status"))
+        except Exception as _crre_exc:
+            log.debug("[CapitalReserveReadiness] readiness check error (non-critical): %s", _crre_exc)
+
         # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
         # Activates the 9-agent autonomous_research cluster (GapDetector,
         # RoadmapManager, StudyPlanner, ScientificDirector, ResearchCoordinator,
