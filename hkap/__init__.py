@@ -44,6 +44,11 @@ from .market_profiler       import MarketProfiler
 from .cross_year_analyzer   import CrossYearAnalyzer
 from .report_generator      import HKAPReportGenerator
 from .year_runner           import YearRunner
+from .hkap_kde_bridge        import (
+    run_hkap_kde_discovery,
+    get_latest_discovery_run,
+    get_discovery_run_history,
+)
 
 __all__ = [
     # engine + config
@@ -71,4 +76,8 @@ __all__ = [
     "HKAPError",
     "FutureDataLeakError",
     "YearNotCompleteError",
+    # Phase 6: HKAP -> KDE bridge
+    "run_hkap_kde_discovery",
+    "get_latest_discovery_run",
+    "get_discovery_run_history",
 ]

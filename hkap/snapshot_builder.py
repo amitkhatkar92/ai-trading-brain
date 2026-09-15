@@ -416,11 +416,20 @@ class HistoricalSnapshotBuilder:
 
         try:
             import yfinance as yf
+            import pandas as pd
             ticker = f"{symbol}.NS"
             df = yf.download(ticker, start=start, end=end, interval="1d",
                              auto_adjust=True, progress=False, timeout=30)
             if df is None or df.empty:
                 return None
+            # Root-cause fix: newer yfinance returns MultiIndex columns
+            # (e.g. ("Close", "RELIANCE.NS")) even for a single ticker;
+            # numpy 2.x's float() rejects the resulting non-0-d arrays.
+            # Same fix already used in klp_outcome_engine.py's OHLCV fetcher.
+            if isinstance(df.columns, pd.MultiIndex):
+                df = df.copy()
+                df.columns = df.columns.droplevel(level=-1)
+                df = df.loc[:, ~df.columns.duplicated()]
             df = df.sort_index()
             data = {
                 "dates":   [str(d.date()) for d in df.index],

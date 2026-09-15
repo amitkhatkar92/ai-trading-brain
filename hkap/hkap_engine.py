@@ -167,6 +167,19 @@ class HKAPEngine:
         self._synthesis_done = True
         return reports
 
+    def get_completed_packages(self) -> Dict[int, YearKnowledgePackage]:
+        """
+        Read-only accessor: already-persisted/loaded COMPLETE year packages,
+        keyed by year. Never triggers a download or a run — reflects only
+        what __init__'s _load_persisted_results()/run_year() has already
+        loaded into memory. Safe for external consumers (e.g. the HKAP->KDE
+        bridge) to build a CrossYearAnalyzer/KDEEngine input from.
+        """
+        return {
+            y: pkg for y, pkg in self._results.items()
+            if pkg.status == YearStudyStatus.COMPLETE.value
+        }
+
     def status(self) -> HKAPStatus:
         years_planned   = self._config.sorted_years
         years_completed = sorted(
