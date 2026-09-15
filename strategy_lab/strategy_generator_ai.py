@@ -194,12 +194,17 @@ class StrategyGeneratorAI:
         regime    = snapshot.regime
         vol_level = snapshot.volatility
 
-        # ── Reject equity longs in bear market ───────────────────────
+        # ── Bear-market equity BUY: KDA-only decision, not a StrategyLab block ──
+        # DTA-EQUITY-STRATEGYLAB-OBSERVATION-001 extension: previously a hard
+        # reject; now recorded as an observation only and still forwarded, so
+        # KDA (the sole knowledge-based final authority) weighs real evidence
+        # instead of a rigid directional rule silently deciding for it.
         if (regime == RegimeLabel.BEAR_MARKET
                 and signal.signal_type == SignalType.EQUITY
                 and signal.direction == SignalDirection.BUY):
-            log.debug("[StrategyGeneratorAI] Rejected %s — bear market.", signal.symbol)
-            return None
+            signal.strategy_health_status = "BEAR_MARKET_BUY_OBSERVED"
+            log.debug("[StrategyGeneratorAI] %s bear-market BUY — recorded only, "
+                      "forwarded to KDA.", signal.symbol)
 
         # DTA-SYSTEM-020: knowledge_referred signals are KDA-only.
         # Returning None here preserves strategy_name = "knowledge_referred" on the
@@ -244,14 +249,18 @@ class StrategyGeneratorAI:
                 log.debug("[StrategyGeneratorAI] %s RR %.1f < min %.1f — skipped.",
                           signal.symbol, rr, params["min_rr"])
                 return None
-            # Volatile regime: apply stricter risk controls for equity strategies
+            # Volatile regime: KDA-only decision, not a StrategyLab block (same
+            # DTA-EQUITY-STRATEGYLAB-OBSERVATION-001 extension as bear-market
+            # above). Reduced sizing is still applied as a StrategyLab-level
+            # risk margin even when confidence is low -- it is a safety measure,
+            # not a gate.
             if (regime == RegimeLabel.VOLATILE
                     and signal.strategy_name in ("Equity_Breakout", "Equity_Retest")):
                 if signal.confidence < VOLATILE_EQUITY_MIN_CONFIDENCE:
-                    log.debug("[StrategyGeneratorAI] %s volatile equity rejected — "
-                              "confidence %.1f < %.1f",
+                    signal.strategy_health_status = "VOLATILE_LOW_CONFIDENCE_OBSERVED"
+                    log.debug("[StrategyGeneratorAI] %s volatile equity low-confidence "
+                              "(%.1f < %.1f) — recorded only, forwarded to KDA.",
                               signal.symbol, signal.confidence, VOLATILE_EQUITY_MIN_CONFIDENCE)
-                    return None
                 signal.quantity = max(1, int(signal.quantity * 0.5))
                 log.info("[StrategyGeneratorAI] Volatile regime: Equity strategies enabled "
                          "with reduced risk — %s qty halved.", signal.symbol)
@@ -272,14 +281,15 @@ class StrategyGeneratorAI:
                 signal.strategy_name = "Mean_Reversion"
             log.debug("[StrategyGeneratorAI] %s assigned fallback strategy %s.",
                      signal.symbol, signal.strategy_name)
-        # Volatile regime: apply stricter risk controls for equity strategies
+        # Volatile regime: KDA-only decision, not a StrategyLab block (same
+        # DTA-EQUITY-STRATEGYLAB-OBSERVATION-001 extension as bear-market above).
         if (regime == RegimeLabel.VOLATILE
                 and signal.strategy_name in ("Equity_Breakout", "Equity_Retest")):
             if signal.confidence < VOLATILE_EQUITY_MIN_CONFIDENCE:
-                log.debug("[StrategyGeneratorAI] %s volatile equity rejected — "
-                          "confidence %.1f < %.1f",
+                signal.strategy_health_status = "VOLATILE_LOW_CONFIDENCE_OBSERVED"
+                log.debug("[StrategyGeneratorAI] %s volatile equity low-confidence "
+                          "(%.1f < %.1f) — recorded only, forwarded to KDA.",
                           signal.symbol, signal.confidence, VOLATILE_EQUITY_MIN_CONFIDENCE)
-                return None
             signal.quantity = max(1, int(signal.quantity * 0.5))
             log.info("[StrategyGeneratorAI] Volatile regime: Equity strategies enabled "
                      "with reduced risk — %s qty halved.", signal.symbol)

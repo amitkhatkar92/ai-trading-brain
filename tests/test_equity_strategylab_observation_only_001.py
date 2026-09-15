@@ -9,9 +9,13 @@ sole authority on whether a trade proceeds. A disabled/inactive strategy no
 longer causes StrategyGeneratorAI to drop the signal; it is recorded on
 `TradeSignal.strategy_health_status` and still forwarded.
 
-Untouched, still-enforced equity gates (regression checks):
-  - Bear-market equity BUY rejection
+Untouched, still-enforced equity gate (regression check):
   - RR-below-minimum rejection
+
+Also covers a later extension: bear-market equity BUY and volatile-regime
+low-confidence signals were themselves converted from hard StrategyLab
+rejections to KDA-only observations (recorded on strategy_health_status,
+still forwarded) -- see test_t005/t010 below.
 """
 from __future__ import annotations
 
@@ -97,11 +101,24 @@ def test_t004_options_signal_still_forwarded_and_recorded_consistently():
 # Regression: untouched equity gates must still reject
 # ─────────────────────────────────────────────────────────────────────────────
 
-def test_t005_bear_market_equity_buy_still_rejected():
+def test_t005_bear_market_equity_buy_now_observed_not_rejected():
     sg = _sg()
     signal = _signal(signal_type=SignalType.EQUITY, direction=SignalDirection.BUY)
     result = sg._assign(signal, _snapshot(regime=RegimeLabel.BEAR_MARKET), active=None)
-    assert result is None, "Bear-market equity BUY rejection must remain in effect"
+    assert result is not None, "Bear-market equity BUY must be forwarded to KDA, not dropped"
+    assert result.strategy_health_status == "BEAR_MARKET_BUY_OBSERVED"
+
+
+def test_t010_volatile_low_confidence_now_observed_not_rejected():
+    sg = _sg()
+    if "Equity_Breakout" not in STRATEGY_PARAMS:
+        STRATEGY_PARAMS["Equity_Breakout"] = {"min_rr": 1.0, "max_loss_pct": 0.015}
+    signal = _signal(strategy_name="Equity_Breakout", signal_type=SignalType.EQUITY)
+    signal.confidence = 3.0  # well below VOLATILE_EQUITY_MIN_CONFIDENCE
+    result = sg._assign(signal, _snapshot(regime=RegimeLabel.VOLATILE), active=None)
+    assert result is not None, "Volatile-regime low-confidence signal must be forwarded to KDA"
+    assert result.strategy_health_status == "VOLATILE_LOW_CONFIDENCE_OBSERVED"
+    assert result.quantity == 5, "Reduced sizing must still apply as a risk margin"
 
 
 def test_t006_rr_below_minimum_still_rejected_for_equity():
