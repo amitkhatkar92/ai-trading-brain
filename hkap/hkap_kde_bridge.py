@@ -42,6 +42,12 @@ KBL stages:
                ACQUISITION above avoids DTA-031's literal shape. Callable
                on whatever cadence a human or a future scheduler chooses.
 
+Post-roadmap addendum (2026-09-15): after each discovery run, also calls
+kde.kde_idr_evidence_bridge.evaluate_discoveries_for_idr_evidence() --
+shadow-only, never writes to the real IDR store (see that module's own
+docstring for the full safety rationale: IDR is live-consequential via
+PIG, unlike every other bridge target in this ecosystem).
+
 Real HKAP data must exist on disk first (run HKAPEngine.run(years=...)
 separately -- see the one-time seed script used to produce the first
 real 2023-2024/40-symbol dataset this phase). This module only reads
@@ -104,6 +110,12 @@ def _run_impl(min_years: int) -> Dict[str, Any]:
 
     kde = KDEEngine(KDEConfig())
     result = kde.run(packages, dna_records, edge_records)
+
+    try:
+        from kde.kde_idr_evidence_bridge import evaluate_discoveries_for_idr_evidence
+        evaluate_discoveries_for_idr_evidence(result.discoveries)
+    except Exception as exc:
+        log.debug("[HKAPKDEBridge] IDR evidence proposal generation skipped: %s", exc)
 
     top = sorted(result.discoveries, key=lambda d: -d.score.overall)[:10]
     summary = {

@@ -43,6 +43,12 @@ from .kde_models          import (
     KDEError,
 )
 from .schemes import ALL_SCHEMES
+from .kde_idr_evidence_bridge import (
+    evaluate_discoveries_for_idr_evidence,
+    get_pending_proposals,
+    get_merge_history,
+    request_live_merge,
+)
 
 __all__ = [
     # core
