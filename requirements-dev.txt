@@ -58,3 +58,9 @@ pre-commit>=3.7.0
 ipython>=8.22.0          # Enhanced REPL for debugging
 rich>=13.7.0             # Rich terminal output
 watchdog>=4.0.0          # File watching for dev auto-reload
+
+# =============================================================================
+# VS Code chat/MCP surface (Sandy — local dev tool only, never in the
+# production Docker image; see sandy/sandy_mcp_server.py)
+# =============================================================================
+mcp>=1.0.0

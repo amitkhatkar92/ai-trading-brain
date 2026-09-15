@@ -1,0 +1,9 @@
+{
+  "servers": {
+    "sandy": {
+      "type": "stdio",
+      "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+      "args": ["${workspaceFolder}/sandy/sandy_mcp_server.py"]
+    }
+  }
+}
