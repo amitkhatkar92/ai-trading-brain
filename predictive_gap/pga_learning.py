@@ -394,6 +394,45 @@ def _write_pending_actions_json(actions: List[LearningAction], report_dir: Path)
     log.info("[PGA-Learning] Wrote %d learning actions → %s", len(data), out)
 
 
+def get_last_run_summary(pga_dir: Optional[Path] = None) -> Optional[Dict[str, Any]]:
+    """
+    Read-only accessor (Phase 7 "Sandy" supervisor): summarizes the most
+    recently written pga_learning_actions.json report (see
+    _write_pending_actions_json()). Never triggers a new PGA run, never
+    mutates anything. Returns None if no report exists yet.
+    """
+    try:
+        root = Path(pga_dir) if pga_dir else PGA_DIR
+        if not root.exists():
+            return None
+        date_dirs = sorted(
+            (d for d in root.iterdir()
+             if d.is_dir() and (d / "pga_learning_actions.json").exists()),
+            key=lambda d: d.name,
+        )
+        if not date_dirs:
+            return None
+        latest_dir = date_dirs[-1]
+        with open(latest_dir / "pga_learning_actions.json", encoding="utf-8") as f:
+            actions = json.load(f)
+
+        by_category: Dict[str, int] = {}
+        by_outcome: Dict[str, int] = {}
+        for a in actions:
+            by_category[a.get("category", "?")] = by_category.get(a.get("category", "?"), 0) + 1
+            by_outcome[a.get("outcome", "?")] = by_outcome.get(a.get("outcome", "?"), 0) + 1
+
+        return {
+            "report_date":   latest_dir.name,
+            "total_actions": len(actions),
+            "by_category":   by_category,
+            "by_outcome":    by_outcome,
+        }
+    except Exception as exc:
+        log.debug("[PGA-Learning] get_last_run_summary error: %s", exc)
+        return None
+
+
 def plan_actions(
     root_causes: List[RootCause],
     analyses: List[StockAnalysis],

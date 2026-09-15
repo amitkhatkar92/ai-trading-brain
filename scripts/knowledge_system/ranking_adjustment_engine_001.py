@@ -362,6 +362,33 @@ def _deactivate_in_config(direction: str) -> None:
         _save_active_config(config)
 
 
+def get_active_adjustments_status() -> Dict[str, Any]:
+    """
+    Read-only accessor (Phase 7 "Sandy" supervisor): current shadow
+    candidates (feature_id/status/status_reason/created_at) plus the
+    currently ACTIVE per-direction adjustments. Never mutates any state.
+    Never raises.
+    """
+    try:
+        candidates = _load_candidates()
+        active_config = _load_active_config()
+        return {
+            "candidates": [
+                {
+                    "feature_id":    c.feature_id,
+                    "status":        c.status,
+                    "status_reason": c.status_reason,
+                    "created_at":    c.created_at,
+                }
+                for c in candidates
+            ],
+            "active_config": active_config,
+        }
+    except Exception as exc:
+        print(f"[RAE-001] get_active_adjustments_status failed: {exc}")
+        return {"candidates": [], "active_config": {}}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Shadow-scoring hook — consumed by scripts/final_trading_architecture_shadow_001.py
 # ─────────────────────────────────────────────────────────────────────────────

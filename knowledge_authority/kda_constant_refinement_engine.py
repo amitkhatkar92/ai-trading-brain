@@ -260,6 +260,43 @@ def get_effective_constants(overrides_path: Optional[Path] = None) -> Dict[str, 
         return defaults
 
 
+def get_ledger_history(n: int = 20) -> List[Dict[str, Any]]:
+    """
+    Read-only accessor (Phase 7 "Sandy" supervisor): last n ledger events
+    (SHADOW_STARTED/PROMOTED/REJECTED/ROLLED_BACK), oldest-first. Never
+    triggers a refinement check itself. Never raises.
+    """
+    try:
+        events = _read_jsonl(_LEDGER_PATH)
+        return events[-n:]
+    except Exception:
+        return []
+
+
+def get_refinement_status() -> Dict[str, Any]:
+    """
+    Read-only accessor (Phase 7 "Sandy" supervisor): current per-constant
+    lifecycle status (WAITING_FOR_EVIDENCE/SHADOW_ACTIVE/ACTIVE/
+    ROLLED_BACK/REJECTED) plus the currently effective value for each of
+    the 3 tunable constants. Never triggers a refinement check itself.
+    """
+    try:
+        state = _load_state()
+        effective = get_effective_constants()
+        per_constant: Dict[str, Any] = {}
+        for name in TUNABLE_CONSTANTS:
+            const_state = state.get(name, _default_const_state())
+            per_constant[name] = {
+                "status":           const_state.get("status", STATUS_WAITING),
+                "effective_value":  effective.get(name),
+                "last_change_at":   const_state.get("last_change_at"),
+            }
+        return {"per_constant": per_constant}
+    except Exception as exc:
+        log.debug("[KDA-CRE] get_refinement_status error: %s", exc)
+        return {"per_constant": {}}
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Outcome dataset — incremental join of KDA decisions + computed outcomes
 # ─────────────────────────────────────────────────────────────────────────────

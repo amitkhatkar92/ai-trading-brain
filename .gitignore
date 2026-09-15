@@ -199,6 +199,7 @@ data/risk_guardian_state.json
 data/rejection_attribution/
 data/hkap/
 data/kde/
+data/sandy/
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
