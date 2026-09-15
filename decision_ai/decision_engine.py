@@ -46,6 +46,23 @@ AGENT_WEIGHTS = {
     "InstitutionalDNAAI": 0.08,
 }
 
+# Post-roadmap Priority 3: AGENT_WEIGHTS above are the DEFAULT values only.
+# The effective weight used at runtime is resolved via _effective_weights(),
+# which reads debate_system/debate_weight_refinement_engine.py's validated,
+# shadow-confirmed overrides when present and falls back to these exact
+# defaults on any error, missing file, or a debater not yet overridden.
+# This is the only mechanism by which these weights may change -- never a
+# direct edit here. Byte-identical behavior to today until real evidence
+# validates a change (see that module's own docstring for the full,
+# KDA-CRE-001-style safety contract: shadow-tested, bounded to +/-0.05,
+# auto-rollback, fully automated, zero human step).
+def _effective_weights() -> dict:
+    try:
+        from debate_system.debate_weight_refinement_engine import get_effective_weights
+        return get_effective_weights()
+    except Exception:
+        return dict(AGENT_WEIGHTS)
+
 
 class DecisionEngine:
     """
@@ -72,12 +89,13 @@ class DecisionEngine:
             )
 
         # ── Weighted confidence score ──────────────────────────────────
+        weights       = _effective_weights()
         total_weight  = 0.0
         weighted_sum  = 0.0
         modifier_product = 1.0
 
         for vote in votes:
-            w = AGENT_WEIGHTS.get(vote.agent_name, 0.1)
+            w = weights.get(vote.agent_name, 0.1)
             weighted_sum     += vote.score * w
             total_weight     += w
             modifier_product *= vote.suggested_position_modifier
@@ -160,11 +178,12 @@ class DecisionEngine:
     def _log_scorecard(self, sig: TradeSignal,
                        votes: List[DebateVote],
                        result: DecisionResult):
+        weights = _effective_weights()
         log.info("[DecisionEngine] ── Scorecard: %s ──", sig.symbol)
         log.info("  %-25s  %s  %s", "Agent", "Score", "Weight")
         log.info("  " + "─" * 45)
         for vote in votes:
-            w = AGENT_WEIGHTS.get(vote.agent_name, 0.1)
+            w = weights.get(vote.agent_name, 0.1)
             log.info("  %-25s  %.1f   %.2f", vote.agent_name, vote.score, w)
         log.info("  " + "─" * 45)
         log.info("  Weighted Score: %.2f / 10", result.confidence_score)

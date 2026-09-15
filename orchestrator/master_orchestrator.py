@@ -3820,6 +3820,16 @@ class MasterOrchestrator:
 
         decision = self.decision_engine.decide(signal, votes, snapshot)
 
+        # Post-roadmap Priority 3: ACQUISITION for debate-weight self-tuning.
+        # Records this debate's per-agent votes for later outcome resolution
+        # (debate_system/debate_vote_tracker.py). Purely additive/observational
+        # -- never affects this or any decision. Non-fatal.
+        try:
+            from debate_system.debate_vote_tracker import record_debate_votes
+            record_debate_votes(signal, votes, decision)
+        except Exception as _dvt_exc:
+            log.debug("[DebateVoteTracker] record error (non-critical): %s", _dvt_exc)
+
         # ── Market Truth Governance ─────────────────────────────────────────
         # EQUITY truth controls hard suppression/cap (equity LTPs are the source
         # of truth for P&L).  OPTIONS truth applies a modest size penalty only —
@@ -7632,6 +7642,26 @@ class MasterOrchestrator:
             )
         except Exception as _mb_exc:
             log.warning("[MarketBenchmark] Daily benchmark failed (non-critical): %s", _mb_exc)
+
+        # ── Post-roadmap Priority 3: Debate weight self-tuning (VALIDATION+GOVERNANCE) ──
+        # Resolves matured debate votes into real market outcomes, then runs the
+        # fully-automated, shadow-then-live refinement check per debater. Never
+        # touches AGENT_WEIGHTS directly -- only debate_weight_refinement_engine.py's
+        # own isolated override store, read by DecisionEngine's _effective_weights().
+        try:
+            from debate_system.debate_vote_tracker import resolve_matured_votes
+            _dvt_resolve = resolve_matured_votes()
+            log.info("[DebateVoteTracker] resolved=%d skipped_immature=%d",
+                      _dvt_resolve.get("resolved", 0), _dvt_resolve.get("skipped_immature", 0))
+        except Exception as _dvt_resolve_exc:
+            log.debug("[DebateVoteTracker] resolve error (non-critical): %s", _dvt_resolve_exc)
+
+        try:
+            from debate_system.debate_weight_refinement_engine import run_daily_refinement_check
+            _dwre = run_daily_refinement_check()
+            log.info("[DebateWRE] %s", _dwre.get("per_agent", {}))
+        except Exception as _dwre_exc:
+            log.debug("[DebateWRE] refinement check error (non-critical): %s", _dwre_exc)
 
         # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
         # Activates the 9-agent autonomous_research cluster (GapDetector,

@@ -155,6 +155,8 @@ data/ars/sd/
 data/ars_roadmap_state.json
 data/mover_discovery_v3_shadow.jsonl
 data/mover_discovery_v3_shadow_raw.jsonl
+# Debate weight self-tuning (Priority 3 activation)
+data/debate/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json

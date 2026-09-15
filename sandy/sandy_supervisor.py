@@ -109,6 +109,7 @@ class SandySupervisor:
             self._poll_regime_strategy_map,
             self._poll_ars_scheduler,
             self._poll_ikn_bridge,
+            self._poll_debate_weight_refinement,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -294,6 +295,24 @@ class SandySupervisor:
                     f"avg_confidence={stats.avg_confidence:.3f}.",
             issues=[] if stats.total_nodes > 0 else ["IKN store has no data yet."],
             raw=stats.to_dict() if hasattr(stats, "to_dict") else {},
+        )
+
+    def _poll_debate_weight_refinement(self) -> AgentHealthReport:
+        from debate_system.debate_weight_refinement_engine import get_refinement_status
+        from debate_system.debate_vote_tracker import get_debater_accuracy
+        status = get_refinement_status().get("per_agent", {})
+        accuracy = get_debater_accuracy()
+        active = [n for n, s in status.items() if s.get("status") == "ACTIVE"]
+        shadow = [n for n, s in status.items() if s.get("status") == "SHADOW_ACTIVE"]
+        total_resolved = sum(a.get("sample_size", 0) for a in accuracy.values())
+        stage = "ACTIVE" if active else ("SHADOW" if shadow else "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="Debate Weight Refinement Engine (Priority 3)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total_resolved,
+            summary=f"{len(active)} ACTIVE, {len(shadow)} in SHADOW, "
+                    f"{total_resolved} resolved votes total across all debaters.",
+            raw={"status": status, "accuracy": accuracy},
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:
