@@ -23,6 +23,24 @@ jobs:
             'data/mls/*.db' 'data/ikn/*.db'
             'data/paper_trades*.csv' 'data/paper_trade_log.csv'
             'data/live/*.jsonl'
+            # Self-Learning Ecosystem modules #24-28 (2026-09-15): each of
+            # these directories is confirmed to have ZERO tracked files as
+            # of the commit that added this line (verified via
+            # `git ls-files`) -- a blanket glob is therefore safe here,
+            # unlike data/ars/, data/dta/, data/prr/ (below) which already
+            # contain legitimate, deliberately-tracked historical report
+            # snapshots from before this repo's runtime-data discipline
+            # was established, and would false-positive on a blanket glob.
+            'data/trade_monitoring/*' 'data/risk_control/*'
+            'data/data_integrity/*' 'data/meta_learning/*'
+            'data/oios/*' 'data/data_feeds/*' 'data/debate/*'
+            'data/kda_cre/*' 'data/hkap/*' 'data/kde/*' 'data/sandy/*'
+            'data/rejection_attribution/*'
+            # Narrower patterns for the NEW subdirectories added this
+            # session under otherwise partially-tracked parents -- do NOT
+            # widen these to 'data/ars/*' / 'data/dta/*' / 'data/prr/*',
+            # that would flag the pre-existing tracked report snapshots.
+            'data/dta/scheduler/*' 'data/ars/scheduler/*' 'data/ars/sd/*'
           )
           # data/frz/backups/... contains deliberate, static historical
           # snapshot copies (point-in-time archives) that are intentionally

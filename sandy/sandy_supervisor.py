@@ -118,6 +118,8 @@ class SandySupervisor:
             self._poll_sizing_bounds_refinement,
             self._poll_capital_reserve_readiness,
             self._poll_options_health,
+            self._poll_debate_agents,
+            self._poll_capital_risk_engine,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -445,6 +447,47 @@ class SandySupervisor:
             raw=status,
         )
 
+    def _poll_debate_agents(self) -> AgentHealthReport:
+        """
+        Extends Sandy's coverage from the Debate Weight Refinement Engine
+        (which only reports the REFINEMENT MECHANISM's shadow/active
+        status) down to the 6 individual debater agents' own raw,
+        already-computed accuracy -- MultiAgentDebate itself, per-agent,
+        is part of the canonical agent roster (orchestrator/
+        master_orchestrator.py's ALL_AGENTS) and did not otherwise have
+        a dedicated performance poller.
+        """
+        from debate_system.debate_vote_tracker import get_debater_accuracy
+        accuracy = get_debater_accuracy()
+        total_votes = sum(a.get("sample_size", 0) for a in accuracy.values())
+        stage = "ACTIVE" if total_votes > 0 else "NO DATA YET"
+        return AgentHealthReport(
+            name="MultiAgentDebate (per-debater accuracy, baseline)",
+            category=BASELINE_LOOP, stage=stage,
+            evidence_count=total_votes,
+            summary=f"{len(accuracy)} debater(s) tracked, {total_votes} resolved vote(s) total.",
+            raw=accuracy,
+        )
+
+    def _poll_capital_risk_engine(self) -> AgentHealthReport:
+        """
+        Surfaces CapitalRiskEngine's own already-computed, already-live
+        per-cycle rejection-attribution getter -- previously computed
+        (DTA-CRE-DIAG-001) but never polled by Sandy. CapitalRiskEngine is
+        part of the canonical agent roster and did not otherwise have
+        a dedicated performance poller.
+        """
+        # Routed through a facade outside risk_control/ -- see
+        # learning_system/capital_risk_facade.py docstring for why.
+        from learning_system.capital_risk_facade import get_last_cycle_dominant_rejection_reason
+        reason = get_last_cycle_dominant_rejection_reason()
+        stage = "ACTIVE" if reason and reason.upper() != "NONE" else "NO REJECTIONS LAST CYCLE"
+        return AgentHealthReport(
+            name="Capital Risk Engine (rejection attribution, baseline)",
+            category=BASELINE_LOOP, stage=stage,
+            summary=f"Dominant rejection reason last cycle: {reason}.",
+        )
+
     def _poll_rsl_001(self) -> AgentHealthReport:
         from scripts.knowledge_system.ranking_adjustment_engine_001 import get_active_adjustments_status
         status = get_active_adjustments_status()
@@ -592,6 +635,37 @@ class SandySupervisor:
             lines.extend(f"  - {i}" for i in report.issues)
         return "\n".join(lines)
 
+    def _lookup_roster_agent(self, target: str) -> List[str]:
+        """
+        Read-only lookup against the canonical agent roster
+        (orchestrator.master_orchestrator.ALL_AGENTS) -- used as a
+        fallback when 'sandy status <name>' matches no dedicated poller,
+        so Sandy never falsely claims an agent "doesn't exist" just
+        because it has no dedicated performance poller yet. Lazy-imported
+        to avoid a module-load-time dependency on the orchestrator.
+        """
+        try:
+            from orchestrator.master_orchestrator import ALL_AGENTS
+        except Exception:
+            return []
+        return [a for a in ALL_AGENTS if target in a.lower()]
+
+    def _coverage_summary(self, reports: Dict[str, AgentHealthReport]) -> str:
+        try:
+            from orchestrator.master_orchestrator import ALL_AGENTS
+            total = len(ALL_AGENTS)
+        except Exception:
+            total = None
+        covered = len(reports)
+        if total is None:
+            return f"I have dedicated performance data for {covered} agent(s)."
+        return (
+            f"I have dedicated performance data for {covered}/{total} agents in the "
+            f"live pipeline. The rest run deterministically each cycle (no learned/"
+            f"evolving behaviour of their own to track yet) -- ask 'Sandy status "
+            f"<name>' for any of them and I'll tell you which category it's in."
+        )
+
     def _answer_impl(self, query: str) -> str:
         q = (query or "").strip().lower()
         reports = self.poll_all_agents()
@@ -601,13 +675,26 @@ class SandySupervisor:
             if not target:
                 return "Tell me which agent, e.g. 'Sandy status HKAP'."
             matches = [r for name, r in reports.items() if target in name.lower()]
-            if not matches:
-                names = ", ".join(sorted(reports.keys()))
-                return f"I don't recognise '{target}'. Known agents: {names}"
-            return "\n\n".join(self._format_agent_detail(r) for r in matches)
+            if matches:
+                return "\n\n".join(self._format_agent_detail(r) for r in matches)
+            roster_matches = self._lookup_roster_agent(target)
+            if roster_matches:
+                names = ", ".join(roster_matches)
+                return (
+                    f"'{target}' matches {names} in the live pipeline -- it runs "
+                    f"deterministically every cycle, but I don't have a dedicated "
+                    f"performance poller for it yet (no learned/self-improving "
+                    f"behaviour of its own to track). Ask 'Sandy agents' to see "
+                    f"my full coverage."
+                )
+            names = ", ".join(sorted(reports.keys()))
+            return f"I don't recognise '{target}'. Known agents with dedicated data: {names}"
 
         if q in ("sandy report", "report"):
             return self._format_digest(reports)
+
+        if q in ("sandy agents", "sandy coverage", "agents", "coverage"):
+            return self._coverage_summary(reports)
 
         if q in ("sandy help", "help"):
             return (
@@ -615,6 +702,7 @@ class SandySupervisor:
                 "  'Hi Sandy' or 'Sandy' — quick greeting + what needs attention\n"
                 "  'Sandy report' — full status of every agent\n"
                 "  'Sandy status <name>' — one agent's live detail\n"
+                "  'Sandy agents' — how many agents in the live pipeline I have performance data for\n"
                 "  'Sandy help' — this message"
             )
 

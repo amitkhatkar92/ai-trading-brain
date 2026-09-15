@@ -22,6 +22,13 @@ T10  New accessors: PGA get_last_run_summary(), KDA-CRE-001
      get_refinement_status()/get_ledger_history(), RSL-001
      get_active_adjustments_status() -- all read-only, never raise, and
      reflect real written data
+T11  "sandy status <name>" acknowledges an ALL_AGENTS roster member that
+     has no dedicated poller instead of falsely claiming it's unrecognised
+T12  "sandy agents"/"sandy coverage" reports N/total poller coverage
+T13  New pollers _poll_debate_agents / _poll_capital_risk_engine wrap
+     their underlying read-only accessors correctly; the CapitalRiskEngine
+     accessor is routed through learning_system/capital_risk_facade.py
+     (never risk_control directly) to respect T09
 """
 from __future__ import annotations
 
@@ -52,59 +59,47 @@ def _fake_report(name, evidence_count=5):
     )
 
 
+_ALL_POLLER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVW"
+_ALL_POLLER_NAMES = [
+    "_poll_options_ks_bridge", "_poll_ars_hypothesis_bridge", "_poll_pga_learning",
+    "_poll_rejection_attribution", "_poll_production_readiness", "_poll_hkap_kde_bridge",
+    "_poll_kda_cre", "_poll_rsl_001", "_poll_strategy_performance", "_poll_regime_strategy_map",
+    "_poll_ars_scheduler", "_poll_ikn_bridge", "_poll_debate_weight_refinement",
+    "_poll_dtrace_scheduler", "_poll_regime_map_refinement", "_poll_shm_regime_health",
+    "_poll_trust_weighted_ranking", "_poll_shm_profile_refinement", "_poll_sizing_bounds_refinement",
+    "_poll_capital_reserve_readiness", "_poll_options_health", "_poll_debate_agents",
+    "_poll_capital_risk_engine",
+]
+
+
+def _patch_all_pollers(sup, skip_first_with_error=False):
+    """Build an ExitStack patching every registered poller with a fake
+    report named after its position's letter (A, B, C, ...). Avoids the
+    'too many statically nested blocks' SyntaxError that a 23-deep chained
+    `with a, b, c, ...:` statement hits."""
+    from contextlib import ExitStack
+    stack = ExitStack()
+    for letter, method_name in zip(_ALL_POLLER_LETTERS, _ALL_POLLER_NAMES):
+        if skip_first_with_error and letter == "A":
+            stack.enter_context(patch.object(sup, method_name, side_effect=RuntimeError("boom")))
+        else:
+            stack.enter_context(patch.object(sup, method_name, return_value=_fake_report(letter)))
+    return stack
+
+
 class TestPollingResilience:
     def test_T01_polls_all_registered_agents(self):
         sup = SandySupervisor()
-        with patch.object(sup, "_poll_options_ks_bridge", return_value=_fake_report("A")), \
-             patch.object(sup, "_poll_ars_hypothesis_bridge", return_value=_fake_report("B")), \
-             patch.object(sup, "_poll_pga_learning", return_value=_fake_report("C")), \
-             patch.object(sup, "_poll_rejection_attribution", return_value=_fake_report("D")), \
-             patch.object(sup, "_poll_production_readiness", return_value=_fake_report("E")), \
-             patch.object(sup, "_poll_hkap_kde_bridge", return_value=_fake_report("F")), \
-             patch.object(sup, "_poll_kda_cre", return_value=_fake_report("G")), \
-             patch.object(sup, "_poll_rsl_001", return_value=_fake_report("H")), \
-             patch.object(sup, "_poll_strategy_performance", return_value=_fake_report("I")), \
-             patch.object(sup, "_poll_regime_strategy_map", return_value=_fake_report("J")), \
-             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")), \
-             patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")), \
-             patch.object(sup, "_poll_debate_weight_refinement", return_value=_fake_report("M")), \
-             patch.object(sup, "_poll_dtrace_scheduler", return_value=_fake_report("N")), \
-             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")), \
-             patch.object(sup, "_poll_shm_regime_health", return_value=_fake_report("P")), \
-             patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
-             patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
-             patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")), \
-             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")), \
-             patch.object(sup, "_poll_options_health", return_value=_fake_report("U")):
+        with _patch_all_pollers(sup):
             reports = sup.poll_all_agents()
-        assert set(reports.keys()) == set("ABCDEFGHIJKLMNOPQRSTU")
+        assert set(reports.keys()) == set(_ALL_POLLER_LETTERS)
 
     def test_T02_one_failing_poller_does_not_block_others(self):
         sup = SandySupervisor()
-        with patch.object(sup, "_poll_options_ks_bridge", side_effect=RuntimeError("boom")), \
-             patch.object(sup, "_poll_ars_hypothesis_bridge", return_value=_fake_report("B")), \
-             patch.object(sup, "_poll_pga_learning", return_value=_fake_report("C")), \
-             patch.object(sup, "_poll_rejection_attribution", return_value=_fake_report("D")), \
-             patch.object(sup, "_poll_production_readiness", return_value=_fake_report("E")), \
-             patch.object(sup, "_poll_hkap_kde_bridge", return_value=_fake_report("F")), \
-             patch.object(sup, "_poll_kda_cre", return_value=_fake_report("G")), \
-             patch.object(sup, "_poll_rsl_001", return_value=_fake_report("H")), \
-             patch.object(sup, "_poll_strategy_performance", return_value=_fake_report("I")), \
-             patch.object(sup, "_poll_regime_strategy_map", return_value=_fake_report("J")), \
-             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")), \
-             patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")), \
-             patch.object(sup, "_poll_debate_weight_refinement", return_value=_fake_report("M")), \
-             patch.object(sup, "_poll_dtrace_scheduler", return_value=_fake_report("N")), \
-             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")), \
-             patch.object(sup, "_poll_shm_regime_health", return_value=_fake_report("P")), \
-             patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
-             patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
-             patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")), \
-             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")), \
-             patch.object(sup, "_poll_options_health", return_value=_fake_report("U")):
+        with _patch_all_pollers(sup, skip_first_with_error=True):
             reports = sup.poll_all_agents()
         assert "A" not in reports
-        assert set(reports.keys()) == set("BCDEFGHIJKLMNOPQRSTU")
+        assert set(reports.keys()) == set(_ALL_POLLER_LETTERS) - {"A"}
 
 
 class TestTrendClassification:
@@ -173,9 +168,28 @@ class TestKeywordAnswering:
 
     def test_T07_unrecognised_agent_name_is_graceful(self):
         sup = SandySupervisor()
-        with patch.object(sup, "poll_all_agents", return_value={"X": _fake_report("X")}):
+        with patch.object(sup, "poll_all_agents", return_value={"X": _fake_report("X")}), \
+             patch.object(sup, "_lookup_roster_agent", return_value=[]):
             reply = sup.answer("sandy status nonexistent")
         assert "recognise" in reply.lower() or "know" in reply.lower()
+
+    def test_T11_roster_agent_without_poller_is_acknowledged(self):
+        """An agent that exists in ALL_AGENTS but has no dedicated poller
+        must never be reported as unrecognised -- it should get an honest
+        'runs deterministically, no dedicated poller yet' reply."""
+        sup = SandySupervisor()
+        with patch.object(sup, "poll_all_agents", return_value={"X": _fake_report("X")}), \
+             patch.object(sup, "_lookup_roster_agent", return_value=["RiskManagerAI"]):
+            reply = sup.answer("sandy status riskmanagerai")
+        assert "RiskManagerAI" in reply
+        assert "don't recognise" not in reply.lower()
+
+    def test_T12_sandy_agents_reports_coverage(self):
+        sup = SandySupervisor()
+        with patch.object(sup, "poll_all_agents", return_value={"X": _fake_report("X"), "Y": _fake_report("Y")}), \
+             patch("orchestrator.master_orchestrator.ALL_AGENTS", ["a"] * 62):
+            reply = sup.answer("sandy agents")
+        assert "2/62" in reply
 
 
 class TestFailOpen:
@@ -233,3 +247,57 @@ class TestNewAccessors:
         status = get_active_adjustments_status()
         assert "candidates" in status
         assert "active_config" in status
+
+
+class TestNewPollers:
+    def test_T13a_poll_debate_agents_wraps_accuracy_accessor(self):
+        sup = SandySupervisor()
+        fake_accuracy = {"RiskManagerAI": {"sample_size": 12, "correct_count": 8}}
+        with patch("debate_system.debate_vote_tracker.get_debater_accuracy", return_value=fake_accuracy):
+            report = sup._poll_debate_agents()
+        assert report.stage == "ACTIVE"
+        assert report.evidence_count == 12
+        assert "1 debater(s)" in report.summary
+
+    def test_T13b_poll_debate_agents_no_data(self):
+        sup = SandySupervisor()
+        with patch("debate_system.debate_vote_tracker.get_debater_accuracy", return_value={}):
+            report = sup._poll_debate_agents()
+        assert report.stage == "NO DATA YET"
+        assert report.evidence_count == 0
+
+    def test_T13c_poll_capital_risk_engine_wraps_facade(self):
+        sup = SandySupervisor()
+        with patch("learning_system.capital_risk_facade.get_last_cycle_dominant_rejection_reason",
+                   return_value="BUDGET"):
+            report = sup._poll_capital_risk_engine()
+        assert report.stage == "ACTIVE"
+        assert "BUDGET" in report.summary
+
+    def test_T13d_poll_capital_risk_engine_no_rejections(self):
+        sup = SandySupervisor()
+        with patch("learning_system.capital_risk_facade.get_last_cycle_dominant_rejection_reason",
+                   return_value="NONE"):
+            report = sup._poll_capital_risk_engine()
+        assert report.stage == "NO REJECTIONS LAST CYCLE"
+
+    def test_T13e_facade_reexports_real_risk_control_accessor(self):
+        """The facade must genuinely forward to risk_control's real getter
+        (not just exist) -- risk_control itself may import this freely,
+        only sandy/ is restricted."""
+        from learning_system.capital_risk_facade import get_last_cycle_dominant_rejection_reason
+        from risk_control.capital_risk_engine import (
+            get_last_cycle_dominant_rejection_reason as real_getter,
+        )
+        assert get_last_cycle_dominant_rejection_reason() == real_getter()
+
+    def test_T13f_sandy_never_imports_risk_control_even_with_new_poller(self):
+        """Regression guard duplicating T09's intent specifically for the
+        newly-added _poll_capital_risk_engine method."""
+        src_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "sandy", "sandy_supervisor.py",
+        )
+        src = open(src_path, encoding="utf-8").read()
+        assert "from risk_control" not in src
+        assert "import risk_control" not in src
+        assert "learning_system.capital_risk_facade" in src
