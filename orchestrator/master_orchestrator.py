@@ -7588,6 +7588,17 @@ class MasterOrchestrator:
         except Exception as _prr_exc:
             log.warning("[PRR-001] Pipeline failed (non-critical): %s", _prr_exc)
 
+        # ── Self-Learning Ecosystem Phase 5: PRR monitoring integration ────
+        # run_prr()'s summary dict was discarded after the log line above.
+        # Persists it to a queryable daily history + alerts only on
+        # NOT_READY or a verdict change. Advisory only -- no trade halt.
+        try:
+            from production_readiness.prr_monitor import record_daily_result, check_and_alert
+            record_daily_result(_prr)
+            check_and_alert(_prr, notifier=self.notifier)
+        except Exception as _prr_mon_exc:
+            log.debug("[PRR-001] monitor error (non-critical): %s", _prr_mon_exc)
+
         # ── DTA-MARKET-BENCHMARK-001: Daily Market Opportunity Benchmark ──────
         # Collects Top-20 Gainers/Losers from the broad NSE-equity universe AND
         # the standardized NIFTY500 benchmark, classifies every mover against

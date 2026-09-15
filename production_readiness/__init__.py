@@ -56,6 +56,12 @@ from .ph8_learning_impact import get_learning_impact_summary
 from .ph9_certification import build_certificate
 from .prr_reporter import write_all_reports
 from .prr_runner import run_prr
+from .prr_monitor import (
+    record_daily_result,
+    get_certification_history,
+    get_latest_certification,
+    check_and_alert,
+)
 
 __all__ = [
     # Models
@@ -80,4 +86,5 @@ __all__ = [
     "build_certificate",
     "write_all_reports",
     "run_prr",
+    "record_daily_result", "get_certification_history", "get_latest_certification", "check_and_alert",
 ]
