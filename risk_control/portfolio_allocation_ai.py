@@ -118,6 +118,17 @@ class PortfolioAllocationAI:
         else:
             perf_weight = get_performance_tracker().get_performance_weight(
                               sig.strategy_name)
+            # Self-learning #27: evidence-gated re-clamp of perf_weight's own
+            # bounds (see risk_control/sizing_bounds_refinement_engine.py).
+            # Falls back to the exact original (0.5, 2.0) bounds -- and is
+            # therefore a no-op -- until real evidence validates an
+            # adjustment. Never widens/narrows the LOWER bound.
+            try:
+                from learning_system.sizing_bounds_refinement_engine import get_effective_perf_weight_bounds
+                _lo, _hi = get_effective_perf_weight_bounds()
+                perf_weight = max(_lo, min(_hi, perf_weight))
+            except Exception:
+                pass
         if perf_weight != 1.0:
             log.debug("[PortfolioAllocationAI] %s perf_weight=%.2f× (%s)",
                       sig.symbol, perf_weight, sig.strategy_name)

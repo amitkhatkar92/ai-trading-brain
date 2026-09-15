@@ -2464,17 +2464,28 @@ class MasterOrchestrator:
             bt_passing = set(all_strategies)   # fallback before first backtest run
         shm_disabled  = self.strategy_health.get_disabled_strategies()
         perf_disabled = self.perf_tracker.get_disabled_set()
-        passing_set   = bt_passing - shm_disabled - perf_disabled
+        # Self-learning #24: evidence-gated regime-scoped disables (additive
+        # only -- see trade_monitoring/strategy_regime_health_engine.py).
+        try:
+            from trade_monitoring.strategy_regime_health_engine import get_regime_disabled_strategies
+            regime_disabled = get_regime_disabled_strategies(snapshot.regime.value)
+        except Exception as _srh_exc:
+            log.debug("[SHMRegimeRE] read error (non-critical): %s", _srh_exc)
+            regime_disabled = set()
+        passing_set   = bt_passing - shm_disabled - perf_disabled - regime_disabled
         if perf_disabled:
             log.info("[StrategyLab] PerfTracker retired %d strategies: %s",
                      len(perf_disabled), ", ".join(sorted(perf_disabled)))
+        if regime_disabled:
+            log.info("[StrategyLab] Regime-scoped disable (%s): %d strategies: %s",
+                     snapshot.regime.value, len(regime_disabled), ", ".join(sorted(regime_disabled)))
         # Print SHM health report if any data exists (else suppressed)
         self.strategy_health.print_health_report()
         self.meta_strategy.print_activation_report(snapshot, passing_set, all_strategies)
 
         matched = self.strategy_generator.assign_strategy(
             signals, snapshot,
-            excluded_strategies=shm_disabled | perf_disabled,
+            excluded_strategies=shm_disabled | perf_disabled | regime_disabled,
             shm_ref=self.strategy_health,
         )
         evolved = self.strategy_evolution.apply_evolved_params(matched)
@@ -5722,6 +5733,20 @@ class MasterOrchestrator:
             # Pass order_id so LearningGate can filter LEGACY_UNVERIFIED trades.
             _oid = getattr(trade, "order_id", "")
             self.perf_tracker.record_trade(strategy, pnl_r=r_multiple, order_id=_oid)
+            # ── Self-learning #27: sizing bounds calibration evidence ──────
+            # Additive-only observer of the exact same trade event -- feeds
+            # risk_control/sizing_bounds_refinement_engine.py's evidence
+            # -gated perf_weight bounds calibration. Uses the CURRENT
+            # perf_weight as a proxy for "was this trade boosted/reduced"
+            # (perf_weight changes slowly; a documented, accepted
+            # approximation, same limitation as regime_map_evidence_log's
+            # own per-trade tagging below).
+            try:
+                from learning_system.sizing_bounds_refinement_engine import record_sizing_outcome
+                _pw = self.perf_tracker.get_performance_weight(strategy)
+                record_sizing_outcome(strategy, perf_weight=_pw, r_multiple=r_multiple, won=won)
+            except Exception as _sbre_exc:
+                log.debug("[SizingBoundsRE] record error (non-critical): %s", _sbre_exc)
             # ── Q3: Regime → Strategy best-fit map ─────────────────────
             if regime and regime != "unknown":
                 self.regime_strategy_map.record(regime, strategy, pnl_r=r_multiple)
@@ -7747,6 +7772,39 @@ class MasterOrchestrator:
             log.info("[RegimeMapRE] %s", _rmre.get("per_pair", {}))
         except Exception as _rmre_exc:
             log.debug("[RegimeMapRE] refinement check error (non-critical): %s", _rmre_exc)
+
+        # ── Self-learning #24: SHM regime-aware disabling refinement check ──
+        try:
+            from trade_monitoring.strategy_regime_health_engine import run_daily_refinement_check as _run_shm_regime_check
+            _shmre = _run_shm_regime_check()
+            log.info("[SHMRegimeRE] %s", _shmre.get("per_pair", {}))
+        except Exception as _shmre_exc:
+            log.debug("[SHMRegimeRE] refinement check error (non-critical): %s", _shmre_exc)
+
+        # ── Self-learning #26: trust-weighted ranking daily snapshot ──────
+        try:
+            from opportunity_engine.trust_weighted_ranking_engine import run_daily_snapshot_and_check as _run_trust_check
+            _trwr = _run_trust_check()
+            log.info("[TrustWeightedRanking] history_days=%s gate_met=%s",
+                      _trwr.get("history_days_count"), _trwr.get("gate_met"))
+        except Exception as _trwr_exc:
+            log.debug("[TrustWeightedRanking] snapshot error (non-critical): %s", _trwr_exc)
+
+        # ── Self-learning #25: profile-aware governance auto-apply check ──
+        try:
+            from trade_monitoring.strategy_profile_refinement_engine import run_daily_refinement_check as _run_profile_check
+            _shmpre = _run_profile_check(self.strategy_health)
+            log.info("[SHMProfileRE] %s", _shmpre.get("per_strategy", {}))
+        except Exception as _shmpre_exc:
+            log.debug("[SHMProfileRE] refinement check error (non-critical): %s", _shmpre_exc)
+
+        # ── Self-learning #27: sizing bounds calibration refinement check ──
+        try:
+            from learning_system.sizing_bounds_refinement_engine import run_daily_refinement_check as _run_sizing_check
+            _sbre = _run_sizing_check()
+            log.info("[SizingBoundsRE] %s", _sbre.get("state_status"))
+        except Exception as _sbre_exc:
+            log.debug("[SizingBoundsRE] refinement check error (non-critical): %s", _sbre_exc)
 
         # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
         # Activates the 9-agent autonomous_research cluster (GapDetector,

@@ -480,6 +480,51 @@ class StrategyHealthMonitor:
         rec = self._records.get(strategy_name)
         return rec.status if rec else HealthStatus.UNKNOWN
 
+    def get_profile_suggestion(self, strategy_name: str) -> "tuple[Optional[str], str, str]":
+        """
+        Public read-only wrapper around _compute_profile_suggestion() for
+        the given strategy. Returns (None, '', '') if unknown or
+        insufficient data. Never modifies any state.
+        """
+        rec = self._records.get(strategy_name)
+        if rec is None:
+            return None, "", ""
+        return self._compute_profile_suggestion(rec)
+
+    def get_trades_count(self, strategy_name: str) -> int:
+        """Public read-only accessor: total recorded trades for a strategy."""
+        rec = self._records.get(strategy_name)
+        return rec.trades if rec else 0
+
+    def get_tracked_strategy_names(self) -> List[str]:
+        """Public read-only accessor: names of all currently tracked strategies."""
+        return list(self._records.keys())
+
+    def get_profile_type(self, strategy_name: str) -> str:
+        """Public read-only accessor: the currently stamped profile type."""
+        rec = self._records.get(strategy_name)
+        return rec.strategy_profile_type if rec else "UNKNOWN"
+
+    def apply_profile_override(self, strategy_name: str, profile: str, reason: str) -> bool:
+        """
+        Self-learning #25: apply an evidence-validated profile suggestion
+        to a strategy's metadata-only strategy_profile_type field. Never
+        touches any governance threshold -- this field remains descriptive
+        metadata only (per this file's own existing contract). Returns
+        True if applied, False if the strategy is unknown.
+        """
+        rec = self._records.get(strategy_name)
+        if rec is None:
+            return False
+        old = rec.strategy_profile_type
+        rec.strategy_profile_type = profile
+        log.info(
+            "[SHM] 🏷️  PROFILE_AUTO_APPLIED '%s' %s -> %s (%s)",
+            strategy_name, old, profile, reason,
+        )
+        self._save_db()
+        return True
+
     def get_disable_metadata(self, strategy_name: str) -> Dict[str, Any]:
         """
         Returns disable metadata for a strategy (empty dict if not disabled).

@@ -112,6 +112,10 @@ class SandySupervisor:
             self._poll_debate_weight_refinement,
             self._poll_dtrace_scheduler,
             self._poll_regime_map_refinement,
+            self._poll_shm_regime_health,
+            self._poll_trust_weighted_ranking,
+            self._poll_shm_profile_refinement,
+            self._poll_sizing_bounds_refinement,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -351,6 +355,65 @@ class SandySupervisor:
             evidence_count=total_evidence,
             summary=f"{len(demoted)} demoted, {len(shadow)} in SHADOW, "
                     f"{total_evidence} regime-tagged trade(s) observed total.",
+            raw=status,
+        )
+
+    def _poll_shm_regime_health(self) -> AgentHealthReport:
+        from trade_monitoring.strategy_regime_health_engine import get_refinement_status
+        status = get_refinement_status().get("per_pair", {})
+        disabled = [k for k, s in status.items() if s.get("status") == "ACTIVE"]
+        shadow = [k for k, s in status.items() if s.get("status") == "SHADOW_ACTIVE"]
+        total_pairs = len(status)
+        stage = "ACTIVE" if disabled else ("SHADOW" if shadow else "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="StrategyHealthMonitor Regime-Aware Disabling (#24)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total_pairs,
+            summary=f"{len(disabled)} regime-scoped disable(s) active, {len(shadow)} in SHADOW, "
+                    f"{total_pairs} (regime,strategy) pair(s) tracked.",
+            raw=status,
+        )
+
+    def _poll_trust_weighted_ranking(self) -> AgentHealthReport:
+        from opportunity_engine.trust_weighted_ranking_engine import get_status
+        status = get_status()
+        stage = "ACTIVE" if status.get("gate_met") else "WAITING_FOR_EVIDENCE"
+        return AgentHealthReport(
+            name="Trust-Weighted Candidate Ranking (#26)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=status.get("history_days_count", 0),
+            summary=f"{status.get('history_days_count', 0)}/{status.get('min_history_days')} "
+                    f"day(s) of persisted trust history, gate_met={status.get('gate_met')}.",
+            raw=status,
+        )
+
+    def _poll_shm_profile_refinement(self) -> AgentHealthReport:
+        from trade_monitoring.strategy_profile_refinement_engine import get_refinement_status
+        status = get_refinement_status().get("per_strategy", {})
+        applied = [k for k, s in status.items() if s.get("status") == "ACTIVE"]
+        shadow = [k for k, s in status.items() if s.get("status") == "SHADOW_ACTIVE"]
+        total = len(status)
+        stage = "ACTIVE" if applied else ("SHADOW" if shadow else "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="Profile-Aware Governance Auto-Apply (#25)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total,
+            summary=f"{len(applied)} profile(s) auto-applied, {len(shadow)} in SHADOW, "
+                    f"{total} strategy/strategies tracked.",
+            raw=status,
+        )
+
+    def _poll_sizing_bounds_refinement(self) -> AgentHealthReport:
+        from learning_system.sizing_bounds_refinement_engine import get_refinement_status, get_records
+        status = get_refinement_status()
+        stage = status.get("status", "WAITING_FOR_EVIDENCE")
+        total_evidence = len(get_records())
+        return AgentHealthReport(
+            name="Sizing Bounds Calibration (#27)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total_evidence,
+            summary=f"status={stage}, active_adjustment={status.get('active_adjustment', 0.0)}, "
+                    f"{total_evidence} sizing outcome(s) observed total.",
             raw=status,
         )
 

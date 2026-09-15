@@ -1431,7 +1431,21 @@ class EquityScannerAI:
                         if ts in sec or sec in ts:
                             return i
                     return 99
-                prepared.sort(key=lambda c: (_sector_rank(c), -float(c.get("score", 0))))
+                # Self-learning #26: trust-weighted ranking (evidence-gated,
+                # falls back to the raw score byte-identically until >=5
+                # days of persisted trust history exist -- see
+                # opportunity_engine/trust_weighted_ranking_engine.py).
+                def _ranking_score(cand: dict) -> float:
+                    try:
+                        from opportunity_engine.trust_weighted_ranking_engine import get_effective_score
+                        return get_effective_score(
+                            cand.get("symbol", ""),
+                            float(cand.get("score", 0)),
+                            float(cand.get("data_trust_score", 1.0)),
+                        )
+                    except Exception:
+                        return float(cand.get("score", 0))
+                prepared.sort(key=lambda c: (_sector_rank(c), -_ranking_score(c)))
                 log.debug("[SectorRerank] Prepared candidates reordered by sector momentum; "
                           "top-5: %s", [c["symbol"] for c in prepared[:5]])
             # ──────────────────────────────────────────────────────────────────

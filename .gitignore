@@ -163,6 +163,12 @@ data/dta/
 data/meta_learning/
 # OIOS ELE age-advance cadence guard (root-cause fix: DISCOVERED-stuck bug)
 data/oios/
+# StrategyHealthMonitor regime-aware disabling (self-learning module #24)
+data/trade_monitoring/
+# Trust-weighted candidate ranking (self-learning module #26)
+data/data_integrity/
+# Sizing bounds calibration (self-learning module #27)
+data/risk_control/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json

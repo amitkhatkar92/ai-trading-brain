@@ -177,6 +177,24 @@ class DataIntegrityTracker:
         except Exception:
             return set()
 
+    def get_all_tracked_symbols_today(self) -> Set[str]:
+        """
+        Return every symbol with at least one recorded event today
+        (corruption, sanity-fail, or successful refresh) -- a superset of
+        get_untrusted_symbols(). Used by trust_score_history.py to persist
+        a daily snapshot across ALL observed symbols, not just untrusted ones.
+        """
+        try:
+            self._ensure_today()
+            with self._lock:
+                return (
+                    set(self._corruption_count.keys())
+                    | set(self._sanity_fail_count.keys())
+                    | set(self._refresh_success.keys())
+                )
+        except Exception:
+            return set()
+
     def get_scalar_recovery_count(self) -> int:
         """Total scalar-coercion recoveries this session."""
         try:

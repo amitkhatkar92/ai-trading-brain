@@ -69,9 +69,13 @@ class TestPollingResilience:
              patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")), \
              patch.object(sup, "_poll_debate_weight_refinement", return_value=_fake_report("M")), \
              patch.object(sup, "_poll_dtrace_scheduler", return_value=_fake_report("N")), \
-             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")):
+             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")), \
+             patch.object(sup, "_poll_shm_regime_health", return_value=_fake_report("P")), \
+             patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
+             patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
+             patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")):
             reports = sup.poll_all_agents()
-        assert set(reports.keys()) == set("ABCDEFGHIJKLMNO")
+        assert set(reports.keys()) == set("ABCDEFGHIJKLMNOPQRS")
 
     def test_T02_one_failing_poller_does_not_block_others(self):
         sup = SandySupervisor()
@@ -89,10 +93,14 @@ class TestPollingResilience:
              patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")), \
              patch.object(sup, "_poll_debate_weight_refinement", return_value=_fake_report("M")), \
              patch.object(sup, "_poll_dtrace_scheduler", return_value=_fake_report("N")), \
-             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")):
+             patch.object(sup, "_poll_regime_map_refinement", return_value=_fake_report("O")), \
+             patch.object(sup, "_poll_shm_regime_health", return_value=_fake_report("P")), \
+             patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
+             patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
+             patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")):
             reports = sup.poll_all_agents()
         assert "A" not in reports
-        assert set(reports.keys()) == set("BCDEFGHIJKLMNO")
+        assert set(reports.keys()) == set("BCDEFGHIJKLMNOPQRS")
 
 
 class TestTrendClassification:
