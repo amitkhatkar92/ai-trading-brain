@@ -4992,19 +4992,19 @@ class MasterOrchestrator:
         # Runs after Phase D candidate scan in the 16:45 IST post-market slot.
         # Shadow-safe: writes only to market_behavior.db; never touches the
         # execution engine, signals, risk control, or position sizing path.
+        from datetime import date as _oios_date
+        _oios_scan_date = _oios_date.today().isoformat()
+        _oios_regime = "unknown"
+        if self._last_snapshot is not None:
+            _snap_r = self._last_snapshot.regime
+            _oios_regime = (
+                _snap_r.value if hasattr(_snap_r, "value") else str(_snap_r)
+            ) or "unknown"
         try:
             from oios.db.connection import get_connection as _oios_get_conn
             from oios.scanners import layer_1a as _oios_l1a
             from oios.scanners import layer_1b as _oios_l1b
             from oios.scanners.signal_writer import write_scan_results as _oios_write
-            from datetime import date as _oios_date
-            _oios_scan_date = _oios_date.today().isoformat()
-            _oios_regime = "unknown"
-            if self._last_snapshot is not None:
-                _snap_r = self._last_snapshot.regime
-                _oios_regime = (
-                    _snap_r.value if hasattr(_snap_r, "value") else str(_snap_r)
-                ) or "unknown"
             with _oios_get_conn() as _oios_conn:
                 _oios_symbols = [
                     r[0] for r in _oios_conn.execute(
@@ -5046,6 +5046,56 @@ class MasterOrchestrator:
                     log.info("[OIOS] universe_stocks empty — signal scan skipped.")
         except Exception as _oios_scan_exc:
             log.warning("[OIOS] Signal scan failed (non-critical): %s", _oios_scan_exc)
+
+        # ── OIOS ELE (Edge Lifecycle Engine) daily cycle ──────────────────────
+        # Root-cause fix: run_ele_daily() (oios/engine/ele.py) was fully built,
+        # tested, and already computes RE score + conviction + drives the
+        # DISCOVERED→ACTIVE/WATCHING/INVALID state machine — but was never
+        # invoked anywhere in the live pipeline. Every opportunity created by
+        # the Layer 1A/1B scan above was therefore permanently stuck at
+        # conviction_score=0.0 in DISCOVERED (confirmed on real production
+        # data: 40/40 opportunities, 100% DISCOVERED, zero transitions ever).
+        # Shadow-safe: reads/writes only market_behavior.db; never touches
+        # execution, risk control, or the decision path.
+        try:
+            import json as _ele_json
+            from oios.db.connection import get_connection as _ele_get_conn
+            from oios.engine.ele import run_ele_daily as _ele_run_daily
+            _ele_state_path = os.path.join("data", "oios", "ele_age_advance_state.json")
+            _ele_last_advanced = None
+            if os.path.exists(_ele_state_path):
+                try:
+                    with open(_ele_state_path, "r", encoding="utf-8") as _ele_f:
+                        _ele_last_advanced = _ele_json.load(_ele_f).get("last_advanced_date")
+                except (OSError, ValueError):
+                    _ele_last_advanced = None
+            with _ele_get_conn() as _ele_conn:
+                if _ele_last_advanced != _oios_scan_date:
+                    # run_ele_daily() deliberately does NOT advance
+                    # age_trading_days (its own docstring: "that is the
+                    # caller's responsibility"). Advance once per real
+                    # trading day only — guarded by the state file above
+                    # so a same-day re-trigger of this method never
+                    # double-advances age.
+                    _ele_conn.execute("""
+                        UPDATE opportunities SET age_trading_days = age_trading_days + 1
+                        WHERE current_state IN ('DISCOVERED', 'ACTIVE', 'WATCHING')
+                    """)
+                    _ele_conn.commit()
+                    os.makedirs(os.path.dirname(_ele_state_path), exist_ok=True)
+                    with open(_ele_state_path, "w", encoding="utf-8") as _ele_f:
+                        _ele_json.dump({"last_advanced_date": _oios_scan_date}, _ele_f)
+                _ele_result = _ele_run_daily(_ele_conn, _oios_scan_date, _oios_regime)
+                log.info(
+                    "[OIOS][ELE] processed=%d activated=%d watching=%d invalidated=%d audit=%d",
+                    _ele_result.opps_processed, _ele_result.opps_activated,
+                    _ele_result.opps_watching, _ele_result.opps_invalidated,
+                    _ele_result.opps_audit,
+                )
+            self._oios_fail_counts["ele_daily_cycle"] = 0
+        except Exception as _ele_exc:
+            log.warning("[OIOS][ELE] Daily ELE cycle failed (non-critical): %s", _ele_exc)
+            self._oios_fail_counts["ele_daily_cycle"] = self._oios_fail_counts.get("ele_daily_cycle", 0) + 1
 
         # ── OIOS signal outcome resolution — measurement only ─────────────────
         # Runs after signal scan so new births exist before resolution.

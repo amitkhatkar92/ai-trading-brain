@@ -161,6 +161,8 @@ data/debate/
 data/dta/
 # Regime map evidence log + refinement engine (Priority 5 activation)
 data/meta_learning/
+# OIOS ELE age-advance cadence guard (root-cause fix: DISCOVERED-stuck bug)
+data/oios/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json
