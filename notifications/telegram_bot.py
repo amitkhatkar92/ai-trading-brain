@@ -117,6 +117,8 @@ class TelegramCommandBot:
         self._thread.start()
         threading.Thread(target=self._reminder_loop, daemon=True,
                          name="TelegramTokenReminder").start()
+        threading.Thread(target=self._sandy_loop, daemon=True,
+                         name="SandyMonitor").start()
         log.info("[TelegramBot] Started polling. Bot: @Amitkhatkarbot")
         if not self._chat_id:
             log.info("[TelegramBot] No TELEGRAM_CHAT_ID set yet. "
@@ -239,6 +241,28 @@ class TelegramCommandBot:
                 if self._running:
                     log.warning("[TelegramBot] Reminder loop error: %s", exc, exc_info=True)
 
+    # ── Sandy hourly liveness loop (Phase 7b) ──────────────────────────────
+
+    def _sandy_loop(self) -> None:
+        """
+        Every hour, refresh Sandy's internal agent-health snapshot
+        (data/sandy/health_history.jsonl) so trend/IDLE detection reflects
+        real elapsed time even when nobody has asked Sandy anything.
+        Read-only; never sends a message on its own (the EOD digest and
+        on-demand keyword replies are the only user-facing outputs).
+        """
+        SANDY_POLL_INTERVAL_S = 3600
+        while self._running:
+            try:
+                time.sleep(SANDY_POLL_INTERVAL_S)
+                if not self._running:
+                    break
+                from sandy import get_sandy_supervisor
+                get_sandy_supervisor().poll_all_agents()
+            except Exception as exc:
+                if self._running:
+                    log.debug("[TelegramBot] Sandy loop error: %s", exc)
+
     # ── Polling loop ───────────────────────────────────────────────────────
 
     def _poll_loop(self) -> None:
@@ -299,6 +323,22 @@ class TelegramCommandBot:
                        "🔒 <b>Unauthorized.</b>\n"
                        "This bot is private and bound to its owner's account.")
             log.warning("[TelegramBot] Rejected msg from unknown chat_id=%s", incoming_id)
+            return
+
+        # ── Self-Learning Ecosystem Phase 7b: Sandy keyword routing ────────
+        # Free-text (non-slash) trigger, checked before slash-command
+        # dispatch. Fixed keywords only — no NLP/LLM involved.
+        text_lower = text.lower().strip()
+        if text_lower == "sandy" or text_lower.startswith("sandy ") or text_lower in (
+            "hi sandy", "hello sandy",
+        ):
+            try:
+                from sandy import get_sandy_supervisor
+                reply = get_sandy_supervisor().answer(text_lower)
+            except Exception as exc:
+                log.error("[TelegramBot] Sandy handler error: %s", exc)
+                reply = f"🚨 Sandy hit an error: {_esc(str(exc))}"
+            self._send(incoming_id, reply)
             return
 
         # ── Route command ───────────────────────────────────────────────────

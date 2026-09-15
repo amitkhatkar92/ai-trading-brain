@@ -7633,6 +7633,17 @@ class MasterOrchestrator:
         except Exception as _mb_exc:
             log.warning("[MarketBenchmark] Daily benchmark failed (non-critical): %s", _mb_exc)
 
+        # ── Self-Learning Ecosystem Phase 7b: Sandy EOD digest ────────────
+        # Folded into the existing EOD Telegram push (not a new alert type
+        # or schedule). Read-only status summary of every self-learning
+        # agent; never touches any trade/risk/decision state.
+        try:
+            from sandy import get_sandy_supervisor
+            if self.notifier:
+                self.notifier.market_alert("🤖 Sandy — Daily Agent Digest", get_sandy_supervisor().daily_digest())
+        except Exception as _sandy_exc:
+            log.debug("[Sandy] EOD digest error (non-critical): %s", _sandy_exc)
+
     # ── Helpers ───────────────────────────────────────────────────────
 
     @staticmethod
