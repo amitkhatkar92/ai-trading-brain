@@ -107,6 +107,7 @@ class SandySupervisor:
             self._poll_rsl_001,
             self._poll_strategy_performance,
             self._poll_regime_strategy_map,
+            self._poll_ars_scheduler,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -253,6 +254,26 @@ class SandySupervisor:
             category=SELF_LEARNING_PHASE, stage=stage,
             summary=f"{len(active)}/{len(per_constant)} constants ACTIVE, {len(waiting)} waiting for evidence.",
             raw=status,
+        )
+
+    def _poll_ars_scheduler(self) -> AgentHealthReport:
+        from autonomous_research.ars_scheduler import get_last_run_summary
+        latest = get_last_run_summary()
+        if latest is None:
+            return AgentHealthReport(
+                name="ARS Scheduler -- 9-agent research cluster (Priority 1)",
+                category=SELF_LEARNING_PHASE, stage="NO RUNS YET",
+                summary="No autonomous research cycle has run yet.",
+                issues=["No cycle recorded yet."],
+            )
+        stage = "ACTIVE" if latest.get("status") == "OK" else latest.get("status", "UNKNOWN")
+        return AgentHealthReport(
+            name="ARS Scheduler -- 9-agent research cluster (Priority 1)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=latest.get("decisions"), last_activity_at=latest.get("generated_at"),
+            summary=f"gaps={latest.get('total_gaps_open', 0)} plans={latest.get('plans_created', 0)} "
+                    f"review_health={latest.get('review_health')} decisions={latest.get('decisions', 0)}.",
+            raw=latest,
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:

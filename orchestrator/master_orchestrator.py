@@ -7633,6 +7633,28 @@ class MasterOrchestrator:
         except Exception as _mb_exc:
             log.warning("[MarketBenchmark] Daily benchmark failed (non-critical): %s", _mb_exc)
 
+        # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
+        # Activates the 9-agent autonomous_research cluster (GapDetector,
+        # RoadmapManager, StudyPlanner, ScientificDirector, ResearchCoordinator,
+        # EvidenceValidator, CrossStudySynthesizer, MethodologyAuditor,
+        # ScientificFindingsReview/DataQualityAssessor) -- previously built,
+        # tested, but never invoked in production. Self-scheduling: silently
+        # skips unless >=7 days have elapsed since the last real run (weekly
+        # cadence, research is not a daily event). Writes only to
+        # HypothesisRegistry (gap-based, subject_type unset -- does not feed
+        # KDA's symbol-adjustment bridge) and its own isolated run history.
+        try:
+            from autonomous_research.ars_scheduler import run_autonomous_research_cycle
+            _ars = run_autonomous_research_cycle()
+            if _ars.get("status") == "OK":
+                log.info(
+                    "[ARSScheduler] gaps=%d plans=%d review=%s health=%s decisions=%d",
+                    _ars.get("total_gaps_open", 0), _ars.get("plans_created", 0),
+                    _ars.get("review_id"), _ars.get("review_health"), _ars.get("decisions", 0),
+                )
+        except Exception as _ars_exc:
+            log.debug("[ARSScheduler] cycle error (non-critical): %s", _ars_exc)
+
         # ── Self-Learning Ecosystem Phase 7b: Sandy EOD digest ────────────
         # Folded into the existing EOD Telegram push (not a new alert type
         # or schedule). Read-only status summary of every self-learning

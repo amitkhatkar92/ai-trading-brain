@@ -148,6 +148,11 @@ data/ars_hypothesis_registry.json
 data/ars_study_*.json
 # ARS research coordinator history
 data/ars/rc/history.json
+# ARS scheduler run history (Priority 1 activation)
+data/ars/scheduler/
+data/ars/sfr/
+data/ars/sd/
+data/ars_roadmap_state.json
 data/mover_discovery_v3_shadow.jsonl
 data/mover_discovery_v3_shadow_raw.jsonl
 
