@@ -65,9 +65,10 @@ class TestPollingResilience:
              patch.object(sup, "_poll_rsl_001", return_value=_fake_report("H")), \
              patch.object(sup, "_poll_strategy_performance", return_value=_fake_report("I")), \
              patch.object(sup, "_poll_regime_strategy_map", return_value=_fake_report("J")), \
-             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")):
+             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")), \
+             patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")):
             reports = sup.poll_all_agents()
-        assert set(reports.keys()) == set("ABCDEFGHIJK")
+        assert set(reports.keys()) == set("ABCDEFGHIJKL")
 
     def test_T02_one_failing_poller_does_not_block_others(self):
         sup = SandySupervisor()
@@ -81,10 +82,11 @@ class TestPollingResilience:
              patch.object(sup, "_poll_rsl_001", return_value=_fake_report("H")), \
              patch.object(sup, "_poll_strategy_performance", return_value=_fake_report("I")), \
              patch.object(sup, "_poll_regime_strategy_map", return_value=_fake_report("J")), \
-             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")):
+             patch.object(sup, "_poll_ars_scheduler", return_value=_fake_report("K")), \
+             patch.object(sup, "_poll_ikn_bridge", return_value=_fake_report("L")):
             reports = sup.poll_all_agents()
         assert "A" not in reports
-        assert set(reports.keys()) == set("BCDEFGHIJK")
+        assert set(reports.keys()) == set("BCDEFGHIJKL")
 
 
 class TestTrendClassification:

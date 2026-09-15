@@ -14,6 +14,7 @@ from .ikn_models import (
 from .ikn_store import IKNStore
 from .ikn_query import IKNQueryEngine
 from .report_generator import IKNReportGenerator
+from .ikn_research_bridge import sync_hypotheses_to_ikn
 
 __all__ = [
     "IKNNetwork", "IKNConfig", "IKNError",
@@ -22,4 +23,5 @@ __all__ = [
     "KnowledgePath", "KnowledgeSubgraph", "KnowledgeStatistics", "KnowledgeNetworkSnapshot",
     "VALID_NODE_TYPES", "VALID_RELATIONSHIP_TYPES",
     "IKNStore", "IKNQueryEngine", "IKNReportGenerator",
+    "sync_hypotheses_to_ikn",
 ]

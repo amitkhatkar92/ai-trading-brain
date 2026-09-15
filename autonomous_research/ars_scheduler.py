@@ -25,6 +25,12 @@ Components wired (all real, all independently already tested):
   EvidenceValidator, CrossStudySynthesizer, StudyPlanner,
   ResearchCoordinator, ScientificDirector, IDRRepository.
 
+Post-Priority-1 addendum (Priority 2): after each real weekly review,
+also calls ikn.ikn_research_bridge.sync_hypotheses_to_ikn() -- mirrors
+every hypothesis (and its knowledge_gap) into IKNNetwork as real graph
+data (previously an always-empty, never-populated store). Try/except
+-wrapped, non-fatal, never blocks the cycle's own summary/history write.
+
 Cadence: WEEKLY, not daily -- deep research is not a daily-trading
 event (same precedent as HKAP/KDE). Self-scheduling and evidence-driven:
 checks its own run-history log for the last REAL run date and skips
@@ -146,6 +152,13 @@ def _run_impl(force: bool) -> Dict[str, Any]:
     # zero human step, using this cluster's own pre-existing logic.
     review = sd.weekly_review()
 
+    try:
+        from ikn.ikn_research_bridge import sync_hypotheses_to_ikn
+        ikn_sync = sync_hypotheses_to_ikn()
+    except Exception as exc:
+        log.debug("[ARSScheduler] IKN sync skipped: %s", exc)
+        ikn_sync = {"status": "ERROR", "error": str(exc)}
+
     summary = {
         "status":            "OK",
         "generated_at":      datetime.now(timezone.utc).isoformat(),
@@ -156,6 +169,7 @@ def _run_impl(force: bool) -> Dict[str, Any]:
         "observations":      len(review.observations),
         "decisions":         len(review.decisions),
         "decision_types":    [d.decision_type.value for d in review.decisions],
+        "ikn_sync":          ikn_sync,
     }
     _record_run(summary)
     return summary

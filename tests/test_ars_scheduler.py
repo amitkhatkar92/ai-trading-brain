@@ -20,6 +20,9 @@ T06  get_last_run_summary() / get_run_history() read back correctly,
 T07  Fail-open: never raises even when a component constructor blows up
 T08  Safety contract: zero imports of execution_engine/order_manager/
      dhan_feed/broker/risk_control anywhere in this module
+T09  Priority 2: sync_hypotheses_to_ikn() is called after weekly_review()
+     and its result is embedded in the summary; a failure there does not
+     break the overall cycle
 """
 from __future__ import annotations
 
@@ -39,6 +42,14 @@ def _isolated_history(tmp_path):
     with patch.object(sched, "_RUN_DIR", str(tmp_path)), \
          patch.object(sched, "_RUN_HISTORY", str(history_file)):
         yield history_file
+
+
+@pytest.fixture(autouse=True)
+def _stub_ikn_sync():
+    with patch("ikn.ikn_research_bridge.sync_hypotheses_to_ikn",
+               return_value={"status": "OK", "hypotheses_seen": 0,
+                              "nodes_registered": 0, "relationships_added": 0}) as m:
+        yield m
 
 
 def _patch_all_components():
@@ -156,6 +167,7 @@ def test_t04_full_wiring_and_summary_shape(_isolated_history):
     assert result["observations"] == 5
     assert result["decisions"] == 3
     assert result["decision_types"] == ["CREATE_HYPOTHESIS", "CREATE_HYPOTHESIS", "CREATE_HYPOTHESIS"]
+    assert result["ikn_sync"]["status"] == "OK"
 
     # Verify RC was wired with the SAME planner/registry/etc instances SD got
     MockRC = patches["autonomous_research.research_coordinator.ResearchCoordinator"]
@@ -220,3 +232,36 @@ def test_t08_no_forbidden_imports():
     for forbidden in ("execution_engine", "order_manager", "dhan_feed", "broker", "risk_control"):
         assert f"import {forbidden}" not in src, f"forbidden import found: {forbidden}"
         assert f"from {forbidden}" not in src, f"forbidden import found: {forbidden}"
+
+
+def test_t09_ikn_sync_called_and_fail_open(_isolated_history, _stub_ikn_sync):
+    patches = _patch_all_components()
+    ctxs = [patch(k, v) for k, v in patches.items()]
+    for c in ctxs:
+        c.start()
+    try:
+        patches["autonomous_research.roadmap_manager.RoadmapManager"].return_value.build.return_value = \
+            SimpleNamespace(entries=[])
+        patches["autonomous_research.roadmap_manager.RoadmapManager"].return_value.top_priorities.return_value = []
+        patches["autonomous_research.study_planner.StudyPlanner"].return_value.list_plans.return_value = []
+        patches["autonomous_research.scientific_director.ScientificDirector"].return_value.weekly_review.return_value = \
+            _fake_review()
+        result = sched.run_autonomous_research_cycle(force=True)
+    finally:
+        for c in ctxs:
+            c.stop()
+    assert result["ikn_sync"]["status"] == "OK"
+    _stub_ikn_sync.assert_called_once()
+
+    # now make the IKN sync raise -- the overall cycle must still succeed
+    _stub_ikn_sync.side_effect = RuntimeError("ikn boom")
+    ctxs = [patch(k, v) for k, v in patches.items()]
+    for c in ctxs:
+        c.start()
+    try:
+        result2 = sched.run_autonomous_research_cycle(force=True)
+    finally:
+        for c in ctxs:
+            c.stop()
+    assert result2["status"] == "OK"
+    assert result2["ikn_sync"]["status"] == "ERROR"

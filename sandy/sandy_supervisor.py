@@ -108,6 +108,7 @@ class SandySupervisor:
             self._poll_strategy_performance,
             self._poll_regime_strategy_map,
             self._poll_ars_scheduler,
+            self._poll_ikn_bridge,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -274,6 +275,25 @@ class SandySupervisor:
             summary=f"gaps={latest.get('total_gaps_open', 0)} plans={latest.get('plans_created', 0)} "
                     f"review_health={latest.get('review_health')} decisions={latest.get('decisions', 0)}.",
             raw=latest,
+        )
+
+    def _poll_ikn_bridge(self) -> AgentHealthReport:
+        from ikn.ikn_network import IKNNetwork
+        from ikn.ikn_config import IKNConfig
+        ikn = IKNNetwork(IKNConfig())
+        try:
+            stats = ikn.statistics()
+        finally:
+            ikn.close()
+        stage = "ACTIVE" if stats.total_nodes > 0 else "NO DATA YET"
+        return AgentHealthReport(
+            name="Institutional Knowledge Network (Priority 2)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=stats.total_relationships,
+            summary=f"{stats.total_nodes} nodes, {stats.total_relationships} relationships, "
+                    f"avg_confidence={stats.avg_confidence:.3f}.",
+            issues=[] if stats.total_nodes > 0 else ["IKN store has no data yet."],
+            raw=stats.to_dict() if hasattr(stats, "to_dict") else {},
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:
