@@ -97,6 +97,22 @@ class MetaStrategyController:
         log.info("[MetaStrategyController] Initialised. Regime map loaded for %d regimes.",
                  len(_REGIME_MAP))
 
+    def _effective_regime_map(self) -> Dict[str, List[str]]:
+        """
+        Post-roadmap Priority 5: returns _REGIME_MAP with any real,
+        shadow-confirmed demotions applied (strategy_lab/regime_map_
+        refinement_engine.py). Falls back to the exact original static
+        _REGIME_MAP on any error -- never raises, zero live effect
+        until real per-(regime,strategy) trade evidence validates a
+        demotion (see that module's docstring for the full lifecycle).
+        """
+        try:
+            from strategy_lab.regime_map_refinement_engine import get_effective_regime_map
+            return get_effective_regime_map()
+        except Exception as exc:
+            log.debug("[MetaStrategyController] effective regime map fallback to static map: %s", exc)
+            return {k: list(v) for k, v in _REGIME_MAP.items()}
+
     def set_ml_weights(self, weights: Dict[str, float]) -> None:
         """
         Receive ML-predicted strategy weights from the MetaLearningEngine.
@@ -148,7 +164,7 @@ class MetaStrategyController:
         are also included if they pass quality gates.
         """
         regime_key  = snapshot.regime.value
-        candidates  = set(_REGIME_MAP.get(regime_key, []))
+        candidates  = set(self._effective_regime_map().get(regime_key, []))
 
         # High-volatility overlay — add extra strategies regardless of regime
         if snapshot.volatility == VolatilityLevel.HIGH:
@@ -182,7 +198,7 @@ class MetaStrategyController:
         """Log a formatted activation report for the current regime."""
         active   = self.get_active_strategies(snapshot, passing_strategies)
         regime_k = snapshot.regime.value
-        candidates = set(_REGIME_MAP.get(regime_k, []))
+        candidates = set(self._effective_regime_map().get(regime_k, []))
         if snapshot.volatility == VolatilityLevel.HIGH:
             candidates.update(_HIGH_VOL_EXTRAS)
         for v, b in self._evolved_bases.items():

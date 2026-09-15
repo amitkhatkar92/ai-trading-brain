@@ -5675,6 +5675,16 @@ class MasterOrchestrator:
             # ── Q3: Regime → Strategy best-fit map ─────────────────────
             if regime and regime != "unknown":
                 self.regime_strategy_map.record(regime, strategy, pnl_r=r_multiple)
+                # ── Post-roadmap Priority 5: regime-map evidence log ────
+                # Additive-only observer of the exact same trade event
+                # (never replaces the line above) -- feeds
+                # strategy_lab/regime_map_refinement_engine.py's
+                # evidence-gated candidate-list demotion mechanism.
+                try:
+                    from meta_learning.regime_map_evidence_log import record_regime_trade
+                    record_regime_trade(regime, strategy, r_multiple=r_multiple, won=won, order_id=_oid)
+                except Exception as _rme_exc:
+                    log.debug("[RegimeMapEvidence] record error (non-critical): %s", _rme_exc)
         if trades:
             report = self.performance_evaluator.evaluate()
             self.performance_evaluator.print_full_report(report)
@@ -7662,6 +7672,31 @@ class MasterOrchestrator:
             log.info("[DebateWRE] %s", _dwre.get("per_agent", {}))
         except Exception as _dwre_exc:
             log.debug("[DebateWRE] refinement check error (non-critical): %s", _dwre_exc)
+
+        # ── Post-roadmap Priority 4: decision_tracer daily batch ──────────
+        # Automatically runs DTA-001's existing, unchanged run_dta() across
+        # a bounded sample of symbols that had a real decision recorded
+        # today (previously required a human to invoke it manually per
+        # symbol via CLI). Diagnostic/observability only -- never read back
+        # into any live decision.
+        try:
+            from decision_tracer.dtrace_scheduler import run_daily_trace_batch
+            _dtrace = run_daily_trace_batch()
+            log.info("[DTraceScheduler] symbols_traced=%d", _dtrace.get("symbols_traced", 0))
+        except Exception as _dtrace_exc:
+            log.debug("[DTraceScheduler] batch error (non-critical): %s", _dtrace_exc)
+
+        # ── Post-roadmap Priority 5: regime-map refinement check ──────────
+        # Evidence-gated demotion of _REGIME_MAP candidates that show a
+        # statistically real, negative win-rate signal in a given regime.
+        # Correctly stays WAITING_FOR_EVIDENCE below MIN_SAMPLE_FOR_VALIDATION
+        # per (regime, strategy) pair -- see that module's docstring.
+        try:
+            from strategy_lab.regime_map_refinement_engine import run_daily_refinement_check as _run_regime_map_check
+            _rmre = _run_regime_map_check()
+            log.info("[RegimeMapRE] %s", _rmre.get("per_pair", {}))
+        except Exception as _rmre_exc:
+            log.debug("[RegimeMapRE] refinement check error (non-critical): %s", _rmre_exc)
 
         # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
         # Activates the 9-agent autonomous_research cluster (GapDetector,

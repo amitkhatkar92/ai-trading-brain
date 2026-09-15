@@ -110,6 +110,8 @@ class SandySupervisor:
             self._poll_ars_scheduler,
             self._poll_ikn_bridge,
             self._poll_debate_weight_refinement,
+            self._poll_dtrace_scheduler,
+            self._poll_regime_map_refinement,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -313,6 +315,43 @@ class SandySupervisor:
             summary=f"{len(active)} ACTIVE, {len(shadow)} in SHADOW, "
                     f"{total_resolved} resolved votes total across all debaters.",
             raw={"status": status, "accuracy": accuracy},
+        )
+
+    def _poll_dtrace_scheduler(self) -> AgentHealthReport:
+        from decision_tracer.dtrace_scheduler import get_last_run_summary
+        latest = get_last_run_summary()
+        if latest is None:
+            return AgentHealthReport(
+                name="Decision Tracer Scheduler (Priority 4)",
+                category=SELF_LEARNING_PHASE, stage="NO RUNS YET",
+                summary="No daily decision-trace batch has run yet.",
+                issues=["No batch recorded yet."],
+            )
+        stage = "ACTIVE" if latest.get("status") == "OK" else latest.get("status", "UNKNOWN")
+        return AgentHealthReport(
+            name="Decision Tracer Scheduler (Priority 4)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=latest.get("symbols_traced", 0),
+            last_activity_at=latest.get("generated_at"),
+            summary=f"{latest.get('symbols_traced', 0)} symbol(s) traced on {latest.get('trade_date', latest.get('trace_date'))}.",
+            raw=latest,
+        )
+
+    def _poll_regime_map_refinement(self) -> AgentHealthReport:
+        from strategy_lab.regime_map_refinement_engine import get_refinement_status
+        from meta_learning.regime_map_evidence_log import get_records
+        status = get_refinement_status().get("per_pair", {})
+        demoted = [k for k, s in status.items() if s.get("status") == "ACTIVE"]
+        shadow = [k for k, s in status.items() if s.get("status") == "SHADOW_ACTIVE"]
+        total_evidence = len(get_records())
+        stage = "ACTIVE" if demoted else ("SHADOW" if shadow else "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="Regime Map Refinement Engine (Priority 5)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total_evidence,
+            summary=f"{len(demoted)} demoted, {len(shadow)} in SHADOW, "
+                    f"{total_evidence} regime-tagged trade(s) observed total.",
+            raw=status,
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:

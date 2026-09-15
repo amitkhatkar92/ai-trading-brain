@@ -62,6 +62,16 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+# Windows consoles default to a legacy codepage (e.g. cp1252) that cannot
+# encode this script's box-drawing/check-mark characters, crashing with
+# UnicodeEncodeError on every real run. Force UTF-8 output (falls back to
+# '?' replacement instead of crashing) -- cosmetic fix only, no readiness
+# logic touched. Mirrors the identical fix in check_phase_c_ready.py.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    pass
+
 
 # ---------------------------------------------------------------------------
 # Thresholds
@@ -487,8 +497,8 @@ def check_phase_d_ready(db_path: str) -> bool:
                 SUM(CASE WHEN current_state = 'ACTIVE'     THEN 1 ELSE 0 END) AS active,
                 SUM(CASE WHEN current_state = 'WATCHING'   THEN 1 ELSE 0 END) AS watching,
                 SUM(CASE WHEN current_state = 'INVALID'    THEN 1 ELSE 0 END) AS invalid,
-                MIN(first_seen_at) AS oldest,
-                MAX(first_seen_at) AS newest
+                MIN(created_at) AS oldest,
+                MAX(created_at) AS newest
             FROM opportunities
         """).fetchone()
         print(f"  Opportunities:  total={opp_summary['total']}  "

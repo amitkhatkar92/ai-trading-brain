@@ -55,6 +55,16 @@ import sqlite3
 import sys
 from pathlib import Path
 
+# Windows consoles default to a legacy codepage (e.g. cp1252) that cannot
+# encode this script's box-drawing/check-mark characters (─, ✓, ✗, █),
+# crashing with UnicodeEncodeError on every real run. Force UTF-8 output
+# (falls back to '?' replacement instead of crashing if the terminal truly
+# cannot render a glyph) -- cosmetic fix only, no readiness logic touched.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, ValueError):
+    pass  # stdout doesn't support reconfigure (e.g. captured/redirected in some environments)
+
 
 # ---------------------------------------------------------------------------
 # Config

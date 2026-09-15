@@ -157,6 +157,10 @@ data/mover_discovery_v3_shadow.jsonl
 data/mover_discovery_v3_shadow_raw.jsonl
 # Debate weight self-tuning (Priority 3 activation)
 data/debate/
+# Decision tracer scheduler (Priority 4 activation)
+data/dta/
+# Regime map evidence log + refinement engine (Priority 5 activation)
+data/meta_learning/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json
