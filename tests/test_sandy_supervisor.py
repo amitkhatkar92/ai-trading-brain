@@ -74,9 +74,10 @@ class TestPollingResilience:
              patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
              patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
              patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")), \
-             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")):
+             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")), \
+             patch.object(sup, "_poll_options_health", return_value=_fake_report("U")):
             reports = sup.poll_all_agents()
-        assert set(reports.keys()) == set("ABCDEFGHIJKLMNOPQRST")
+        assert set(reports.keys()) == set("ABCDEFGHIJKLMNOPQRSTU")
 
     def test_T02_one_failing_poller_does_not_block_others(self):
         sup = SandySupervisor()
@@ -99,10 +100,11 @@ class TestPollingResilience:
              patch.object(sup, "_poll_trust_weighted_ranking", return_value=_fake_report("Q")), \
              patch.object(sup, "_poll_shm_profile_refinement", return_value=_fake_report("R")), \
              patch.object(sup, "_poll_sizing_bounds_refinement", return_value=_fake_report("S")), \
-             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")):
+             patch.object(sup, "_poll_capital_reserve_readiness", return_value=_fake_report("T")), \
+             patch.object(sup, "_poll_options_health", return_value=_fake_report("U")):
             reports = sup.poll_all_agents()
         assert "A" not in reports
-        assert set(reports.keys()) == set("BCDEFGHIJKLMNOPQRST")
+        assert set(reports.keys()) == set("BCDEFGHIJKLMNOPQRSTU")
 
 
 class TestTrendClassification:

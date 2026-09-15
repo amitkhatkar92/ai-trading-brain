@@ -296,6 +296,15 @@ class DataFeedManager:
 
     # ── Cycle feed-health tracking ─────────────────────────────────────────
 
+    def get_options_chain_state_snapshot(self, symbol: str) -> dict:
+        """
+        Read-only accessor: current cached options-chain state for *symbol*
+        (source/fetched_at/is_live/chain), or {} if never fetched this
+        session. Used by data_feeds/options_health_history.py to persist a
+        daily quality snapshot without duplicating any live chain fetch.
+        """
+        return dict(self._options_chain_state.get(symbol, {}))
+
     def reset_cycle_stats(self) -> None:
         """Call at the start of each trading cycle to reset per-cycle counters."""
         self._stats = _FeedCycleStats()

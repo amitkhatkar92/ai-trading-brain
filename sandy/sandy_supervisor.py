@@ -117,6 +117,7 @@ class SandySupervisor:
             self._poll_shm_profile_refinement,
             self._poll_sizing_bounds_refinement,
             self._poll_capital_reserve_readiness,
+            self._poll_options_health,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -428,6 +429,19 @@ class SandySupervisor:
             evidence_count=status.get("classified_samples", 0),
             summary=f"status={stage}, false_negative_pct={status.get('false_negative_pct', 'n/a')}, "
                     f"{status.get('classified_samples', 0)} MAX_POSITIONS_CAP rejection(s) resolved.",
+            raw=status,
+        )
+
+    def _poll_options_health(self) -> AgentHealthReport:
+        from data_feeds.options_health_history import get_options_health_status, get_history_days_count
+        status = get_options_health_status("NIFTY")
+        days = get_history_days_count()
+        stage = status.get("status", "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="Options Health Metrics Dashboard (#10)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=days,
+            summary=f"status={stage}, {days}/7 day(s) of persisted history.",
             raw=status,
         )
 

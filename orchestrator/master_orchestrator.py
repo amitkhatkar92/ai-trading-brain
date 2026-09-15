@@ -4238,7 +4238,7 @@ class MasterOrchestrator:
                 from notifications.notifier_manager import get_notifier
                 _lines = [
                     f"Restart governance pass: {len(restored)} position(s) checked",
-                    f"Gap: {_gap_sec // 60} min  Live prices: {len(_live_pf)}/{len(_syms)}",
+                    f"Gap: {_gap_sec // 60} min  Live symbols: {len(_live_pf)}/{len(_syms)}",
                 ]
                 if _immediate_actions:
                     _lines.append(
@@ -7816,6 +7816,14 @@ class MasterOrchestrator:
             log.info("[CapitalReserveReadiness] status=%s", _crre.get("status"))
         except Exception as _crre_exc:
             log.debug("[CapitalReserveReadiness] readiness check error (non-critical): %s", _crre_exc)
+
+        # ── Item #10: options health metrics daily snapshot ───────────────
+        try:
+            from data_feeds.options_health_history import record_daily_options_health_snapshot as _run_opt_health
+            _oph = _run_opt_health()
+            log.info("[OptionsHealthHistory] recorded=%s", _oph.get("recorded"))
+        except Exception as _oph_exc:
+            log.debug("[OptionsHealthHistory] snapshot error (non-critical): %s", _oph_exc)
 
         # ── Post-roadmap Priority 1: ARS (autonomous_research) scheduler ──
         # Activates the 9-agent autonomous_research cluster (GapDetector,

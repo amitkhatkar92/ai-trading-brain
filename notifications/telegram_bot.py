@@ -533,6 +533,26 @@ class TelegramCommandBot:
         except Exception:
             pass
 
+        # Item #10: options health metrics (gated -- only shown once the
+        # item's own 7-day evidence prerequisite is met)
+        options_health_line = ""
+        try:
+            from data_feeds.options_health_history import get_options_health_status
+            _oph = get_options_health_status("NIFTY")
+            if _oph.get("status") == "ACTIVE":
+                options_health_line = (
+                    f"\nOptions Health: strikes={_oph.get('avg_strike_count')} "
+                    f"OI_cov={_oph.get('avg_oi_coverage_pct')}% "
+                    f"fresh={_oph.get('avg_freshness_minutes')}m "
+                    f"implausible_pcr_days={_oph.get('pcr_implausible_count')}"
+                )
+            else:
+                _days = _oph.get("history_days_count", 0)
+                _min = _oph.get("min_history_days", 7)
+                options_health_line = f"\nOptions Health: gathering evidence ({_days}/{_min} days)"
+        except Exception:
+            pass
+
         return (
             f"📊 <b>System Status</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━━\n"
@@ -543,7 +563,8 @@ class TelegramCommandBot:
             f"Feeds:   {_esc(feed_line)}"
             f"{truth_line}"
             f"{opts_line}"
-            f"{universe_line}\n"
+            f"{universe_line}"
+            f"{_esc(options_health_line)}\n"
             f"Time:    {datetime.now().strftime('%d-%b-%Y  %H:%M:%S')}"
         )
 

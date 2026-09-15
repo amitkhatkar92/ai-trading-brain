@@ -181,7 +181,14 @@ _DUP_GUARD_FRESH_COOLDOWN_S =  30  # after going stale, wait this long before fr
 _DUP_GUARD_LTP_CONF_TICKS   =   2  # minimum consecutive fresh ticks for full R confidence
 
 # ── Risk Guards (prevent trade volume explosion & duplicates) ──────────────
-MAX_OPEN_POSITIONS = 15       # maximum concurrent positions (INCREASED 5→15 for capital deployment)
+# DTA-EXPOSURE-AUDIT-001: MAX_OPEN_POSITIONS must always stay >= CapitalRiskEngine's
+# own config.MAX_POSITIONS (the primary, capital-tier-scaled admission gate that
+# already fires earlier in the pipeline) -- otherwise this "last-resort" guard
+# could silently become STRICTER than the gate it is meant to sit behind if
+# MAX_POSITIONS is ever increased for a larger capital tier without this file
+# being updated in lockstep. Derived with a fixed +5 safety margin so today's
+# value (15) is unchanged for the current ₹1Cr/MAX_POSITIONS=8 tier.
+MAX_OPEN_POSITIONS = max(15, _cfg.MAX_POSITIONS + 5)   # maximum concurrent positions
 MAX_CAPITAL_PER_TRADE_PCT = 15.0  # max % of capital per single trade
 MAX_TOTAL_OPEN_EXPOSURE_PCT = 85.0  # max % of total capital in open positions (INCREASED 65→85)
 

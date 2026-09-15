@@ -169,6 +169,8 @@ data/trade_monitoring/
 data/data_integrity/
 # Sizing bounds calibration (self-learning module #27)
 data/risk_control/
+# Options health metrics dashboard (item #10)
+data/data_feeds/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json
