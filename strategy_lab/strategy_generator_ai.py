@@ -57,6 +57,36 @@ STRATEGY_PARAMS = {
 VOLATILE_EQUITY_MIN_CONFIDENCE: float = 6.8
 
 
+def classify_rejection_reason(
+    signal_type: str,
+    direction: str,
+    confidence: float,
+    strategy_name: str,
+    risk_reward_ratio: float,
+    min_rr: float,
+    cycle_regime: str,
+    disabled_strategies: Set[str],
+) -> str:
+    """
+    Evidence-labeling helper (observability only): attributes which gate in
+    `_assign()` caused a signal to be dropped, checked in the exact same
+    order `_assign()` itself evaluates them, so downstream rejection-outcome
+    tracking (analysis/rejection_tracker.py) can measure per-gate accuracy
+    instead of lumping every drop into one generic "ASSIGN_REJECTED" bucket.
+    Never changes which signals are dropped -- pure post-hoc labeling.
+    """
+    if cycle_regime == "BEAR_MARKET" and signal_type == "equity" and direction == "BUY":
+        return "BEAR_MARKET_BUY_REJECTED"
+    if risk_reward_ratio < min_rr:
+        return f"RR_{risk_reward_ratio:.1f}_below_min_{min_rr:.1f}"
+    if (cycle_regime == "VOLATILE" and strategy_name in ("Equity_Breakout", "Equity_Retest")
+            and confidence < VOLATILE_EQUITY_MIN_CONFIDENCE):
+        return "VOLATILE_LOW_CONFIDENCE_REJECTED"
+    if strategy_name in disabled_strategies:
+        return "STRATEGY_DISABLED"
+    return "ASSIGN_REJECTED"
+
+
 class StrategyGeneratorAI:
     """
     Maps each TradeSignal to the most appropriate strategy,

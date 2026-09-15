@@ -206,6 +206,7 @@ data/learning/
 data/mop_rc001/
 data/gva/
 data/pga/
+data/pga_learning_actions.json
 data/prr/
 data/real_options/
 data/alert_governance_state.json

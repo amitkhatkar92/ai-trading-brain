@@ -2498,12 +2498,18 @@ class MasterOrchestrator:
         # Emit one structured line per signal that did NOT survive strategy lab
         # so operators can identify the dominant rejection vector.
         from strategy_lab.backtesting_ai import _BACKTEST_CACHE as _BT_CACHE_REF
-        from strategy_lab.strategy_generator_ai import STRATEGY_PARAMS as _SP_REF
+        from strategy_lab.strategy_generator_ai import (
+            STRATEGY_PARAMS as _SP_REF,
+            classify_rejection_reason as _classify_sl_reject,
+        )
         _tested_syms  = {s.symbol for s in tested}
         _matched_syms = {s.symbol for s in matched}
         _reject_by_reason: dict = {}
         _reject_by_strategy: dict = {}
         _sl_attrition_recs: list = []   # [(signal, rej_reason, bt_score)] for ScanAttrition write
+        _cycle_regime = (
+            getattr(snapshot.regime, "value", str(snapshot.regime)) if snapshot else "UNKNOWN"
+        )
         for _s in signals:
             if _s.symbol in _tested_syms:
                 continue  # survived
@@ -2513,27 +2519,35 @@ class MasterOrchestrator:
             _passes_gate = getattr(_bt_result, "passes_gate", None) if _bt_result else None
             if _s.symbol not in _matched_syms:
                 # Dropped by assign_strategy: bear-market equity long, R:R below
-                # strategy min_rr, or MetaController active-set exclusion.
+                # strategy min_rr, volatile-regime low-confidence, or MetaController
+                # active-set exclusion. classify_rejection_reason() mirrors the exact
+                # gate order in strategy_lab/strategy_generator_ai.py::_assign() so
+                # the label attributes the gate that actually fired -- observability
+                # only, no gate logic touched.
                 _rr = getattr(_s, "risk_reward_ratio", 0.0)
                 _assigned_strat = getattr(_s, "strategy_name", "UNKNOWN")
                 _params = _SP_REF.get(_assigned_strat, {})
                 _min_rr = _params.get("min_rr", 0.0)
-                if _rr < _min_rr:
-                    _rej_reason = f"RR_{_rr:.1f}_below_min_{_min_rr:.1f}"
-                elif _assigned_strat in (shm_disabled | perf_disabled):
-                    _rej_reason = "STRATEGY_DISABLED"
-                else:
-                    _rej_reason = "ASSIGN_REJECTED"
+                _rej_reason = _classify_sl_reject(
+                    # signal_type/direction are str-mixin Enums (== compares by
+                    # value directly) -- do NOT str() them, Enum.__str__ would
+                    # yield "SignalType.EQUITY" instead of "equity".
+                    signal_type=getattr(_s, "signal_type", "") or "",
+                    direction=getattr(_s, "direction", "") or "",
+                    confidence=float(getattr(_s, "confidence", 0.0) or 0.0),
+                    strategy_name=_assigned_strat,
+                    risk_reward_ratio=_rr,
+                    min_rr=_min_rr,
+                    cycle_regime=_cycle_regime,
+                    disabled_strategies=(shm_disabled | perf_disabled),
+                )
             elif _strat in (shm_disabled | perf_disabled):
                 _rej_reason = "STRATEGY_DISABLED"
             elif _passes_gate is False:
                 _rej_reason = "BACKTEST_GATE_FAIL"
             else:
                 _rej_reason = "BACKTEST_SCORE_LOW"
-            _regime_match = (
-                getattr(snapshot.regime, "value", str(snapshot.regime))
-                if snapshot else "UNKNOWN"
-            )
+            _regime_match = _cycle_regime
             _qgate = "PASS" if _passes_gate else ("FAIL" if _passes_gate is False else "NO_DATA")
             log.info(
                 "[StrategyLabReject] symbol=%s strategy=%s rejection_reason=%s "
