@@ -137,6 +137,115 @@ class TestReliabilityAccessor:
         assert "LOW_SFT" not in summary["reasons_with_min_sample"]
 
 
+class TestKdaAdjustedReliability:
+    """
+    DTA-REJECTION-ATTRIBUTION-KDA-XREF-001: a StrategyLab rejection never
+    actually blocks a trade on its own -- KDA can independently authorize
+    the same signal. These tests confirm the reliability computation
+    correctly excludes KDA-overridden records from the "genuinely blocked"
+    (kda_adjusted) figure, while leaving the original `reliability` field
+    completely unchanged.
+    """
+
+    def _confirm_and_resolve(self, tr, mon, n, reason="LOW_SFT", days_ago=None):
+        days_ago = days_ago if days_ago is not None else MATURITY_DAYS + 1
+        ids = [_ingest(tr, reason=reason, days_ago=days_ago) for _ in range(n)]
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1100.0, 1120.0, 1130.0, 1140.0, 1150.0],  # LONG, price rose -> FALSE_REJECTION
+        ):
+            mon.run_daily_cycle()
+        return ids
+
+    def test_T11_no_kda_ledger_available(self, tmp_path):
+        tr = _tracker(tmp_path)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        self._confirm_and_resolve(tr, mon, n=MIN_SAMPLES_FOR_RELIABILITY)
+        with patch(
+            "analysis.rejection_attribution_monitor._load_kda_decision_index",
+            return_value={},
+        ):
+            summary = mon._compute_reliability_summary()
+            assert summary["kda_adjusted_reliability"]["available"] is False
+            assert mon.get_kda_adjusted_reason_reliability("LOW_SFT") is None
+        # Original, unadjusted reliability field is completely unaffected.
+        assert "LOW_SFT" in summary["reasons_with_min_sample"]
+
+    def test_T12_kda_overridden_records_excluded_from_adjusted_figure(self, tmp_path):
+        tr = _tracker(tmp_path)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        trade_date = (date.today() - timedelta(days=MATURITY_DAYS + 1)).isoformat()
+        # 8 records KDA authorized anyway (not real misses) + 3 records KDA
+        # also rejected (genuinely blocked) -- below min_samples once isolated.
+        for i in range(8):
+            tr.ingest_rejection(
+                symbol=f"AUTH{i}", strategy="Equity_Breakout", trade_date=trade_date,
+                decision_score=6.0, quality_score=6.5, quality_tier="MEDIUM",
+                rejected_reason="LOW_SFT", price_at_rejection=1000.0, direction="LONG",
+            )
+        for i in range(3):
+            tr.ingest_rejection(
+                symbol=f"BLOCKED{i}", strategy="Equity_Breakout", trade_date=trade_date,
+                decision_score=6.0, quality_score=6.5, quality_tier="MEDIUM",
+                rejected_reason="LOW_SFT", price_at_rejection=1000.0, direction="LONG",
+            )
+        fake_index = {(f"AUTH{i}", trade_date): "KNOWLEDGE_BUY" for i in range(8)}
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1100.0, 1120.0, 1130.0, 1140.0, 1150.0],
+        ), patch(
+            "analysis.rejection_attribution_monitor._load_kda_decision_index",
+            return_value=fake_index,
+        ):
+            mon.run_daily_cycle()
+            summary = mon._compute_reliability_summary()
+        adj = summary["kda_adjusted_reliability"]
+        assert adj["available"] is True
+        assert adj["kda_overridden_count"] == 8
+        assert adj["genuinely_blocked_count"] == 3
+        # Below MIN_SAMPLES_FOR_RELIABILITY (10) once the 8 overridden ones
+        # are excluded -- correctly NOT reported as "reliable" data yet.
+        assert "LOW_SFT" not in adj["reasons_with_min_sample"]
+        # Unadjusted reliability still sees all 11 as classified.
+        assert summary["reliability"]["LOW_SFT"]["classified"] == 11
+
+    def test_T13_get_kda_adjusted_reason_reliability_matches_manual_filter(self, tmp_path):
+        tr = _tracker(tmp_path)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        trade_date = (date.today() - timedelta(days=MATURITY_DAYS + 1)).isoformat()
+        for i in range(12):
+            tr.ingest_rejection(
+                symbol=f"SYM{i}", strategy="Equity_Breakout", trade_date=trade_date,
+                decision_score=6.0, quality_score=6.5, quality_tier="MEDIUM",
+                rejected_reason="LOW_SFT", price_at_rejection=1000.0, direction="LONG",
+            )
+        # First 2 KDA-authorized (excluded); remaining 10 genuinely blocked.
+        fake_index = {(f"SYM{i}", trade_date): "KNOWLEDGE_BUY" for i in range(2)}
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1100.0, 1120.0, 1130.0, 1140.0, 1150.0],
+        ), patch(
+            "analysis.rejection_attribution_monitor._load_kda_decision_index",
+            return_value=fake_index,
+        ):
+            mon.run_daily_cycle()
+            stats = mon.get_kda_adjusted_reason_reliability("LOW_SFT")
+        assert stats is not None
+        assert stats["classified"] == 10
+
+    def test_T14_kda_xref_fail_open(self, tmp_path):
+        tr = _tracker(tmp_path)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        self._confirm_and_resolve(tr, mon, n=MIN_SAMPLES_FOR_RELIABILITY)
+        with patch(
+            "analysis.rejection_attribution_monitor._load_kda_decision_index",
+            side_effect=RuntimeError("boom"),
+        ):
+            # Never raises -- run_daily_cycle's outer try/except covers this.
+            result = mon.run_daily_cycle()
+        assert result["status"] == "OK"
+
+
 class TestSyntheticSeederRootCauseFix:
     def test_T10_seeded_rows_marked_is_backfill(self, tmp_path):
         from analysis.rejection_audit import seed_synthetic_data

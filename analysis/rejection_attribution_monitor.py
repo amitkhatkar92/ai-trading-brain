@@ -75,6 +75,43 @@ _ROOT         = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SUMMARY_DIR   = os.path.join(_ROOT, "data", "rejection_attribution")
 SUMMARY_FILE  = os.path.join(SUMMARY_DIR, "daily_summary.jsonl")
 
+_KDA_AUTHORIZED_DECISIONS = ("KNOWLEDGE_BUY", "KNOWLEDGE_SELL")
+
+
+def _load_kda_decision_index() -> Dict[tuple, str]:
+    """
+    Build a {(symbol, trade_date): kda_decision} index from the real KDA
+    ledger (data/klp/kda/kda_decisions_YYYY-MM-DD.jsonl).
+
+    DTA-REJECTION-ATTRIBUTION-KDA-XREF-001: a StrategyLab rejection never
+    actually blocks a trade on its own -- since KDA-FINAL-AUTHORITY-001,
+    KDA runs on ALL original scanner signals and can independently issue
+    KNOWLEDGE_BUY/KNOWLEDGE_SELL regardless of StrategyLab's verdict. This
+    index lets the reliability computation distinguish "StrategyLab said no
+    but KDA authorized it anyway" (not a real miss) from "both gates said
+    no" (a genuine, fully-blocked opportunity). Read-only, returns {} on any
+    error -- never blocks the existing reliability computation.
+    """
+    index: Dict[tuple, str] = {}
+    try:
+        from knowledge_authority.kda_ledger import KDALedger
+        ledger = KDALedger()
+        for rec in ledger.load_all_decisions():
+            symbol   = rec.get("symbol")
+            decision = rec.get("kda_decision") or rec.get("decision")
+            trade_dt = rec.get("trading_date") or rec.get("trade_date")
+            if not symbol or not decision:
+                continue
+            if not trade_dt:
+                # Fall back to the decision timestamp's date component.
+                ts = rec.get("decided_at") or rec.get("timestamp") or ""
+                trade_dt = str(ts)[:10] if ts else None
+            if trade_dt:
+                index[(symbol, trade_dt)] = decision
+    except Exception as exc:
+        log.debug("[RejectionAttributionMonitor] KDA ledger index build failed: %s", exc)
+    return index
+
 
 def _fetch_ohlcv_closes(symbol: str, trade_date: str, horizon_days: int = 5) -> List[float]:
     """
@@ -194,10 +231,55 @@ class RejectionAttributionMonitor:
             reason: stats for reason, stats in by_reason.items()
             if stats.get("classified", 0) >= MIN_SAMPLES_FOR_RELIABILITY
         }
+        kda_adjusted = self._compute_kda_adjusted_reliability(classified)
         return {
             "classified_total":       len(classified),
             "reasons_with_min_sample": sorted(reliable.keys()),
             "reliability":            reliable,
+            "kda_adjusted_reliability": kda_adjusted,
+        }
+
+    def _compute_kda_adjusted_reliability(self, classified: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """
+        DTA-REJECTION-ATTRIBUTION-KDA-XREF-001: corrected reliability that
+        excludes records where KDA independently authorized the same
+        (symbol, trade_date) despite the StrategyLab rejection -- those were
+        never actually blocked, so counting their favorable outcomes as
+        "false rejections" overstates how broken a reason is. Only the
+        subset where KDA ALSO did not authorize (a genuine, fully-blocked
+        opportunity) is used here. Purely additive -- the existing
+        `reliability` field above is untouched, byte-for-byte. Never raises.
+        """
+        try:
+            kda_index = _load_kda_decision_index()
+        except Exception as exc:
+            log.debug("[RejectionAttributionMonitor] KDA cross-reference failed: %s", exc)
+            return {"available": False, "reason": "kda_ledger_unavailable_or_empty"}
+        if not kda_index:
+            return {"available": False, "reason": "kda_ledger_unavailable_or_empty"}
+
+        genuinely_blocked: List[Dict[str, Any]] = []
+        kda_overridden_count = 0
+        for r in classified:
+            key = (r.get("symbol"), r.get("trade_date"))
+            decision = kda_index.get(key)
+            if decision in _KDA_AUTHORIZED_DECISIONS:
+                kda_overridden_count += 1
+                continue
+            genuinely_blocked.append(r)
+
+        by_reason = accuracy_by_reason(genuinely_blocked)
+        reliable = {
+            reason: stats for reason, stats in by_reason.items()
+            if stats.get("classified", 0) >= MIN_SAMPLES_FOR_RELIABILITY
+        }
+        return {
+            "available":                True,
+            "classified_total":         len(classified),
+            "kda_overridden_count":     kda_overridden_count,
+            "genuinely_blocked_count":  len(genuinely_blocked),
+            "reasons_with_min_sample":  sorted(reliable.keys()),
+            "reliability":              reliable,
         }
 
     def get_reason_reliability(
@@ -213,6 +295,33 @@ class RejectionAttributionMonitor:
             recs = [
                 r for r in self._tracker.get_all()
                 if r.get("rejected_reason") == reason and not r.get("is_backfill")
+            ]
+            stats = compute_accuracy_stats(recs)
+            if stats["classified"] < min_samples:
+                return None
+            return stats
+        except Exception:
+            return None
+
+    def get_kda_adjusted_reason_reliability(
+        self, reason: str, min_samples: int = MIN_SAMPLES_FOR_RELIABILITY,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Same as get_reason_reliability(), but excludes records where KDA
+        independently authorized the same (symbol, trade_date) despite the
+        StrategyLab rejection -- see DTA-REJECTION-ATTRIBUTION-KDA-XREF-001.
+        Returns None if the KDA ledger is unavailable/empty, or if fewer
+        than min_samples remain after excluding KDA-overridden records.
+        Advisory only -- not wired into any live risk/decision gate.
+        """
+        try:
+            kda_index = _load_kda_decision_index()
+            if not kda_index:
+                return None
+            recs = [
+                r for r in self._tracker.get_all()
+                if r.get("rejected_reason") == reason and not r.get("is_backfill")
+                and kda_index.get((r.get("symbol"), r.get("trade_date"))) not in _KDA_AUTHORIZED_DECISIONS
             ]
             stats = compute_accuracy_stats(recs)
             if stats["classified"] < min_samples:
