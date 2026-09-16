@@ -6976,6 +6976,32 @@ class MasterOrchestrator:
         except Exception as _sd_exc:
             log.warning("[V3ShadowDay] Shadow-day generation failed (non-critical): %s", _sd_exc)
 
+        # ── DTA-SHADOW-BACKFILL-001 ─────────────────────────────────────────
+        # Root-cause fix: run_shadow_day() above always runs SAME-DAY, where
+        # T+1 opening prices structurally don't exist yet -- so the top-5-
+        # per-direction C2 selection was silently selecting 0 stocks in both
+        # directions, every day (confirmed live: c2_up_selected=0,
+        # c2_down_selected=0, t1_data_available=False). This re-processes
+        # the PREVIOUS trading date now that its T+1 (today's) data exists,
+        # so the real top-5-per-direction selection can finally compute.
+        # No-op once a date already has a genuine selection recorded.
+        try:
+            from scripts.final_trading_architecture_shadow_001 import run_shadow_day_backfill as _run_shadow_backfill
+            _sdb_t0 = time.monotonic()
+            _sdb_result = _run_shadow_backfill()
+            _sdb_ms = round((time.monotonic() - _sdb_t0) * 1000, 1)
+            log.info(
+                "[V3ShadowBackfill] success=%s skipped=%s trade_date=%s "
+                "c2_up_selected=%s c2_down_selected=%s duration_ms=%.1f",
+                _sdb_result.get("success"),
+                _sdb_result.get("skipped", False),
+                _sdb_result.get("trade_date") or _sdb_result.get("backfill_of", ""),
+                _sdb_result.get("c2_up_selected"), _sdb_result.get("c2_down_selected"),
+                _sdb_ms,
+            )
+        except Exception as _sdb_exc:
+            log.warning("[V3ShadowBackfill] Backfill failed (non-critical): %s", _sdb_exc)
+
         # ── KSL-001: Knowledge System Learning feedback loop ──────────────────
         # Runs every EOD after all learning stages complete.
         # Guards on shadow file existence — now populated daily by V3ShadowDay above.
@@ -7749,6 +7775,25 @@ class MasterOrchestrator:
             )
         except Exception as _mb_exc:
             log.warning("[MarketBenchmark] Daily benchmark failed (non-critical): %s", _mb_exc)
+
+        # ── DTA-MARKET-BENCHMARK-RECLASSIFY-001 ────────────────────────────────
+        # Root-cause fix: same-day benchmark above structurally can't see
+        # shadow-evidence data for its own day (only populated later once C2
+        # selection actually runs -- see V3ShadowBackfill above). Re-checks
+        # the last 5 days' IN_UNIVERSE_NOT_IN_20POOL movers against the now
+        # more-complete shadow evidence and records any genuine improvement,
+        # append-only (original per-day files untouched).
+        try:
+            from opportunity_engine.market_opportunity_benchmark import (
+                reclassify_stale_benchmarks_silent as _reclassify_mb,
+            )
+            _mbr = _reclassify_mb()
+            log.info(
+                "[MarketBenchmarkReclassify] dates_checked=%s reclassified=%s by_category=%s",
+                _mbr.get("dates_checked"), _mbr.get("reclassified"), _mbr.get("by_category"),
+            )
+        except Exception as _mbr_exc:
+            log.warning("[MarketBenchmarkReclassify] Failed (non-critical): %s", _mbr_exc)
 
         # ── Post-roadmap Priority 3: Debate weight self-tuning (VALIDATION+GOVERNANCE) ──
         # Resolves matured debate votes into real market outcomes, then runs the

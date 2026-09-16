@@ -526,3 +526,127 @@ def run_daily_market_benchmark_silent(trade_date: Optional[str] = None) -> Dict[
     except Exception as exc:
         log.error("[MarketBenchmark] Unexpected failure in silent wrapper: %s", exc)
         return {"error": str(exc)}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-MARKET-BENCHMARK-RECLASSIFY-001 — retroactive re-classification
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause (confirmed on real production data across 4 audited days): the
+# benchmark above runs SAME-DAY, but shadow-evidence records for that same
+# day only get their real v3_score/c2_rank/selected_final_5 fields populated
+# LATER (once C2 selection actually runs with T+1 data -- see
+# scripts.final_trading_architecture_shadow_001.run_shadow_day_backfill()).
+# So every same-day comparison structurally misses the C/D/E/F categories
+# (IN_20POOL_NOT_SELECTED_5 / SELECTED_5_REJECTED / TRADED_FAILED /
+# TRADED_SUCCESS) -- 100% of real movers in the audited window landed in
+# only A/B, telling us nothing about actual 20-pool/5-selection quality.
+# This function re-checks recent days' IN_UNIVERSE_NOT_IN_20POOL movers
+# against the CURRENT (now more complete) shadow evidence and records any
+# improved classification -- append-only, never mutates the original
+# per-day file (preserves the audit trail).
+
+RECLASSIFIED_LOG = BENCHMARK_DIR / "MARKET_BENCHMARK_RECLASSIFIED.jsonl"
+
+
+def reclassify_stale_benchmarks(lookback_days: int = 5) -> Dict[str, Any]:
+    """
+    Re-classify IN_UNIVERSE_NOT_IN_20POOL movers from the last `lookback_days`
+    MARKET_BENCHMARK_*.jsonl files against the current shadow-evidence store.
+    Only appends a correction when the classification genuinely improves
+    (e.g. into C/D/E/F) -- a mover still unmatched is left alone, no-op.
+    Never raises; never touches trading state.
+    """
+    results: Dict[str, Any] = {"dates_checked": 0, "reclassified": 0, "by_category": {}}
+    try:
+        if not BENCHMARK_DIR.exists():
+            return results
+        files = sorted(BENCHMARK_DIR.glob("MARKET_BENCHMARK_2*.jsonl"))[-lookback_days:]
+        universe_symbols = _load_universe_symbols()
+
+        for f in files:
+            trade_date = f.stem.replace("MARKET_BENCHMARK_", "")
+            results["dates_checked"] += 1
+
+            shadow_records = _load_shadow_records_for_date(trade_date)
+            if not shadow_records:
+                continue  # still nothing new for this date -- nothing to improve
+
+            scanned_today, decided_today = _scanned_and_decided_today(trade_date)
+            new_records: List[Dict[str, Any]] = []
+
+            with open(f, encoding="utf-8") as fh:
+                lines = fh.readlines()
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if rec.get("record_type") == "RECLASSIFICATION":
+                    continue
+                old_cat = rec.get("category")
+                if old_cat != MoverCategory.IN_UNIVERSE_NOT_IN_20POOL.value:
+                    continue  # only B-category rows are candidates for improvement
+
+                sym, direction = rec.get("symbol", ""), rec.get("direction", "UP")
+                new_cat, new_detail = classify_mover(
+                    sym, direction, trade_date,
+                    universe_symbols, shadow_records, scanned_today, decided_today,
+                )
+                if new_cat.value == old_cat:
+                    continue  # genuinely still no match yet -- no improvement
+
+                out_rec = {
+                    "record_type": "RECLASSIFICATION",
+                    "trade_date": trade_date,
+                    "symbol": sym,
+                    "direction": direction,
+                    "original_category": old_cat,
+                    "reclassified_category": new_cat.value,
+                    "detail": new_detail,
+                    "reclassified_at": datetime.now(timezone.utc).isoformat(),
+                }
+                new_records.append(out_rec)
+                results["by_category"][new_cat.value] = (
+                    results["by_category"].get(new_cat.value, 0) + 1
+                )
+                if new_cat in (MoverCategory.IN_20POOL_NOT_SELECTED_5,
+                               MoverCategory.SELECTED_5_REJECTED_DOWNSTREAM):
+                    try:
+                        from analysis.rejection_tracker import get_rejection_tracker
+                        get_rejection_tracker().ingest_rejection(
+                            symbol=sym, strategy="MARKET_BENCHMARK_RECLASSIFIED",
+                            trade_date=trade_date, decision_score=0.0,
+                            quality_score=abs(rec.get("daily_return_pct", 0.0) or 0.0),
+                            quality_tier="MARKET_BENCHMARK_MISS",
+                            rejected_reason=new_cat.value[:200],
+                            price_at_rejection=0.0, direction=direction,
+                            market_regime="UNKNOWN",
+                            notes=json.dumps(new_detail)[:500],
+                        )
+                    except Exception:
+                        pass
+
+            if new_records:
+                with open(RECLASSIFIED_LOG, "a", encoding="utf-8") as fh:
+                    for r in new_records:
+                        fh.write(json.dumps(r, default=str) + "\n")
+                results["reclassified"] += len(new_records)
+
+        return results
+    except Exception as exc:
+        log.warning("[MarketBenchmark] reclassify_stale_benchmarks failed: %s", exc)
+        results["error"] = str(exc)
+        return results
+
+
+def reclassify_stale_benchmarks_silent(lookback_days: int = 5) -> Dict[str, Any]:
+    """EOD-hook-safe wrapper. Never raises under any circumstance."""
+    try:
+        return reclassify_stale_benchmarks(lookback_days)
+    except Exception as exc:
+        log.error("[MarketBenchmark] Unexpected failure in reclassify wrapper: %s", exc)
+        return {"error": str(exc)}
+

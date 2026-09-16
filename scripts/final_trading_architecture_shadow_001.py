@@ -1056,8 +1056,83 @@ def run_shadow_day(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Report generator
+# DTA-SHADOW-BACKFILL-001 — retroactive C2 top-5-per-direction re-selection
 # ─────────────────────────────────────────────────────────────────────────────
+# Root cause (confirmed live): run_shadow_day() is only ever invoked SAME-DAY
+# (no trade_date arg) from master_orchestrator's EOD hook. On that same day,
+# T+1 opening-price data structurally cannot exist yet (T+1 = tomorrow), so
+# compute_c2_score() receives opening=None for every candidate and
+# select_c2_top_n() -- which only ranks candidates with a non-None c2_score --
+# silently selects ZERO stocks in both directions, every single day, forever.
+# This function re-runs the PREVIOUS trading date (whose T+1 is today, now
+# available) with force=True so the real top-5-per-direction selection can
+# actually be computed once the data exists.
+
+def _latest_summary_for_date(trade_date: str,
+                              jsonl_path: Path = SHADOW_LOG_PATH) -> Optional[Dict[str, Any]]:
+    """Return the most recent SHADOW_DAILY_SUMMARY record for trade_date
+    (by 'timestamp'), or None if no summary exists yet for that date."""
+    matches = [s for s in _load_all_summaries(jsonl_path) if s.get("trade_date") == trade_date]
+    if not matches:
+        return None
+    return max(matches, key=lambda s: s.get("timestamp", ""))
+
+
+def _previous_ohlcv_trade_date(conn: sqlite3.Connection, before_date: str) -> Optional[str]:
+    """Return the most recent OHLCV trade_date strictly before before_date."""
+    row = conn.execute(
+        "SELECT MAX(trade_date) FROM ohlcv_daily "
+        "WHERE symbol != '^NSEI' AND trade_date < ?",
+        (before_date,),
+    ).fetchone()
+    return str(row[0]) if row and row[0] else None
+
+
+def run_shadow_day_backfill(db_path: Optional[Path] = None) -> Dict[str, Any]:
+    """
+    Retroactively re-processes the most recent unresolved trading date (the
+    one immediately before today's latest OHLCV date), now that its T+1
+    opening-price data has become available.
+
+    Idempotent-safe to call every EOD alongside run_shadow_day(): a no-op
+    (skipped=True) once a date has a genuine C2 selection recorded
+    (c2_up_selected>0 or c2_down_selected>0) -- only re-processes dates
+    still stuck at the "0 selected, no T+1 data" state this fix targets.
+    Same guarantees as run_shadow_day(): read-only, no CandidateStore/
+    broker/order calls, idempotent JSONL append.
+    """
+    try:
+        conn = _open_db(db_path)
+    except FileNotFoundError as e:
+        return {"success": False, "reason": "db_not_found", "error": str(e)}
+
+    try:
+        latest = _resolve_trade_date(conn, None)
+        previous = _previous_ohlcv_trade_date(conn, latest)
+        if not previous:
+            return {"success": True, "skipped": True, "reason": "no_previous_trade_date"}
+
+        existing = _latest_summary_for_date(previous, SHADOW_LOG_PATH)
+        already_selected = bool(
+            existing and (existing.get("c2_up_selected", 0) > 0
+                          or existing.get("c2_down_selected", 0) > 0)
+        )
+        if already_selected:
+            return {
+                "success": True, "skipped": True, "trade_date": previous,
+                "reason": "already_has_real_c2_selection",
+            }
+
+        log.info(
+            "[ShadowBackfill] Re-processing trade_date=%s now that T+1 (%s) "
+            "OHLCV data is available.", previous, latest,
+        )
+        result = run_shadow_day(trade_date=previous, db_path=db_path, force=True)
+        result["backfill_of"] = previous
+        return result
+    finally:
+        conn.close()
+
 
 def write_shadow_report(jsonl_path: Path = SHADOW_LOG_PATH) -> Path:
     """

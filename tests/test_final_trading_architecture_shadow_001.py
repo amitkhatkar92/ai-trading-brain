@@ -795,3 +795,201 @@ def test_T077_down_model_b_equals_model_a():
     model_b_down = [r for r in ranked if r.get("model_b_included")]
     model_a_down = ranked
     assert len(model_b_down) == len(model_a_down)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# K. DTA-SHADOW-BACKFILL-001 — retroactive C2 top-5-per-direction re-selection
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause: run_shadow_day() only ever runs SAME-DAY in production (no
+# trade_date arg from master_orchestrator), where T+1 opening prices cannot
+# exist yet -- so C2 selection always selected 0 stocks per direction,
+# confirmed live (c2_up_selected=0, c2_down_selected=0, t1_data_available=
+# False). run_shadow_day_backfill() re-processes the previous trading date
+# once its T+1 (today's) data exists.
+
+from scripts.final_trading_architecture_shadow_001 import (
+    run_shadow_day_backfill,
+    _previous_ohlcv_trade_date,
+    _latest_summary_for_date,
+)
+
+
+def test_T078_previous_ohlcv_trade_date_found(tmp_path):
+    db_path = tmp_path / "prev_date_test.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "CREATE TABLE ohlcv_daily "
+        "(symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL)"
+    )
+    conn.executemany(
+        "INSERT INTO ohlcv_daily VALUES ('TCS.NS',?,100,101,99,100,1000)",
+        [("2026-01-10",), ("2026-01-12",), ("2026-01-13",)],
+    )
+    conn.commit()
+    prev = _previous_ohlcv_trade_date(conn, "2026-01-13")
+    assert prev == "2026-01-12"
+    conn.close()
+
+
+def test_T079_previous_ohlcv_trade_date_none_when_earliest(tmp_path):
+    db_path = tmp_path / "prev_date_test2.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "CREATE TABLE ohlcv_daily "
+        "(symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL)"
+    )
+    conn.execute("INSERT INTO ohlcv_daily VALUES ('TCS.NS','2026-01-10',100,101,99,100,1000)")
+    conn.commit()
+    prev = _previous_ohlcv_trade_date(conn, "2026-01-10")
+    assert prev is None
+    conn.close()
+
+
+def test_T080_latest_summary_for_date_none_when_missing(tmp_jsonl):
+    with open(tmp_jsonl, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps({"record_type": "SHADOW_DAILY_SUMMARY", "trade_date": "2026-01-10",
+                              "timestamp": "2026-01-10T10:00:00", "c2_up_selected": 0}) + "\n")
+    assert _latest_summary_for_date("2026-01-11", tmp_jsonl) is None
+
+
+def test_T081_latest_summary_for_date_picks_most_recent(tmp_jsonl):
+    with open(tmp_jsonl, "w", encoding="utf-8") as fh:
+        fh.write(json.dumps({"record_type": "SHADOW_DAILY_SUMMARY", "trade_date": "2026-01-10",
+                              "timestamp": "2026-01-10T10:00:00", "c2_up_selected": 0}) + "\n")
+        fh.write(json.dumps({"record_type": "SHADOW_DAILY_SUMMARY", "trade_date": "2026-01-10",
+                              "timestamp": "2026-01-14T10:00:00", "c2_up_selected": 5}) + "\n")
+    result = _latest_summary_for_date("2026-01-10", tmp_jsonl)
+    assert result["c2_up_selected"] == 5
+
+
+def test_T082_backfill_skips_when_no_previous_date():
+    with patch("scripts.final_trading_architecture_shadow_001._open_db") as mock_db:
+        mock_conn = MagicMock()
+        mock_db.return_value = mock_conn
+        with patch("scripts.final_trading_architecture_shadow_001._resolve_trade_date",
+                   return_value="2026-01-10"), \
+             patch("scripts.final_trading_architecture_shadow_001._previous_ohlcv_trade_date",
+                   return_value=None):
+            result = run_shadow_day_backfill(db_path=Path("/fake"))
+    assert result["skipped"] is True
+    assert result["reason"] == "no_previous_trade_date"
+
+
+def test_T083_backfill_skips_when_already_finalized():
+    with patch("scripts.final_trading_architecture_shadow_001._open_db") as mock_db:
+        mock_conn = MagicMock()
+        mock_db.return_value = mock_conn
+        with patch("scripts.final_trading_architecture_shadow_001._resolve_trade_date",
+                   return_value="2026-01-11"), \
+             patch("scripts.final_trading_architecture_shadow_001._previous_ohlcv_trade_date",
+                   return_value="2026-01-10"), \
+             patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+                   return_value={"c2_up_selected": 5, "c2_down_selected": 4}), \
+             patch("scripts.final_trading_architecture_shadow_001.run_shadow_day") as mock_run:
+            result = run_shadow_day_backfill(db_path=Path("/fake"))
+    mock_run.assert_not_called()
+    assert result["skipped"] is True
+    assert result["reason"] == "already_has_real_c2_selection"
+
+
+def test_T084_backfill_reprocesses_when_zero_selected():
+    """The exact bug this fixes: a previous date stuck at 0/0 selected must
+    trigger a forced re-run once T+1 data should now be available."""
+    with patch("scripts.final_trading_architecture_shadow_001._open_db") as mock_db:
+        mock_conn = MagicMock()
+        mock_db.return_value = mock_conn
+        with patch("scripts.final_trading_architecture_shadow_001._resolve_trade_date",
+                   return_value="2026-01-11"), \
+             patch("scripts.final_trading_architecture_shadow_001._previous_ohlcv_trade_date",
+                   return_value="2026-01-10"), \
+             patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+                   return_value={"c2_up_selected": 0, "c2_down_selected": 0}), \
+             patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+                   return_value={"success": True, "trade_date": "2026-01-10",
+                                 "c2_up_selected": 5, "c2_down_selected": 5}) as mock_run:
+            result = run_shadow_day_backfill(db_path=Path("/fake"))
+    mock_run.assert_called_once_with(trade_date="2026-01-10", db_path=Path("/fake"), force=True)
+    assert result["success"] is True
+    assert result["backfill_of"] == "2026-01-10"
+    assert result["c2_up_selected"] == 5
+
+
+def test_T085_backfill_reprocesses_when_no_summary_exists_yet():
+    """A previous date with NO summary at all (never ran) is also a valid
+    backfill target, not just a stale 0/0 one."""
+    with patch("scripts.final_trading_architecture_shadow_001._open_db") as mock_db:
+        mock_conn = MagicMock()
+        mock_db.return_value = mock_conn
+        with patch("scripts.final_trading_architecture_shadow_001._resolve_trade_date",
+                   return_value="2026-01-11"), \
+             patch("scripts.final_trading_architecture_shadow_001._previous_ohlcv_trade_date",
+                   return_value="2026-01-10"), \
+             patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+                   return_value=None), \
+             patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+                   return_value={"success": True, "trade_date": "2026-01-10"}) as mock_run:
+            result = run_shadow_day_backfill(db_path=Path("/fake"))
+    mock_run.assert_called_once()
+    assert result["success"] is True
+
+
+def test_T086_backfill_handles_missing_db_gracefully():
+    with patch("scripts.final_trading_architecture_shadow_001._open_db",
+               side_effect=FileNotFoundError("no db")):
+        result = run_shadow_day_backfill(db_path=Path("/does/not/exist"))
+    assert result["success"] is False
+    assert result["reason"] == "db_not_found"
+
+
+def test_T087_backfill_never_places_trades_or_orders():
+    """Safety contract: backfill result carries the same
+    no_trades_generated/no_broker_calls guarantees as run_shadow_day()."""
+    with patch("scripts.final_trading_architecture_shadow_001._open_db") as mock_db:
+        mock_conn = MagicMock()
+        mock_db.return_value = mock_conn
+        with patch("scripts.final_trading_architecture_shadow_001._resolve_trade_date",
+                   return_value="2026-01-11"), \
+             patch("scripts.final_trading_architecture_shadow_001._previous_ohlcv_trade_date",
+                   return_value="2026-01-10"), \
+             patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+                   return_value={"c2_up_selected": 0, "c2_down_selected": 0}), \
+             patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+                   return_value={"success": True, "trade_date": "2026-01-10",
+                                 "no_trades_generated": True, "no_broker_calls": True}):
+            result = run_shadow_day_backfill(db_path=Path("/fake"))
+    assert result["no_trades_generated"] is True
+    assert result["no_broker_calls"] is True
+
+
+def test_T088_real_bug_reproduction_with_replay_db():
+    """
+    Integration proof against the REAL replay DB: running run_shadow_day()
+    for the LATEST available date (as production does, no trade_date arg)
+    must select 0/0 -- reproducing the exact live bug -- because T+1 data
+    for the latest date cannot exist. Then run_shadow_day_backfill() must
+    successfully select >0 for the previous date, whose T+1 data (the
+    latest date) DOES exist in the replay DB.
+    """
+    if not REPLAY_DB.exists():
+        pytest.skip("Replay DB not available")
+    conn = _open_db(REPLAY_DB)
+    latest = _resolve_trade_date(conn)
+    previous = _previous_ohlcv_trade_date(conn, latest)
+    conn.close()
+    if not previous:
+        pytest.skip("Replay DB has no earlier trade_date to backfill")
+
+    tmp_log = Path("data/logs/_test_shadow_backfill_tmp.jsonl")
+    try:
+        with patch("scripts.final_trading_architecture_shadow_001.SHADOW_LOG_PATH", tmp_log):
+            same_day = run_shadow_day(trade_date=latest, db_path=REPLAY_DB, force=True)
+            assert same_day.get("c2_up_selected", 0) == 0
+            assert same_day.get("c2_down_selected", 0) == 0
+            assert same_day.get("t1_data_available") is False
+
+            backfilled = run_shadow_day_backfill(db_path=REPLAY_DB)
+            assert backfilled.get("backfill_of") == previous
+    finally:
+        if tmp_log.exists():
+            tmp_log.unlink()
+
