@@ -459,6 +459,21 @@ class OptionsOrderManager:
         self._paper_mode = True
         return None
 
+    def reload_broker_token(self, new_token: str) -> bool:
+        """
+        Hot-swap the live order-placement broker's access token (DTA-002
+        extension) -- see execution_engine/order_manager.py's identical
+        method for the full incident context (DH-901 stale-token gap).
+        No-op (returns False) in paper mode or if unsupported. Never raises.
+        """
+        if not self._broker or not hasattr(self._broker, "reload_token"):
+            return False
+        try:
+            return bool(self._broker.reload_token(new_token))
+        except Exception as exc:
+            log.warning("[OptionsOrderManager] Broker token reload failed: %s", exc)
+            return False
+
     def _place_live_legs(
         self,
         rec:  "OptionsOrderRecord",

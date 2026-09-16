@@ -2377,6 +2377,23 @@ class OrderManager:
             log.warning("[OrderManager] Unknown broker '%s' — simulation mode.", broker)
             return None
 
+    def reload_broker_token(self, new_token: str) -> bool:
+        """
+        Hot-swap the live order-placement broker's access token (DTA-002
+        extension). Closes the gap where only the data-feed client was ever
+        refreshed on daily token rotation, leaving this broker on a stale
+        token (observed live as Dhan DH-901 Invalid_Authentication on real
+        order attempts). No-op (returns False) in paper mode or if the
+        broker adapter doesn't support reload. Never raises.
+        """
+        if not self._broker or not hasattr(self._broker, "reload_token"):
+            return False
+        try:
+            return bool(self._broker.reload_token(new_token))
+        except Exception as exc:
+            log.warning("[OrderManager] Broker token reload failed: %s", exc)
+            return False
+
     def _place_entry(self, sig: TradeSignal, qty: int) -> Optional[str]:
         direction = "BUY" if sig.direction == SignalDirection.BUY else "SELL"
         return self._broker_place(sig.symbol, direction, qty, sig.entry_price)

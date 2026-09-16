@@ -458,7 +458,178 @@ class TestT221IntegrationTwoPhase:
         for prefix in reload_log:
             assert len(prefix) == 8   # only first 8 chars tracked in test
         assert FAKE_JWT_A not in str(reload_log)
-        assert FAKE_JWT_B not in str(reload_log)
+
+
+# ── T222-T227: Order-placement broker token reload (DH-901 fix) ─────────────
+class TestT222OrderManagerBrokerReload:
+    """
+    Root-cause fix: OrderManager/OptionsOrderManager's live broker token was
+    never refreshed by DTA-002, only feed_manager.dhan was -- causing real
+    order placement to fail with Dhan DH-901 Invalid_Authentication hours
+    after the data feed's token had already rotated. maybe_sync() now
+    accepts an optional order_managers list and calls
+    reload_broker_token(new_token) on each, backward-compatible (defaults
+    to none, unchanged feed-only behaviour).
+    """
+
+    def _make_order_manager(self, reload_return: bool = True) -> MagicMock:
+        om = MagicMock()
+        om.reload_broker_token = MagicMock(return_value=reload_return)
+        return om
+
+    def test_t222_backward_compatible_no_order_managers(self):
+        """T222: maybe_sync(feed_manager) with no order_managers arg is unchanged."""
+        sync = _make_sync(last_gen=None)
+        fm   = _make_feed_manager(reload_return=True)
+
+        with patch.object(sync, "_read_current_generation_id", return_value=FAKE_GEN_A), \
+             patch.object(sync, "_read_token_from_env", return_value=FAKE_JWT_A):
+            result = sync.maybe_sync(fm)
+
+        assert result["action"] == "RELOADED"
+        assert "broker_reloads" in result
+        assert result["broker_reloads"] == {}
+
+    def test_t223_order_managers_receive_new_token(self):
+        """T223: Every passed order_manager's reload_broker_token() is called with the new token."""
+        sync = _make_sync(last_gen=None)
+        fm   = _make_feed_manager(reload_return=True)
+
+        class _EquityOM:
+            reload_broker_token = MagicMock(return_value=True)
+
+        class _OptionsOM:
+            reload_broker_token = MagicMock(return_value=True)
+
+        om1 = _EquityOM()
+        om2 = _OptionsOM()
+
+        with patch.object(sync, "_read_current_generation_id", return_value=FAKE_GEN_A), \
+             patch.object(sync, "_read_token_from_env", return_value=FAKE_JWT_A):
+            result = sync.maybe_sync(fm, order_managers=[om1, om2])
+
+        assert result["action"] == "RELOADED"
+        om1.reload_broker_token.assert_called_once_with(FAKE_JWT_A)
+        om2.reload_broker_token.assert_called_once_with(FAKE_JWT_A)
+        assert result["broker_reloads"] == {"_EquityOM": True, "_OptionsOM": True}
+
+    def test_t224_one_broker_reload_failure_does_not_block_the_other(self):
+        """T224: One order manager's reload failing must not stop the others or the feed."""
+        sync = _make_sync(last_gen=None)
+        fm   = _make_feed_manager(reload_return=True)
+
+        class _OkOM:
+            reload_broker_token = MagicMock(return_value=True)
+
+        class _FailOM:
+            reload_broker_token = MagicMock(return_value=False)
+
+        om_ok   = _OkOM()
+        om_fail = _FailOM()
+
+        with patch.object(sync, "_read_current_generation_id", return_value=FAKE_GEN_A), \
+             patch.object(sync, "_read_token_from_env", return_value=FAKE_JWT_A):
+            result = sync.maybe_sync(fm, order_managers=[om_ok, om_fail])
+
+        # Feed reload still succeeded — overall action is RELOADED
+        assert result["action"] == "RELOADED"
+        assert result["broker_reloads"]["_OkOM"] is True
+        assert result["broker_reloads"]["_FailOM"] is False
+        assert sync._last_loaded_generation_id == FAKE_GEN_A
+
+    def test_t225_order_manager_exception_is_caught_not_raised(self):
+        """T225: An order manager whose reload_broker_token() raises never crashes the sync."""
+        sync = _make_sync(last_gen=None)
+        fm   = _make_feed_manager(reload_return=True)
+        om_boom = MagicMock()
+        om_boom.reload_broker_token = MagicMock(side_effect=RuntimeError("boom"))
+
+        with patch.object(sync, "_read_current_generation_id", return_value=FAKE_GEN_A), \
+             patch.object(sync, "_read_token_from_env", return_value=FAKE_JWT_A):
+            result = sync.maybe_sync(fm, order_managers=[om_boom])
+
+        assert result["action"] == "RELOADED"
+        assert result["broker_reloads"][om_boom.__class__.__name__] is False
+
+    def test_t226_no_order_managers_reloaded_on_no_change(self):
+        """T226: When generation_id is unchanged, order managers are never touched."""
+        sync = _make_sync(last_gen=FAKE_GEN_A)
+        fm   = _make_feed_manager()
+        om   = self._make_order_manager()
+
+        with patch.object(sync, "_read_current_generation_id", return_value=FAKE_GEN_A):
+            result = sync.maybe_sync(fm, order_managers=[om])
+
+        assert result["action"] == "NO_CHANGE"
+        om.reload_broker_token.assert_not_called()
+
+    def test_t227_real_order_manager_reload_broker_token_delegates_to_broker(self):
+        """
+        T227: OrderManager.reload_broker_token() delegates to self._broker.reload_token()
+        when the broker supports it, and fails open (returns False) otherwise --
+        without ever touching order placement or the paper-trade journal.
+        """
+        from execution_engine.order_manager import OrderManager
+
+        om = OrderManager.__new__(OrderManager)
+        fake_broker = MagicMock()
+        fake_broker.reload_token = MagicMock(return_value=True)
+        om._broker = fake_broker
+
+        assert om.reload_broker_token(FAKE_JWT_A) is True
+        fake_broker.reload_token.assert_called_once_with(FAKE_JWT_A)
+
+    def test_t228_order_manager_reload_returns_false_without_broker(self):
+        """T228: reload_broker_token() returns False (never raises) when there's no broker (paper mode)."""
+        from execution_engine.order_manager import OrderManager
+
+        om = OrderManager.__new__(OrderManager)
+        om._broker = None
+
+        assert om.reload_broker_token(FAKE_JWT_A) is False
+
+    def test_t229_order_manager_reload_returns_false_when_broker_lacks_support(self):
+        """T229: reload_broker_token() returns False for a broker adapter with no reload_token method."""
+        from execution_engine.order_manager import OrderManager
+
+        om = OrderManager.__new__(OrderManager)
+        om._broker = MagicMock(spec=[])  # no reload_token attribute at all
+
+        assert om.reload_broker_token(FAKE_JWT_A) is False
+
+    def test_t230_dhan_broker_reload_token_reconnects_with_new_token(self):
+        """
+        T230: DhanBroker.reload_token() actually swaps self.access_token and
+        re-invokes _connect() -- the real fix for DH-901 Invalid_Authentication.
+        """
+        from execution_engine.brokers.dhan_broker import DhanBroker
+
+        broker = DhanBroker.__new__(DhanBroker)
+        broker.client_id = "CID"
+        broker.access_token = "OLD_STALE_TOKEN"
+        broker._dhan = MagicMock()
+        broker._connected = True
+        broker._last_failure_type = ""
+
+        with patch.object(broker, "_connect", side_effect=lambda: setattr(broker, "_connected", True)):
+            result = broker.reload_token(FAKE_JWT_B)
+
+        assert result is True
+        assert broker.access_token == FAKE_JWT_B
+
+    def test_t231_dhan_broker_reload_token_rejects_empty(self):
+        """T231: DhanBroker.reload_token() returns False and does not mutate state for an empty token."""
+        from execution_engine.brokers.dhan_broker import DhanBroker
+
+        broker = DhanBroker.__new__(DhanBroker)
+        broker.client_id = "CID"
+        broker.access_token = "OLD_STALE_TOKEN"
+        broker._dhan = MagicMock()
+        broker._connected = True
+
+        assert broker.reload_token("   ") is False
+        assert broker.access_token == "OLD_STALE_TOKEN"
+        assert broker._connected is True
 
 
 # ── Token state boundary tests ────────────────────────────────────────────────

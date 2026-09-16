@@ -56,6 +56,29 @@ class DhanBroker:
         except Exception as exc:
             log.error("[DhanBroker] Connection failed: %s", exc)
 
+    def reload_token(self, new_token: str) -> bool:
+        """
+        Hot-swap the Dhan access token used for ORDER PLACEMENT, without
+        restarting the process. Mirrors data_feeds.dhan_feed.DhanFeed's own
+        reload_token() -- closes a real production gap where the daily
+        token-refresh automation (DTA-001/DTA-002) only ever refreshed the
+        data-feed client, leaving this order-placement client on a stale,
+        expired daily-session token (observed live as Dhan error DH-901
+        "Invalid_Authentication" on every real order attempt once the
+        process had been running across a token-rotation boundary).
+
+        Returns True if the reconnect succeeds (self._connected == True).
+        Never raises; never places/modifies/cancels an order.
+        """
+        new_token = (new_token or "").strip()
+        if not new_token:
+            return False
+        self.access_token = new_token
+        self._connected   = False
+        self._dhan        = None
+        self._connect()
+        return self._connected
+
     # ─────────────────────────────────────────────────────────────────────────
     # SHARED RESPONSE VALIDATOR
     # ─────────────────────────────────────────────────────────────────────────

@@ -620,7 +620,12 @@ class MasterOrchestrator:
     def _sync_dhan_token(self) -> None:
         """
         DTA-002: Detect a new DTA-001 token (changed generation_id) and hot-swap
-        it into the live DhanFeed singleton without restarting the container.
+        it into the live DhanFeed singleton, AND into the live order-placement
+        brokers (OrderManager, OptionsOrderManager) -- without restarting the
+        container. Extended to cover the order-placement brokers after a real
+        incident where they kept using a stale daily-session token (Dhan
+        DH-901 Invalid_Authentication) even though the data feed's token was
+        correctly refreshed every day.
 
         Runs every 5 minutes via the scheduler.  Safe to call any time — idempotent.
         Never logs the JWT; never places/modifies/cancels orders.
@@ -628,13 +633,16 @@ class MasterOrchestrator:
         try:
             from scripts.dhan_auth.dhan_token_sync import get_token_sync
             from data_feeds import get_feed_manager
-            result = get_token_sync().maybe_sync(get_feed_manager())
+            result = get_token_sync().maybe_sync(
+                get_feed_manager(),
+                order_managers=[self.order_manager, self.options_order_manager],
+            )
             action = result.get("action", "")
             if action == "RELOADED":
                 log.info(
                     "[DTA-002] Token hot-swapped into live DhanFeed. "
-                    "generation_id=%s",
-                    result.get("generation_id"),
+                    "generation_id=%s broker_reloads=%s",
+                    result.get("generation_id"), result.get("broker_reloads"),
                 )
             elif action == "RELOAD_FAILED":
                 log.warning(

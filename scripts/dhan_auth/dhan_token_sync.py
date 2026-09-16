@@ -31,6 +31,11 @@ Architecture:
       ← detects changed generation_id
       ← reads JWT from /app/.env
       → calls feed_manager.dhan.reload_token(jwt)
+      → calls reload_broker_token(jwt) on every live order-placement manager
+        passed in (OrderManager, OptionsOrderManager) -- closes a real
+        production gap where only the data feed was ever refreshed, leaving
+        order-placement brokers on a stale daily-session token (observed
+        live as Dhan DH-901 Invalid_Authentication on real order attempts)
       → records generation_id as loaded
 """
 from __future__ import annotations
@@ -41,6 +46,10 @@ import time
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
+
+from utils import get_logger
+
+log = get_logger(__name__)
 
 # ── Token state constants ─────────────────────────────────────────────────────
 TOKEN_HEALTHY         = "TOKEN_HEALTHY"        # valid, ≥2 h remaining
@@ -137,7 +146,7 @@ class DhanTokenSync:
         """
         return self.get_token_state() in (TOKEN_HEALTHY, TOKEN_NEAR_EXPIRY)
 
-    def maybe_sync(self, feed_manager: Any) -> Dict[str, Any]:
+    def maybe_sync(self, feed_manager: Any, order_managers: Optional[list] = None) -> Dict[str, Any]:
         """
         Detect a new DTA-001 generation_id and, if changed, hot-swap the token.
 
@@ -150,6 +159,14 @@ class DhanTokenSync:
         Args:
             feed_manager: The live DataFeedManager singleton (from get_feed_manager()).
                           Expected: feed_manager.dhan.reload_token(str) -> bool
+            order_managers: Optional list of live order-placement managers (e.g.
+                          OrderManager, OptionsOrderManager) that expose a
+                          reload_broker_token(str) -> bool method. Closes a real
+                          production gap: the daily token rotation previously only
+                          ever refreshed feed_manager.dhan, leaving these brokers on
+                          a stale token (observed live as Dhan DH-901
+                          Invalid_Authentication on every real order attempt).
+                          Defaults to None (original feed-only behaviour, unchanged).
 
         Returns:
             Sanitised status dict. NEVER contains the JWT string.
@@ -159,13 +176,13 @@ class DhanTokenSync:
         if not self._sync_lock.acquire(blocking=False):
             return {"action": "SKIPPED_LOCK_BUSY"}
         try:
-            return self._do_sync(feed_manager)
+            return self._do_sync(feed_manager, order_managers or [])
         finally:
             self._sync_lock.release()
 
-    # ── Internal implementation ───────────────────────────────────────────────
+    # ── Internal implementation ───────────────────────────────────────
 
-    def _do_sync(self, feed_manager: Any) -> Dict[str, Any]:
+    def _do_sync(self, feed_manager: Any, order_managers: list) -> Dict[str, Any]:
         self._last_sync_ts = time.monotonic()
 
         # Step 1: read current generation_id (no JWT)
@@ -186,9 +203,24 @@ class DhanTokenSync:
                 "error": "DHAN_ACCESS_TOKEN absent or empty in .env",
             }
 
-        # Step 4: call reload_token() on the ACTUAL live DhanFeed singleton
+        # Step 4: call reload_token() on the ACTUAL live DhanFeed singleton, then
+        # on every live order-placement broker (best-effort — a broker reload
+        # failure never blocks or reverts the feed reload; it just stays
+        # unrecorded per-broker and is retried implicitly next cycle since
+        # reload_broker_token() is idempotent and cheap to call again).
+        broker_reloads: Dict[str, bool] = {}
         try:
             success = feed_manager.dhan.reload_token(new_token)
+            for om in order_managers:
+                name = type(om).__name__
+                try:
+                    broker_reloads[name] = bool(om.reload_broker_token(new_token))
+                except Exception as exc:
+                    broker_reloads[name] = False
+                    log.warning(
+                        "[DTA-002] Broker token reload raised for %s: %s",
+                        name, type(exc).__name__,
+                    )
         except Exception as exc:
             # Never include new_token in the exception report
             return {
@@ -208,7 +240,11 @@ class DhanTokenSync:
 
         # Step 5: success — record as loaded so we don't reload on next cycle
         self._last_loaded_generation_id = current_gen_id
-        return {"action": "RELOADED", "generation_id": current_gen_id}
+        return {
+            "action": "RELOADED",
+            "generation_id": current_gen_id,
+            "broker_reloads": broker_reloads,
+        }
 
     def _read_current_generation_id(self) -> Optional[str]:
         """Read generation_id from token metadata store. Returns None on any failure."""
