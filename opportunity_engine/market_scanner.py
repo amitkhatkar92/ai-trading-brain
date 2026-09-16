@@ -650,20 +650,42 @@ def _builtin_universe() -> List[Dict[str, Any]]:
 
 def _write_universe_json() -> bool:
     """
-    Atomically write the 230-symbol universe seed to data/nifty500_universe.json.
-    Called by _run_weekly_universe_rebuild() every Monday at 08:30 IST.
+    Atomically write the trading universe to data/nifty500_universe.json.
+    Called by _run_weekly_universe_rebuild() every trading day at 16:15 IST.
+
+    DTA-UNIVERSE-EXPANSION-001: tries the liquidity-filtered, ~500-symbol
+    broad-market universe first (predictive_gap/liquid_universe_builder_001.py
+    -- Dhan security master + real ADV from ohlcv_daily). Falls back to the
+    original embedded 230-symbol list on ANY failure (missing data, ADV
+    computation error, below sanity floor, etc.) -- this fallback path is
+    unchanged from before and always succeeds, so a rebuild can never leave
+    nifty500_universe.json empty or broken.
+
     Returns True on success.
     """
     import json as _json_wu
     import os as _os_wu
     universe_path = Path(__file__).parent.parent / "data" / "nifty500_universe.json"
+
+    universe_data = _builtin_universe()
+    source = "embedded_230"
+    try:
+        from predictive_gap.liquid_universe_builder_001 import build_liquid_universe
+        liquid_universe = build_liquid_universe()
+        if liquid_universe:
+            universe_data = liquid_universe
+            source = "liquid_broad_market"
+    except Exception as exc:
+        log.warning("[UniverseWriter] Liquid universe build failed, using embedded fallback: %s", exc)
+
     try:
         universe_path.parent.mkdir(parents=True, exist_ok=True)
         _tmp = str(universe_path) + ".tmp"
         with open(_tmp, "w", encoding="utf-8") as _f:
-            _json_wu.dump(_builtin_universe(), _f, indent=2, ensure_ascii=False)
+            _json_wu.dump(universe_data, _f, indent=2, ensure_ascii=False)
         _os_wu.replace(_tmp, str(universe_path))
-        log.info("[UniverseWriter] Wrote %d symbols to %s", len(_builtin_universe()), universe_path)
+        log.info("[UniverseWriter] Wrote %d symbols to %s (source=%s)",
+                 len(universe_data), universe_path, source)
         return True
     except Exception as exc:
         log.error("[UniverseWriter] Failed to write universe JSON: %s", exc)

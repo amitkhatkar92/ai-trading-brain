@@ -5447,10 +5447,13 @@ class MasterOrchestrator:
         """
         Rebuild nifty500_universe.json daily at 16:15 IST (post-market).
         Writing runs every trading day so the evening candidate scan always
-        uses the freshest symbol set.  NSE direct is unreachable from the VPS
-        (Akamai block), so the embedded 230-symbol list is used; the value of
-        the daily run is that the subsequent post-market scan at 16:45 scores
-        all symbols against today's closing prices instead of stale data.
+        uses the freshest symbol set. NSE direct is unreachable from the VPS
+        (Akamai block); _write_universe_json() now tries a liquidity-filtered
+        ~500-symbol universe sourced from Dhan's security master + real ADV
+        (DTA-UNIVERSE-EXPANSION-001), falling back to the original embedded
+        230-symbol list on any failure. Either way the subsequent post-market
+        scan at 16:45 scores all symbols against today's closing prices
+        instead of stale data.
 
         Guard: skips NSE holidays and files less than 20 hours old.
         """
@@ -5469,7 +5472,7 @@ class MasterOrchestrator:
                     log.info("[UniverseRebuild] nifty500_universe.json is only %.1fh old — skipping.", age_h)
                     return
 
-            log.info("[UniverseRebuild] 16:15 — writing universe seed (230 symbols)...")
+            log.info("[UniverseRebuild] 16:15 — rebuilding universe (liquid broad-market, embedded fallback)...")
             from opportunity_engine.market_scanner import _write_universe_json
             success = _write_universe_json()
             if success:
