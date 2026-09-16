@@ -86,6 +86,17 @@ class KDALedger:
             self._ensure_ids_loaded()
             return decision_id in self._seen_ids
 
+    def list_available_dates(self) -> List[str]:
+        """Return sorted (ascending) ISO dates for every kda_decisions_*.jsonl file present."""
+        if not self._base_dir.exists():
+            return []
+        dates: List[str] = []
+        for p in sorted(self._base_dir.glob("kda_decisions_*.jsonl")):
+            d = p.stem[len("kda_decisions_"):]
+            if len(d) == 10 and d.count("-") == 2:
+                dates.append(d)
+        return sorted(dates)
+
     # ── internal ─────────────────────────────────────────────────────────────
 
     def _daily_path(self, trading_date: Optional[str] = None) -> Path:

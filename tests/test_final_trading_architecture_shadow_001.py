@@ -993,3 +993,129 @@ def test_T088_real_bug_reproduction_with_replay_db():
         if tmp_log.exists():
             tmp_log.unlink()
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# L. DTA-SHADOW-BACKLOG-CATCHUP-001 — root-cause fix for missed backfill days
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause: run_shadow_day_backfill() only ever checks the single date
+# immediately before "latest" -- a day the EOD pipeline didn't run (or
+# crashed) on permanently loses its one-shot backfill chance. Confirmed live:
+# 2026-09-04 through 2026-09-11 (6 trading days) never received a real C2
+# selection this way, even though 2026-09-02/03/14 (days the backfill
+# actually ran) did. This scans the recent backlog and retries every
+# still-unresolved date, bounded per run.
+
+from scripts.final_trading_architecture_shadow_001 import run_shadow_backlog_catchup
+
+
+def _make_ohlcv_db(tmp_path, dates):
+    db_path = tmp_path / "catchup_test.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "CREATE TABLE ohlcv_daily "
+        "(symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL)"
+    )
+    conn.executemany(
+        "INSERT INTO ohlcv_daily VALUES ('TCS.NS',?,100,101,99,100,1000)",
+        [(d,) for d in dates],
+    )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def test_T089_catchup_finds_unresolved_gap_dates(tmp_path):
+    """The exact bug this fixes: several consecutive dates in the middle of
+    the backlog never got a real selection -- catchup must find all of them,
+    not just the single date immediately before 'latest'."""
+    dates = ["2026-09-02", "2026-09-03", "2026-09-04", "2026-09-07",
+              "2026-09-08", "2026-09-14", "2026-09-15"]
+    db_path = _make_ohlcv_db(tmp_path, dates)
+
+    resolved = {"2026-09-02", "2026-09-03", "2026-09-14"}
+
+    def _fake_summary(d, jsonl_path=None):
+        if d in resolved:
+            return {"c2_up_selected": 5, "c2_down_selected": 5}
+        return None
+
+    with patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+               side_effect=_fake_summary), \
+         patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+               side_effect=lambda trade_date, db_path, force: {"success": True}) as mock_run:
+        result = run_shadow_backlog_catchup(db_path=db_path, max_dates=10, lookback_days=30)
+
+    assert result["success"] is True
+    # 2026-09-04, 2026-09-07, 2026-09-08 are unresolved and scoreable
+    # (2026-09-15 is excluded: it is the latest date, no T+1 reference yet)
+    assert set(result["dates_processed"]) == {"2026-09-04", "2026-09-07", "2026-09-08"}
+    assert mock_run.call_count == 3
+
+
+def test_T090_catchup_bounded_by_max_dates(tmp_path):
+    dates = [f"2026-09-{d:02d}" for d in range(1, 10)]
+    db_path = _make_ohlcv_db(tmp_path, dates)
+
+    with patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+               return_value=None), \
+         patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+               return_value={"success": True}):
+        result = run_shadow_backlog_catchup(db_path=db_path, max_dates=2, lookback_days=30)
+
+    assert len(result["dates_processed"]) == 2
+    assert result["still_remaining"] == (len(dates) - 1) - 2  # excl. latest (no T+1)
+
+
+def test_T091_catchup_never_reprocesses_already_resolved_dates(tmp_path):
+    dates = ["2026-09-01", "2026-09-02", "2026-09-03"]
+    db_path = _make_ohlcv_db(tmp_path, dates)
+
+    with patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+               return_value={"c2_up_selected": 5, "c2_down_selected": 5}), \
+         patch("scripts.final_trading_architecture_shadow_001.run_shadow_day") as mock_run:
+        result = run_shadow_backlog_catchup(db_path=db_path)
+
+    mock_run.assert_not_called()
+    assert result["dates_processed"] == []
+    assert result["unresolved_found"] == 0
+
+
+def test_T092_catchup_excludes_the_latest_date_no_t1_reference(tmp_path):
+    """The single most-recent OHLCV date has no T+1 reference yet -- it must
+    never be treated as a backfill candidate, matching run_shadow_day_backfill's
+    own same invariant."""
+    dates = ["2026-09-01", "2026-09-02"]
+    db_path = _make_ohlcv_db(tmp_path, dates)
+
+    with patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+               return_value=None), \
+         patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+               return_value={"success": True}) as mock_run:
+        result = run_shadow_backlog_catchup(db_path=db_path)
+
+    assert result["dates_processed"] == ["2026-09-01"]
+    mock_run.assert_called_once_with(trade_date="2026-09-01", db_path=db_path, force=True)
+
+
+def test_T093_catchup_handles_missing_db_gracefully():
+    with patch("scripts.final_trading_architecture_shadow_001._open_db",
+               side_effect=FileNotFoundError("no db")):
+        result = run_shadow_backlog_catchup(db_path=Path("/does/not/exist"))
+    assert result["success"] is False
+    assert result["reason"] == "db_not_found"
+
+
+def test_T094_catchup_respects_lookback_days(tmp_path):
+    dates = [f"2026-{m:02d}-01" for m in range(1, 9)]  # 8 months of dates
+    db_path = _make_ohlcv_db(tmp_path, dates)
+
+    with patch("scripts.final_trading_architecture_shadow_001._latest_summary_for_date",
+               return_value=None), \
+         patch("scripts.final_trading_architecture_shadow_001.run_shadow_day",
+               return_value={"success": True}):
+        result = run_shadow_backlog_catchup(db_path=db_path, max_dates=100, lookback_days=3)
+
+    # Only the last 3 dates are in scope; the latest of those has no T+1 -> 2 scoreable
+    assert result["scoreable_dates_checked"] == 2
+
+

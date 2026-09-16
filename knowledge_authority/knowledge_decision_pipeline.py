@@ -64,6 +64,13 @@ log = get_logger(__name__)
 _ROOT     = Path(__file__).parent.parent
 _DATA_DIR = _ROOT / "data"
 
+# DTA-KDP-EOD-FIX-001: bounds unique-symbol yfinance fetches per EOD run
+# (mirrors the max_items convention used by LOL/KLP-002/RejectionAttribution).
+_MAX_SYMBOL_FETCHES_PER_RUN = 250
+
+# Backfill state: which past ledger date was last fully processed for outcomes.
+_OUTCOME_BACKFILL_STATE_PATH = _DATA_DIR / "kda_outcome_backfill_state.json"
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Direction normalisation helper
 # ─────────────────────────────────────────────────────────────────────────────
@@ -370,6 +377,81 @@ class KnowledgeDecisionPipeline:
             }
 
     # ─────────────────────────────────────────────────────────────────────────
+    # Root-cause fix (DTA-KDP-EOD-FIX-001)
+    # ─────────────────────────────────────────────────────────────────────────
+    # run_eod_knowledge_update() defaulted to trading_date=today, but
+    # _fetch_post_decision_bars() only ever returns bars strictly AFTER
+    # decision_date — meaning every real production call (always today)
+    # was mathematically guaranteed to find zero bars for 100% of decisions,
+    # every single day. outcomes_evaluated has therefore always been 0 in
+    # production, and the authority report has never had any real evidence
+    # to work with. This backfill processes past, already-matured ledger
+    # dates instead (bounded per run, tracked via a small state file so
+    # each date is only ever fully processed once) — additive; the existing
+    # run_eod_knowledge_update(trading_date=...) method/signature is
+    # unchanged, this simply calls it correctly.
+
+    def run_eod_outcome_backfill(self, max_dates: int = 3) -> Dict[str, Any]:
+        """
+        Process up to `max_dates` of the oldest not-yet-evaluated KDA ledger
+        dates (each strictly before today, so at least T+1 bars can exist).
+        Never raises. Returns a summary dict; never touches trading state.
+        """
+        try:
+            state = self._load_backfill_state()
+            last_done = state.get("last_evaluated_date", "")
+            today = date.today().isoformat()
+
+            all_dates = self._ledger.list_available_dates()
+            candidates = [d for d in all_dates if d < today and d > last_done]
+            candidates = candidates[:max_dates]
+
+            results = []
+            for d in candidates:
+                r = self.run_eod_knowledge_update(trading_date=d)
+                r["trading_date"] = d
+                results.append(r)
+                if r.get("status") in ("OK", "KNOWLEDGE_PIPELINE_ERROR"):
+                    state["last_evaluated_date"] = d
+                    self._save_backfill_state(state)
+
+            total_outcomes = sum(r.get("outcomes_evaluated", 0) for r in results)
+            final_last_done = state.get("last_evaluated_date", last_done)
+            remaining = len([d for d in all_dates if d < today and d > final_last_done])
+            return {
+                "status": "OK",
+                "dates_processed": [r["trading_date"] for r in results],
+                "total_outcomes_evaluated": total_outcomes,
+                "last_evaluated_date": final_last_done,
+                "remaining_backlog": remaining,
+                # GAP-008: last date's authority report, so callers can still
+                # alert on authority-gate changes (same as before this fix).
+                "authority_report": results[-1].get("authority_report") if results else None,
+            }
+        except Exception as exc:
+            log.debug("[KDP-Backfill] error (non-critical): %s", exc)
+            return {"status": "KNOWLEDGE_PIPELINE_ERROR", "error": str(exc)}
+
+    @staticmethod
+    def _load_backfill_state() -> Dict[str, Any]:
+        try:
+            if _OUTCOME_BACKFILL_STATE_PATH.exists():
+                import json as _json
+                return _json.loads(_OUTCOME_BACKFILL_STATE_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+        return {"last_evaluated_date": ""}
+
+    @staticmethod
+    def _save_backfill_state(state: Dict[str, Any]) -> None:
+        try:
+            import json as _json
+            _OUTCOME_BACKFILL_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+            _OUTCOME_BACKFILL_STATE_PATH.write_text(_json.dumps(state), encoding="utf-8")
+        except Exception:
+            pass
+
+    # ─────────────────────────────────────────────────────────────────────────
     # Public API: force refresh evidence (call at EOD or on-demand)
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -574,11 +656,28 @@ class KnowledgeDecisionPipeline:
         outcomes: List[KDAOutcomeRecord] = []
         outcomes_evaluated = 0
 
+        # Root-cause fix (DTA-KDP-EOD-FIX-001): decisions typically arrive
+        # many-per-symbol (one KDA re-evaluation per scanner pass), so a naive
+        # one-fetch-per-decision loop makes far more yfinance calls than there
+        # are unique symbols (e.g. 304 decisions -> only 59 unique symbols on
+        # a real production day). Cache bars per symbol within this single run
+        # and bound total unique fetches, mirroring the max_items convention
+        # already used in LOL/KLP-002/RejectionAttribution this session.
+        _bars_cache: Dict[str, List] = {}
+        _fetches_done = 0
+
         for rec_dict in decisions:
             try:
                 kda_rec = KDADecisionRecord.from_dict(rec_dict)
                 sym = kda_rec.symbol or rec_dict.get("symbol", "?")
-                bars = _fetch_post_decision_bars(sym, trading_date, horizon=20)
+                if sym in _bars_cache:
+                    bars = _bars_cache[sym]
+                elif _fetches_done >= _MAX_SYMBOL_FETCHES_PER_RUN:
+                    bars = []
+                else:
+                    bars = _fetch_post_decision_bars(sym, trading_date, horizon=20)
+                    _bars_cache[sym] = bars
+                    _fetches_done += 1
                 if not bars:
                     log.debug("[KDP-EOD] No bars for %s — outcome deferred", sym)
                     continue

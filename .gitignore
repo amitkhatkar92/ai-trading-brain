@@ -113,6 +113,7 @@ data/scanner_memory.json
 data/iv_history.json
 data/lol/LOL_*.jsonl
 data/eod_status.json
+data/kda_outcome_backfill_state.json
 data/klp/
 data/execution_conversion/
 

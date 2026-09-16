@@ -1134,6 +1134,76 @@ def run_shadow_day_backfill(db_path: Optional[Path] = None) -> Dict[str, Any]:
         conn.close()
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-SHADOW-BACKLOG-CATCHUP-001 — root-cause fix for missed backfill days
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause (confirmed live 2026-09-16): run_shadow_day_backfill() only ever
+# checks the SINGLE date immediately before "latest" -- if the EOD pipeline
+# didn't run (or crashed) on a given day (as happened repeatedly before
+# DTA-EOD-BACKLOG-CAP-001), that day's one-shot backfill opportunity is
+# PERMANENTLY missed: "latest" and "previous" both advance day by day, and a
+# skipped date is never revisited. Confirmed on real data: 2026-09-04 through
+# 2026-09-11 (6 trading days) never received a real C2 selection, while
+# 2026-09-02/03/14 (days the backfill happened to actually run) did. This
+# scans the recent backlog and retries EVERY unresolved-but-now-resolvable
+# date, bounded per run so it never blocks the EOD cycle. Same guarantees as
+# run_shadow_day()/run_shadow_day_backfill(): read-only w.r.t. trading state,
+# no CandidateStore/broker/order calls, idempotent JSONL append.
+
+def run_shadow_backlog_catchup(db_path: Optional[Path] = None,
+                                max_dates: int = 5,
+                                lookback_days: int = 30) -> Dict[str, Any]:
+    """
+    Scans the last `lookback_days` of OHLCV trade_dates and retries any date
+    that (a) does not yet have a real C2 selection recorded and (b) has a
+    later OHLCV trade_date available to score its T+1 open against. Processes
+    up to `max_dates` of the oldest such dates per call. Never raises.
+    """
+    try:
+        conn = _open_db(db_path)
+    except FileNotFoundError as e:
+        return {"success": False, "reason": "db_not_found", "error": str(e)}
+
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT trade_date FROM ohlcv_daily "
+            "WHERE symbol != '^NSEI' ORDER BY trade_date"
+        ).fetchall()
+        all_dates = [str(r[0]) for r in rows]
+        if lookback_days:
+            all_dates = all_dates[-lookback_days:] if len(all_dates) > lookback_days else all_dates
+
+        # A date is scoreable only if a later date exists (T+1 open reference).
+        scoreable = all_dates[:-1] if len(all_dates) >= 2 else []
+
+        unresolved = []
+        for d in scoreable:
+            existing = _latest_summary_for_date(d, SHADOW_LOG_PATH)
+            already = bool(
+                existing and (existing.get("c2_up_selected", 0) > 0
+                              or existing.get("c2_down_selected", 0) > 0)
+            )
+            if not already:
+                unresolved.append(d)
+
+        to_process = unresolved[:max_dates]
+        results = []
+        for d in to_process:
+            r = run_shadow_day(trade_date=d, db_path=db_path, force=True)
+            r["trade_date"] = d
+            results.append(r)
+
+        return {
+            "success": True,
+            "scoreable_dates_checked": len(scoreable),
+            "unresolved_found": len(unresolved),
+            "dates_processed": [r["trade_date"] for r in results],
+            "still_remaining": max(0, len(unresolved) - len(to_process)),
+        }
+    finally:
+        conn.close()
+
+
 def write_shadow_report(jsonl_path: Path = SHADOW_LOG_PATH) -> Path:
     """
     Write the short decision-oriented report answering Q1-Q8.

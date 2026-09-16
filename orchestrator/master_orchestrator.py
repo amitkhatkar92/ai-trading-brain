@@ -7021,6 +7021,32 @@ class MasterOrchestrator:
         except Exception as _sdb_exc:
             log.warning("[V3ShadowBackfill] Backfill failed (non-critical): %s", _sdb_exc)
 
+        # ── DTA-SHADOW-BACKLOG-CATCHUP-001 ──────────────────────────────────
+        # Root-cause fix: the single-date backfill above only ever checks the
+        # ONE date immediately before "latest" -- a day the EOD pipeline
+        # didn't run (or crashed) on permanently loses its one-shot backfill
+        # chance, since "latest"/"previous" both advance day by day.
+        # Confirmed live: 2026-09-04 through 2026-09-11 (6 trading days)
+        # never received a real C2 selection this way. This retries every
+        # still-unresolved recent date (bounded per run), so a missed day is
+        # eventually caught up rather than lost forever.
+        try:
+            from scripts.final_trading_architecture_shadow_001 import run_shadow_backlog_catchup as _run_shadow_catchup
+            _sdc_t0 = time.monotonic()
+            _sdc_result = _run_shadow_catchup()
+            _sdc_ms = round((time.monotonic() - _sdc_t0) * 1000, 1)
+            log.info(
+                "[V3ShadowBacklogCatchup] checked=%d unresolved=%d processed=%s "
+                "still_remaining=%d duration_ms=%.1f",
+                _sdc_result.get("scoreable_dates_checked", 0),
+                _sdc_result.get("unresolved_found", 0),
+                _sdc_result.get("dates_processed", []),
+                _sdc_result.get("still_remaining", 0),
+                _sdc_ms,
+            )
+        except Exception as _sdc_exc:
+            log.warning("[V3ShadowBacklogCatchup] Catchup failed (non-critical): %s", _sdc_exc)
+
         # ── KSL-001: Knowledge System Learning feedback loop ──────────────────
         # Runs every EOD after all learning stages complete.
         # Guards on shadow file existence — now populated daily by V3ShadowDay above.
@@ -7169,22 +7195,28 @@ class MasterOrchestrator:
             log.debug("[HBE] Daily snapshot skipped: %s", _hbe_snap_exc)
 
         # ── KDA-003: EOD knowledge update — outcomes, comparisons, authority ──
-        # Processes today's KDA shadow decisions: evaluates outcomes from OHLCV bars,
-        # compares KDA decisions vs strategy outcomes, and updates authority report.
+        # DTA-KDP-EOD-FIX-001 root-cause fix: the previous call here always
+        # passed trading_date=today, but outcome evaluation requires bars
+        # STRICTLY AFTER decision_date -- a same-day decision can never have
+        # any, so outcomes_evaluated was mathematically guaranteed to be 0
+        # every single day in production (confirmed via live logs: 304
+        # decisions/day, 0 evaluated, ~250+ wasted yfinance calls). Now calls
+        # the backfill variant, which correctly evaluates a bounded batch of
+        # already-matured PAST ledger dates instead (tracked via its own
+        # state file so each date is only ever processed once).
         # SHADOW_ONLY — no broker calls, no orders, no execution authority changes.
         # Failure here is non-critical: logged as debug and cycle continues.
         if self.knowledge_pipeline is not None:
             try:
-                _kda_eod = self.knowledge_pipeline.run_eod_knowledge_update()
-                if _kda_eod.get("decisions_found", 0) or _kda_eod.get("status") == "OK":
+                _kda_eod = self.knowledge_pipeline.run_eod_outcome_backfill()
+                if _kda_eod.get("status") == "OK":
                     log.info(
-                        "[KDA-003] EOD update: status=%s decisions=%d "
-                        "outcomes=%d comparisons=%d authority_gate=%s",
-                        _kda_eod.get("status", "?"),
-                        _kda_eod.get("decisions_found", 0),
-                        _kda_eod.get("outcomes_evaluated", 0),
-                        _kda_eod.get("comparisons_done", 0),
-                        _kda_eod.get("authority_gate", "?"),
+                        "[KDA-003] EOD backfill: dates=%s outcomes_evaluated=%d "
+                        "last_evaluated=%s remaining_backlog=%d",
+                        _kda_eod.get("dates_processed", []),
+                        _kda_eod.get("total_outcomes_evaluated", 0),
+                        _kda_eod.get("last_evaluated_date", "?"),
+                        _kda_eod.get("remaining_backlog", 0),
                     )
                     # GAP-008: notify operator when authority gate advances
                     _kda_auth_report = (_kda_eod.get("authority_report") or {})
