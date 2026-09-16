@@ -352,6 +352,23 @@ COMBINATIONS = [
         "conditions": [("hv_20", "high"), ("mom_5d", "high")],
         "rule": lambda bands: bands["hv_20"] == "high" and bands["mom_5d"] == "high",
     },
+    {
+        # Post-session-16 addition: the validated UP finding
+        # (low_rsi_and_high_mom_accel) is a continuation thesis -- early
+        # acceleration before RSI gets overbought. This combo tests the
+        # OPPOSITE RSI extreme with the same acceleration signal: for UP,
+        # "still overbought but still accelerating" (momentum-chasing); for
+        # DOWN (after the direction flip), "still overbought (raw RSI high,
+        # not flipped) but now accelerating DOWN hard" -- a genuine
+        # reversal/breakdown-from-extreme thesis, structurally different
+        # from any DOWN-mirrored version of the other 4 UP-oriented combos.
+        # rsi_14 is NOT in DIRECTIONAL_FEATURES, so "high" here always means
+        # literally high raw RSI (overbought) regardless of direction.
+        "name": "high_rsi_and_high_mom_accel",
+        "label": "high RSI (overbought) + high momentum acceleration in the trade direction",
+        "conditions": [("rsi_14", "high"), ("mom_accel", "high")],
+        "rule": lambda bands: bands["rsi_14"] == "high" and bands["mom_accel"] == "high",
+    },
 ]
 
 

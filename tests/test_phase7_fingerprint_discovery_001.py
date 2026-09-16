@@ -508,3 +508,51 @@ def test_discovery_module_has_no_trading_imports():
     for line in import_lines:
         for term in forbidden:
             assert term not in line, f"fingerprint_discovery_001.py must not import {term!r}"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# New DOWN-oriented candidate combo (post-session-16 addition):
+# "high_rsi_and_high_mom_accel" -- the OPPOSITE RSI extreme from the
+# validated UP finding (low_rsi_and_high_mom_accel), with the same
+# acceleration signal. For DOWN this is a genuine reversal/breakdown-from-
+# overbought thesis, distinct from any DOWN-mirror of the other 4 combos.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_new_combo_registered_in_combinations():
+    from scripts.knowledge_system.selection_characteristic_analyzer_001 import COMBINATIONS
+    names = [c["name"] for c in COMBINATIONS]
+    assert "high_rsi_and_high_mom_accel" in names
+    assert len(names) == len(set(names)), "no duplicate combo names"
+
+
+def test_new_combo_rule_matches_high_rsi_high_accel():
+    combo = next(
+        c for c in __import__(
+            "scripts.knowledge_system.selection_characteristic_analyzer_001", fromlist=["COMBINATIONS"]
+        ).COMBINATIONS
+        if c["name"] == "high_rsi_and_high_mom_accel"
+    )
+    assert combo["rule"]({"rsi_14": "high", "mom_accel": "high"}) is True
+    assert combo["rule"]({"rsi_14": "low", "mom_accel": "high"}) is False
+    assert combo["rule"]({"rsi_14": "high", "mom_accel": "moderate"}) is False
+
+
+def test_new_combo_evaluated_automatically_for_both_directions():
+    """run_discovery_silent() must pick up the new combo for BOTH UP and
+    DOWN without any further wiring -- it iterates the live COMBINATIONS
+    list, not a hardcoded count."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import run_discovery_silent
+    with patch("scripts.knowledge_system.fingerprint_discovery_001.load_records", return_value=[]):
+        results = run_discovery_silent()
+    names_by_direction = {(r["name"], r["direction"]) for r in results}
+    assert ("high_rsi_and_high_mom_accel", "UP") in names_by_direction
+    assert ("high_rsi_and_high_mom_accel", "DOWN") in names_by_direction
+
+
+def test_new_combo_not_statically_excluded():
+    """Only the original 'low_rsi_and_high_mom_accel'/UP fingerprint is
+    permanently excluded from promotion -- the new combo must remain
+    eligible for automatic promotion like any other candidate."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import STATICALLY_REGISTERED
+    assert ("high_rsi_and_high_mom_accel", "UP") not in STATICALLY_REGISTERED
+    assert ("high_rsi_and_high_mom_accel", "DOWN") not in STATICALLY_REGISTERED

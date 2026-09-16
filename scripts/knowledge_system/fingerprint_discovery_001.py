@@ -372,11 +372,11 @@ def compute_lifecycle_status(name: str, direction: str,
 
 def run_discovery_silent(ledger_path=None) -> List[Dict[str, Any]]:
     """Main entry point, no stdout output — safe to embed in the EOD
-    orchestrator pipeline. Evaluates all 5 pre-specified combinations x
-    both directions (10 candidate-direction pairs), logs a daily snapshot
-    per candidate (idempotent per as_of_date), promotes (permanently,
-    one-time) any candidate that newly clears the bar, and attaches each
-    candidate's current research lifecycle status."""
+    orchestrator pipeline. Evaluates every pre-specified combination in
+    selection_characteristic_analyzer_001.COMBINATIONS x both directions,
+    logs a daily snapshot per candidate (idempotent per as_of_date),
+    promotes (permanently, one-time) any candidate that newly clears the
+    bar, and attaches each candidate's current research lifecycle status."""
     from scripts.knowledge_system.selection_characteristic_analyzer_001 import LEDGER_PATH
     records = load_records(ledger_path or LEDGER_PATH)
 
