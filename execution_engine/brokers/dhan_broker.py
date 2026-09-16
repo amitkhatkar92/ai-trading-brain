@@ -38,6 +38,7 @@ class DhanBroker:
         self._dhan              = None
         self._connected         = False
         self._last_failure_type = ""   # set by every place_order / place_sl_order call
+        self._last_failure_detail = ""  # DTA-BROKER-DIAG-001: the actual errorCode/remarks/exception text
         self._connect()
 
     def _connect(self):
@@ -106,6 +107,7 @@ class DhanBroker:
             isinstance(response, str) and not response.strip()
         ):
             self._last_failure_type = BROKER_RESPONSE_EMPTY
+            self._last_failure_detail = f"empty_response repr={response!r}"
             log.error(
                 "[DhanBroker] %s %s: BROKER_RESPONSE_EMPTY — "
                 "received %r (type=%s); Dhan may have accepted the order — "
@@ -117,6 +119,7 @@ class DhanBroker:
         # ── Non-dict response (e.g. plain string, bytes, list) ───────────────
         if not isinstance(response, dict):
             self._last_failure_type = BROKER_RESPONSE_MALFORMED
+            self._last_failure_detail = f"non_dict_response type={type(response).__name__} repr={str(response)[:200]}"
             log.error(
                 "[DhanBroker] %s %s: BROKER_RESPONSE_MALFORMED — "
                 "type=%s repr=%r; Dhan may have accepted the order — "
@@ -131,6 +134,10 @@ class DhanBroker:
         _error_code = response.get("errorCode") or response.get("error_code")
         if _status in ("failure", "error", "failed") or _error_code:
             self._last_failure_type = BROKER_REJECTED
+            self._last_failure_detail = (
+                f"status={_status} errorCode={_error_code} "
+                f"remarks={str(response.get('remarks', ''))[:200]}"
+            )
             log.error(
                 "[DhanBroker] %s %s: BROKER_REJECTED — status=%s "
                 "errorCode=%s remarks=%s",
@@ -143,6 +150,7 @@ class DhanBroker:
         _data = response.get("data")
         if not isinstance(_data, dict):
             self._last_failure_type = BROKER_RESPONSE_MALFORMED
+            self._last_failure_detail = f"data_field_not_dict type={type(_data).__name__} response={str(response)[:200]}"
             log.error(
                 "[DhanBroker] %s %s: BROKER_RESPONSE_MALFORMED — "
                 "data field is %r (type=%s); full response=%r",
@@ -155,6 +163,7 @@ class DhanBroker:
         _order_id = _data.get("orderId")
         if not _order_id:
             self._last_failure_type = BROKER_REJECTED
+            self._last_failure_detail = f"orderId_missing data={str(_data)[:200]}"
             log.error(
                 "[DhanBroker] %s %s: BROKER_REJECTED — "
                 "orderId missing or empty in data; data=%r",
@@ -163,6 +172,7 @@ class DhanBroker:
             return None
 
         self._last_failure_type = BROKER_ACCEPTED
+        self._last_failure_detail = ""
         log.info(
             "[DhanBroker] %s %s: BROKER_ACCEPTED order_id=%s",
             endpoint, security_id, _order_id,
@@ -200,6 +210,7 @@ class DhanBroker:
             )
         except Exception as exc:
             self._last_failure_type = BROKER_EXCEPTION
+            self._last_failure_detail = f"exception={exc}"
             log.error(
                 "[DhanBroker] place_order BROKER_EXCEPTION %s "
                 "txn=%s qty=%d order_type=%s: %s",
@@ -251,6 +262,7 @@ class DhanBroker:
             )
         except Exception as exc:
             self._last_failure_type = BROKER_EXCEPTION
+            self._last_failure_detail = f"exception={exc}"
             log.error(
                 "[DhanBroker] place_sl_order BROKER_EXCEPTION %s "
                 "txn=%s qty=%d trigger=%.2f: %s",

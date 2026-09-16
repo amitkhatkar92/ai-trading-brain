@@ -517,12 +517,19 @@ class OrderManager:
         """D11-001: Wire in FailSafeRiskGuardian so close_position() can call record_trade_result()."""
         self._risk_guardian = risk_guardian
 
-    def _reject(self, reason: str) -> None:
+    def _reject(self, reason: str, detail: str = "") -> None:
         """DTA-REJECTION-ATTRIBUTION-001: records why execute() is about to
         return None (audit/reporting only). Always returns None so call
         sites can write `return self._reject("REASON")` in place of a bare
-        `return None` — zero change to control flow or decisions."""
+        `return None` — zero change to control flow or decisions.
+
+        DTA-BROKER-DIAG-001: optional `detail` preserves the underlying
+        broker error (errorCode/remarks/exception text) that would
+        otherwise only exist in a log line that gets wiped on container
+        restart — makes the next occurrence root-causable from
+        control_tower.db instead of requiring live log access."""
         self.last_rejection_reason = reason
+        self.last_rejection_detail = detail
         return None
 
     def execute(self, signal: TradeSignal,
@@ -545,6 +552,7 @@ class OrderManager:
         # DTA-REJECTION-ATTRIBUTION-001: fresh per call; only reason-setting
         # exits below (or the final `return record`) determine its value.
         self.last_rejection_reason = None
+        self.last_rejection_detail = ""
         # ── PRR-001 Phase 3: Signal Freshness Gate ───────────────────────────
         # Block execution of signals older than 15 trading days (EXPIRED).
         # WEAKENING signals (6–15 days) are allowed with a warning.
@@ -926,9 +934,22 @@ class OrderManager:
 
         order_id = self._place_entry_with_retry(signal, qty, zone_price=_final_px)
         if not order_id:
+            # DTA-BROKER-DIAG-001: preserve the broker's own failure
+            # classification + underlying error text (errorCode/remarks/
+            # exception) — the broker object still holds its LAST attempt's
+            # state right after _place_entry_with_retry() returns, since no
+            # other broker call runs in between. Without this, the reason
+            # was previously only ever visible in a log line that gets
+            # wiped on the next container restart.
+            _b_type   = getattr(self._broker, "_last_failure_type", "") if self._broker else ""
+            _b_detail = getattr(self._broker, "_last_failure_detail", "") if self._broker else ""
             log.error("[OrderManager] ❌ Entry order failed after %d attempts for %s — "
-                      "signal discarded.", MAX_ORDER_RETRIES, signal.symbol)
-            return self._reject("BROKER_ENTRY_PLACEMENT_FAILED")
+                      "signal discarded. broker_failure_type=%s detail=%s",
+                      MAX_ORDER_RETRIES, signal.symbol, _b_type or "UNKNOWN", _b_detail)
+            return self._reject(
+                "BROKER_ENTRY_PLACEMENT_FAILED",
+                detail=f"{_b_type}: {_b_detail}" if _b_type else _b_detail,
+            )
 
         # ── Place stop-loss order ──────────────────────────────────────
         sl_id = self._place_stop_loss(signal, qty, order_id)

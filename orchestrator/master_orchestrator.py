@@ -3436,7 +3436,13 @@ class MasterOrchestrator:
             "sector_rejected":          _rm_s.get("SECTOR_LIMIT_REJECTION", 0),
             "correlation_rejected":     _rm_s.get("CORRELATION_REJECTION", 0),
             "stale_rejected":           _rm_s.get("STALE_SIGNAL_REJECTION", 0),
-            "other_rejected":           _rm_s.get("OTHER_EXACT", 0) + _st_rej,
+            # DTA-RISKCONTROL-ATTRIBUTION-001: StressTestAI rejections used to
+            # be silently merged into other_rejected below, hiding a real gate
+            # (STRESS_TEST_FAIL, 18 occurrences/7 trading days per the 7-day
+            # audit) behind an opaque "other" bucket. Now its own key, same
+            # attribution-fix pattern already applied to StrategyLab.
+            "stress_test_rejected":     _st_rej,
+            "other_rejected":           _rm_s.get("OTHER_EXACT", 0),
         }
         _rc_total_rej = sum(_rc_full.values())
         _rc_dom_key   = max(_rc_full, key=_rc_full.get) if _rc_total_rej > 0 else "none"
@@ -3445,14 +3451,14 @@ class MasterOrchestrator:
             "[RiskControlSummary] signals_in=%d signals_out=%d "
             "rr_rejected=%d heat_rejected=%d cooldown_rejected=%d governance_rejected=%d "
             "liquidity_rejected=%d position_limit_rejected=%d sector_rejected=%d "
-            "correlation_rejected=%d stale_rejected=%d other_rejected=%d "
+            "correlation_rejected=%d stale_rejected=%d stress_test_rejected=%d other_rejected=%d "
             "dominant_reason=%s",
             _rc_signals_in, len(stressed),
             _rc_full["rr_rejected"], _rc_full["heat_rejected"],
             _rc_full["cooldown_rejected"], _rc_full["governance_rejected"],
             _rc_full["liquidity_rejected"], _rc_full["position_limit_rejected"],
             _rc_full["sector_rejected"], _rc_full["correlation_rejected"],
-            _rc_full["stale_rejected"], _rc_full["other_rejected"],
+            _rc_full["stale_rejected"], _rc_full["stress_test_rejected"], _rc_full["other_rejected"],
             _rc_dom_key,
         )
 
@@ -3464,7 +3470,7 @@ class MasterOrchestrator:
         elif _rc_dom_key in (
             "governance_rejected", "other_rejected", "position_limit_rejected",
             "sector_rejected", "stale_rejected", "liquidity_rejected",
-            "correlation_rejected",
+            "correlation_rejected", "stress_test_rejected",
         ):
             _rc_verdict = "RISKCONTROL_OVER_RESTRICTIVE"
         else:
@@ -3483,7 +3489,8 @@ class MasterOrchestrator:
                 _rc_full["governance_rejected"] + _rc_full["cooldown_rejected"] +
                 _rc_full["liquidity_rejected"]  + _rc_full["position_limit_rejected"] +
                 _rc_full["sector_rejected"]     + _rc_full["correlation_rejected"] +
-                _rc_full["stale_rejected"]      + _rc_full["other_rejected"]
+                _rc_full["stale_rejected"]      + _rc_full["stress_test_rejected"] +
+                _rc_full["other_rejected"]
             ),
         }
 
@@ -3570,6 +3577,7 @@ class MasterOrchestrator:
                             + _rc_full.get("sector_rejected", 0)
                             + _rc_full.get("correlation_rejected", 0)
                             + _rc_full.get("stale_rejected", 0)
+                            + _rc_full.get("stress_test_rejected", 0)
                             + _rc_full.get("other_rejected", 0)
                         ),
                         # DTA-REJECTION-ATTRIBUTION-001: named breakdown of the
@@ -3585,6 +3593,9 @@ class MasterOrchestrator:
                             "sector":         _rc_full.get("sector_rejected", 0),
                             "correlation":    _rc_full.get("correlation_rejected", 0),
                             "stale":          _rc_full.get("stale_rejected", 0),
+                            # DTA-RISKCONTROL-ATTRIBUTION-001: previously hidden
+                            # inside other_rejected -- now separately visible.
+                            "stress_test":    _rc_full.get("stress_test_rejected", 0),
                             "other_rejected": _rc_full.get("other_rejected", 0),
                         },
                         "total_in":   len(signals),
@@ -4050,6 +4061,11 @@ class MasterOrchestrator:
                     # OrderManager.execute() returned None for (audit/
                     # reporting only — never influences any decision).
                     "reason":    getattr(self.order_manager, "last_rejection_reason", None),
+                    # DTA-BROKER-DIAG-001: the underlying broker error
+                    # (errorCode/remarks/exception text), when the reason
+                    # is BROKER_ENTRY_PLACEMENT_FAILED — persisted here so
+                    # it survives container restarts / log rotation.
+                    "detail":    getattr(self.order_manager, "last_rejection_detail", "") or None,
                 },
             ))
             return ("EXECUTION_FAILED", decision.confidence_score)
@@ -7225,6 +7241,26 @@ class MasterOrchestrator:
                 )
         except Exception as _rej_attr_exc:
             log.debug("[RejectionAttribution] monitor error (non-critical): %s", _rej_attr_exc)
+
+        # ── 7-day audit follow-up: standing execution-conversion metric ──────
+        # Measures the approved -> actually-placed order rate daily (audit
+        # found only 3/59 = 5% over 7 days, with zero prior visibility).
+        # Pure observability -- reads control_tower.db only, writes only to
+        # data/execution_conversion/daily_summary.jsonl. Never touches
+        # execution_engine, risk_control, or any live decision path.
+        try:
+            from analysis.execution_conversion_monitor import run_daily_execution_conversion
+            _exec_conv = run_daily_execution_conversion()
+            if _exec_conv.get("status") == "OK":
+                log.info(
+                    "[ExecutionConversion] approved=%d placed=%d conversion_rate=%s "
+                    "dominant_not_placed_reason=%s",
+                    _exec_conv.get("approved", 0), _exec_conv.get("placed", 0),
+                    _exec_conv.get("conversion_rate"),
+                    _exec_conv.get("dominant_not_placed_reason"),
+                )
+        except Exception as _exec_conv_exc:
+            log.debug("[ExecutionConversion] monitor error (non-critical): %s", _exec_conv_exc)
 
         # ── KLP→KSL: Knowledge evidence bridge (VPS-safe; no shadow JSONL needed) ──
         # Runs OUTSIDE the local shadow-file guard so completed KLP observations
