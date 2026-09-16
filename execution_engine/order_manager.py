@@ -1755,6 +1755,16 @@ class OrderManager:
                 continue
             if rec.order_type != "LIMIT":
                 continue
+            # Root-cause fix: this method expires PENDING (never-filled) limit
+            # orders only. rec.status stays "open" for the whole life of a
+            # position (filled or not) and rec.order_type is a static "how it
+            # was placed" attribute that never changes after a fill — so
+            # without this check, an already-filled, LIVE position could be
+            # wrongly treated as an expirable pending order once it aged past
+            # the candle-expiry window, silently wiping its stop-loss/target
+            # tracking (confirmed live: ONGC 2026-09-16, order 34126091640603).
+            if rec.fill_status in ("FILLED", "PARTIALLY_FILLED"):
+                continue
             if rec.placed_at is None:
                 continue
 
