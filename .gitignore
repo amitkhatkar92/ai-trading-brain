@@ -114,6 +114,7 @@ data/iv_history.json
 data/lol/LOL_*.jsonl
 data/eod_status.json
 data/klp/
+data/execution_conversion/
 
 # ── Options runtime data — generated fresh each session ──────────────────────
 data/options_*.json
