@@ -372,16 +372,22 @@ class LearningObservationLedger:
         self,
         lookback_days: int = 7,
         _ohlcv_fetcher=None,
+        max_items: int = 200,
     ) -> Dict[str, Any]:
         """
         Fill outcome fields for all OUTCOME_PENDING observations.
         Computes counterfactual returns from T+1..T+5 daily bars.
         ANTI-LOOKAHEAD: uses only bars AFTER decision_timestamp.
         Called once at EOD.  Never raises.
+
+        max_items bounds how many records are network-fetched in a single
+        call (each fetch is a yfinance round-trip) -- prevents a large
+        backlog from making one EOD run balloon in duration. Records beyond
+        the cap simply remain OUTCOME_PENDING and are picked up next run.
         Returns summary: {processed, skipped_pending, skipped_no_data, errors}.
         """
         try:
-            return self._fill_outcomes_impl(lookback_days, _ohlcv_fetcher)
+            return self._fill_outcomes_impl(lookback_days, _ohlcv_fetcher, max_items)
         except Exception as exc:
             log.debug("[LOL] fill_pending_outcomes error: %s", exc)
             return {"processed": 0, "error": str(exc)}
@@ -627,6 +633,7 @@ class LearningObservationLedger:
         self,
         lookback_days: int,
         _ohlcv_fetcher,
+        max_items: int = 200,
     ) -> Dict[str, Any]:
         fetcher = _ohlcv_fetcher or _fetch_ohlcv
         today   = date.today()
@@ -641,6 +648,10 @@ class LearningObservationLedger:
                     obs_id = rec.get("observation_id")
                     if obs_id and obs_id not in self._outcome_written:
                         pending_to_fill.append(rec)
+        if len(pending_to_fill) > max_items:
+            result["capped"] = True
+            result["backlog_remaining"] = len(pending_to_fill) - max_items
+            pending_to_fill = pending_to_fill[:max_items]
         for rec in pending_to_fill:
             obs_id       = rec["observation_id"]
             symbol       = rec.get("symbol", "")

@@ -104,13 +104,17 @@ class KLPOutcomeEngine:
     def fill_pending_outcomes(
         self,
         dates: Optional[List[str]] = None,
+        max_items: int = 200,
     ) -> Dict[str, Any]:
         """
         Process all KLP files for the given dates (default: last 7 days).
-        Returns summary stats.  Never raises.
+        max_items bounds how many observations are network-fetched in a
+        single call -- prevents a large backlog from making one EOD run
+        balloon in duration. Records beyond the cap stay pending for the
+        next run. Returns summary stats.  Never raises.
         """
         try:
-            return self._fill_impl(dates)
+            return self._fill_impl(dates, max_items)
         except Exception as exc:
             return {"processed": 0, "error": str(exc)}
 
@@ -148,7 +152,7 @@ class KLPOutcomeEngine:
     # Implementation
     # ─────────────────────────────────────────────────────────────────────────
 
-    def _fill_impl(self, dates: Optional[List[str]]) -> Dict[str, Any]:
+    def _fill_impl(self, dates: Optional[List[str]], max_items: int = 200) -> Dict[str, Any]:
         current_today = self._today or date.today()
         if dates is None:
             dates = [str(current_today - timedelta(days=i)) for i in range(1, 8)]
@@ -161,15 +165,23 @@ class KLPOutcomeEngine:
             "error":             None,
         }
 
+        _fetches_done = 0
         for date_str in dates:
+            if _fetches_done >= max_items:
+                summary["capped"] = True
+                break
             pending = self._load_pending_obs(date_str)
             for obs in pending:
+                if _fetches_done >= max_items:
+                    summary["capped"] = True
+                    break
                 obs_id = obs.get("observation_id") or obs.get("obs_id", "")
                 if obs_id in self._outcomes_written:
                     summary["skipped_dedup"] += 1
                     continue
 
                 result = self._compute_outcome(obs)
+                _fetches_done += 1
                 if result["first_event"] == OUTCOME_PENDING:
                     summary["skipped_pending"] += 1
                     continue
@@ -188,12 +200,16 @@ class KLPOutcomeEngine:
             # D-009 / KLP-002: Also fill SCAN_NO_SETUP directional outcomes
             no_setup_pending = self._load_pending_no_setup_obs(date_str)
             for obs in no_setup_pending:
+                if _fetches_done >= max_items:
+                    summary["capped"] = True
+                    break
                 obs_id = obs.get("observation_id") or obs.get("obs_id", "")
                 if obs_id in self._outcomes_written:
                     summary["skipped_dedup"] += 1
                     continue
 
                 result = self._compute_no_setup_outcome(obs)
+                _fetches_done += 1
                 if result.get("outcome_status") == OUTCOME_PENDING:
                     summary["skipped_pending"] += 1
                     continue
@@ -210,11 +226,12 @@ class KLPOutcomeEngine:
                 summary["processed"] += 1
 
             # DTA-041 Phase 2: Also fill pending PIT discovery outcomes
-            pit_summary = self.fill_pending_pit_outcomes(dates=[date_str])
-            summary["processed"] += pit_summary.get("processed", 0)
-            summary["skipped_pending"] += pit_summary.get("skipped_pending", 0)
-            summary["skipped_no_data"] += pit_summary.get("skipped_no_data", 0)
-            summary["skipped_dedup"] += pit_summary.get("skipped_dedup", 0)
+            if _fetches_done < max_items:
+                pit_summary = self.fill_pending_pit_outcomes(dates=[date_str])
+                summary["processed"] += pit_summary.get("processed", 0)
+                summary["skipped_pending"] += pit_summary.get("skipped_pending", 0)
+                summary["skipped_no_data"] += pit_summary.get("skipped_no_data", 0)
+                summary["skipped_dedup"] += pit_summary.get("skipped_dedup", 0)
 
         return summary
 

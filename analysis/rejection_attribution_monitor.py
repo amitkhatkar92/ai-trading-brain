@@ -127,19 +127,26 @@ class RejectionAttributionMonitor:
     def __init__(self, tracker: Optional[RejectionTracker] = None) -> None:
         self._tracker = tracker or get_rejection_tracker()
 
-    def run_daily_cycle(self) -> Dict[str, Any]:
-        """Run one resolution + reliability-reporting pass. Never raises."""
+    def run_daily_cycle(self, max_items: int = 200) -> Dict[str, Any]:
+        """Run one resolution + reliability-reporting pass. Never raises.
+
+        max_items bounds how many mature rows are network-fetched in a
+        single call -- prevents a large backlog from making one EOD run
+        balloon in duration. Rows beyond the cap stay PENDING for the
+        next run.
+        """
         try:
-            return self._run_impl()
+            return self._run_impl(max_items)
         except Exception as exc:
             log.debug("[RejectionAttributionMonitor] cycle error: %s", exc)
             return {"status": "ERROR", "error": str(exc)}
 
-    def _run_impl(self) -> Dict[str, Any]:
+    def _run_impl(self, max_items: int = 200) -> Dict[str, Any]:
         today = date.today()
         resolved = 0
         skipped_immature = 0
         skipped_no_data = 0
+        capped = False
 
         for row in self._tracker.get_pending():
             try:
@@ -151,6 +158,10 @@ class RejectionAttributionMonitor:
             if (today - trade_date).days < MATURITY_DAYS:
                 skipped_immature += 1
                 continue
+
+            if resolved + skipped_no_data >= max_items:
+                capped = True
+                break
 
             closes = _fetch_ohlcv_closes(row["symbol"], row["trade_date"])
             if len(closes) < 5:
@@ -171,6 +182,7 @@ class RejectionAttributionMonitor:
             "resolved":          resolved,
             "skipped_immature":  skipped_immature,
             "skipped_no_data":   skipped_no_data,
+            "capped":            capped,
             "pending_remaining": len(self._tracker.get_pending()),
             **reliability,
         }

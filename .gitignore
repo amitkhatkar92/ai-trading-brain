@@ -112,6 +112,8 @@ data/regime_probability_history.json
 data/scanner_memory.json
 data/iv_history.json
 data/lol/LOL_*.jsonl
+data/eod_status.json
+data/klp/
 
 # ── Options runtime data — generated fresh each session ──────────────────────
 data/options_*.json
