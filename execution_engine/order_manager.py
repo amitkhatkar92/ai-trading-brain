@@ -275,6 +275,11 @@ class OrderRecord:
     slippage_pct:          float = 0.0   # slippage_abs / requested_price × 100
     reconciliation_ts:     str   = ""    # ISO timestamp of last reconciliation attempt
     reconciliation_source: str   = ""    # "DHAN_GET_ORDER_BY_ID" | "PAPER" | "SIM"
+    # DTA-BROKER-REJECT-DETAIL-001: raw broker rejection reason (e.g. Dhan's
+    # omsErrorCode/omsErrorDescription), captured by _reconcile_fill() when
+    # fill_status=="REJECTED" so it can be surfaced via the BROKER_REJECTED_
+    # ORDER event instead of always logging detail=None.
+    broker_reject_detail:  str   = ""
     # ── Universal opportunity lineage ID ──────────────────────────────────
     # Set from signal.opportunity_id at execute() time so every downstream
     # store (live journal, outcome, KEL) can join on this single key.
@@ -985,10 +990,10 @@ class OrderManager:
         if record.fill_status == "REJECTED":
             log.warning(
                 "[OrderManager] Order %s REJECTED by broker — "
-                "position NOT registered. No phantom position created.",
-                order_id,
+                "position NOT registered. No phantom position created. detail=%s",
+                order_id, record.broker_reject_detail or "unknown",
             )
-            return self._reject("BROKER_REJECTED_ORDER")
+            return self._reject("BROKER_REJECTED_ORDER", detail=record.broker_reject_detail)
         # D-011: Write to live journal BEFORE registering in local state.
         # If process crashes between journal write and _orders update, restart
         # recovers correctly via _restore_from_live_journal.
@@ -2604,6 +2609,7 @@ class OrderManager:
             rec.filled_quantity       = int(fill.get("filled_quantity") or 0)
             rec.reconciliation_ts     = _now_iso
             rec.reconciliation_source = fill.get("reconciliation_source", "DHAN_GET_ORDER_BY_ID")
+            rec.broker_reject_detail  = str(fill.get("detail", "") or "")
             if rec.actual_fill_price > 0 and rec.requested_price > 0:
                 rec.slippage_abs = rec.actual_fill_price - rec.requested_price
                 rec.slippage_pct = (rec.slippage_abs / rec.requested_price) * 100.0
@@ -2638,8 +2644,8 @@ class OrderManager:
             elif rec.fill_status == "REJECTED":
                 log.warning(
                     "[FillReconcile] %s order REJECTED by broker — "
-                    "position will NOT be registered.",
-                    rec.symbol,
+                    "position will NOT be registered. detail=%s",
+                    rec.symbol, rec.broker_reject_detail or "unknown",
                 )
             elif rec.fill_status == "FILLED":
                 log.info(

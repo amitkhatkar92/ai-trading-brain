@@ -26,6 +26,30 @@ BROKER_RESPONSE_EMPTY     = "BROKER_RESPONSE_EMPTY"      # None or empty string
 BROKER_EXCEPTION          = "BROKER_EXCEPTION"           # Python exception in SDK call
 
 
+def _extract_oms_error_detail(data: Dict[str, Any]) -> str:
+    """
+    DTA-BROKER-REJECT-DETAIL-001: Dhan's V2 order-book response carries the
+    real rejection reason in omsErrorCode/omsErrorDescription, but this was
+    never extracted anywhere in the reconciliation path -- every REJECTED
+    order surfaced detail=None downstream. Defensive: also checks a couple
+    of other plausibly-named fields in case Dhan varies the schema by
+    endpoint. Never raises; returns "" if nothing usable is found.
+    """
+    try:
+        code = str(data.get("omsErrorCode", "") or "").strip()
+        desc = str(data.get("omsErrorDescription", "") or "").strip()
+        if not desc:
+            desc = str(data.get("errorMessage", "") or data.get("remarks", "") or "").strip()
+        if not code and not desc:
+            return ""
+        if code and desc:
+            return f"{code}: {desc}"
+        return code or desc
+    except Exception:
+        return ""
+
+
+
 class DhanBroker:
     """
     DhanHQ adapter.
@@ -329,6 +353,10 @@ class DhanBroker:
                 "avg_fill_price":  float(data.get("averageTradedPrice", data.get("tradedPrice", 0.0)) or 0.0),
                 "remaining_qty":   int(data.get("remainingQuantity", 0) or 0),
                 "order_id":        order_id,
+                # DTA-BROKER-REJECT-DETAIL-001: Dhan's own rejection-reason
+                # fields, never previously extracted -- every REJECTED order
+                # surfaced detail=None downstream even though Dhan sends this.
+                "oms_error_detail": _extract_oms_error_detail(data),
             }
         except Exception as exc:
             log.warning(
@@ -360,6 +388,7 @@ class DhanBroker:
                         "avg_fill_price":  float(o.get("averageTradedPrice", o.get("tradedPrice", 0.0)) or 0.0),
                         "remaining_qty":   int(o.get("remainingQuantity", 0) or 0),
                         "order_id":        order_id,
+                        "oms_error_detail": _extract_oms_error_detail(o),
                     }
             log.warning(
                 "[DhanBroker] order_id %s not found in get_order_list() fallback either \u2014 "
@@ -417,6 +446,8 @@ class DhanBroker:
                     "FILLED", "PARTIALLY_FILLED") else 0.0,
                 "filled_quantity":   int(raw.get("filled_qty", 0) or 0),
                 "order_status_raw":  raw_status,
+                # DTA-BROKER-REJECT-DETAIL-001: surfaced only, never invented.
+                "detail":            raw.get("oms_error_detail", "") or "",
             })
         except Exception as exc:
             log.warning("[DhanBroker] get_fill_details failed %s: %s", order_id, exc)
