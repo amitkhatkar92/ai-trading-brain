@@ -226,6 +226,46 @@ _SIM_PRICES: Dict[str, float] = {
 }
 
 
+def _parse_extra_security_map(result: Any) -> Dict[str, Dict[str, Any]]:
+    """
+    Normalise fetch_security_list("compact")'s return value into
+    {symbol: {security_id, segment, itype}} for any real NSE cash-market
+    equity not already covered by DHAN_SECURITY_MAP.
+
+    DTA-BROKER-MAP-FALLBACK-001: dhanhq SDK now returns a pandas DataFrame,
+    not a list of dicts -- `if not result:` on a DataFrame raises "ambiguous
+    truth value" (mirrors the same fix already applied to
+    data_feeds/dhan_fno_security_map.py). Both shapes are handled explicitly.
+    Never raises — returns {} on any unexpected shape.
+    """
+    if result is None:
+        rows = []
+    elif hasattr(result, "to_dict"):
+        rows = result.to_dict("records")
+    elif isinstance(result, list):
+        rows = result
+    else:
+        rows = []
+
+    extra: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        sym   = str(row.get("SEM_TRADING_SYMBOL", "") or "").upper()
+        exch  = str(row.get("SEM_EXM_EXCH_ID", "") or "").strip()
+        iname = str(row.get("SEM_INSTRUMENT_NAME", "") or "").strip()
+        sid   = str(row.get("SEM_SMST_SECURITY_ID", "") or "").strip()
+        if not (sym and sid) or sym in DHAN_SECURITY_MAP:
+            continue
+        # Only real NSE cash-market equities — mirrors the convention
+        # already used by DHAN_SECURITY_MAP's own entries (segment=
+        # "NSE_EQ"), not F&O/currency/index rows.
+        if exch != "NSE" or iname != "EQUITY":
+            continue
+        extra[sym] = {"security_id": sid, "segment": "NSE_EQ", "itype": "EQUITY"}
+    return extra
+
+
 class DhanFeed(BaseFeed):
     """
     Full Dhan API v2 feed adapter.
@@ -617,18 +657,7 @@ class DhanFeed(BaseFeed):
         def _load():
             try:
                 result = self._dhan.fetch_security_list("compact")
-                if not result or not isinstance(result, list):
-                    return
-                for row in result:
-                    sym = row.get("SEM_TRADING_SYMBOL", "").upper()
-                    seg = row.get("SEM_EXM_EXCH_ID", "NSE_EQ")
-                    sid = str(row.get("SEM_SMST_SECURITY_ID", ""))
-                    if sym and sid and sym not in DHAN_SECURITY_MAP:
-                        self._extra_map[sym] = {
-                            "security_id": sid,
-                            "segment":     seg,
-                            "itype":       row.get("SEM_INSTRUMENT_NAME", "EQUITY"),
-                        }
+                self._extra_map.update(_parse_extra_security_map(result))
                 log.info("[DhanFeed] Instrument list loaded — %d extra symbols.", len(self._extra_map))
             except Exception as exc:
                 log.debug("[DhanFeed] Instrument list load skipped: %s", exc)

@@ -2536,6 +2536,22 @@ class OrderManager:
         _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
         _meta = _DSM.get(_sym)
         if not _meta:
+            # DTA-BROKER-MAP-FALLBACK-001: the static DHAN_SECURITY_MAP only
+            # hand-covers ~90 large-cap symbols, but the scanner universe was
+            # expanded to 573 liquidity-ranked symbols (DTA-UNIVERSE-
+            # EXPANSION-001) — any of the ~343 newly added symbols (e.g.
+            # BELRISE, confirmed live 2026-09-17) would always be blocked
+            # here even though DhanFeed's own live instrument list already
+            # resolves them via its dynamic _extra_map (populated from
+            # dhan.fetch_security_list() at connect time — see
+            # data_feeds/dhan_feed.py's own _lookup(), which already checks
+            # both). Fall back to that same live map before giving up.
+            try:
+                from data_feeds import get_feed_manager
+                _meta = get_feed_manager().dhan._extra_map.get(_sym)
+            except Exception:
+                _meta = None
+        if not _meta:
             log.error(
                 "[OrderManager] [MISSING_DHAN_MAPPING] symbol=%s not in DHAN_SECURITY_MAP"
                 " — order blocked. Add entry to data_feeds/dhan_feed.py.",
