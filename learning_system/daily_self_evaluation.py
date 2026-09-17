@@ -645,8 +645,13 @@ class DailyAISelfEvaluator:
             f"[ Grade: {result.grade} ]",
         ]
 
-        # Governance violation banner (shown whenever GC score is 0)
-        if result.governance_compliance == 0.0:
+        # Governance violation banner — only when there were actual trades to
+        # evaluate. DTA-GOV-VIOLATION-FALSE-ALARM-001: on a zero-trade day the
+        # early-return path leaves EVERY score dimension (including
+        # governance_compliance) at its dataclass default of 0.0 -- that is
+        # "nothing was computed", not a real violation, and must never be
+        # reported as one.
+        if result.total_trades > 0 and result.governance_compliance == 0.0:
             lines.append(
                 "  ⚠️ Governance Violation: Entry outside approved execution window."
             )
@@ -755,7 +760,10 @@ class DailyAISelfEvaluator:
                 f"━━━━━━━━━━━━━━━━━━━━━\n"
                 f"<b>Overall : {result.overall_score:.1f}/10  [{result.grade}]</b>"
             )
-            if result.governance_compliance == 0.0:
+            # DTA-GOV-VIOLATION-FALSE-ALARM-001: see render()'s matching fix —
+            # a zero-trade day must never show this banner (every dimension
+            # defaults to 0.0 in that case, none of it a real violation).
+            if result.total_trades > 0 and result.governance_compliance == 0.0:
                 msg += (
                     f"\n⚠️ <b>Governance Violation</b>: Entry outside approved"
                     f" execution window (09:45–14:30)."

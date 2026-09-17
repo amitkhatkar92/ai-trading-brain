@@ -5875,6 +5875,15 @@ class MasterOrchestrator:
                 get_performance_tracker as _get_pt,
             )
             _sl = _get_sl()
+            # DTA-STABILITY-STALE-READ-001: close_session() must run BEFORE
+            # this read, not ~120 lines later as it did previously -- reading
+            # streak pre-close reported yesterday's (not-yet-updated) value,
+            # so an operator could see "53/10 BASELINE CONFIRMED" in this EOD
+            # summary and then "Day 0 of 10" moments later in the separate
+            # Stability Check message, the same session having reset the
+            # streak in between. Closing here means both messages now report
+            # the same, final, already-decided value for today.
+            _sl.close_session()
             _stab_streak   = _sl.streak
             _stab_required = _sl.required
             _off_trades    = sum(
@@ -6004,10 +6013,14 @@ class MasterOrchestrator:
             log.warning("[TradeAnalytics] EOD report failed: %s", _pa_exc)
 
         # ── Stability Ledger (two-ledger baseline confirmation) ────────────
+        # DTA-STABILITY-STALE-READ-001: close_session() already ran earlier
+        # in this same EOD cycle (see the EOD Notification block above) so
+        # this message reports the identical, already-finalised value -- it
+        # must NOT call close_session() again (that would double-increment
+        # or double-reset the streak for a single session).
         try:
             from learning_system.strategy_performance_tracker import get_stability_ledger
             _stability = get_stability_ledger()
-            _sess_result = _stability.close_session()
             log.info("[EOD] %s", _stability.status_summary())
             if self.notifier:
                 self.notifier.market_alert(

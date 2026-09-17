@@ -238,7 +238,22 @@ class NotifierManager:
         chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
         self._telegram = TelegramNotifier(token, chat_id)
         self._telegram.start()
-        self._enabled  = bool(token and chat_id)
+        # DTA-TEST-ALERT-LEAK-001: pytest sets PYTEST_CURRENT_TEST for the
+        # full duration of every test run. A real, credentialed developer
+        # .env (needed for other local/manual testing) plus a test that
+        # legitimately exercises a real failure path (e.g. RiskGuardian's
+        # corrupt-state-file recovery) was sending genuine Telegram alerts
+        # to the production chat from local `pytest` runs -- confirmed live
+        # 2026-09-17 (a false "Trading halted" alert from
+        # test_T072_corrupt_state_file_fails_closed, with zero real effect
+        # on the actual VPS system). Never send real alerts while under test.
+        _under_pytest = bool(os.getenv("PYTEST_CURRENT_TEST"))
+        self._enabled  = bool(token and chat_id) and not _under_pytest
+        if _under_pytest and token and chat_id:
+            log.warning(
+                "[NotifierManager] Real Telegram credentials detected under "
+                "pytest — alerts suppressed for this test run."
+            )
         # Alert deduplication — fingerprint-based with per-category cooldown.
         # _alert_sent[fingerprint] = wall-clock timestamp (time.time()) of last send.
         # _category_state[category] = last fingerprint sent, or "CLEAR" when recovered.
