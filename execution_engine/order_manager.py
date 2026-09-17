@@ -4531,6 +4531,38 @@ class OrderManager:
                     "removed phantom position.",
                     rec.symbol, oid, rec.fill_status,
                 )
+                continue
+            # DTA-STARTUP-PHANTOM-POSITION-001: order-level endpoints
+            # (get_order_by_id / get_order_list) are day-scoped and can
+            # NEVER resolve a cross-day order — fill_status stays stuck at
+            # API_ERROR/UNRESOLVED forever on every restart. Apply the same
+            # broker-position cross-check reconcile_pending_orders() already
+            # uses (DTA-COALINDIA-RECONCILE-001), here at startup too, so a
+            # stale prior-day journal-restored order doesn't sit as a
+            # phantom "open" position for the whole session before the
+            # first mid-cycle reconcile catches it.
+            if (
+                rec.fill_status not in ("FILLED", "PARTIALLY_FILLED")
+                and rec.placed_at
+                and rec.placed_at.date() < datetime.now().date()
+                and self._broker_confirms_no_open_position(rec.symbol)
+            ):
+                self._orders.pop(oid, None)
+                self._portfolio.positions.pop(rec.symbol, None)
+                if self._trade_monitor is not None:
+                    try:
+                        self._trade_monitor.deregister(oid)
+                    except Exception as _tm_exc:
+                        log.debug(
+                            "[StartupReconcile] TradeMonitor deregister failed: %s",
+                            _tm_exc,
+                        )
+                log.warning(
+                    "[StartupReconcile] %s %s stuck since %s — broker "
+                    "get_positions() confirms NO open position. Phantom "
+                    "position removed at startup.",
+                    rec.symbol, oid, rec.placed_at.date().isoformat(),
+                )
         if reconciled:
             log.info(
                 "[StartupReconcile] Reconciled %d order(s) at startup. "
