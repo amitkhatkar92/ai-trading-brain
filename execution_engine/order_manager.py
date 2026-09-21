@@ -4383,7 +4383,7 @@ class OrderManager:
                         pass
                     if event == "OPEN":
                         opened[oid] = row
-                    elif event in ("CLOSE", "SESSION_EXPIRED", "REJECTED"):
+                    elif event in ("CLOSE", "CANCELLED", "SESSION_EXPIRED", "REJECTED"):
                         closed.add(oid)
                         closed_rows[oid] = row  # D-003: keep for cooldown restore
         except Exception as exc:
