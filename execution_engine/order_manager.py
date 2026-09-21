@@ -1432,6 +1432,16 @@ class OrderManager:
             _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
             _meta = _DSM.get(_sym)
             if not _meta:
+                # DTA-BROKER-MAP-FALLBACK-001: same dynamic-map fallback as
+                # _broker_place() — the static map only covers ~90 large
+                # caps, the expanded 573-symbol universe (e.g. NIFTYBEES,
+                # BELRISE) resolves only via DhanFeed's live _extra_map.
+                try:
+                    from data_feeds import get_feed_manager
+                    _meta = get_feed_manager().dhan._extra_map.get(_sym)
+                except Exception:
+                    _meta = None
+            if not _meta:
                 log.info(
                     "[BrokerPositionCheckDiag] symbol=%s early_exit=NO_SECURITY_MAP_ENTRY",
                     symbol,
@@ -1511,6 +1521,14 @@ class OrderManager:
                             self._trade_monitor.deregister(oid)
                         except Exception as _tm_exc:
                             log.debug("[PendingReconcile] TradeMonitor deregister failed: %s", _tm_exc)
+                    # DTA-CANCELLED-JOURNAL-RESTORE-001: persist the closure
+                    # back to the journal — without this, the next restart's
+                    # _restore_from_live_journal() sees only the original
+                    # OPEN row (no matching CLOSE/CANCELLED row) and
+                    # resurrects this same already-resolved order forever.
+                    self._append_live_journal(
+                        "CANCELLED", rec, extra={"reason": "broker_confirmed_" + rec.fill_status.lower()}
+                    )
                     log.warning(
                         "[PendingReconcile] %s %s resolved as %s — "
                         "phantom position removed.",
@@ -1532,6 +1550,11 @@ class OrderManager:
                         except Exception as _tm_exc:
                             log.debug("[PendingReconcile] TradeMonitor deregister failed: %s", _tm_exc)
                     rec.fill_status = "BROKER_NO_POSITION_FOUND"
+                    # DTA-CANCELLED-JOURNAL-RESTORE-001: see note above — persist
+                    # so this order is never resurrected on the next restart.
+                    self._append_live_journal(
+                        "CANCELLED", rec, extra={"reason": "broker_confirmed_no_position"}
+                    )
                     log.warning(
                         "[PendingReconcile] %s %s stuck in %s since %s — broker "
                         "get_positions() confirms NO open position (likely "
@@ -4526,6 +4549,11 @@ class OrderManager:
             if rec.fill_status in ("REJECTED", "CANCELLED"):
                 self._orders.pop(oid, None)
                 self._portfolio.positions.pop(rec.symbol, None)
+                # DTA-CANCELLED-JOURNAL-RESTORE-001: persist so this order is
+                # never resurrected by _restore_from_live_journal() again.
+                self._append_live_journal(
+                    "CANCELLED", rec, extra={"reason": "broker_confirmed_" + rec.fill_status.lower()}
+                )
                 log.warning(
                     "[StartupReconcile] %s order %s has broker status %s — "
                     "removed phantom position.",
@@ -4557,6 +4585,11 @@ class OrderManager:
                             "[StartupReconcile] TradeMonitor deregister failed: %s",
                             _tm_exc,
                         )
+                # DTA-CANCELLED-JOURNAL-RESTORE-001: persist so this order is
+                # never resurrected by _restore_from_live_journal() again.
+                self._append_live_journal(
+                    "CANCELLED", rec, extra={"reason": "broker_confirmed_no_position"}
+                )
                 log.warning(
                     "[StartupReconcile] %s %s stuck since %s — broker "
                     "get_positions() confirms NO open position. Phantom "

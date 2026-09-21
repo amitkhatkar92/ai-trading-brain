@@ -44,6 +44,11 @@ def _make_om_live_with_broker(broker_mock):
         patch.object(OrderManager, "_reconcile_sim_paper_artifacts", return_value=None),
     ):
         om = OrderManager()
+    # DTA-CANCELLED-JOURNAL-RESTORE-001: reconcile_startup_fills() now
+    # persists a CANCELLED event on phantom-position cleanup — instance-level
+    # override (outlives the constructor's 'with' block) so tests never
+    # write to the real local live_orders.jsonl.
+    om._append_live_journal = MagicMock()
     return om
 
 
