@@ -1253,8 +1253,8 @@ class OrderManager:
                 log.error("[OrderManager] record_trade_result failed for %s: %s", order_id, _rg_exc)
         return True
 
-    def close_all_positions(self):
-        log.warning("[OrderManager] ⚠ Closing ALL positions.")
+    def close_all_positions(self, reason: str = "emergency_close"):
+        log.warning("[OrderManager] ⚠ Closing ALL positions. reason=%s", reason)
         for oid, rec in list(self._orders.items()):
             if rec.status == "open":
                 # Exit price hierarchy (safest first):
@@ -1292,7 +1292,7 @@ class OrderManager:
                 # _skip_reasons) so these synthetic zero-PnL rows never pollute
                 # Win Rate / Expectancy / Sharpe calculations.
                 _was_monitored = _pos is not None and getattr(_pos, "has_live_ltp", False)
-                _close_reason  = "emergency_close" if _was_monitored else "ORPHAN_CLOSE"
+                _close_reason  = reason if _was_monitored else "ORPHAN_CLOSE"
                 if not self.close_position(oid, _exit_px, reason=_close_reason):
                     log.warning(
                         "[OrderManager] Limit expiry close failed for %s %s — "

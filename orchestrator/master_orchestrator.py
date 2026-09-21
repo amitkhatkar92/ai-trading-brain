@@ -8250,6 +8250,87 @@ class MasterOrchestrator:
         except Exception as _exc:
             log.warning("[DhanReadiness09:15] Probe exception: %s", _exc)
 
+    def _do_eod_intraday_squareoff(self) -> None:
+        """
+        Called at 15:05 IST — 25 min before NSE close, ahead of the broker's
+        own MIS/Intraday auto square-off window.
+
+        ROOT CAUSE (DTA-EOD-INTRADAY-SQUAREOFF-001, found 2026-09-21):
+        every order this system places is sent to Dhan with productType=
+        INTRADAY (see execution_engine/order_manager.py::_broker_place() —
+        never overridden). That product type is a broker/NSE-mandated
+        same-day-only margin product: Dhan WILL forcibly square it off
+        before close regardless of anything this system decides — but that
+        forced close happens outside this system's own order-placement path
+        (confirmed live: correlationId="NA" on the broker's own close order,
+        vs a real correlationId on our own entry order), so it is never
+        logged to live_orders.jsonl or ct_events, and it happens at whatever
+        price/moment the broker's own risk engine picks — not ours. A real
+        position (ANANDRATHI, 2026-09-21) was auto-squared by Dhan at
+        15:11:37, far short of its target, with zero record of the exit
+        anywhere in this system.
+
+        Fix: proactively close any still-open, non-CARRY (ordinary intraday)
+        position ourselves, a few minutes before Dhan's own window, through
+        the normal close_position() path — so the exit is properly priced,
+        logged, and fed into learning/risk exactly like every other system-
+        driven exit. Positions explicitly tagged CARRY (multi-day holds) are
+        never touched here — same exclusion GAP-007 already uses for the
+        paper-mode EOD force-close below.
+        """
+        from config import is_nse_holiday
+        if is_nse_holiday():
+            return
+        import config as _cfg_sq
+        if getattr(_cfg_sq, "PAPER_TRADING", False):
+            return  # paper mode already handled by GAP-007 at 15:30
+        try:
+            _orders = self.order_manager.get_open_orders()
+            _intraday = [o for o in _orders if getattr(o, "order_type", "") != "CARRY"]
+            if not _intraday:
+                log.info("[EODSquareOff] 15:05 — no open non-CARRY positions. Nothing to do.")
+                return
+            log.warning(
+                "[EODSquareOff] Square-off (before Dhan's own auto square-off): "
+                "closing %d non-CARRY position(s).", len(_intraday),
+            )
+            closed = []
+            for rec in _intraday:
+                try:
+                    from data_feeds import get_feed_manager as _gfm_sq
+                    _IDX_SQ = {"NIFTY", "BANKNIFTY", "INDIAVIX"}
+                    _sym_sq = rec.symbol if rec.symbol in _IDX_SQ else f"{rec.symbol}.NS"
+                    _q_sq = _gfm_sq().get_quote(_sym_sq)
+                    _ltp_sq = float(_q_sq.ltp) if (_q_sq and _q_sq.ltp and _q_sq.ltp > 0) else rec.entry_price
+                except Exception:
+                    _ltp_sq = rec.entry_price
+                try:
+                    if self.order_manager.close_position(
+                        rec.order_id, _ltp_sq, reason="EOD_INTRADAY_SQUAREOFF",
+                    ):
+                        closed.append((rec.symbol, _ltp_sq))
+                        log.info("[EODSquareOff] Closed %s @ %.2f", rec.symbol, _ltp_sq)
+                    else:
+                        log.error(
+                            "[EODSquareOff] Exit FAILED for %s — position may still be "
+                            "open when Dhan's own auto square-off fires (unlogged).",
+                            rec.symbol,
+                        )
+                except Exception as _sq_close_exc:
+                    log.error("[EODSquareOff] Could not close %s: %s", rec.symbol, _sq_close_exc)
+            if closed:
+                try:
+                    from notifications import get_notifier
+                    lines = "\n".join(f"  {s} @ {p:.2f}" for s, p in closed)
+                    get_notifier().send_alert(
+                        f"🔔 <b>[EOD Square-Off]</b> Closed {len(closed)} intraday "
+                        f"position(s) at 15:05 (ahead of broker auto square-off):\n{lines}"
+                    )
+                except Exception:
+                    pass
+        except Exception as _sq_exc:
+            log.error("[EODSquareOff] Square-off block failed: %s", _sq_exc)
+
     def _market_close_notify(self) -> None:
         """
         Called at 15:30 IST when NSE market closes.
@@ -8546,6 +8627,10 @@ class MasterOrchestrator:
         # ── Market open / close notifications ─────────────────────────
         sched_lib.every().day.at("09:15").do(self._market_open_notify)
         sched_lib.every().day.at("09:15").do(self._dhan_equity_readiness_probe_0915)  # FRZ-001
+        # DTA-EOD-INTRADAY-SQUAREOFF-001: system-controlled close of ordinary
+        # (non-CARRY) intraday positions, timed ahead of Dhan's own MIS auto
+        # square-off (empirically observed firing as early as 15:11:37).
+        sched_lib.every().day.at("15:05").do(self._do_eod_intraday_squareoff)
         sched_lib.every().day.at("15:30").do(self._market_close_notify)  # 15:30 IST = NSE close
 
         # ── EOD learning ───────────────────────────────────────────────
