@@ -258,4 +258,56 @@ def test_t14_no_automatic_live_merge_caller():
     bridge_src = open("hkap/hkap_kde_bridge.py", encoding="utf-8").read()
     assert "request_live_merge" not in orch_src
     assert "request_live_merge" not in bridge_src
-    assert "evaluate_discoveries_for_idr_evidence" in bridge_src
+
+
+def test_t15_root_cause_fix_creates_dna_when_missing_from_live_idr(_isolated_store):
+    """
+    ROOT-CAUSE FIX regression guard: add_evidence() raises IDRNotFoundError
+    for any dna_id never previously save()'d -- the real, always-true state
+    of a genuinely new discovery against a fresh/empty live IDR. Before the
+    fix, _do_live_merge() never called save() first, so every real
+    first-time auto-merge silently failed (caught, logged, SHADOW forever).
+    A bare, unconfigured MagicMock().get() does NOT raise (it just returns
+    another MagicMock), which is why T05-T09 above never caught this --
+    this test explicitly simulates the real "not found" condition.
+    """
+    from market_learning.idr_models import IDRNotFoundError
+
+    d1 = _discovery(dna_ids=["feat_new::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_new::UP"], overall=0.82)
+
+    mock_instance = MagicMock()
+    mock_instance.get.side_effect = IDRNotFoundError("not found")
+    mock_instance.save = MagicMock()
+    mock_instance.add_evidence = MagicMock()
+
+    with patch("market_learning.idr_repository.IDRRepository", return_value=mock_instance):
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021, 2022])
+
+    mock_instance.save.assert_called_once()
+    saved_dna = mock_instance.save.call_args[0][0]
+    assert saved_dna.id == "feat_new::UP"
+    assert saved_dna.confidence <= bridge.MAX_EVIDENCE_CONFIDENCE
+    mock_instance.add_evidence.assert_called_once()
+    history = bridge.get_merge_history()
+    assert history[0]["status"] == bridge.STATUS_ACTIVE
+
+
+def test_t16_existing_dna_skips_save(_isolated_store):
+    """When the dna_id already exists in the live IDR, save() must NOT be
+    called again -- only add_evidence() appends the new evidence."""
+    d1 = _discovery(dna_ids=["feat_existing::UP"], overall=0.80)
+    d2 = _discovery(dna_ids=["feat_existing::UP"], overall=0.82)
+
+    mock_instance = MagicMock()
+    mock_instance.get.return_value = MagicMock()  # already exists, no raise
+    mock_instance.save = MagicMock()
+    mock_instance.add_evidence = MagicMock()
+
+    with patch("market_learning.idr_repository.IDRRepository", return_value=mock_instance):
+        bridge.evaluate_discoveries_for_idr_evidence([d1], years_used=[2020, 2021])
+        bridge.evaluate_discoveries_for_idr_evidence([d2], years_used=[2020, 2021, 2022])
+
+    mock_instance.save.assert_not_called()
+    mock_instance.add_evidence.assert_called_once()

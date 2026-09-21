@@ -54,9 +54,18 @@ Return current program status.
 
 Return all loaded year packages (completed + failed).
 
-#### `request_live_merge() -> None`
+#### `request_live_merge(dna_id: str, operator: str = "manual") -> bool`
 
-Always raises `HKAPError`. The live IDR merge requires manual SD review.
+Manual override / escape hatch only. Forces an immediate merge of one
+already-proposed dna_id into the live IDR, bypassing the reproducibility
+wait. Returns `False` if no pending SHADOW proposal exists for `dna_id`.
+
+NOT the primary path: `run_synthesis()` already automatically evaluates
+every cross-year DNA record via `hkap_idr_evidence_bridge.py` and merges
+any pattern that clears its evidence bar (>=75% survival across >=4
+years, STABLE/STRENGTHENING lifecycle, reconfirmed across >=2 synthesis
+runs with genuinely new year coverage, non-degrading) with zero human
+step. See `hkap/hkap_idr_evidence_bridge.py` for the full gate.
 
 ---
 

@@ -224,10 +224,48 @@ def _meets_auto_promotion_criteria(observations: List[Dict[str, Any]]) -> bool:
 def _do_live_merge(dna_id: str, record: Dict[str, Any]) -> bool:
     try:
         from market_learning.idr_repository import IDRRepository
-        from market_learning.idr_models import DNAEvidence
+        from market_learning.idr_models import DNAEvidence, InstitutionalDNA, IDRNotFoundError
 
         latest = record["observations"][-1]
         repo = IDRRepository()
+
+        # ROOT-CAUSE FIX: add_evidence() raises IDRNotFoundError for any
+        # dna_id never previously save()'d into the live IDR -- which is
+        # the ONLY realistic case for a genuinely new discovery. Without
+        # this, every first-time auto-merge attempt silently failed
+        # (caught by the except below, logged at debug) and the record
+        # stayed SHADOW forever, never actually reaching IDRRepository.
+        try:
+            repo.get(dna_id)
+        except IDRNotFoundError:
+            bounded = round(min(latest["overall_score"], MAX_EVIDENCE_CONFIDENCE), 4)
+            now = datetime.now(timezone.utc).isoformat()
+            dna = InstitutionalDNA(
+                id=dna_id,
+                feature_name=dna_id,
+                direction="",
+                category="CONSENSUS",
+                lifecycle="DISCOVERED",
+                version=0,
+                consensus_score=bounded,
+                confidence=bounded,
+                effect_size=bounded,
+                regime_consistency=0.0,
+                sector_consistency=0.0,
+                temporal_stability=bounded,
+                replication_frequency=bounded,
+                evidence_count=len(record["observations"]),
+                regime_counts={},
+                last_seen=now,
+                study_id=f"KDE-{latest['discovery_id']}",
+                source=f"kde_idr_evidence_bridge:{record['scheme_id']}",
+                created_at=now,
+                updated_at=now,
+                is_current=True,
+                metadata={"scheme_id": record["scheme_id"]},
+            )
+            repo.save(dna, study_id=f"KDE-{latest['discovery_id']}", operator="auto:kde_idr_evidence_bridge")
+
         ev = DNAEvidence(
             dna_id=dna_id,
             dna_version=0,

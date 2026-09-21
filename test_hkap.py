@@ -555,9 +555,10 @@ def test_hkap_engine() -> None:
     ok("T099 run_year with invalid year raises HKAPError",
        _raises(lambda: engine.run_year(2019), HKAPError))
 
-    # request_live_merge always raises
-    ok("T100 request_live_merge raises HKAPError",
-       _raises(engine.request_live_merge, HKAPError))
+    # request_live_merge is now a real, evidence-checked manual override --
+    # returns False (never raises) when no pending SHADOW proposal exists
+    ok("T100 request_live_merge returns False for unknown dna_id",
+       engine.request_live_merge("NO-SUCH-DNA-ID") is False)
 
 
 # ─── utility ─────────────────────────────────────────────────────────────────

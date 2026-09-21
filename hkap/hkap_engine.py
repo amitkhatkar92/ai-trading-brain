@@ -159,6 +159,14 @@ class HKAPEngine:
         analyzer = CrossYearAnalyzer()
         dna_records, edge_records = analyzer.analyze(completed)
 
+        # Automatic, evidence-gated IDR promotion (see hkap_idr_evidence_bridge.py
+        # module docstring). Never blocks synthesis or report generation.
+        try:
+            from .hkap_idr_evidence_bridge import evaluate_cross_year_records_for_idr_evidence
+            evaluate_cross_year_records_for_idr_evidence(dna_records)
+        except Exception as exc:
+            log.debug("[HKAP] IDR evidence evaluation skipped: %s", exc)
+
         gen     = HKAPReportGenerator(self._config)
         summary = self._build_summary([])
         reports = gen.generate_synthesis_reports(
@@ -217,19 +225,20 @@ class HKAPEngine:
         """Return all completed year packages (read-only copy)."""
         return dict(self._results)
 
-    def request_live_merge(self) -> None:
+    def request_live_merge(self, dna_id: str, operator: str = "manual") -> bool:
         """
-        Gate for merging historical knowledge into the live IDR.
+        Manual override / escape hatch for merging one specific dna_id into
+        the live IDR immediately, bypassing the reproducibility wait.
 
-        Raises HKAPError: always — merge is not automatic.
-        The user must explicitly call ScientificDirector.approve_study() to
-        initiate a merge.  This method exists solely to document the gating.
+        NOT the primary path: run_synthesis() already automatically
+        evaluates every cross-year DNA record via hkap_idr_evidence_bridge
+        and merges any pattern that clears its evidence bar with zero
+        human step. This method exists only for an operator who wants to
+        force one pattern live sooner. Returns False if no pending SHADOW
+        proposal exists for dna_id.
         """
-        raise HKAPError(
-            "Live IDR merge is not automatic. "
-            "Use ScientificDirector.approve_study() with a merge study plan "
-            "after reviewing FINAL_INSTITUTIONAL_KNOWLEDGE_RECOMMENDATION.md."
-        )
+        from .hkap_idr_evidence_bridge import request_live_merge as _rlm
+        return _rlm(dna_id, operator=operator)
 
     # ── internal ──────────────────────────────────────────────────────────
 

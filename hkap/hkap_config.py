@@ -52,7 +52,12 @@ class HKAPConfig:
         if self.merge_to_live_idr:
             raise ValueError(
                 "HKAPConfig.merge_to_live_idr must be False during HKAP run. "
-                "Use HKAPEngine.request_live_merge() for explicit SD-gated promotion."
+                "A single run/config flag can never blindly bulk-merge all"
+                " discovered DNA into the live IDR. Live promotion is handled"
+                " automatically, per-pattern, by hkap_idr_evidence_bridge.py's"
+                " evidence gate (called from run_synthesis()); use"
+                " HKAPEngine.request_live_merge(dna_id) only as a manual"
+                " override for one already-proposed pattern."
             )
         if not self.years:
             raise ValueError("HKAPConfig.years must not be empty.")

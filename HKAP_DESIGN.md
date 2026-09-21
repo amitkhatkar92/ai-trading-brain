@@ -252,14 +252,23 @@ After all years complete, `FINAL_INSTITUTIONAL_KNOWLEDGE_RECOMMENDATION.md`
 is generated with Tier 1 (unconditionally stable) and Tier 2 (strengthening)
 DNA recommended for promotion.
 
-The live merge is NOT automatic. It requires:
-1. All configured years to have status=COMPLETE
-2. Scientific Director review of the final recommendation document
-3. Explicit call to `HKAPEngine.request_live_merge()` — which always raises
-   `HKAPError` in V1.0, directing the operator to the manual process
+The live merge is automatic and evidence-gated (`hkap/hkap_idr_evidence_bridge.py`,
+called from `run_synthesis()`). A dna_id merges into the live IDR once ALL hold:
+1. Its `lifecycle_label` is `STABLE` or `STRENGTHENING` (never EMERGING/
+   WEAKENING/DISAPPEARING/SPORADIC)
+2. `survival_score >= 0.75` across `>= 4` years present
+3. It is independently reconfirmed across `>= 2` separate `run_synthesis()`
+   calls, each covering a genuinely different set of years
+4. No reconfirmation's survival_score drops by more than 0.05 vs the prior one
+
+No human names a dna_id for normal operation. Evidence written to the live
+record is bounded (confidence/effect_size capped at 0.30) so a single HKAP
+finding can never dominate a DNA record's aggregate confidence.
+`HKAPEngine.request_live_merge(dna_id)` remains only as a manual override
+to force one already-proposed pattern live sooner.
 
 This prevents accidental contamination of the live trading system with historical
-patterns that have not been reviewed.
+patterns that have not accumulated real, reproducible, non-degrading evidence.
 
 ---
 

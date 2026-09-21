@@ -49,6 +49,11 @@ from .hkap_kde_bridge        import (
     get_latest_discovery_run,
     get_discovery_run_history,
 )
+from .hkap_idr_evidence_bridge import (
+    evaluate_cross_year_records_for_idr_evidence,
+    get_pending_proposals as get_hkap_idr_pending_proposals,
+    get_merge_history as get_hkap_idr_merge_history,
+)
 
 __all__ = [
     # engine + config
@@ -80,4 +85,8 @@ __all__ = [
     "run_hkap_kde_discovery",
     "get_latest_discovery_run",
     "get_discovery_run_history",
+    # HKAP -> IDR automatic evidence bridge
+    "evaluate_cross_year_records_for_idr_evidence",
+    "get_hkap_idr_pending_proposals",
+    "get_hkap_idr_merge_history",
 ]
