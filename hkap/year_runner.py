@@ -296,7 +296,11 @@ class YearRunner:
                  self._year, processed, len(snapshot_dicts))
 
         # ── sync final consensus library to IDR ───────────────────────────
-        lib = dce.get_library() if hasattr(dce, "get_library") else None
+        # DTA-HKAP-IDR-SYNC-001: DNAConsensusEngine has no get_library() --
+        # real method is master_library() (persisted, read-only). The old
+        # `hasattr(dce, "get_library")` check was always False, so this
+        # whole sync step never even ran.
+        lib = dce.master_library() if hasattr(dce, "master_library") else None
         if lib:
             self._sync_library_to_idr(lib, idr, self._year)
 

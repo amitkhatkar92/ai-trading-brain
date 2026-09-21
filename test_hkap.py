@@ -446,6 +446,19 @@ def test_sync_library_to_idr() -> None:
         ok("T909 empty master_consensus syncs zero records",
            idr2.list_active() + idr2.list_retired() == [])
 
+    # T910: DNAConsensusEngine's real gating attribute (regression guard for
+    # the wiring bug -- _stage_mls used to check hasattr(dce, "get_library"),
+    # which never existed, so _sync_library_to_idr was never even called).
+    from market_learning.dna_consensus_engine import DNAConsensusEngine
+    with tempfile.TemporaryDirectory() as tmpdir3:
+        dce = DNAConsensusEngine(data_dir=str(Path(tmpdir3) / "consensus"))
+        ok("T910 DNAConsensusEngine has master_library (real gating attribute)",
+           hasattr(dce, "master_library"))
+        ok("T911 DNAConsensusEngine has no get_library (confirms old check was dead)",
+           not hasattr(dce, "get_library"))
+        ok("T912 master_library() returns a ConsensusLibrary with master_consensus attribute",
+           hasattr(dce.master_library(), "master_consensus"))
+
 
 def test_cross_year_analyzer() -> None:
     section("T076-T085  CrossYearAnalyzer")
