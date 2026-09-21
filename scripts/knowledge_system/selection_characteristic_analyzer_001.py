@@ -369,6 +369,44 @@ COMBINATIONS = [
         "conditions": [("rsi_14", "high"), ("mom_accel", "high")],
         "rule": lambda bands: bands["rsi_14"] == "high" and bands["mom_accel"] == "high",
     },
+    # DTA-HKAP-EVIDENCE-BRIDGE-001 (2026-09-21): the following 2 candidates
+    # are NOT blind/speculative -- both are real, repeated findings from
+    # HKAP's independent multi-year (2021-2026), full-universe (500 symbol)
+    # historical DNA discovery (see hkap/, data/hkap/reports/). HKAP found
+    # these as INSTITUTIONAL-grade (highest confidence tier) characteristics
+    # of each year's top-performing stocks, in years: rsi_14 (2022/2024/2025),
+    # mom_5d (2024/2025). Only the 2 HKAP findings that share BOTH a feature
+    # name AND a matching definition with this pipeline's own V3 feature set
+    # are bridged here -- HKAP's other real findings (breadth_contribution,
+    # rsi_5, bb_position, mom_1d, relative_to_52w_low) have no live V3
+    # equivalent computed today and are NOT bridged (would require new live
+    # feature engineering, a separate, larger, not-yet-approved task).
+    # HKAP's own discovery method is UP-biased (its "winner" concept =
+    # top-performing/rising stocks; it has no DOWN-specific "loser DNA"
+    # direction today -- same, already-documented gap as this pipeline's own
+    # fingerprint discovery, which also has no DOWN fingerprint yet).
+    # Bridging here means ONLY this: these 2 conditions become eligible for
+    # the SAME automatic discovery/promotion/live-eligibility pipeline as
+    # every other candidate in this list (Phase 7 auto-promotion -> Phase 8
+    # controlled-live-candidate bar -> Phase 9 bounded +0.3 confidence nudge)
+    # -- re-validated from scratch against THIS pipeline's own live/shadow
+    # evidence before ever influencing anything. No weight, confidence, or
+    # promotion decision is set here or anywhere by fiat -- everything below
+    # this point is earned exactly like every pre-existing candidate.
+    {
+        "name": "hkap_high_rsi14",
+        "label": "high 14-day RSI (HKAP multi-year finding: top performers "
+                  "consistently show higher RSI-14, 2022/2024/2025)",
+        "conditions": [("rsi_14", "high")],
+        "rule": lambda bands: bands["rsi_14"] == "high",
+    },
+    {
+        "name": "hkap_high_mom5d",
+        "label": "high 5-day momentum (HKAP multi-year finding: top "
+                  "performers consistently show higher mom_5d, 2024/2025)",
+        "conditions": [("mom_5d", "high")],
+        "rule": lambda bands: bands["mom_5d"] == "high",
+    },
 ]
 
 

@@ -12,15 +12,15 @@ ranking, or selected_final_5.
 
 WHAT THIS REPLACES: Phase 2D was a ONE-TIME, human-reviewed step — "take
 the single strongest Phase 2C finding". This module makes that decision
-continuously and automatically: every day, it re-evaluates ALL 5
-pre-specified, hypothesis-driven combinations
-(selection_characteristic_analyzer_001.COMBINATIONS) across BOTH
-directions (10 candidate-direction pairs total) against an explicit,
-pre-specified bar, and promotes any combo/direction that clears it into
-a persisted discovered-fingerprint store. NO blind combinatorial search
-is introduced — the candidate SET is still exactly the same 5
-pre-specified combinations that already existed; only the DECISION to
-promote one is now automatic and rule-based instead of manual.
+continuously and automatically: every day, it re-evaluates EVERY
+pre-specified, hypothesis-driven combination currently registered in
+selection_characteristic_analyzer_001.COMBINATIONS, across BOTH
+directions, against an explicit, pre-specified bar, and promotes any
+combo/direction that clears it into a persisted discovered-fingerprint
+store. NO blind combinatorial search is introduced — the candidate SET
+is always exactly the pre-specified combinations registered in that
+module (never a generated/brute-force search); only the DECISION to
+promote one is automatic and rule-based instead of manual.
 
 PROMOTION BAR (pre-specified, reuses already-established constants, not
 invented for this module):

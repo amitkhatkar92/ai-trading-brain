@@ -556,3 +556,69 @@ def test_new_combo_not_statically_excluded():
     from scripts.knowledge_system.fingerprint_discovery_001 import STATICALLY_REGISTERED
     assert ("high_rsi_and_high_mom_accel", "UP") not in STATICALLY_REGISTERED
     assert ("high_rsi_and_high_mom_accel", "DOWN") not in STATICALLY_REGISTERED
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-HKAP-EVIDENCE-BRIDGE-001 (2026-09-21): 2 real, repeated HKAP multi-year
+# (2021-2026, full 500-symbol universe) findings bridged as new candidates --
+# hkap_high_rsi14 (rsi_14 high, found 2022/2024/2025) and hkap_high_mom5d
+# (mom_5d high, found 2024/2025). Only bridged because both feature names
+# AND definitions already match this pipeline's own V3 feature set exactly
+# -- no new weight/confidence is set here, they go through the SAME
+# automatic discovery/promotion/live-eligibility gate as every other combo.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_hkap_combos_registered_in_combinations():
+    from scripts.knowledge_system.selection_characteristic_analyzer_001 import COMBINATIONS
+    names = [c["name"] for c in COMBINATIONS]
+    assert "hkap_high_rsi14" in names
+    assert "hkap_high_mom5d" in names
+    assert len(names) == len(set(names)), "no duplicate combo names"
+
+
+def test_hkap_high_rsi14_rule():
+    combo = next(
+        c for c in __import__(
+            "scripts.knowledge_system.selection_characteristic_analyzer_001", fromlist=["COMBINATIONS"]
+        ).COMBINATIONS
+        if c["name"] == "hkap_high_rsi14"
+    )
+    assert combo["rule"]({"rsi_14": "high"}) is True
+    assert combo["rule"]({"rsi_14": "moderate"}) is False
+    assert combo["rule"]({"rsi_14": "low"}) is False
+
+
+def test_hkap_high_mom5d_rule():
+    combo = next(
+        c for c in __import__(
+            "scripts.knowledge_system.selection_characteristic_analyzer_001", fromlist=["COMBINATIONS"]
+        ).COMBINATIONS
+        if c["name"] == "hkap_high_mom5d"
+    )
+    assert combo["rule"]({"mom_5d": "high"}) is True
+    assert combo["rule"]({"mom_5d": "moderate"}) is False
+    assert combo["rule"]({"mom_5d": "low"}) is False
+
+
+def test_hkap_combos_evaluated_automatically_for_both_directions():
+    """Same guarantee as the existing combo: zero further wiring needed --
+    run_discovery_silent() iterates the live COMBINATIONS list."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import run_discovery_silent
+    with patch("scripts.knowledge_system.fingerprint_discovery_001.load_records", return_value=[]):
+        results = run_discovery_silent()
+    names_by_direction = {(r["name"], r["direction"]) for r in results}
+    assert ("hkap_high_rsi14", "UP") in names_by_direction
+    assert ("hkap_high_rsi14", "DOWN") in names_by_direction
+    assert ("hkap_high_mom5d", "UP") in names_by_direction
+    assert ("hkap_high_mom5d", "DOWN") in names_by_direction
+
+
+def test_hkap_combos_not_statically_excluded():
+    """Both new candidates must remain eligible for automatic promotion --
+    neither is a special-cased permanent exclusion."""
+    from scripts.knowledge_system.fingerprint_discovery_001 import STATICALLY_REGISTERED
+    assert ("hkap_high_rsi14", "UP") not in STATICALLY_REGISTERED
+    assert ("hkap_high_rsi14", "DOWN") not in STATICALLY_REGISTERED
+    assert ("hkap_high_mom5d", "UP") not in STATICALLY_REGISTERED
+    assert ("hkap_high_mom5d", "DOWN") not in STATICALLY_REGISTERED
+
