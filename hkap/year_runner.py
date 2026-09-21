@@ -351,21 +351,47 @@ class YearRunner:
         )
 
     def _sync_library_to_idr(self, lib: Any, idr: Any, year: int) -> None:
-        """Write ConsensusDNA records from ConsensusLibrary to the IDR."""
+        """Write ConsensusDNA records from ConsensusLibrary to the IDR.
+
+        NOTE (fixed 2026-09-21): ConsensusLibrary has no `dna` attribute --
+        real fields are `all_consensus`/`master_consensus` (List[ConsensusDNA]),
+        and ConsensusDNA has no `id`/`category`/`lifecycle`/`confidence`/
+        `effect_size` -- real fields are `consensus_id`/`direction`/
+        `consensus_state`/`consensus_score`/`all_observations`. The mismatch
+        meant `hasattr(lib, "dna")` was always False, so zero records were
+        EVER synced to IDR across every HKAP run to date. Uses
+        master_consensus (INSTITUTIONAL-state only, the highest-confidence
+        tier) rather than all_consensus, so only proven-consistent patterns
+        become DNA records.
+        """
         from market_learning.idr_models import InstitutionalDNA
         try:
-            items = lib.dna if hasattr(lib, "dna") else {}
-            for key, cdna in items.items():
+            items = getattr(lib, "master_consensus", None) or []
+            for cdna in items:
                 try:
+                    direction_val = (
+                        cdna.direction.value if hasattr(cdna.direction, "value")
+                        else str(cdna.direction)
+                    )
+                    # SeparationDirection only models winner-vs-rest and
+                    # neutral-vs-extremes separation -- no LOSER-specific
+                    # direction exists in this discovery engine today.
+                    category = "WINNER" if direction_val.startswith("WINNERS_") else "NEUTRAL"
+                    observations = getattr(cdna, "all_observations", None) or []
+                    effect_vals = [
+                        float(o.get("effect_abs", 0.0)) for o in observations
+                        if isinstance(o, dict)
+                    ]
+                    avg_effect_size = sum(effect_vals) / len(effect_vals) if effect_vals else 0.0
                     idna = InstitutionalDNA(
-                        id                    = cdna.id,
+                        id                    = cdna.consensus_id,
                         feature_name          = cdna.feature_name,
-                        direction             = cdna.direction.value if hasattr(cdna.direction, "value") else str(cdna.direction),
-                        category              = cdna.category.value  if hasattr(cdna.category,  "value") else str(cdna.category),
-                        lifecycle             = cdna.lifecycle.value  if hasattr(cdna.lifecycle,  "value") else str(cdna.lifecycle),
+                        direction             = direction_val,
+                        category              = category,
+                        lifecycle             = cdna.consensus_state.value if hasattr(cdna.consensus_state, "value") else str(cdna.consensus_state),
                         consensus_score       = float(getattr(cdna, "consensus_score", 0.0)),
-                        confidence            = float(getattr(cdna, "confidence", 0.0)),
-                        effect_size           = float(getattr(cdna, "effect_size", 0.0)),
+                        confidence            = float(getattr(cdna, "consensus_score", 0.0)),
+                        effect_size           = avg_effect_size,
                         regime_consistency    = float(getattr(cdna, "regime_consistency", 0.0)),
                         sector_consistency    = float(getattr(cdna, "sector_consistency", 0.0)),
                         temporal_stability    = float(getattr(cdna, "temporal_stability", 0.0)),
@@ -391,7 +417,11 @@ class YearRunner:
         """Read the year's IDR and build a YearDNASnapshot."""
         from market_learning.idr_repository import IDRRepository
         idr = IDRRepository(db_path=idr_path)
-        all_dna  = idr.list_all() if hasattr(idr, "list_all") else []
+        # DTA-HKAP-IDR-SYNC-001: IDRRepository has no list_all() -- real
+        # accessors are list_active() (is_current, lifecycle != RETIRED) and
+        # list_retired() (is_current, lifecycle == RETIRED); combined this
+        # is every current DNA record regardless of lifecycle state.
+        all_dna  = idr.list_active() + idr.list_retired()
         winner   = [d.id for d in all_dna if getattr(d, "category", "") in ("WINNER", "winner_dna")]
         loser    = [d.id for d in all_dna if getattr(d, "category", "") in ("LOSER", "loser_dna")]
         neutral  = [d.id for d in all_dna if d.id not in winner and d.id not in loser]

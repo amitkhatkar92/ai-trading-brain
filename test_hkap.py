@@ -346,6 +346,107 @@ def test_year_runner_forward_only() -> None:
        issubclass(FutureDataLeakError, HKAPError))
 
 
+def test_sync_library_to_idr() -> None:
+    """
+    DTA-HKAP-IDR-SYNC-001: ConsensusLibrary has no `dna` attribute (real
+    fields: all_consensus/master_consensus) and ConsensusDNA has no
+    id/category/lifecycle/confidence/effect_size (real fields:
+    consensus_id/direction/consensus_state/consensus_score/
+    all_observations) -- the old code's `hasattr(lib, "dna")` was always
+    False, so ZERO records were ever synced to the IDR across every HKAP
+    run. Verifies the fix with real model objects (no mocks).
+    """
+    section("T900-T907  YearRunner._sync_library_to_idr — real DNA sync (DTA-HKAP-IDR-SYNC-001)")
+    from hkap.year_runner import YearRunner
+    from market_learning.dna_consensus_models import (
+        ConsensusDNA, ConsensusLibrary, ConsensusState, ConsensusLevel,
+    )
+    from market_learning.dna_discovery_models import SeparationDirection
+    from market_learning.idr_repository import IDRRepository
+    import tempfile, os as _os
+
+    def _make_consensus_dna(consensus_id, feature_name, direction, state,
+                             score=0.75, effect_vals=(1.5, 2.0, 1.0)):
+        return ConsensusDNA(
+            consensus_id=consensus_id, feature_name=feature_name,
+            direction=direction, consensus_state=state,
+            consensus_score=score, replication_frequency=0.7,
+            evidence_count=len(effect_vals), temporal_stability=0.8,
+            regime_consistency=0.6, sector_consistency=0.6,
+            confidence_trend=0.0, feature_persistence=0.7,
+            first_seen="2020-01-01", last_seen="2020-12-31",
+            all_observations=[{"date": "2020-01-0%d" % (i + 1), "effect_abs": v,
+                                "confidence": 1.0, "regime": "RANGE_MARKET"}
+                               for i, v in enumerate(effect_vals)],
+            regime_counts={"RANGE_MARKET": len(effect_vals)},
+            level=ConsensusLevel.HIGH if hasattr(ConsensusLevel, "HIGH") else list(ConsensusLevel)[0],
+        )
+
+    winner_dna = _make_consensus_dna(
+        "CON-winner01", "rsi_5d", SeparationDirection.WINNERS_HIGHER,
+        ConsensusState.INSTITUTIONAL, score=0.82, effect_vals=(2.0, 2.2, 1.8),
+    )
+    neutral_dna = _make_consensus_dna(
+        "CON-neutral01", "vol_ratio", SeparationDirection.NEUTRALS_HIGHER,
+        ConsensusState.INSTITUTIONAL, score=0.55, effect_vals=(0.5, 0.6),
+    )
+    drifting_dna = _make_consensus_dna(
+        "CON-drift01", "atr_pct", SeparationDirection.WINNERS_LOWER,
+        ConsensusState.DRIFTING, score=0.40,
+    )
+
+    lib = ConsensusLibrary(
+        library_id="MLS-LIB-20201231", as_of_date="2020-12-31",
+        all_consensus=[winner_dna, neutral_dna, drifting_dna],
+        master_consensus=[winner_dna, neutral_dna],  # only INSTITUTIONAL-state
+        drift_reports=[],
+        statistics=None,
+    )
+
+    config = HKAPConfig(years=[2020], dry_run=True)
+    mock_ptue = MagicMock()
+    mock_ptue.get_universe.return_value = MagicMock(symbols=["RELIANCE", "TCS"])
+    runner = YearRunner(2020, config, mock_ptue, prior_context=[])
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        idr_path = Path(tmpdir) / "test_idr.db"
+        idr = IDRRepository(db_path=idr_path)
+        runner._sync_library_to_idr(lib, idr, 2020)
+
+        all_dna = idr.list_active() + idr.list_retired()
+        ok("T900 exactly master_consensus count synced (drifting excluded)",
+           len(all_dna) == 2)
+        by_id = {d.id: d for d in all_dna}
+        ok("T901 winner record synced with correct id", "CON-winner01" in by_id)
+        ok("T902 winner category correctly mapped to WINNER",
+           by_id.get("CON-winner01") and by_id["CON-winner01"].category == "WINNER")
+        ok("T903 neutral category correctly mapped to NEUTRAL",
+           by_id.get("CON-neutral01") and by_id["CON-neutral01"].category == "NEUTRAL")
+        ok("T904 confidence populated from consensus_score (not left at 0.0)",
+           by_id.get("CON-winner01") and abs(by_id["CON-winner01"].confidence - 0.82) < 1e-6)
+        ok("T905 effect_size computed from real observations (not left at 0.0)",
+           by_id.get("CON-winner01") and by_id["CON-winner01"].effect_size > 0.0)
+        ok("T906 lifecycle populated from consensus_state",
+           by_id.get("CON-winner01") and by_id["CON-winner01"].lifecycle == ConsensusState.INSTITUTIONAL.value)
+        ok("T907 evidence_count carried through from ConsensusDNA",
+           by_id.get("CON-winner01") and by_id["CON-winner01"].evidence_count == 3)
+
+    # empty/missing master_consensus must not raise (fail-open)
+    empty_lib = ConsensusLibrary(
+        library_id="MLS-LIB-EMPTY", as_of_date="2020-12-31",
+        all_consensus=[], master_consensus=[], drift_reports=[], statistics=None,
+    )
+    with tempfile.TemporaryDirectory() as tmpdir2:
+        idr2 = IDRRepository(db_path=Path(tmpdir2) / "empty_idr.db")
+        try:
+            runner._sync_library_to_idr(empty_lib, idr2, 2020)
+            ok("T908 empty master_consensus does not raise", True)
+        except Exception:
+            ok("T908 empty master_consensus does not raise", False)
+        ok("T909 empty master_consensus syncs zero records",
+           idr2.list_active() + idr2.list_retired() == [])
+
+
 def test_cross_year_analyzer() -> None:
     section("T076-T085  CrossYearAnalyzer")
     cya = CrossYearAnalyzer()
@@ -467,6 +568,7 @@ if __name__ == "__main__":
         test_snapshot_builder()
         test_market_profiler()
         test_year_runner_forward_only()
+        test_sync_library_to_idr()
         test_cross_year_analyzer()
         test_report_generator()
         test_hkap_engine()
