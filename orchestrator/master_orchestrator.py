@@ -8256,27 +8256,33 @@ class MasterOrchestrator:
         own MIS/Intraday auto square-off window.
 
         ROOT CAUSE (DTA-EOD-INTRADAY-SQUAREOFF-001, found 2026-09-21):
-        every order this system places is sent to Dhan with productType=
-        INTRADAY (see execution_engine/order_manager.py::_broker_place() —
-        never overridden). That product type is a broker/NSE-mandated
-        same-day-only margin product: Dhan WILL forcibly square it off
-        before close regardless of anything this system decides — but that
-        forced close happens outside this system's own order-placement path
-        (confirmed live: correlationId="NA" on the broker's own close order,
-        vs a real correlationId on our own entry order), so it is never
-        logged to live_orders.jsonl or ct_events, and it happens at whatever
-        price/moment the broker's own risk engine picks — not ours. A real
-        position (ANANDRATHI, 2026-09-21) was auto-squared by Dhan at
-        15:11:37, far short of its target, with zero record of the exit
-        anywhere in this system.
+        every order this system placed was sent to Dhan with productType=
+        INTRADAY (see execution_engine/order_manager.py::_broker_place()).
+        That product type is a broker/NSE-mandated same-day-only margin
+        product: Dhan WILL forcibly square it off before close regardless of
+        anything this system decides — but that forced close happens outside
+        this system's own order-placement path (confirmed live: correlationId
+        ="NA" on the broker's own close order, vs a real correlationId on our
+        own entry order), so it is never logged to live_orders.jsonl or
+        ct_events, and it happens at whatever price/moment the broker's own
+        risk engine picks — not ours. A real position (ANANDRATHI,
+        2026-09-21) was auto-squared by Dhan at 15:11:37, far short of its
+        target, with zero record of the exit anywhere in this system.
 
-        Fix: proactively close any still-open, non-CARRY (ordinary intraday)
-        position ourselves, a few minutes before Dhan's own window, through
-        the normal close_position() path — so the exit is properly priced,
-        logged, and fed into learning/risk exactly like every other system-
-        driven exit. Positions explicitly tagged CARRY (multi-day holds) are
-        never touched here — same exclusion GAP-007 already uses for the
-        paper-mode EOD force-close below.
+        DTA-CARRY-CNC-001 (2026-09-21): BUY entries are now placed as CNC
+        (delivery) — see OrderManager._entry_product_type() — so they are no
+        longer force-flattened by the broker and can genuinely carry per each
+        strategy's own multi-day budget (check_and_expire_carries() governs
+        their eventual close). Only positions still on productType=INTRADAY
+        (SELL/SHORT entries — mandatory same-day square-off in the cash
+        segment — or a pre-fix legacy record) are subject to this square-off.
+
+        Fix: proactively close any still-open INTRADAY-product position
+        ourselves, a few minutes before Dhan's own window, through the normal
+        close_position() path — so the exit is properly priced, logged, and
+        fed into learning/risk exactly like every other system-driven exit.
+        CNC positions are never touched here — same exclusion GAP-007 already
+        uses for the paper-mode EOD force-close below.
         """
         from config import is_nse_holiday
         if is_nse_holiday():
@@ -8286,13 +8292,13 @@ class MasterOrchestrator:
             return  # paper mode already handled by GAP-007 at 15:30
         try:
             _orders = self.order_manager.get_open_orders()
-            _intraday = [o for o in _orders if getattr(o, "order_type", "") != "CARRY"]
+            _intraday = [o for o in _orders if getattr(o, "product_type", "INTRADAY") != "CNC"]
             if not _intraday:
-                log.info("[EODSquareOff] 15:05 — no open non-CARRY positions. Nothing to do.")
+                log.info("[EODSquareOff] 15:05 — no open INTRADAY-product positions. Nothing to do.")
                 return
             log.warning(
                 "[EODSquareOff] Square-off (before Dhan's own auto square-off): "
-                "closing %d non-CARRY position(s).", len(_intraday),
+                "closing %d INTRADAY-product position(s).", len(_intraday),
             )
             closed = []
             for rec in _intraday:

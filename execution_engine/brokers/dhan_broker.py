@@ -245,7 +245,8 @@ class DhanBroker:
         return self._validate_order_response(response, security_id, "place_order")
 
     def place_sl_order(self, symbol: str, exchange: str, transaction_type: str,
-                       quantity: int, trigger_price: float, price: float) -> Optional[str]:
+                       quantity: int, trigger_price: float, price: float,
+                       product_type: str = "INTRADAY") -> Optional[str]:
         """
         Place a stop-loss order for an open position.
 
@@ -254,6 +255,9 @@ class DhanBroker:
         transaction_type: "BUY" | "SELL"
         trigger_price:    stop trigger level (exchange activates order at this price)
         price:            limit price (slightly worse than trigger — ensures fill)
+        product_type:     must match the position's own entry product_type — Dhan
+                           rejects/mismatches an SL order placed against a CNC
+                           holding with productType=INTRADAY (DTA-CARRY-CNC-001).
 
         SIM-safe: returns SIM_SL_* string when not connected.
         Returns None if symbol not in DHAN_SECURITY_MAP (safe — software SL still active).
@@ -280,7 +284,7 @@ class DhanBroker:
                 transaction_type = transaction_type,
                 quantity         = quantity,
                 order_type       = "STOP_LOSS",
-                product_type     = "INTRADAY",
+                product_type     = product_type,
                 price            = price,
                 trigger_price    = trigger_price,
             )

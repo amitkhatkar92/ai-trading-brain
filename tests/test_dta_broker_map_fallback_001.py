@@ -152,6 +152,7 @@ class TestBrokerPlaceDynamicMapFallback:
         om._broker.place_order.assert_called_once_with(
             security_id="757102", exchange_segment="NSE_EQ",
             transaction_type="BUY", quantity=10, price=100.0, order_type="LIMIT",
+            product_type="INTRADAY",
         )
 
     def test_still_blocks_when_symbol_in_neither_map(self, monkeypatch, caplog):

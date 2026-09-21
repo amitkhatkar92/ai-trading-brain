@@ -140,7 +140,7 @@ class TestEodIntradaySquareoffScheduling:
 
     def test_t05_excludes_carry_positions(self):
         src = self._method_source()
-        assert 'getattr(o, "order_type", "") != "CARRY"' in src
+        assert 'getattr(o, "product_type", "INTRADAY") != "CNC"' in src
 
     def test_t06_noop_in_paper_mode(self):
         src = self._method_source()

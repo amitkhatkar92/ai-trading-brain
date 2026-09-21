@@ -227,6 +227,13 @@ class OrderRecord:
     closed_at:   Optional[datetime] = None
     pnl:         float = 0.0
     order_type:  str = "LIMIT"          # LIMIT | MARKET
+    # Broker product type actually sent at entry — CNC (delivery, can survive
+    # overnight) for BUY entries, INTRADAY (must square off same day, broker-
+    # mandated) for SELL/SHORT entries, since cash-segment equity shorting has
+    # no overnight carry mechanism. Exit/SL orders must reuse this same value —
+    # Dhan requires a matching product_type to close the position it opened
+    # (DTA-CARRY-CNC-001).
+    product_type: str = "INTRADAY"
     placed_at:   Optional[datetime] = None  # wall-clock time the order was sent
     zone_price:  float = 0.0               # actual limit price sent to broker
                                             # (entry_price = signal price for PnL)
@@ -957,7 +964,8 @@ class OrderManager:
             )
 
         # ── Place stop-loss order ──────────────────────────────────────
-        sl_id = self._place_stop_loss(signal, qty, order_id)
+        _entry_pt = self._entry_product_type(signal.direction.value)
+        sl_id = self._place_stop_loss(signal, qty, order_id, product_type=_entry_pt)
 
         # ── Record & update portfolio ──────────────────────────────────
         _ctx = signal_context or {}
@@ -972,6 +980,7 @@ class OrderManager:
             strategy          = signal.strategy_name,
             sl_order_id       = sl_id or "",
             order_type        = "LIMIT",
+            product_type      = _entry_pt,
             placed_at         = datetime.now(),
             zone_price        = _final_px,             # actual broker limit price
             aet_mode          = _aet_mode.value,
@@ -1103,10 +1112,12 @@ class OrderManager:
                 rec.stop_loss, rec.entry_price,
             )
 
-        # Reverse direction to close — use MARKET so exits always fill immediately
+        # Reverse direction to close — use MARKET so exits always fill immediately.
+        # product_type must match the entry's — Dhan requires the closing order
+        # to reference the same book (CNC vs INTRADAY) as the position it opened.
         close_dir = "SELL" if rec.direction == "BUY" else "BUY"
         _exit_order_id = self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
-                                            order_type="MARKET")
+                                            order_type="MARKET", product_type=rec.product_type)
         # D-001: If live broker rejected the exit order, do NOT mark closed — position
         # stays open in local state so TradeMonitor will retry on the next cycle.
         if not self._paper_mode and _exit_order_id is None:
@@ -1136,12 +1147,14 @@ class OrderManager:
         # Deduct real transaction costs (brokerage, STT, exchange charges, GST)
         try:
             from models.transaction_costs import get_cost_model, InstrumentType
+            _itype = (InstrumentType.EQUITY_DELIVERY if rec.product_type == "CNC"
+                      else InstrumentType.EQUITY_INTRADAY)
             _cost = get_cost_model().compute(
                 symbol=rec.symbol,
                 quantity=abs(rec.quantity),
                 entry_price=rec.entry_price,
                 exit_price=exit_price,
-                instrument_type=InstrumentType.EQUITY_INTRADAY,
+                instrument_type=_itype,
             )
             pnl -= _cost.total_cost
             log.debug("[OrderManager] TxnCost %s: ₹%.0f  NetPnL=₹%+.0f",
@@ -1658,9 +1671,10 @@ class OrderManager:
             )
 
             direction = "BUY" if slot.signal.direction == SignalDirection.BUY else "SELL"
+            _entry_pt = self._entry_product_type(direction)
             order_id  = self._broker_place(
                 slot.signal.symbol, direction, slot.qty,
-                _confirmed_zone, order_type="LIMIT",
+                _confirmed_zone, order_type="LIMIT", product_type=_entry_pt,
             )
             if not order_id:
                 log.warning("[OrderManager] AET confirmation broker call failed "
@@ -1668,7 +1682,7 @@ class OrderManager:
                 to_remove.append(sid)
                 continue
 
-            sl_id = self._place_stop_loss(slot.signal, slot.qty, order_id)
+            sl_id = self._place_stop_loss(slot.signal, slot.qty, order_id, product_type=_entry_pt)
             rec   = OrderRecord(
                 order_id      = order_id,
                 symbol        = slot.signal.symbol,
@@ -1680,6 +1694,7 @@ class OrderManager:
                 strategy      = slot.signal.strategy_name,
                 sl_order_id   = sl_id or "",
                 order_type    = "LIMIT",
+                product_type  = _entry_pt,
                 placed_at     = now,
                 zone_price    = _confirmed_zone,
                 aet_mode      = AdaptiveTimingMode.CONFIRMATION.value,
@@ -2002,9 +2017,10 @@ class OrderManager:
             # ── All checks passed — re-place the limit order ──────────
             _reentry_zone_px = self._calc_entry_zone_price(
                 slot.entry_price, slot.direction, slot.signal_vix)
+            _entry_pt = self._entry_product_type(slot.direction)
             new_oid = self._broker_place(
                 slot.symbol, slot.direction, slot.quantity,
-                _reentry_zone_px, order_type="LIMIT",
+                _reentry_zone_px, order_type="LIMIT", product_type=_entry_pt,
             )
             if not new_oid:
                 log.warning("[OrderManager] Re-entry broker call failed for %s.",
@@ -2021,6 +2037,7 @@ class OrderManager:
                 target        = slot.target,
                 strategy      = slot.strategy,
                 order_type    = "LIMIT",
+                product_type  = _entry_pt,
                 placed_at     = now,
                 zone_price    = _reentry_zone_px,     # actual broker limit price
                 signal_regime     = slot.signal_regime,
@@ -2455,7 +2472,10 @@ class OrderManager:
 
     def _place_entry(self, sig: TradeSignal, qty: int) -> Optional[str]:
         direction = "BUY" if sig.direction == SignalDirection.BUY else "SELL"
-        return self._broker_place(sig.symbol, direction, qty, sig.entry_price)
+        return self._broker_place(
+            sig.symbol, direction, qty, sig.entry_price,
+            product_type=self._entry_product_type(direction),
+        )
 
     def _place_entry_with_retry(self, sig: TradeSignal, qty: int,
                                 zone_price: Optional[float] = None) -> Optional[str]:
@@ -2478,10 +2498,12 @@ class OrderManager:
         """
         direction  = "BUY" if sig.direction == SignalDirection.BUY else "SELL"
         _lmt_price = zone_price if zone_price is not None else sig.entry_price
+        _product_type = self._entry_product_type(direction)
         for attempt in range(1, MAX_ORDER_RETRIES + 1):
             try:
                 order_id = self._broker_place(
-                    sig.symbol, direction, qty, _lmt_price)
+                    sig.symbol, direction, qty, _lmt_price,
+                    product_type=_product_type)
                 if order_id:
                     if attempt > 1:
                         log.info("[OrderManager] ✅ Order placed on attempt %d/%d "
@@ -2529,7 +2551,8 @@ class OrderManager:
         return None
 
     def _place_stop_loss(self, sig: TradeSignal, qty: int,
-                          entry_order_id: str) -> Optional[str]:
+                          entry_order_id: str,
+                          product_type: str = "INTRADAY") -> Optional[str]:
         close_dir = "SELL" if sig.direction == SignalDirection.BUY else "BUY"
         if not self._broker:
             log.info("[OrderManager] [SIM] SL %s %s @ %.2f",
@@ -2541,6 +2564,7 @@ class OrderManager:
                 transaction_type=close_dir, quantity=qty,
                 trigger_price=sig.stop_loss,
                 price=round(sig.stop_loss * 0.995, 2),
+                product_type=product_type,
             )
         # D9-005: broker connected but lacks SL method — operator must be aware
         log.warning(
@@ -2552,10 +2576,11 @@ class OrderManager:
 
     def _broker_place(self, symbol: str, direction: str,
                        qty: int, price: float,
-                       order_type: str = "LIMIT") -> Optional[str]:
+                       order_type: str = "LIMIT",
+                       product_type: str = "INTRADAY") -> Optional[str]:
         if not self._broker:
-            log.info("[OrderManager] [SIM-%s] %s %s qty=%d @ %.2f",
-                     order_type, direction, symbol, qty, price)
+            log.info("[OrderManager] [SIM-%s-%s] %s %s qty=%d @ %.2f",
+                     order_type, product_type, direction, symbol, qty, price)
             import time as _t
             _ms = _t.time_ns() // 1_000_000   # ms timestamp — guarantees uniqueness
             return f"SIM_{symbol}_{direction}_Q{qty}_P{price:.2f}_{_ms}"
@@ -2593,7 +2618,30 @@ class OrderManager:
             quantity         = qty,
             price            = price,
             order_type       = order_type,
+            product_type     = product_type,
         )
+
+    def _entry_product_type(self, direction: str) -> str:
+        """
+        DTA-CARRY-CNC-001: decide the broker product_type for a fresh ENTRY.
+
+        BUY → CNC (delivery). This system's own position sizing is already
+        capital-independent / no-leverage (INV-29 "No Leveraged Betting" —
+        qty = risk_amount / SL_distance against full TOTAL_CAPITAL, never a
+        margin-multiplied figure; see CAPITAL_INDEPENDENCE_AUDIT.md), so CNC's
+        1x-cash requirement is already what every BUY position is sized for.
+        CNC also lets a position genuinely survive overnight, which every
+        strategy's carry-days budget (_CARRY_DAYS_BY_TYPE, 3–7 trading days)
+        already assumed but could never actually do under productType=
+        INTRADAY — every position was being force-flattened by Dhan same day
+        regardless of internal governance state (root cause of
+        DTA-EOD-INTRADAY-SQUAREOFF-001).
+
+        SELL/SHORT → INTRADAY (unchanged). Cash-segment equity short selling
+        has no delivery/overnight mechanism — SEBI mandates same-day
+        square-off for any uncovered short in the cash market.
+        """
+        return "CNC" if direction == "BUY" else "INTRADAY"
 
     def _reconcile_fill(self, rec: "OrderRecord") -> None:
         """
@@ -3030,6 +3078,35 @@ class OrderManager:
                     )
 
                     exit_price = _ltp_map.get(rec.symbol, rec.entry_price)
+
+                    # DTA-CARRY-CNC-001: a CNC (delivery) position genuinely
+                    # still holds real shares at the broker past its carry
+                    # window — unlike the legacy productType=INTRADAY regime
+                    # (Dhan auto-squared every position same day regardless,
+                    # so this loop only ever had to correct the books after
+                    # the fact). A real exit order must be placed here now,
+                    # or the shares stay held forever, untracked and
+                    # unprotected, in the demat account. INTRADAY positions
+                    # reaching this path (e.g. a SELL/SHORT entry, or a
+                    # pre-fix legacy record) are unaffected — the broker
+                    # already force-closed those same day, exactly as before.
+                    if rec.product_type == "CNC" and not self._paper_mode:
+                        _cnc_close_dir = "SELL" if rec.direction == "BUY" else "BUY"
+                        _cnc_exit_oid = self._broker_place(
+                            rec.symbol, _cnc_close_dir, rec.quantity, exit_price,
+                            order_type="MARKET", product_type="CNC",
+                        )
+                        if not _cnc_exit_oid:
+                            log.error(
+                                "[CarryExpiry] CNC exit order FAILED for %s %s — "
+                                "real shares still held at broker. Position kept "
+                                "OPEN for retry next cycle.",
+                                rec.symbol, oid,
+                            )
+                            rec.status = "open"   # roll back — do not write CLOSE
+                            rec.governance_state = "ACTIVE_CARRY"
+                            continue
+
                     _entry_for_pnl = rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price
                     if rec.direction == "BUY":
                         pnl = round((exit_price - _entry_for_pnl) * rec.quantity, 2)
@@ -4354,6 +4431,7 @@ class OrderManager:
                 "opportunity_id":    getattr(rec, "opportunity_id", ""),
                 "fill_status":       rec.fill_status,
                 "actual_fill_price": rec.actual_fill_price,
+                "product_type":      getattr(rec, "product_type", "INTRADAY"),
             }
             if extra:
                 entry.update(extra)
@@ -4492,6 +4570,7 @@ class OrderManager:
                                               row.get("entry_price") or 0),
                     opportunity_id    = row.get("opportunity_id") or "",
                     placed_at         = _placed_at,
+                    product_type      = row.get("product_type") or "INTRADAY",
                 )
                 self._orders[oid] = rec
                 # D-008: use Position object, not plain dict — downstream code

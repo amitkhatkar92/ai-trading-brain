@@ -278,7 +278,7 @@ class TestD001ExitOrderFailure:
         rec.actual_fill_price = 1900.0
         om._orders["ORD_CLOSE_002"] = rec
         captured_dirs = []
-        def _capture_place(sym, direction, qty, price, order_type="LIMIT"):
+        def _capture_place(sym, direction, qty, price, order_type="LIMIT", product_type="INTRADAY"):
             captured_dirs.append(direction)
             return "SIM_001"
         with (
@@ -296,7 +296,7 @@ class TestD001ExitOrderFailure:
         rec = self._make_open_rec(OrderRecord, symbol="WIPRO")
         om._orders["ORD_CLOSE_001"] = rec
         captured_dirs = []
-        def _capture_place(sym, direction, qty, price, order_type="LIMIT"):
+        def _capture_place(sym, direction, qty, price, order_type="LIMIT", product_type="INTRADAY"):
             captured_dirs.append(direction)
             return "SIM_002"
         with (
