@@ -390,6 +390,7 @@ Full cycle:          172ms  ✅  HEALTHY
 | `test_hkap.py` | HKAP-IDR-AUTO-MERGE-001: T100 updated — `request_live_merge()` no longer raises; now asserts it returns `False` for an unknown dna_id (no pending SHADOW proposal). Full suite re-run: 113/113 passing | N/A |
 | `tests/test_hkap_idr_evidence_bridge.py` | HKAP-IDR-AUTO-MERGE-001: NEW — 14/14 tests: lifecycle/survival/years-present gates, first-observation-shadow-no-merge, same-years-present-no-confirmation, new-years-present-nondegrading-autopromotes (proves the empty-live-IDR `save()`-then-`add_evidence()` path), degrading-survival-no-merge, evidence bounded even at survival=1.0, active-never-merges-twice, pending/history accessors, manual override force-merge + unknown-id false, fail-open on garbage input and repo exception, safety-contract source scan (no forbidden imports, never auto-called from the orchestrator) | N/A |
 | `tests/test_kde_idr_evidence_bridge.py` | HKAP-IDR-AUTO-MERGE-001: added T15 (root-cause fix regression guard: `IDRNotFoundError` on `.get()` correctly triggers `save()` then `add_evidence()`) and T16 (an already-existing dna_id correctly skips `save()`, only appends evidence — no regression to prior behavior). Combined with the pre-existing T01-T14: 16/16 passing; full `test_hkap_kde_bridge.py` (7/7) and `test_idr_repository.py` (90/90) re-run clean, confirming zero regression to either bridge's existing behavior or the IDR repository itself | N/A |
+| `scripts/docker_cleanup.sh` | NEW — found while deploying HKAP-IDR-AUTO-MERGE-001: VPS root disk was at 100% full (127GB+ of stale build cache from repeated `--no-cache` deploys, never reclaimed), causing that deploy's build step to appear hung for ~15 minutes. Runs `docker image prune -a -f` + `docker builder prune -f` before every build — safe because (1) image prune structurally cannot remove an image still referenced by the old, still-running containers (down happens later in the deploy sequence), and (2) this repo always builds with `--no-cache`, so build cache is never reused anyway, making a full prune lossless. Added as a new step in the documented deploy command between `safe_pull.sh` and `generate_build_manifest.py`. Verified live: freed 127GB → 39GB free after the first real run | N/A |
 
 ---
 
@@ -408,7 +409,9 @@ git push origin main
 
 # 3 — Deploy to VPS (single command)
 # safe_pull.sh backs up runtime data → pulls → restores data → no knowledge lost
-ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && bash scripts/safe_pull.sh && python3 scripts/generate_build_manifest.py && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
+# docker_cleanup.sh reclaims stale images/build cache before building (this repo
+# always builds --no-cache, so old cache is never reused — safe to prune in full)
+ssh -i ~/.ssh/trading_vps root@178.18.252.24 "cd /root/ai-trading-brain && bash scripts/safe_pull.sh && bash scripts/docker_cleanup.sh && python3 scripts/generate_build_manifest.py && docker compose build --no-cache && docker compose down && docker compose up -d && sleep 8 && docker compose ps"
 ```
 
 ### Definition of done
