@@ -111,6 +111,53 @@ def _try_register_hypothesis(rq: ResearchQuestion) -> Optional[str]:
         return None  # non-fatal
 
 
+def _retry_backlog_hypothesis_registration(
+    prioritized: "List[ResearchQuestion]",
+    min_proposal_priority: float,
+    max_retries: int = 3,
+) -> List[str]:
+    """
+    Root-cause fix: Stage 7 only ever evaluated `new_questions` (this run's
+    freshly-generated output) for hypothesis registration. A question is
+    only "new" ONCE — generate_questions() deduplicates it away on every
+    later run (by design) — so a question whose priority was below
+    min_proposal_priority on the day it was first generated (or whose
+    registration attempt failed transiently) could sit in the persisted
+    backlog forever, even after its priority later rose well above the
+    bar, and would never get a second chance. This re-checks the full
+    persisted `prioritized` queue each run, bounded to `max_retries` and
+    deduplicated against existing hypothesis titles via the same fuzzy
+    concept-overlap check already used to prevent duplicate QUESTION
+    generation (research_question_generator_001._is_duplicate).
+    """
+    if os.environ.get("PYTEST_CURRENT_TEST"):
+        return []  # never mutate the real hypothesis registry from a test run
+
+    from scripts.knowledge_system.research_question_generator_001 import (
+        _load_existing_hypothesis_titles, _is_duplicate,
+    )
+
+    existing_titles = _load_existing_hypothesis_titles()
+    registered: List[str] = []
+    candidates = sorted(
+        (q for q in prioritized if q.research_priority >= min_proposal_priority),
+        key=lambda q: q.research_priority, reverse=True,
+    )
+    for rq in candidates:
+        if len(registered) >= max_retries:
+            break
+        try:
+            if _is_duplicate(rq.question, rq.direction, rq.problem_area.value, existing_titles, []):
+                continue
+        except Exception:
+            continue
+        hyp_id = _try_register_hypothesis(rq)
+        if hyp_id:
+            registered.append(hyp_id)
+            existing_titles.add(rq.question.lower())  # avoid near-dup within same run
+    return registered
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Loop runner
 # ─────────────────────────────────────────────────────────────────────────────
@@ -231,6 +278,14 @@ def run_loop(
                 if hyp_id:
                     registered.append(hyp_id)
         print(f"       {len(registered)} hypotheses registered.")
+    if register_hypotheses:
+        try:
+            backlog_registered = _retry_backlog_hypothesis_registration(prioritized, min_proposal_priority)
+            registered.extend(backlog_registered)
+            if backlog_registered:
+                print(f"       {len(backlog_registered)} backlog hypotheses registered (retry).")
+        except Exception:
+            pass
     summary["hypotheses_registered"] = len(registered)
 
     # ── STAGE 8: SAVE STATE & OUTPUTS ─────────────────────────────────────
@@ -736,6 +791,12 @@ def run_klp_loop(
                     hyp_id = _try_register_hypothesis(rq)
                     if hyp_id:
                         registered.append(hyp_id)
+        if register_hypotheses:
+            try:
+                backlog_registered = _retry_backlog_hypothesis_registration(prioritized, min_proposal_priority)
+                registered.extend(backlog_registered)
+            except Exception:
+                pass
         summary["hypotheses_registered"] = len(registered)
 
         # Stage 8: State + research queue

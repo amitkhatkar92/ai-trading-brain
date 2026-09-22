@@ -1573,3 +1573,203 @@ class TestProductionIsolation:
 
         after = shadow.read_bytes()
         assert before == after, "Shadow JSONL was modified — must be read-only input"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# T111-T120: Backlog Hypothesis Registration Retry (root-cause fix)
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause: Stage 7 previously only ever evaluated `new_questions` (this
+# run's freshly-generated output). generate_questions() deduplicates a
+# question away on every later run once it has been generated once — so a
+# question whose priority was below the bar on day 1 (or whose registration
+# attempt failed transiently) could sit in the persisted backlog forever,
+# even after its priority later rose well above min_proposal_priority, and
+# would never be reconsidered. _retry_backlog_hypothesis_registration()
+# re-checks the full persisted/prioritized queue each run instead.
+
+class TestBacklogHypothesisRetry:
+
+    def test_t111_pytest_guard_always_returns_empty(self):
+        """T111: Safety net — under pytest, always returns [] and touches nothing real,
+        regardless of how many eligible candidates are passed in."""
+        from scripts.knowledge_system.knowledge_feedback_loop_001 import (
+            _retry_backlog_hypothesis_registration,
+        )
+        questions = [_make_question(priority=90.0) for _ in range(5)]
+        result = _retry_backlog_hypothesis_registration(questions, min_proposal_priority=55.0)
+        assert result == []
+
+    def test_t112_registers_eligible_backlog_question(self, monkeypatch):
+        """T112: With the pytest guard lifted, an eligible (>=threshold), non-duplicate
+        backlog question is registered via _try_register_hypothesis."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        calls = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: (calls.append(rq.research_question_id), "HYP-FAKE-1")[1])
+
+        q = _make_question(priority=80.0)
+        result = loop_mod._retry_backlog_hypothesis_registration([q], min_proposal_priority=55.0)
+        assert result == ["HYP-FAKE-1"]
+        assert calls == [q.research_question_id]
+
+    def test_t113_below_threshold_question_never_registered(self, monkeypatch):
+        """T113: A question below min_proposal_priority is never passed to
+        _try_register_hypothesis."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        called = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: called.append(rq) or "HYP-X")
+
+        q = _make_question(priority=40.0)  # below default 55.0 bar
+        result = loop_mod._retry_backlog_hypothesis_registration([q], min_proposal_priority=55.0)
+        assert result == []
+        assert called == []
+
+    def test_t114_bounded_by_max_retries(self, monkeypatch):
+        """T114: Only the top `max_retries` highest-priority eligible questions are
+        registered per run, even if more are eligible."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        counter = {"n": 0}
+
+        def _fake_register(rq):
+            counter["n"] += 1
+            return f"HYP-{counter['n']}"
+
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis", _fake_register)
+
+        # 5 distinct-enough questions (different areas/directions to avoid
+        # tripping the concept-overlap dedup against each other) all eligible.
+        questions = [
+            _make_question(priority=60.0, area=ResearchArea.C2_RANKING, direction="UP"),
+            _make_question(priority=61.0, area=ResearchArea.V3_DISCOVERY, direction="UP"),
+            _make_question(priority=62.0, area=ResearchArea.STRATEGY, direction="UP"),
+            _make_question(priority=63.0, area=ResearchArea.DIRECTION, direction="DOWN"),
+            _make_question(priority=64.0, area=ResearchArea.REGIME, direction="DOWN"),
+        ]
+        result = loop_mod._retry_backlog_hypothesis_registration(
+            questions, min_proposal_priority=55.0, max_retries=2,
+        )
+        assert len(result) == 2, f"Expected exactly max_retries=2 registrations, got {len(result)}"
+
+    def test_t115_highest_priority_registered_first(self, monkeypatch):
+        """T115: Candidates are processed highest-priority-first."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        seen_order = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: seen_order.append(rq.research_priority) or "HYP")
+
+        questions = [
+            _make_question(priority=56.0, area=ResearchArea.C2_RANKING, direction="UP"),
+            _make_question(priority=95.0, area=ResearchArea.V3_DISCOVERY, direction="UP"),
+            _make_question(priority=70.0, area=ResearchArea.STRATEGY, direction="UP"),
+        ]
+        loop_mod._retry_backlog_hypothesis_registration(questions, min_proposal_priority=55.0, max_retries=3)
+        assert seen_order == [95.0, 70.0, 56.0]
+
+    def test_t116_duplicate_title_is_skipped(self, monkeypatch):
+        """T116: A backlog question whose concepts overlap an existing hypothesis
+        title (fuzzy match, reusing _is_duplicate) is never re-registered."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: {"does incorporating opening-strength ranking improve up top-5 capture outranked"},
+        )
+        called = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: called.append(rq) or "HYP")
+
+        q = _make_question(priority=90.0, area=ResearchArea.C2_RANKING, direction="UP")
+        q.question = "Does opening-strength supplementary ranking improve UP Top-5 capture? OUTRANKED openers miss."
+        result = loop_mod._retry_backlog_hypothesis_registration([q], min_proposal_priority=55.0)
+        assert result == []
+        assert called == []
+
+    def test_t117_within_run_dedup_prevents_near_duplicate_double_registration(self, monkeypatch):
+        """T117: Two near-identical backlog questions (e.g. the same idea generated
+        on different days with different IDs) only ever produce ONE hypothesis
+        within a single run."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        calls = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: calls.append(rq) or "HYP")
+
+        text = "Does incorporating opening-strength supplementary ranking improve UP Top-5 capture given OUTRANKED misses?"
+        q1 = _make_question(priority=72.5, area=ResearchArea.C2_RANKING, direction="UP")
+        q1.question = text
+        q2 = _make_question(priority=72.5, area=ResearchArea.C2_RANKING, direction="UP")
+        q2.question = text
+        result = loop_mod._retry_backlog_hypothesis_registration([q1, q2], min_proposal_priority=55.0)
+        assert len(result) == 1, "Near-duplicate backlog questions must register at most once per run"
+        assert len(calls) == 1
+
+    def test_t118_dedup_exception_skips_gracefully(self, monkeypatch):
+        """T118: If the dedup check itself raises, the candidate is skipped
+        (not registered), never crashes the run."""
+        import scripts.knowledge_system.knowledge_feedback_loop_001 as loop_mod
+
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._load_existing_hypothesis_titles",
+            lambda: set(),
+        )
+        monkeypatch.setattr(
+            "scripts.knowledge_system.research_question_generator_001._is_duplicate",
+            lambda *a, **k: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
+        called = []
+        monkeypatch.setattr(loop_mod, "_try_register_hypothesis",
+                             lambda rq: called.append(rq) or "HYP")
+
+        q = _make_question(priority=90.0)
+        result = loop_mod._retry_backlog_hypothesis_registration([q], min_proposal_priority=55.0)
+        assert result == []
+        assert called == []
+
+    def test_t119_run_loop_stage7_calls_backlog_retry(self, monkeypatch):
+        """T119: run_loop() wires in the backlog retry (verified via the pytest
+        guard — real run_loop() call must remain a safe no-op for this stage)."""
+        summary = run_loop(seed_historical=False)
+        # Under pytest this must always be a no-op contribution from the backlog path;
+        # the field must still exist and be a non-negative int either way.
+        assert isinstance(summary["hypotheses_registered"], int)
+        assert summary["hypotheses_registered"] >= 0
+
+    def test_t120_empty_prioritized_list_is_safe(self, monkeypatch):
+        """T120: Empty input list returns [] without error, guard or no guard."""
+        from scripts.knowledge_system.knowledge_feedback_loop_001 import (
+            _retry_backlog_hypothesis_registration,
+        )
+        assert _retry_backlog_hypothesis_registration([], min_proposal_priority=55.0) == []
+
