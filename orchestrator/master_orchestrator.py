@@ -4819,8 +4819,14 @@ class MasterOrchestrator:
                 if _dr_symbols:
                     # OHLCV — incremental fetch; lookback_days=90 ensures new
                     # symbols get enough history for the 30-row scanner minimum.
+                    # DTA-SHADOW-NIFTY-STALE-001: '^NSEI' is not in universe_stocks
+                    # (it's an index, not an equity) so it was never part of this
+                    # daily refresh, silently going stale after its one-time
+                    # historical seed. Regime classification and T+1 lookups in
+                    # scripts/final_trading_architecture_shadow_001.py need it kept
+                    # current — appended here, never touches universe_stocks itself.
                     _ohlcv_res = _run_ohlcv(
-                        _dr_conn, _dr_symbols, _dr_today,
+                        _dr_conn, _dr_symbols + ["^NSEI"], _dr_today,
                         lookback_days=90,
                         inter_symbol_delay_s=0.1,
                     )

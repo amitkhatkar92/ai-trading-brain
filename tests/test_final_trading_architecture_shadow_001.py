@@ -1105,6 +1105,82 @@ def test_T093_catchup_handles_missing_db_gracefully():
     assert result["reason"] == "db_not_found"
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# M. DTA-SHADOW-NIFTY-STALE-001 — _get_t1_date must not depend on '^NSEI'
+# ─────────────────────────────────────────────────────────────────────────────
+# Root cause: '^NSEI' is only ever historically seeded, never part of the
+# daily incremental universe refresh (it isn't in universe_stocks -- that's
+# equities only). Once '^NSEI' rows went stale, _get_t1_date's primary query
+# (symbol = '^NSEI') always found nothing for any trade_date past the stale
+# cutoff, silently falling through to "next calendar day" -- wrong whenever
+# trade_date is a Friday (calendar+1 lands on Saturday, no market data).
+# Confirmed live: trade_date=2026-09-18 -> t1_date computed as 2026-09-19
+# (a Saturday) -> t1_data_available=False -> c2_up_selected=c2_down_selected=0
+# even though the V3 20/20 pool itself was built correctly.
+
+from scripts.final_trading_architecture_shadow_001 import _get_t1_date as _t1
+
+
+def _make_stale_nsei_db(tmp_path):
+    """Friday trade_date, real equity data continues through the following
+    Monday, but '^NSEI' stopped updating weeks earlier (reproduces the real
+    production gap)."""
+    db_path = tmp_path / "stale_nsei.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "CREATE TABLE ohlcv_daily "
+        "(symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL)"
+    )
+    # '^NSEI' stale — last row weeks before the Friday under test
+    conn.execute(
+        "INSERT INTO ohlcv_daily VALUES ('^NSEI','2026-09-04',100,101,99,100,1000)"
+    )
+    # real equity universe keeps updating through the following Monday
+    for d in ("2026-09-18", "2026-09-21"):  # Fri -> Mon (weekend has no rows)
+        conn.execute(
+            "INSERT INTO ohlcv_daily VALUES ('TCS.NS',?,100,101,99,100,1000)", (d,)
+        )
+    conn.commit()
+    conn.close()
+    return db_path
+
+
+def test_T094_t1_date_skips_weekend_when_nsei_stale(tmp_path):
+    """Reproduces the exact live bug: a Friday trade_date must resolve T+1
+    to the following Monday, not Saturday, even with '^NSEI' stale."""
+    db_path = _make_stale_nsei_db(tmp_path)
+    conn = _open_db(db_path)
+    t1 = _t1(conn, "2026-09-18")
+    conn.close()
+    assert t1 == "2026-09-21"  # NOT "2026-09-19" (Saturday)
+
+
+def test_T095_t1_date_falls_back_to_calendar_day_only_when_table_empty(tmp_path):
+    """Calendar-day fallback still exists as a genuine last resort when
+    ohlcv_daily has no rows at all past trade_date (not just '^NSEI'-stale)."""
+    db_path = tmp_path / "empty_future.db"
+    conn = sqlite3.connect(str(db_path))
+    conn.execute(
+        "CREATE TABLE ohlcv_daily "
+        "(symbol TEXT, trade_date TEXT, open REAL, high REAL, low REAL, close REAL, volume REAL)"
+    )
+    conn.execute("INSERT INTO ohlcv_daily VALUES ('TCS.NS','2026-09-18',100,101,99,100,1000)")
+    conn.commit()
+    t1 = _t1(conn, "2026-09-18")
+    conn.close()
+    assert t1 == "2026-09-19"  # no future rows at all -> calendar fallback
+
+
+def test_T096_future_dates_also_ignores_stale_nsei(tmp_path):
+    """_get_future_dates carries the same fix (symbol != '^NSEI')."""
+    from scripts.final_trading_architecture_shadow_001 import _get_future_dates
+    db_path = _make_stale_nsei_db(tmp_path)
+    conn = _open_db(db_path)
+    dates = _get_future_dates(conn, "2026-09-18", n=5)
+    conn.close()
+    assert "2026-09-21" in dates
+
+
 def test_T094_catchup_respects_lookback_days(tmp_path):
     dates = [f"2026-{m:02d}-01" for m in range(1, 9)]  # 8 months of dates
     db_path = _make_ohlcv_db(tmp_path, dates)

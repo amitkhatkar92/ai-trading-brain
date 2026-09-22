@@ -354,10 +354,20 @@ def _get_regime(conn: sqlite3.Connection, trade_date: str) -> str:
 
 
 def _get_t1_date(conn: sqlite3.Connection, trade_date: str) -> Optional[str]:
-    """Return the next trading date after trade_date."""
+    """Return the next trading date after trade_date.
+
+    DTA-SHADOW-NIFTY-STALE-001: uses symbol != '^NSEI' (any actively-collected
+    equity symbol), matching the exact pattern already used by
+    _resolve_trade_date()/_previous_ohlcv_trade_date() in this same file.
+    '^NSEI' itself is only ever seeded historically, not part of the daily
+    incremental universe refresh, so requiring it here silently went stale
+    and fell through to the broken "next calendar day" fallback (wrong on
+    every Friday->Saturday boundary). The calendar-day fallback is kept as
+    a last resort only, for a genuinely unpopulated ohlcv_daily table.
+    """
     row = conn.execute(
         "SELECT MIN(trade_date) FROM ohlcv_daily "
-        "WHERE trade_date > ? AND symbol = '^NSEI'",
+        "WHERE trade_date > ? AND symbol != '^NSEI'",
         (trade_date,),
     ).fetchone()
     if row and row[0]:
@@ -373,7 +383,7 @@ def _get_future_dates(conn: sqlite3.Connection, from_date: str,
     """Return the next N trading dates from from_date (inclusive)."""
     rows = conn.execute(
         "SELECT DISTINCT trade_date FROM ohlcv_daily "
-        "WHERE trade_date >= ? AND symbol = '^NSEI' "
+        "WHERE trade_date >= ? AND symbol != '^NSEI' "
         "ORDER BY trade_date ASC LIMIT ?",
         (from_date, n),
     ).fetchall()
