@@ -35,6 +35,7 @@ from typing import Optional
 from models import TradeSignal, Portfolio, MarketSnapshot
 from utils  import get_logger
 from config import DD_REDUCE_PCT, DD_PAUSE_PCT, DD_REDUCE_FACTOR
+from config import MAX_POSITIONS as _CFG_MAX_POSITIONS
 
 _STATE_FILE = os.path.join(
     os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -46,7 +47,19 @@ log = get_logger(__name__)
 # ── Hard-coded thresholds (tune per risk appetite) ────────────────────────
 MAX_DAILY_LOSS_PCT       = 2.0    # % of total capital
 MAX_PORTFOLIO_RISK_PCT   = 5.0    # total risk-at-stake as % of capital
-MAX_OPEN_TRADES          = 8      # concurrent open positions
+# DTA-POSITION-CAP-CONSISTENCY-001: was a bare hardcoded 8, independent of
+# config.MAX_POSITIONS (the real, capital-tier-scaled budget CapitalRiskEngine
+# sizes against). Confirmed via forensic audit (2026-09-22): with
+# config.MAX_POSITIONS=5, the account genuinely reached 8 open positions on
+# 2026-09-17 (a real over-accumulation, caused by a since-fixed CRE bug --
+# DTA-CRE-REAL-POSITION-CAP-001) -- this constant was the ONLY gate that
+# actually stopped it that day, purely by coincidence of its hardcoded value.
+# Now derives from config.MAX_POSITIONS with the same "+buffer, floor" shape
+# already established for execution_engine/order_manager.py's own last-resort
+# cap, so all 3 position-count gates (CRE=5, RiskGuardian, OrderManager=15)
+# move together if the capital tier ever changes. Floor of 8 preserves
+# today's exact behavior (5+3=8) -- zero change at the current capital tier.
+MAX_OPEN_TRADES          = max(8, _CFG_MAX_POSITIONS + 3)   # concurrent open positions
 KILL_SWITCH_NIFTY_DROP   = -5.0   # Nifty intraday % move triggers kill
 KILL_SWITCH_VIX          = 45.0   # VIX level triggers kill
 CONSEC_LOSS_PAUSE        = 3      # N consecutive losses → circuit breaker
