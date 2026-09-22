@@ -27,7 +27,7 @@ Shadow mode (SCANNER_SHADOW_MODE = True in config):
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -116,24 +116,50 @@ def run_scan(universe_path: Optional[str] = None) -> bool:
     log.info("[ScannerRun] Universe loaded: %d symbols (capped at %d).",
              len(universe), SCANNER_MAX_SYMBOLS)
 
-    # ── Fetch historical data ────────────────────────────────────────────────
-    raw_data = _batch_fetch(symbols, scan_start)
-    if raw_data is None:
-        log.error("[ScannerRun] Batch fetch failed — aborting.")
-        return False
+    # ── DTA-UNIVERSE-COVERAGE-001: try local ohlcv_daily first ────────────────
+    # Reduces dependency on a fresh, rate-limited yfinance pull for every
+    # symbol every run — only symbols without sufficient/fresh local history
+    # fall through to the live batch fetch below.
+    local_data = _load_local_ohlcv_batch(symbols)
+    live_symbols = [s for s in symbols if s not in local_data]
+    log.info(
+        "[LocalOHLCVCoverage] local=%d live_fetch_needed=%d total=%d",
+        len(local_data), len(live_symbols), len(symbols),
+    )
 
-    # ── Compute technical context per symbol ─────────────────────────────────
     processed: List[Dict[str, Any]] = []
     failed_symbols: List[str] = []
     failed_count = 0
 
-    for sym in symbols:
+    for sym, rec in local_data.items():
+        result = _process_symbol_from_local(sym, rec)
+        if result is None:
+            failed_count += 1
+            failed_symbols.append(sym)
+            continue
+        processed.append(result)
+
+    # ── Fetch historical data (only for symbols without usable local data) ────
+    raw_data = _batch_fetch(live_symbols, scan_start) if live_symbols else None
+    if raw_data is None and live_symbols:
+        log.warning(
+            "[ScannerRun] Live batch fetch failed for %d symbols lacking local "
+            "history — continuing with %d locally-sourced candidates only.",
+            len(live_symbols), len(processed),
+        )
+
+    # ── Compute technical context per symbol (live-fetch fallback path) ──────
+    for sym in live_symbols:
         # Runtime guard — abort if scanner exceeds max allowed time
         elapsed_min = (time.monotonic() - scan_start) / 60.0
         if elapsed_min > SCANNER_MAX_RUNTIME_MINUTES:
             log.warning("[ScannerRun] Runtime limit reached (%.1f min) — stopping at %d/%d symbols.",
                         elapsed_min, len(processed) + failed_count, len(symbols))
             break
+        if raw_data is None:
+            failed_count += 1
+            failed_symbols.append(sym)
+            continue
 
         result = _process_symbol(sym, raw_data)
         if result is None:
@@ -692,6 +718,85 @@ def _write_universe_json() -> bool:
         return False
 
 
+# ── Local OHLCV source (DTA-UNIVERSE-COVERAGE-001) ────────────────────────────
+# The live daily OIOS refresh (oios/data/ohlcv_fetcher.py) already keeps
+# ohlcv_daily current for the active universe, and a one-time backfill
+# (scripts/seed_multiyear_ohlcv_history_001.py) extends it with ~2 years of
+# history. Sourcing technical context from this local, already-fresh,
+# already-multi-year table instead of a fresh 35-day yfinance pull each run:
+#   - removes today's coverage loss from live-fetch rate-limits/timeouts
+#   - lets support/resistance be computed over a much longer window when
+#     enough local history exists
+# Falls back to the existing live _batch_fetch() path for any symbol without
+# sufficient/fresh local data -- never a behavior regression, only additive.
+LOCAL_OHLCV_MAX_STALENESS_DAYS = 5   # local data older than this is treated as missing
+
+
+def _load_local_ohlcv_batch(symbols: List[str]) -> Dict[str, Dict[str, list]]:
+    """
+    Bulk-load all available ohlcv_daily history for the given (bare) symbols.
+
+    Returns {symbol: {"dates": [...], "closes": [...], "highs": [...],
+    "lows": [...], "volumes": [...]}} sorted ascending by date. Symbols with
+    fewer than MIN_HISTORY_DAYS rows, or whose latest row is older than
+    LOCAL_OHLCV_MAX_STALENESS_DAYS, are omitted entirely (caller falls back
+    to the live fetch path for them).
+    """
+    if not symbols:
+        return {}
+    try:
+        from oios.db.connection import get_connection
+    except Exception as exc:
+        log.debug("[LocalOHLCV] oios.db.connection unavailable: %s", exc)
+        return {}
+
+    ns_symbols = [s + ".NS" for s in symbols]
+    raw_rows: List[tuple] = []
+    try:
+        conn = get_connection()
+        try:
+            chunk_size = 900  # SQLite IN-clause limit is 999
+            for start in range(0, len(ns_symbols), chunk_size):
+                chunk = ns_symbols[start: start + chunk_size]
+                placeholders = ",".join("?" * len(chunk))
+                rows = conn.execute(
+                    f"SELECT symbol, trade_date, close, high, low, volume "
+                    f"FROM ohlcv_daily WHERE symbol IN ({placeholders}) "
+                    f"ORDER BY symbol, trade_date ASC",
+                    chunk,
+                ).fetchall()
+                raw_rows.extend(rows)
+        finally:
+            conn.close()
+    except Exception as exc:
+        log.warning("[LocalOHLCV] ohlcv_daily query failed: %s", exc)
+        return {}
+
+    grouped: Dict[str, List[tuple]] = {}
+    for row in raw_rows:
+        grouped.setdefault(row[0], []).append(row)
+
+    staleness_floor = (
+        datetime.now(timezone.utc).date() - timedelta(days=LOCAL_OHLCV_MAX_STALENESS_DAYS)
+    ).isoformat()
+
+    result: Dict[str, Dict[str, list]] = {}
+    for ns_sym, rows in grouped.items():
+        if len(rows) < MIN_HISTORY_DAYS:
+            continue
+        if rows[-1][1] < staleness_floor:
+            continue  # local data too stale — let the live fetch path handle it
+        bare_sym = ns_sym[:-3] if ns_sym.endswith(".NS") else ns_sym
+        result[bare_sym] = {
+            "dates":   [r[1] for r in rows],
+            "closes":  [float(r[2]) for r in rows],
+            "highs":   [float(r[3]) for r in rows],
+            "lows":    [float(r[4]) for r in rows],
+            "volumes": [float(r[5]) for r in rows],
+        }
+    return result
+
+
 # ── Batch data fetch ──────────────────────────────────────────────────────────
 
 def _batch_fetch(symbols: List[str], scan_start: float) -> Optional[pd.DataFrame]:
@@ -748,7 +853,7 @@ def _batch_fetch(symbols: List[str], scan_start: float) -> Optional[pd.DataFrame
 
 def _process_symbol(symbol: str, data: pd.DataFrame) -> Optional[Dict[str, Any]]:
     """
-    Extract technical context for one symbol.
+    Extract technical context for one symbol from a live yfinance batch frame.
     Returns None if data is insufficient or quality gates fail.
     """
     ns = symbol + ".NS"
@@ -765,7 +870,41 @@ def _process_symbol(symbol: str, data: pd.DataFrame) -> Optional[Dict[str, Any]]
             high  = data["High"].dropna()
             low   = data["Low"].dropna()
             vol   = data["Volume"].dropna()
+    except Exception as exc:
+        log.debug("[ScannerRun] Error extracting %s from live fetch: %s", symbol, exc)
+        return None
+    return _compute_technical_context(symbol, close, high, low, vol, data_source="YFINANCE_LIVE")
 
+
+def _process_symbol_from_local(symbol: str, local_rec: Dict[str, list]) -> Optional[Dict[str, Any]]:
+    """
+    DTA-UNIVERSE-COVERAGE-001: technical context for one symbol from the
+    already-fetched, already-multi-year-backfilled local ohlcv_daily table
+    (see _load_local_ohlcv_batch). Identical computation to _process_symbol,
+    just sourced from local history instead of a fresh live fetch.
+    """
+    try:
+        close = pd.Series(local_rec["closes"])
+        high  = pd.Series(local_rec["highs"])
+        low   = pd.Series(local_rec["lows"])
+        vol   = pd.Series(local_rec["volumes"])
+    except Exception as exc:
+        log.debug("[ScannerRun] Error building local series for %s: %s", symbol, exc)
+        return None
+    return _compute_technical_context(symbol, close, high, low, vol, data_source="LOCAL_DB")
+
+
+def _compute_technical_context(
+    symbol: str, close: pd.Series, high: pd.Series, low: pd.Series, vol: pd.Series,
+    data_source: str = "YFINANCE_LIVE",
+) -> Optional[Dict[str, Any]]:
+    """
+    Shared technical-context computation for one symbol, given already-
+    extracted Close/High/Low/Volume series (regardless of origin).
+    Returns None if data is insufficient or quality gates fail.
+    """
+    ns = symbol + ".NS"
+    try:
         if len(close) < MIN_HISTORY_DAYS:
             return None
 
@@ -793,6 +932,16 @@ def _process_symbol(symbol: str, data: pd.DataFrame) -> Optional[Dict[str, Any]]
         w20        = close.iloc[-20:]
         support    = round(safe_scalar(w20.min(), 0.0, f"{symbol}.support"), 2)
         resistance = round(safe_scalar(w20.max(), 0.0, f"{symbol}.resistance"), 2)
+
+        # DTA-UNIVERSE-COVERAGE-001: longer-horizon context, purely additive —
+        # never overrides the 20-day support/resistance _identify_setup() is
+        # calibrated against. Only populated when enough history is available
+        # (multi-year local backfill); None otherwise.
+        support_1y = resistance_1y = None
+        if len(close) >= 200:
+            w1y        = close.iloc[-252:] if len(close) >= 252 else close
+            support_1y = round(safe_scalar(w1y.min(), 0.0, f"{symbol}.support_1y"), 2)
+            resistance_1y = round(safe_scalar(w1y.max(), 0.0, f"{symbol}.resistance_1y"), 2)
 
         # ATR proxy divergence check — rebuild levels if needed
         proxy_atr  = (resistance - support) * 0.40
@@ -846,6 +995,8 @@ def _process_symbol(symbol: str, data: pd.DataFrame) -> Optional[Dict[str, Any]]
             "base_ltp":         ltp,
             "resistance":       resistance,
             "support":          support,
+            "resistance_1y":    resistance_1y,
+            "support_1y":       support_1y,
             "rsi":              rsi,
             "volume_ratio":     vol_ratio,
             "adv_crore":        adv_crore,
@@ -857,11 +1008,13 @@ def _process_symbol(symbol: str, data: pd.DataFrame) -> Optional[Dict[str, Any]]
             "conviction_decay": conviction_decay,
             "overnight_adjustment": 1.0,     # Phase F will populate this
             "valid_until_utc":  None,         # Phase G will populate this
+            "data_source":      data_source,
         }
 
     except Exception as exc:
         log.debug("[ScannerRun] Error processing %s: %s", symbol, exc)
         return None
+
 
 
 # ── Scoring ────────────────────────────────────────────────────────────────────

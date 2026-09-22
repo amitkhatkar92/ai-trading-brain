@@ -285,7 +285,10 @@ MIN_CLEAN_PREPARED_TRADES: int = 15
 
 # ── Scanner resource bounds (prevent silent infrastructure creep) ──────────
 SCANNER_MAX_SYMBOLS:          int   = 600    # hard cap on symbols attempted per run
-SCANNER_MAX_CANDIDATES:       int   = 120    # hard cap on candidates written to store
+# DTA-UNIVERSE-COVERAGE-001: raised 120->250 -- this cap predates the Sep-2026
+# universe expansion (230->500+ symbols) and was never revisited, silently
+# capping daily coverage at ~24% of the real prepared universe.
+SCANNER_MAX_CANDIDATES:       int   = 250    # hard cap on candidates written to store
 SCANNER_MAX_RUNTIME_MINUTES:  int   = 20     # abort if scanner exceeds this
 PREMARKET_MAX_RUNTIME_MINUTES: int  = 25     # abort if premarket refiner exceeds this
 SCANNER_MEMORY_RETENTION_DAYS: int  = 30     # days of concentration history to keep
@@ -306,7 +309,8 @@ MIN_PREPARED_SCORE: float = 0.55
 # Hard ceiling applied AFTER all ranking, sector-cap, and score-floor filters.
 # Guarantees the prepared universe never silently expands beyond this count.
 # Emits [PreparedUniverseCap] when truncation actually occurs.
-MAX_PREPARED_CANDIDATES: int = 120
+# DTA-UNIVERSE-COVERAGE-001: raised 120->250 in step with SCANNER_MAX_CANDIDATES.
+MAX_PREPARED_CANDIDATES: int = 250
 
 # ── Safe mode trigger thresholds — Patch 7 ────────────────────────────────
 # SAFE MODE reduces system sophistication (disables prepared universe +
