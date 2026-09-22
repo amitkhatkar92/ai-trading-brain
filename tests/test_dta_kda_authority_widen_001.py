@@ -230,13 +230,19 @@ def test_rr_gate_still_applies_to_kda_authorized_developing_evidence():
 
 
 def test_max_positions_cap_still_applies_regardless_of_evidence_state():
-    """Independent safety control (MAX_POSITIONS) is untouched -- still caps
-    total surviving signals regardless of evidence_state."""
-    from risk_control.capital_risk_engine import _MAX_POSITIONS
+    """Independent safety control (CRE evaluation pool) is untouched --
+    still caps total surviving signals regardless of evidence_state.
+    DTA-CRE-LATE-CAP-001: the cutoff is now a widened evaluation pool, not
+    the real position count (enforced later, at execution)."""
+    from risk_control.capital_risk_engine import (
+        _MAX_POSITIONS, _CRE_EVAL_POOL_MULTIPLIER, _CRE_EVAL_POOL_MAX_ABS,
+    )
+    _eval_pool = min(_CRE_EVAL_POOL_MAX_ABS,
+                      max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER))
     cre = CapitalRiskEngine()
     signals = [
         _sig(symbol=f"SYM{i}", kda_evidence_state="DEVELOPING", kda_conviction=8.0 + i * 0.01)
-        for i in range(_MAX_POSITIONS + 3)
+        for i in range(_eval_pool + 3)
     ]
     result = cre.allocate(signals, _snapshot(), portfolio=None)
-    assert len(result) <= _MAX_POSITIONS
+    assert len(result) <= _eval_pool

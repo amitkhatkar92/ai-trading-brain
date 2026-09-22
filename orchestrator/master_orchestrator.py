@@ -29,7 +29,7 @@ import sched
 import time
 import threading
 from datetime import datetime, timezone
-from typing import List, Optional, Set, Dict
+from typing import List, Optional, Set, Dict, Tuple
 
 from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
 from models import MarketSnapshot, TradeSignal, Portfolio
@@ -175,6 +175,37 @@ _ORCH_INSTANCE: "Optional[MasterOrchestrator]" = None
 def get_orchestrator() -> "Optional[MasterOrchestrator]":
     """Return the running MasterOrchestrator instance (None before first init)."""
     return _ORCH_INSTANCE
+
+
+def _rank_and_split_by_position_cap(
+    approved_decisions: List[tuple],
+    open_positions: int,
+    max_positions: int,
+    enabled: bool = True,
+) -> Tuple[List[tuple], List[tuple]]:
+    """DTA-CRE-LATE-CAP-001: the real "how many new positions can we open"
+    decision, moved here (after Debate/KDA) from CapitalRiskEngine's old
+    early cutoff.
+
+    Ranks Debate/KDA-approved (signal, decision, votes) tuples by final
+    decision.confidence_score (highest conviction first) and splits them
+    into (to_execute, capped) using the REAL number of currently open
+    positions -- not CapitalRiskEngine's cheap pre-Debate score. A signal
+    that narrowly missed CRE's old early cutoff now gets a real chance to
+    be evaluated by Simulation/RiskGuardian/Debate, and the position count
+    is only enforced once every candidate's true quality is known.
+
+    Pure function, never mutates its input list. `enabled=False` restores
+    the pre-DTA-CRE-LATE-CAP-001 behavior (execute every Debate-approved
+    signal, no late cap) — an emergency rollback switch, not a normal path.
+    """
+    if not approved_decisions:
+        return [], []
+    if not enabled:
+        return list(approved_decisions), []
+    available = max(0, max_positions - open_positions)
+    ranked = sorted(approved_decisions, key=lambda t: t[1].confidence_score, reverse=True)
+    return ranked[:available], ranked[available:]
 
 
 class MasterOrchestrator:
@@ -2038,15 +2069,21 @@ class MasterOrchestrator:
         # DTA-DEBATE-AUTHORITY-004: signals Debate/Decision approved but
         # OrderManager could not place — distinct from genuine rejection.
         execution_failed_syms: Set[str] = set()
+        # DTA-CRE-LATE-CAP-001: signals Debate/Decision approved, but the
+        # real MAX_POSITIONS cap (ranked by confidence_score across ALL of
+        # this cycle's approved signals) had no room left — distinct from
+        # both a genuine Debate rejection and an execution failure.
+        cap_rejected_syms: Set[str] = set()
         debate_scores: Dict[str, float] = {}
+        _approved_decisions: List[tuple] = []  # (signal, decision, votes)
 
-        def _handle_debate_row(sig, row):
-            if isinstance(row, dict):
-                executed.append(row)
-                debate_scores[sig.symbol] = row.get("score", 0.0)
-            elif isinstance(row, tuple) and row and row[0] == "EXECUTION_FAILED":
-                execution_failed_syms.add(sig.symbol)
-                debate_scores[sig.symbol] = row[1]
+        def _handle_eval_row(sig, row):
+            if isinstance(row, tuple) and row and row[0] == "APPROVED":
+                _, _sig, _decision, _votes = row
+                _approved_decisions.append((_sig, _decision, _votes))
+                debate_scores[sig.symbol] = _decision.confidence_score
+            # row is None => Debate/Decision rejected; TRADE_REJECTED
+            # already published inside _run_debate_and_decide().
 
         with self.system_monitor.time_layer("DebateAndDecision"):
             if len(signals_for_debate) > 1:
@@ -2059,13 +2096,71 @@ class MasterOrchestrator:
                         _sig = _futs[_fut]
                         try:
                             row = _fut.result()
-                            _handle_debate_row(_sig, row)
+                            _handle_eval_row(_sig, row)
                         except Exception as _de_exc:
                             log.warning("[DebateAndDecision] parallel debate error: %s", _de_exc)
             else:
                 for signal in signals_for_debate:
                     row = self._run_debate_and_decide(signal, snapshot)
-                    _handle_debate_row(signal, row)
+                    _handle_eval_row(signal, row)
+
+            # ── DTA-CRE-LATE-CAP-001: real MAX_POSITIONS cap, enforced HERE
+            # — after Debate/KDA has scored every candidate — instead of
+            # pre-emptively at CapitalRiskEngine before Debate ever saw
+            # them. Rank Debate-approved signals by confidence_score
+            # (highest conviction first) and only execute up to the real
+            # number of currently-available slots.
+            if _approved_decisions:
+                from config import MAX_POSITIONS as _exec_max_positions
+                from config import ENABLE_LATE_POSITION_CAP as _enable_late_cap
+                _open_now = len(self.order_manager.get_open_orders())
+                _to_execute, _capped = _rank_and_split_by_position_cap(
+                    _approved_decisions, _open_now, _exec_max_positions, _enable_late_cap,
+                )
+                for _sig, _decision, _votes in _capped:
+                    cap_rejected_syms.add(_sig.symbol)
+                    log.info(
+                        "[LatePositionCap] %s approved by Debate (score=%.2f) but "
+                        "capped — %d open + %d max, not enough room this cycle.",
+                        _sig.symbol, _decision.confidence_score, _open_now,
+                        _exec_max_positions,
+                    )
+                    try:
+                        from analysis.rejection_tracker import get_rejection_tracker as _get_rt_cap
+                        _get_rt_cap().ingest_rejection(
+                            symbol=_sig.symbol,
+                            strategy=str(_sig.strategy_name or "UNKNOWN"),
+                            trade_date=datetime.now().strftime("%Y-%m-%d"),
+                            decision_score=float(_decision.confidence_score),
+                            quality_score=float(_decision.confidence_score),
+                            quality_tier="LATE_POSITION_CAP",
+                            rejected_reason="MAX_POSITIONS_CAP_FINAL",
+                            price_at_rejection=float(getattr(_sig, "entry_price", 0.0) or 0.0),
+                            direction=str(getattr(_sig.direction, "value", _sig.direction) or "BUY"),
+                            market_regime=(
+                                snapshot.regime.value if hasattr(snapshot.regime, "value")
+                                else str(snapshot.regime)
+                            ),
+                        )
+                    except Exception:
+                        pass
+                    self.bus.publish(DecisionEvent(
+                        event_type=EventType.TRADE_REJECTED,
+                        source_agent="LatePositionCap",
+                        payload={
+                            "symbol":    _sig.symbol,
+                            "strategy":  _sig.strategy_name or "",
+                            "direction": str(getattr(_sig.direction, "value", _sig.direction) or "").upper(),
+                            "score":     _decision.confidence_score,
+                            "reason":    "MAX_POSITIONS_CAP_FINAL",
+                        },
+                    ))
+                for _sig, _decision, _votes in _to_execute:
+                    row = self._execute_decided_signal(_sig, _decision, _votes, snapshot)
+                    if isinstance(row, dict):
+                        executed.append(row)
+                    elif isinstance(row, tuple) and row and row[0] == "EXECUTION_FAILED":
+                        execution_failed_syms.add(_sig.symbol)
         # DEBATE_APPROVED = executed (order placed) OR execution_failed
         # (approved but OrderManager produced no order) — NEVER derived
         # from execution success alone.
@@ -3813,9 +3908,18 @@ class MasterOrchestrator:
             # Mark daily cap consumed — only 1 rotation per day
             self._last_rotation_date = today
 
-            # Route the incoming signal through the full debate + decision path
+            # Route the incoming signal through the full debate + decision path.
+            # DTA-CRE-LATE-CAP-001: _run_debate_and_decide() is now
+            # evaluation-only; a rotation is a deliberate 1-for-1 capital
+            # swap (already vacated the slot just above), so it must still
+            # execute immediately here, bypassing the cycle-wide late
+            # position cap (that cap only governs NEW slots, not a
+            # like-for-like replacement of a just-closed one).
             try:
-                self._run_debate_and_decide(sig, snapshot)
+                _rot_row = self._run_debate_and_decide(sig, snapshot)
+                if isinstance(_rot_row, tuple) and _rot_row and _rot_row[0] == "APPROVED":
+                    _, _rot_sig, _rot_decision, _rot_votes = _rot_row
+                    self._execute_decided_signal(_rot_sig, _rot_decision, _rot_votes, snapshot)
             except Exception as exc:
                 log.error(
                     "[RotationError] Failed to open %s after rotation close: %s",
@@ -3826,11 +3930,20 @@ class MasterOrchestrator:
             break
 
     def _run_debate_and_decide(self, signal: TradeSignal,
-                                snapshot: MarketSnapshot) -> dict | tuple | None:
-        """Run debate + decision for one signal.  Returns a summary row if
-        trade executed; ("EXECUTION_FAILED", score) if Debate approved but
-        OrderManager produced no order (DTA-DEBATE-AUTHORITY-004); None if
-        Debate/Decision rejected the signal."""
+                                snapshot: MarketSnapshot) -> tuple | None:
+        """Run debate + decision for one signal (EVALUATION ONLY — does not
+        execute). Returns ("APPROVED", signal, decision, votes) if
+        Debate/KDA approved the trade (TRADE_APPROVED already published);
+        None if rejected (TRADE_REJECTED already published).
+
+        DTA-CRE-LATE-CAP-001: execution used to happen inline here, in
+        arrival order, with no regard for how many OTHER signals this same
+        cycle also got approved. It is now deferred to
+        _execute_decided_signal(), called from run_full_cycle() after ALL
+        of this cycle's candidates have been evaluated — so the real
+        MAX_POSITIONS cap can rank every approved signal by its final
+        confidence_score and execute the best ones first, instead of
+        whichever happened to finish its debate thread first."""
         log.info("── Layer 6–7: Debate & Decision for %s ──", signal.symbol)
         votes    = self.debate_system.run(signal, snapshot)
 
@@ -3953,122 +4066,7 @@ class MasterOrchestrator:
                     "votes":     {v.agent_name: v.score for v in votes},
                 },
             ))
-
-            # ── Equity / Futures path (original logic) ─────────────────
-            # NOTE: OPTIONS/SPREAD signals are handled in _run_options_fast_path()
-            # BEFORE the debate loop.  They will never appear here.
-            order = self.order_manager.execute(
-                signal,
-                decision,
-                signal_context={
-                    "regime":     (
-                        snapshot.regime.value
-                        if hasattr(snapshot.regime, "value")
-                        else str(snapshot.regime)
-                    ),
-                    "vix":        snapshot.vix,
-                    # DTA-AET-FIX-001: gate on trading_allowed (scanner's own
-                    # behavior verdict), not the raw any_distortion flag --
-                    # see the matching fix + rationale at check_and_expire_stale_limits()
-                    # call site above (same function, ~line 855).
-                    "distortion": not bool(
-                        getattr(
-                            getattr(self.global_intelligence.last_distortion,
-                                    "behavior_overrides", None),
-                            "trading_allowed", True,
-                        )
-                    ),
-                    # DTA-AET-DIAG-001: carry the specific distortion flags so
-                    # AET's deferral log can state the real trigger instead of
-                    # always attributing it to VIX.
-                    "distortion_flags": list(
-                        getattr(self.global_intelligence.last_distortion,
-                                "active_flags", None) or []
-                    ),
-                },
-            )
-            if order:
-                # ── Update portfolio heat (Portfolio Guard wiring) ────────────────
-                # Every live open position uses MAX_RISK_PER_TRADE_PCT of
-                # total capital.  Heat = open_positions * RISK_PER_TRADE.
-                try:
-                    from config import MAX_RISK_PER_TRADE_PCT as _rpt
-                    _open_count = len(self.order_manager.get_open_orders())
-                    self.risk_manager.update_portfolio_heat(_open_count * _rpt)
-                except Exception:
-                    pass
-                self.trade_monitor.register(order)
-                self.bus.publish(ExecutionEvent(
-                    event_type=EventType.ORDER_PLACED,
-                    source_agent="OrderManager",
-                    payload={
-                        "symbol":       signal.symbol,
-                        "order_id":     getattr(order, "order_id", "sim"),
-                        "entry_price":  signal.entry_price,
-                        "stop_loss":    signal.stop_loss,
-                        "target_price": signal.target_price,
-                        "strategy":     signal.strategy_name or "",
-                        "direction":    (signal.direction.value
-                                         if hasattr(signal.direction, "value")
-                                         else str(signal.direction)),
-                        "quantity":     getattr(order, "quantity",
-                                                getattr(signal, "quantity", 0)),
-                        "confidence":   getattr(signal, "confidence", 0.0),
-                        "rr":           getattr(signal, "risk_reward_ratio", 0.0),
-                    },
-                ))
-                # Notify — Telegram + DB log
-                # order_manager already sent the correct notification:
-                #   paper LIMIT → limit_order_placed() (pending fill)
-                #   live        → trade_opened() (submitted to broker)
-                # Do NOT fire a second trade_opened() here to avoid duplicates.
-                if False and self.notifier:  # disabled — notification handled by order_manager
-                    direction = getattr(signal, "direction", "")
-                    self.notifier.trade_opened(
-                        signal.symbol,
-                        direction.value if hasattr(direction, "value") else str(direction),
-                        signal.entry_price, signal.stop_loss, signal.target_price,
-                        signal.strategy_name or "", "paper",
-                    )
-                if self.db:
-                    self.db.log_event("orchestrator", "TRADE_OPENED",
-                                      f"symbol={signal.symbol} strategy={signal.strategy_name}")
-                return {
-                    "symbol":   signal.symbol,
-                    "ltp":      signal.entry_price,   # LTP at time of scan
-                    "entry":    signal.entry_price,
-                    "sl":       signal.stop_loss,
-                    "target":   signal.target_price,
-                    "strategy": signal.strategy_name,
-                    "score":    decision.confidence_score,
-                    "modifier": decision.position_size_modifier,
-                    "qty":      getattr(order, "quantity", 0),
-                }
-            # DTA-DEBATE-AUTHORITY-004: Debate/Decision approved this signal,
-            # but OrderManager produced no order (freshness/window/broker-
-            # mapping/etc) — this is an execution failure, NOT a Debate
-            # rejection. Publish a distinct event and a distinct marker so
-            # the caller never has to infer this from list membership.
-            self.bus.publish(ExecutionEvent(
-                event_type=EventType.EXECUTION_FAILED,
-                source_agent="OrderManager",
-                payload={
-                    "symbol":    signal.symbol,
-                    "strategy":  signal.strategy_name or "",
-                    "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
-                    "score":     decision.confidence_score,
-                    # DTA-REJECTION-ATTRIBUTION-001: the specific reason
-                    # OrderManager.execute() returned None for (audit/
-                    # reporting only — never influences any decision).
-                    "reason":    getattr(self.order_manager, "last_rejection_reason", None),
-                    # DTA-BROKER-DIAG-001: the underlying broker error
-                    # (errorCode/remarks/exception text), when the reason
-                    # is BROKER_ENTRY_PLACEMENT_FAILED — persisted here so
-                    # it survives container restarts / log rotation.
-                    "detail":    getattr(self.order_manager, "last_rejection_detail", "") or None,
-                },
-            ))
-            return ("EXECUTION_FAILED", decision.confidence_score)
+            return ("APPROVED", signal, decision, votes)
         else:
             log.info("  ❌ %s", decision.summary())
             self.bus.publish(DecisionEvent(
@@ -4084,6 +4082,132 @@ class MasterOrchestrator:
                 },
             ))
         return None
+
+    def _execute_decided_signal(self, signal: TradeSignal, decision, votes,
+                                 snapshot: MarketSnapshot) -> dict | tuple:
+        """Place the order for an already-Debate/KDA-approved (signal,
+        decision) pair. Returns a summary dict on success,
+        ("EXECUTION_FAILED", score) if OrderManager could not place the
+        order. Extracted from the former _run_debate_and_decide() body
+        (DTA-CRE-LATE-CAP-001) so run_full_cycle() can defer execution
+        until after the real MAX_POSITIONS cap has ranked all of this
+        cycle's approved signals — this method's own logic is otherwise
+        byte-identical to what used to run inline."""
+        # ── Equity / Futures path (original logic) ─────────────────
+        # NOTE: OPTIONS/SPREAD signals are handled in _run_options_fast_path()
+        # BEFORE the debate loop.  They will never appear here.
+        order = self.order_manager.execute(
+            signal,
+            decision,
+            signal_context={
+                "regime":     (
+                    snapshot.regime.value
+                    if hasattr(snapshot.regime, "value")
+                    else str(snapshot.regime)
+                ),
+                "vix":        snapshot.vix,
+                # DTA-AET-FIX-001: gate on trading_allowed (scanner's own
+                # behavior verdict), not the raw any_distortion flag --
+                # see the matching fix + rationale at check_and_expire_stale_limits()
+                # call site above (same function, ~line 855).
+                "distortion": not bool(
+                    getattr(
+                        getattr(self.global_intelligence.last_distortion,
+                                "behavior_overrides", None),
+                        "trading_allowed", True,
+                    )
+                ),
+                # DTA-AET-DIAG-001: carry the specific distortion flags so
+                # AET's deferral log can state the real trigger instead of
+                # always attributing it to VIX.
+                "distortion_flags": list(
+                    getattr(self.global_intelligence.last_distortion,
+                            "active_flags", None) or []
+                ),
+            },
+        )
+        if order:
+            # ── Update portfolio heat (Portfolio Guard wiring) ────────────────
+            # Every live open position uses MAX_RISK_PER_TRADE_PCT of
+            # total capital.  Heat = open_positions * RISK_PER_TRADE.
+            try:
+                from config import MAX_RISK_PER_TRADE_PCT as _rpt
+                _open_count = len(self.order_manager.get_open_orders())
+                self.risk_manager.update_portfolio_heat(_open_count * _rpt)
+            except Exception:
+                pass
+            self.trade_monitor.register(order)
+            self.bus.publish(ExecutionEvent(
+                event_type=EventType.ORDER_PLACED,
+                source_agent="OrderManager",
+                payload={
+                    "symbol":       signal.symbol,
+                    "order_id":     getattr(order, "order_id", "sim"),
+                    "entry_price":  signal.entry_price,
+                    "stop_loss":    signal.stop_loss,
+                    "target_price": signal.target_price,
+                    "strategy":     signal.strategy_name or "",
+                    "direction":    (signal.direction.value
+                                     if hasattr(signal.direction, "value")
+                                     else str(signal.direction)),
+                    "quantity":     getattr(order, "quantity",
+                                            getattr(signal, "quantity", 0)),
+                    "confidence":   getattr(signal, "confidence", 0.0),
+                    "rr":           getattr(signal, "risk_reward_ratio", 0.0),
+                },
+            ))
+            # Notify — Telegram + DB log
+            # order_manager already sent the correct notification:
+            #   paper LIMIT → limit_order_placed() (pending fill)
+            #   live        → trade_opened() (submitted to broker)
+            # Do NOT fire a second trade_opened() here to avoid duplicates.
+            if False and self.notifier:  # disabled — notification handled by order_manager
+                direction = getattr(signal, "direction", "")
+                self.notifier.trade_opened(
+                    signal.symbol,
+                    direction.value if hasattr(direction, "value") else str(direction),
+                    signal.entry_price, signal.stop_loss, signal.target_price,
+                    signal.strategy_name or "", "paper",
+                )
+            if self.db:
+                self.db.log_event("orchestrator", "TRADE_OPENED",
+                                  f"symbol={signal.symbol} strategy={signal.strategy_name}")
+            return {
+                "symbol":   signal.symbol,
+                "ltp":      signal.entry_price,   # LTP at time of scan
+                "entry":    signal.entry_price,
+                "sl":       signal.stop_loss,
+                "target":   signal.target_price,
+                "strategy": signal.strategy_name,
+                "score":    decision.confidence_score,
+                "modifier": decision.position_size_modifier,
+                "qty":      getattr(order, "quantity", 0),
+            }
+        # DTA-DEBATE-AUTHORITY-004: Debate/Decision approved this signal,
+        # but OrderManager produced no order (freshness/window/broker-
+        # mapping/etc) — this is an execution failure, NOT a Debate
+        # rejection. Publish a distinct event and a distinct marker so
+        # the caller never has to infer this from list membership.
+        self.bus.publish(ExecutionEvent(
+            event_type=EventType.EXECUTION_FAILED,
+            source_agent="OrderManager",
+            payload={
+                "symbol":    signal.symbol,
+                "strategy":  signal.strategy_name or "",
+                "direction": str(getattr(signal.direction, "value", signal.direction) or "").upper(),
+                "score":     decision.confidence_score,
+                # DTA-REJECTION-ATTRIBUTION-001: the specific reason
+                # OrderManager.execute() returned None for (audit/
+                # reporting only — never influences any decision).
+                "reason":    getattr(self.order_manager, "last_rejection_reason", None),
+                # DTA-BROKER-DIAG-001: the underlying broker error
+                # (errorCode/remarks/exception text), when the reason
+                # is BROKER_ENTRY_PLACEMENT_FAILED — persisted here so
+                # it survives container restarts / log rotation.
+                "detail":    getattr(self.order_manager, "last_rejection_detail", "") or None,
+            },
+        ))
+        return ("EXECUTION_FAILED", decision.confidence_score)
 
     def get_last_cycle_report(self) -> dict:
         """Return the most recently captured cycle summary (for Telegram /cycle)."""

@@ -41,22 +41,28 @@ def _sig(**overrides) -> TradeSignal:
 
 
 def test_max_positions_cap_persists_to_rejection_audit_db():
-    """Overflow signals beyond _MAX_POSITIONS must call ingest_rejection()
-    with reason=MAX_POSITIONS_CAP, in addition to the existing in-memory
-    audit list — and selection behavior (len(result) <= _MAX_POSITIONS)
-    must be completely unchanged."""
+    """Overflow signals beyond the CRE evaluation pool must call
+    ingest_rejection() with reason=MAX_POSITIONS_CAP, in addition to the
+    existing in-memory audit list. DTA-CRE-LATE-CAP-001: CRE's cutoff is now
+    a widened evaluation pool (_MAX_POSITIONS x multiplier, capped), not the
+    real position count -- that's enforced later, at execution."""
+    from risk_control.capital_risk_engine import (
+        _CRE_EVAL_POOL_MULTIPLIER, _CRE_EVAL_POOL_MAX_ABS,
+    )
+    _eval_pool = min(_CRE_EVAL_POOL_MAX_ABS,
+                      max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER))
     cre = CapitalRiskEngine()
     signals = [
         _sig(symbol=f"SYM{i}", strategy_name="KDA_AUTHORITY", confidence=8.0,
              kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
              kda_evidence_state="VALIDATED", kda_conviction=8.0 + i * 0.01)
-        for i in range(_MAX_POSITIONS + 3)
+        for i in range(_eval_pool + 3)
     ]
     mock_tracker = MagicMock()
     with patch("analysis.rejection_tracker.get_rejection_tracker", return_value=mock_tracker):
         result = cre.allocate(signals, _snapshot(), portfolio=None)
 
-    assert len(result) <= _MAX_POSITIONS  # selection behavior unchanged
+    assert len(result) <= _eval_pool  # selection behavior: capped at eval pool, not _MAX_POSITIONS
     assert mock_tracker.ingest_rejection.called
     reasons = {
         c.kwargs.get("rejected_reason") for c in mock_tracker.ingest_rejection.call_args_list
@@ -67,17 +73,22 @@ def test_max_positions_cap_persists_to_rejection_audit_db():
 def test_max_positions_cap_ingest_failure_does_not_block_allocation():
     """If rejection_tracker itself raises, allocate() must still return
     the normal capped result — audit failures must never affect trading."""
+    from risk_control.capital_risk_engine import (
+        _CRE_EVAL_POOL_MULTIPLIER, _CRE_EVAL_POOL_MAX_ABS,
+    )
+    _eval_pool = min(_CRE_EVAL_POOL_MAX_ABS,
+                      max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER))
     cre = CapitalRiskEngine()
     signals = [
         _sig(symbol=f"SYM{i}", strategy_name="KDA_AUTHORITY", confidence=8.0,
              kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
              kda_evidence_state="VALIDATED", kda_conviction=8.0 + i * 0.01)
-        for i in range(_MAX_POSITIONS + 3)
+        for i in range(_eval_pool + 3)
     ]
     with patch("analysis.rejection_tracker.get_rejection_tracker",
                side_effect=RuntimeError("db unavailable")):
         result = cre.allocate(signals, _snapshot(), portfolio=None)
-    assert len(result) <= _MAX_POSITIONS
+    assert len(result) <= _eval_pool
 
 
 def test_exposure_cap_exceeded_persists_to_rejection_audit_db():

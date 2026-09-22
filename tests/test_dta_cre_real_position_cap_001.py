@@ -1,30 +1,44 @@
 """
 tests/test_dta_cre_real_position_cap_001.py
 =============================================
-DTA-CRE-REAL-POSITION-CAP-001
+DTA-CRE-REAL-POSITION-CAP-001 (superseded/extended by DTA-CRE-LATE-CAP-001)
 
-Root cause: CapitalRiskEngine.allocate() computed _cre_available
+Original finding: CapitalRiskEngine.allocate() computed _cre_available
 (_MAX_POSITIONS - real open positions) purely for an audit log line, but
 the actual cap loop gated on `len(result) >= _MAX_POSITIONS` -- completely
-ignoring how many positions were already open. With 0 open positions
-(the common case for this account) this happened to look correct, which
-masked the bug: whenever real positions WERE open, the cap silently
-allowed up to _MAX_POSITIONS *additional* new signals on top of the
-already-open ones, breaching the intended total-exposure limit.
+ignoring how many positions were already open.
 
-Fix: the loop now gates on `len(result) >= _cre_available`, where
-_cre_available = max(0, _MAX_POSITIONS - open_positions). With 0 open
-positions this is identical to the old behavior (regression-proof).
+DTA-CRE-LATE-CAP-001 follow-up (architectural fix, same day): the real
+"how many new positions can we open" decision was moved OUT of
+CapitalRiskEngine entirely -- it's now enforced once, at the very end of
+the pipeline (right before execution, in orchestrator/master_orchestrator.py's
+STEP 6), ranked by Debate/KDA's own final confidence_score. CRE's own
+cutoff is now a widened, open-position-agnostic "evaluation pool"
+(_CRE_EVAL_POOL_MULTIPLIER x _MAX_POSITIONS, bounded by
+_CRE_EVAL_POOL_MAX_ABS) -- a compute-cost guard for the expensive
+downstream stages (Simulation/RiskGuardian/Debate), not a capital/exposure
+constraint. This lets a signal that would previously have been discarded
+before Debate ever saw it get a real chance to be evaluated.
+
+This file now verifies CRE's own (new) responsibility: the eval-pool
+widening, and that it is NOT open-position-aware (that concern moved
+downstream -- see tests/test_dta_cre_late_cap_001.py for the real cap).
 """
 from __future__ import annotations
 
 from datetime import datetime
 from unittest.mock import MagicMock
 
-from risk_control.capital_risk_engine import CapitalRiskEngine, _MAX_POSITIONS
+from risk_control.capital_risk_engine import (
+    CapitalRiskEngine, _MAX_POSITIONS,
+    _CRE_EVAL_POOL_MULTIPLIER, _CRE_EVAL_POOL_MAX_ABS,
+)
 from models.trade_signal import TradeSignal, SignalDirection, SignalType
 from models.market_data import MarketSnapshot, RegimeLabel, VolatilityLevel
 from models.portfolio import Portfolio, Position
+
+_EVAL_POOL = min(_CRE_EVAL_POOL_MAX_ABS,
+                  max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER))
 
 
 def _snapshot(regime=RegimeLabel.RANGE_MARKET, vix: float = 15.0) -> MarketSnapshot:
@@ -56,53 +70,62 @@ def _portfolio_with_open_positions(n: int) -> Portfolio:
     return pf
 
 
-def test_t01_zero_open_positions_unchanged_behavior():
-    """Regression guard: with 0 real open positions, the cap is still
-    exactly _MAX_POSITIONS per cycle -- identical to pre-fix behavior."""
-    cre = CapitalRiskEngine()
-    signals = [_sig(symbol=f"SYM{i}") for i in range(_MAX_POSITIONS + 3)]
-    result = cre.allocate(signals, _snapshot(), portfolio=_portfolio_with_open_positions(0))
-    assert len(result) == _MAX_POSITIONS
+def test_t01_pool_wider_than_max_positions():
+    """Sanity: the widened eval pool must be strictly larger than the real
+    MAX_POSITIONS (otherwise the whole point of DTA-CRE-LATE-CAP-001 --
+    letting more candidates reach Debate -- would not hold)."""
+    assert _EVAL_POOL > _MAX_POSITIONS
 
 
-def test_t02_open_positions_reduce_available_slots():
-    """With 2 real open positions and _MAX_POSITIONS=5, only 3 new signals
-    should be allowed through -- not 5."""
+def test_t02_eval_pool_is_open_position_agnostic():
+    """CRE's cutoff no longer depends on real open positions at all -- that
+    concern moved downstream to the final execution-time cap. Same
+    candidate count, 0 vs many open positions, must produce the same
+    CRE-stage result count."""
     cre = CapitalRiskEngine()
-    n_open = 2
-    signals = [_sig(symbol=f"SYM{i}") for i in range(_MAX_POSITIONS + 3)]
-    result = cre.allocate(
-        signals, _snapshot(), portfolio=_portfolio_with_open_positions(n_open)
+    signals = [_sig(symbol=f"SYM{i}") for i in range(_EVAL_POOL + 3)]
+
+    result_zero_open = cre.allocate(
+        signals, _snapshot(), portfolio=_portfolio_with_open_positions(0)
     )
-    assert len(result) == max(0, _MAX_POSITIONS - n_open)
-
-
-def test_t03_already_at_or_over_cap_allows_zero_new_signals():
-    """With open positions already >= _MAX_POSITIONS, zero new signals
-    should be approved this cycle -- all rejected as MAX_POSITIONS_CAP."""
-    cre = CapitalRiskEngine()
-    signals = [_sig(symbol=f"SYM{i}") for i in range(5)]
-    result = cre.allocate(
+    result_many_open = CapitalRiskEngine().allocate(
         signals, _snapshot(), portfolio=_portfolio_with_open_positions(_MAX_POSITIONS)
     )
-    assert result == []
+    assert len(result_zero_open) == len(result_many_open) == _EVAL_POOL
 
 
-def test_t04_portfolio_none_still_uses_full_cap():
-    """portfolio=None (no portfolio info available) must fail-safe to the
-    full _MAX_POSITIONS cap, not zero."""
+def test_t03_eval_pool_cutoff_applies():
+    """More candidates than the eval pool -> capped at exactly the pool size."""
     cre = CapitalRiskEngine()
-    signals = [_sig(symbol=f"SYM{i}") for i in range(_MAX_POSITIONS + 3)]
+    signals = [_sig(symbol=f"SYM{i}") for i in range(_EVAL_POOL + 5)]
     result = cre.allocate(signals, _snapshot(), portfolio=None)
-    assert len(result) == _MAX_POSITIONS
+    assert len(result) == _EVAL_POOL
 
 
-def test_t05_audit_block_exception_fails_safe_to_full_cap():
-    """If the position-count audit computation itself raises, allocate()
-    must still fail safe to the original _MAX_POSITIONS cap, not crash
-    and not silently allow unlimited signals."""
+def test_t04_fewer_candidates_than_pool_all_pass():
+    """Fewer candidates than the eval pool -> none rejected for capacity."""
     cre = CapitalRiskEngine()
-    signals = [_sig(symbol=f"SYM{i}") for i in range(_MAX_POSITIONS + 3)]
+    signals = [_sig(symbol=f"SYM{i}") for i in range(min(3, _MAX_POSITIONS))]
+    result = cre.allocate(signals, _snapshot(), portfolio=None)
+    assert len(result) == len(signals)
+
+
+def test_t05_portfolio_none_still_uses_eval_pool():
+    """portfolio=None (no portfolio info available) must still apply the
+    eval-pool cutoff -- unaffected either way, since the cutoff no longer
+    reads portfolio state at all."""
+    cre = CapitalRiskEngine()
+    signals = [_sig(symbol=f"SYM{i}") for i in range(_EVAL_POOL + 3)]
+    result = cre.allocate(signals, _snapshot(), portfolio=None)
+    assert len(result) == _EVAL_POOL
+
+
+def test_t06_audit_block_exception_fails_safe_to_eval_pool():
+    """If the position-count audit computation itself raises, allocate()
+    must still fail safe to the eval-pool cutoff, not crash and not
+    silently allow unlimited signals."""
+    cre = CapitalRiskEngine()
+    signals = [_sig(symbol=f"SYM{i}") for i in range(_EVAL_POOL + 3)]
 
     class _BrokenPositions:
         def values(self):
@@ -118,24 +141,23 @@ def test_t05_audit_block_exception_fails_safe_to_full_cap():
             self.positions = _BrokenPositions()
 
     result = cre.allocate(signals, _snapshot(), portfolio=_FakePortfolio())
-    assert len(result) == _MAX_POSITIONS
+    assert len(result) == _EVAL_POOL
 
 
-def test_t06_overflow_signals_still_tagged_max_positions_cap(monkeypatch):
-    """Rejected overflow signals (due to real open positions) are still
-    persisted with reason=MAX_POSITIONS_CAP, same as before."""
+def test_t07_overflow_signals_still_tagged_max_positions_cap(monkeypatch):
+    """Rejected overflow signals are still persisted with
+    reason=MAX_POSITIONS_CAP (label unchanged, only the threshold moved)."""
     mock_tracker = MagicMock()
     monkeypatch.setattr(
         "analysis.rejection_tracker.get_rejection_tracker", lambda: mock_tracker
     )
     cre = CapitalRiskEngine()
-    signals = [_sig(symbol=f"SYM{i}") for i in range(_MAX_POSITIONS)]
-    result = cre.allocate(
-        signals, _snapshot(), portfolio=_portfolio_with_open_positions(_MAX_POSITIONS - 1)
-    )
-    assert len(result) == 1
+    signals = [_sig(symbol=f"SYM{i}") for i in range(_EVAL_POOL + 2)]
+    result = cre.allocate(signals, _snapshot(), portfolio=None)
+    assert len(result) == _EVAL_POOL
     assert mock_tracker.ingest_rejection.called
     reasons = {
         c.kwargs.get("rejected_reason") for c in mock_tracker.ingest_rejection.call_args_list
     }
     assert "MAX_POSITIONS_CAP" in reasons
+

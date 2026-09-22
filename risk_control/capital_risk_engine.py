@@ -173,6 +173,22 @@ try:
 except Exception:
     _MAX_POSITIONS = 8  # fallback if config import fails
 
+# ── DTA-CRE-LATE-CAP-001: candidate evaluation pool (NOT the real position
+# cap) ──────────────────────────────────────────────────────────────────────
+# This cutoff only bounds how many candidates get passed to the expensive
+# downstream stages (Simulation/RiskGuardian/Debate) — the real "how many
+# new positions can we open" cap is enforced once, at the end, right before
+# execution, ranked by Debate/KDA's own final score (see
+# orchestrator/master_orchestrator.py's STEP 6). Widening this here means a
+# signal that would previously have been discarded before Debate ever saw
+# it now gets a real chance to be evaluated on its merits.
+try:
+    from config import CRE_EVAL_POOL_MULTIPLIER as _CRE_EVAL_POOL_MULTIPLIER
+    from config import CRE_EVAL_POOL_MAX_ABS as _CRE_EVAL_POOL_MAX_ABS
+except Exception:
+    _CRE_EVAL_POOL_MULTIPLIER = 3
+    _CRE_EVAL_POOL_MAX_ABS = 20
+
 
 class CapitalRiskEngine:
     """
@@ -233,8 +249,14 @@ class CapitalRiskEngine:
         # here but never actually used to gate the loop below (which capped on
         # len(result) alone). Safe defaults match the OLD behavior if this block
         # itself fails, so a real, already-open account is never under-protected.
-        _pf_open       = 0
-        _cre_available = _MAX_POSITIONS
+        _pf_open        = 0
+        _cre_available  = _MAX_POSITIONS
+        # DTA-CRE-LATE-CAP-001: safe default for the widened evaluation pool
+        # (bounded, but NOT the real position cap — see module-level comment).
+        _eval_pool_size = min(
+            _CRE_EVAL_POOL_MAX_ABS,
+            max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER),
+        )
         try:
             _pf_positions = list(portfolio.positions.values()) if portfolio else []
             _pf_open      = len(_pf_positions)
@@ -249,15 +271,22 @@ class CapitalRiskEngine:
             )
             _pf_counted   = _pf_open
             _cre_available = max(0, _MAX_POSITIONS - _pf_open)
+            # DTA-CRE-LATE-CAP-001: the loop below now cuts off at this wider
+            # pool, not _cre_available — the real position-count cap is
+            # enforced later, at execution, using Debate's final ranking.
+            _eval_pool_size = min(
+                _CRE_EVAL_POOL_MAX_ABS,
+                max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER),
+            )
             log.info(
                 "[CREPositionCountAudit] max_positions=%d "
                 "positions_open=%d positions_quarantined=%d positions_pending=%d "
                 "positions_counted_by_cre=0 positions_counted_by_order_manager=%d "
-                "available_slots=%d cap_triggered=False rejected_due_to_cap=0 "
-                "counting_method=open_positions_plus_this_cycle",
+                "available_slots=%d eval_pool_size=%d cap_triggered=False "
+                "rejected_due_to_cap=0 counting_method=open_positions_plus_this_cycle",
                 _MAX_POSITIONS,
                 _pf_open, _pf_quarantine, _pf_pending,
-                _pf_counted, _cre_available,
+                _pf_counted, _cre_available, _eval_pool_size,
             )
         except Exception as _pca_exc:
             log.debug("[CREPositionCountAudit] skipped: %s", _pca_exc)
@@ -358,11 +387,12 @@ class CapitalRiskEngine:
                         "would_pass_debate": False}
 
         for _sig_idx, sig in enumerate(signals):
-            if len(result) >= _cre_available:
+            if len(result) >= _eval_pool_size:
                 log.info(
-                    "[CRE] Max position limit reached — %d open + %d approved this "
-                    "cycle >= %d max — remaining signals skipped.",
-                    _pf_open, len(result), _MAX_POSITIONS,
+                    "[CRE] Evaluation pool limit reached — %d candidates already "
+                    "queued for downstream evaluation >= pool size %d (real "
+                    "MAX_POSITIONS=%d, open=%d) — remaining signals skipped.",
+                    len(result), _eval_pool_size, _MAX_POSITIONS, _pf_open,
                 )
                 # ── [CRECapDecision] per-signal + final [CREPositionCountAudit] ──
                 _cap_remaining = signals[_sig_idx:]

@@ -158,9 +158,15 @@ def test_kda_useful_evidence_now_exempted_uses_full_deployable():
 
 
 def test_max_positions_cap_unaffected():
-    """T5: MAX_POSITIONS still caps total surviving signals, regardless of
-    how any individual candidate's budget was computed."""
-    from risk_control.capital_risk_engine import _MAX_POSITIONS
+    """T5: the CRE evaluation pool still caps total surviving signals,
+    regardless of how any individual candidate's budget was computed.
+    DTA-CRE-LATE-CAP-001: CRE's cutoff is now a widened evaluation pool,
+    not the real position count (enforced later, at execution)."""
+    from risk_control.capital_risk_engine import (
+        _MAX_POSITIONS, _CRE_EVAL_POOL_MULTIPLIER, _CRE_EVAL_POOL_MAX_ABS,
+    )
+    _eval_pool = min(_CRE_EVAL_POOL_MAX_ABS,
+                      max(_MAX_POSITIONS, _MAX_POSITIONS * _CRE_EVAL_POOL_MULTIPLIER))
     cre = _cre()
     signals = [
         _sig(
@@ -168,10 +174,10 @@ def test_max_positions_cap_unaffected():
             kda_decision="KNOWLEDGE_BUY", authorization_source="KDA",
             kda_evidence_state="VALIDATED", kda_conviction=8.0 + i * 0.01,
         )
-        for i in range(_MAX_POSITIONS + 3)
+        for i in range(_eval_pool + 3)
     ]
     result = cre.allocate(signals, _snapshot(), portfolio=None)
-    assert len(result) <= _MAX_POSITIONS
+    assert len(result) <= _eval_pool
 
 
 def test_exposure_cap_unaffected():

@@ -55,6 +55,19 @@ def _compute_max_positions() -> int:
 
 MAX_POSITIONS            = _compute_max_positions()
 
+# ── Late position-cap architecture (DTA-CRE-LATE-CAP-001) ────────────────────
+# CapitalRiskEngine's per-cycle candidate cutoff no longer IS the real
+# "how many new positions can we open" limit -- it only bounds how many
+# candidates get evaluated by Simulation/RiskGuardian/Debate (a compute-cost
+# guard, since those stages are expensive per-signal). The real MAX_POSITIONS
+# limit is enforced once, at the very end, right before execution -- ranked
+# by Debate/KDA's own final confidence_score, not CapitalRiskEngine's cheap
+# pre-score. This means a signal that narrowly missed CRE's old early cutoff
+# now gets a real chance to be evaluated by every downstream gate.
+CRE_EVAL_POOL_MULTIPLIER = 3    # widen CRE pass-through to N x MAX_POSITIONS
+CRE_EVAL_POOL_MAX_ABS    = 20   # hard ceiling regardless of MAX_POSITIONS (latency safety)
+ENABLE_LATE_POSITION_CAP = os.getenv("ENABLE_LATE_POSITION_CAP", "true").lower() == "true"
+
 # ─────────────────────────────────────────────
 # ATR-BASED EXECUTION  (replaces all hardcoded % stops)
 # ─────────────────────────────────────────────
