@@ -228,6 +228,13 @@ class CapitalRiskEngine:
         allocated_total = 0.0
 
         # ── [CREPositionCountAudit] — reconcile open position count ────
+        # DTA-CRE-REAL-POSITION-CAP-001: root cause of MAX_POSITIONS_CAP rejecting
+        # signals even with zero real open positions — _cre_available was computed
+        # here but never actually used to gate the loop below (which capped on
+        # len(result) alone). Safe defaults match the OLD behavior if this block
+        # itself fails, so a real, already-open account is never under-protected.
+        _pf_open       = 0
+        _cre_available = _MAX_POSITIONS
         try:
             _pf_positions = list(portfolio.positions.values()) if portfolio else []
             _pf_open      = len(_pf_positions)
@@ -240,14 +247,14 @@ class CapitalRiskEngine:
                 1 for p in _pf_positions
                 if getattr(p, "status", "") in ("PENDING", "SUBMITTED", "PARTIALLY_FILLED")
             )
-            _pf_counted   = _pf_open   # CRE counts this-cycle result[], not portfolio
+            _pf_counted   = _pf_open
             _cre_available = max(0, _MAX_POSITIONS - _pf_open)
             log.info(
                 "[CREPositionCountAudit] max_positions=%d "
                 "positions_open=%d positions_quarantined=%d positions_pending=%d "
                 "positions_counted_by_cre=0 positions_counted_by_order_manager=%d "
                 "available_slots=%d cap_triggered=False rejected_due_to_cap=0 "
-                "counting_method=this_cycle_result_len",
+                "counting_method=open_positions_plus_this_cycle",
                 _MAX_POSITIONS,
                 _pf_open, _pf_quarantine, _pf_pending,
                 _pf_counted, _cre_available,
@@ -351,9 +358,12 @@ class CapitalRiskEngine:
                         "would_pass_debate": False}
 
         for _sig_idx, sig in enumerate(signals):
-            if len(result) >= _MAX_POSITIONS:
-                log.info("[CRE] Max position limit (%d) reached — remaining signals skipped.",
-                         _MAX_POSITIONS)
+            if len(result) >= _cre_available:
+                log.info(
+                    "[CRE] Max position limit reached — %d open + %d approved this "
+                    "cycle >= %d max — remaining signals skipped.",
+                    _pf_open, len(result), _MAX_POSITIONS,
+                )
                 # ── [CRECapDecision] per-signal + final [CREPositionCountAudit] ──
                 _cap_remaining = signals[_sig_idx:]
                 _cap_rejected  = 0
