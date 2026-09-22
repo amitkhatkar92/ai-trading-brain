@@ -1116,11 +1116,44 @@ class OrderManager:
         # product_type must match the entry's — Dhan requires the closing order
         # to reference the same book (CNC vs INTRADAY) as the position it opened.
         close_dir = "SELL" if rec.direction == "BUY" else "BUY"
-        _exit_order_id = self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
-                                            order_type="MARKET", product_type=rec.product_type)
+
+        # DTA-PHANTOM-EXIT-001: verify the broker still genuinely holds this
+        # position before firing a reversing order. Without this, a stale
+        # internal record (broker already flattened the position — e.g. its
+        # own MIS auto square-off the prior session) causes the "closing"
+        # order to open a brand-new, unprotected position in the opposite
+        # direction instead of closing anything. Confirmed live 2026-09-22:
+        # ANANDRATHI SELL 2 "close" became a naked short of 2 shares because
+        # Dhan had already force-flattened the original BUY the prior
+        # evening (entered before DTA-CARRY-CNC-001, so still productType=
+        # INTRADAY) — our own EOD square-off never ran that day (deployed
+        # later that evening), so the position sat "open" in our state with
+        # nothing left at the broker. _broker_confirms_no_open_position()
+        # only ever returns True when it has POSITIVELY confirmed absence —
+        # any uncertainty (API error, or the broker genuinely still holds
+        # it) falls through to the normal exit path below, so this can never
+        # block a real, legitimate close.
+        _phantom_exit = (
+            not self._paper_mode
+            and self._broker
+            and not order_id.startswith("SIM_")
+            and self._broker_confirms_no_open_position(rec.symbol)
+        )
+        if _phantom_exit:
+            log.warning(
+                "[PhantomExitGuard] %s %s — broker confirms NO open position "
+                "(already flattened, most likely by its own auto square-off). "
+                "Skipping reversing order to avoid opening a naked position; "
+                "marking internal record closed only.",
+                rec.symbol, order_id,
+            )
+            _exit_order_id = "PHANTOM_ALREADY_FLAT"
+        else:
+            _exit_order_id = self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
+                                                order_type="MARKET", product_type=rec.product_type)
         # D-001: If live broker rejected the exit order, do NOT mark closed — position
         # stays open in local state so TradeMonitor will retry on the next cycle.
-        if not self._paper_mode and _exit_order_id is None:
+        if not self._paper_mode and not _phantom_exit and _exit_order_id is None:
             log.error(
                 "[OrderManager] ❌ EXIT ORDER FAILED for %s order_id=%s — "
                 "broker returned None. Position remains OPEN. "
@@ -3091,21 +3124,32 @@ class OrderManager:
                     # pre-fix legacy record) are unaffected — the broker
                     # already force-closed those same day, exactly as before.
                     if rec.product_type == "CNC" and not self._paper_mode:
-                        _cnc_close_dir = "SELL" if rec.direction == "BUY" else "BUY"
-                        _cnc_exit_oid = self._broker_place(
-                            rec.symbol, _cnc_close_dir, rec.quantity, exit_price,
-                            order_type="MARKET", product_type="CNC",
-                        )
-                        if not _cnc_exit_oid:
-                            log.error(
-                                "[CarryExpiry] CNC exit order FAILED for %s %s — "
-                                "real shares still held at broker. Position kept "
-                                "OPEN for retry next cycle.",
+                        # DTA-PHANTOM-EXIT-001: same broker-position check as
+                        # close_position() — never fire a reversing order
+                        # against a position the broker has already closed.
+                        if self._broker_confirms_no_open_position(rec.symbol):
+                            log.warning(
+                                "[CarryExpiry][PhantomExitGuard] %s %s — broker "
+                                "confirms NO open position. Skipping CNC exit "
+                                "order; recording close only.",
                                 rec.symbol, oid,
                             )
-                            rec.status = "open"   # roll back — do not write CLOSE
-                            rec.governance_state = "ACTIVE_CARRY"
-                            continue
+                        else:
+                            _cnc_close_dir = "SELL" if rec.direction == "BUY" else "BUY"
+                            _cnc_exit_oid = self._broker_place(
+                                rec.symbol, _cnc_close_dir, rec.quantity, exit_price,
+                                order_type="MARKET", product_type="CNC",
+                            )
+                            if not _cnc_exit_oid:
+                                log.error(
+                                    "[CarryExpiry] CNC exit order FAILED for %s %s — "
+                                    "real shares still held at broker. Position kept "
+                                    "OPEN for retry next cycle.",
+                                    rec.symbol, oid,
+                                )
+                                rec.status = "open"   # roll back — do not write CLOSE
+                                rec.governance_state = "ACTIVE_CARRY"
+                                continue
 
                     _entry_for_pnl = rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price
                     if rec.direction == "BUY":
