@@ -98,6 +98,15 @@ class TradeSignal:
     # KDA is the sole authority on whether the trade proceeds.
     strategy_health_status: Optional[str] = None  # e.g. "SHM_EXCLUDED" | None
 
+    # DTA-FORENSIC-AUDIT-001: True when entry_price came from the live quote
+    # cache (_PRICE_CACHE); False when the scanner fell back to a candidate's
+    # stale base_ltp (last live price recorded whenever the universe/watchlist
+    # snapshot was built, possibly days old). None = not tracked (e.g. options
+    # signals, or code paths that don't set it). Observational only — never
+    # gates a signal; lets rejection-outcome tracking flag unreliable prices.
+    price_is_live:         Optional[bool] = None
+
+
     @property
     def risk_reward_ratio(self) -> float:
         if self.stop_loss == 0 or self.entry_price == 0:

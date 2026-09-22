@@ -866,6 +866,12 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
             rows.append({
                 "symbol":           c["symbol"],
                 "ltp":              _PRICE_CACHE.get(c["symbol"], c.get("base_ltp", 0.0)),
+                # DTA-FORENSIC-AUDIT-001: False when "ltp" above fell back to a
+                # candidate's stale base_ltp (last live price recorded whenever
+                # the universe/watchlist snapshot was built) instead of this
+                # cycle's live quote -- lets rejection-outcome tracking flag
+                # unreliable prices instead of silently trusting them.
+                "price_is_live":    c["symbol"] in _PRICE_CACHE,
                 "resistance":       c["resistance"],
                 "support":          c["support"],
                 "volume_ratio":     c.get("volume_ratio", 1.0),
@@ -2130,6 +2136,9 @@ class EquityScannerAI:
         vol_ratio  = stock.get("volume_ratio", 1.0)
         rsi        = stock.get("rsi", 50)
         adv_crore  = stock.get("adv_crore", 0.0)   # ₹ crore — used downstream by LiquidityGuard
+        # DTA-FORENSIC-AUDIT-001: was entry_price (ltp) a live quote or a stale
+        # base_ltp fallback? Recorded on the signal, never gates it.
+        price_is_live = stock.get("price_is_live", True)
         if extra_strategies is None:
             extra_strategies = []
 
@@ -2178,6 +2187,7 @@ class EquityScannerAI:
                 adv_crore       = adv_crore,
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
+                price_is_live   = price_is_live,
             )
             return sig, "signal_found"
 
@@ -2202,6 +2212,7 @@ class EquityScannerAI:
                 adv_crore       = adv_crore,
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
+                price_is_live   = price_is_live,
             )
             return sig, "signal_found"
 
@@ -2240,6 +2251,7 @@ class EquityScannerAI:
                     adv_crore       = adv_crore,
                     entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                     entry_zone_high = round(ltp + atr * 0.10, 2),
+                    price_is_live   = price_is_live,
                 )
                 return sig, "signal_found"
             # Setup 3 not matched — stock is in bull trend but didn't qualify for
@@ -2268,6 +2280,7 @@ class EquityScannerAI:
                     adv_crore       = adv_crore,
                     entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                     entry_zone_high = round(ltp + atr * 0.10, 2),
+                    price_is_live   = price_is_live,
                 )
                 return sig, "signal_found"
 
@@ -2293,6 +2306,7 @@ class EquityScannerAI:
                 adv_crore       = adv_crore,
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
+                price_is_live   = price_is_live,
             )
             return sig, "signal_found"
 
@@ -2330,6 +2344,9 @@ class EquityScannerAI:
         vol_ratio  = stock.get("volume_ratio", 1.0)
         rsi        = stock.get("rsi", 50)
         adv_crore  = stock.get("adv_crore", 0.0)
+        # DTA-FORENSIC-AUDIT-001: was entry_price (ltp) a live quote or a stale
+        # base_ltp fallback? Recorded on the signal, never gates it.
+        price_is_live = stock.get("price_is_live", True)
 
         atr       = _estimate_atr(ltp, support, resistance)
         stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)
@@ -2357,6 +2374,7 @@ class EquityScannerAI:
             adv_crore       = adv_crore,
             entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
             entry_zone_high = round(ltp + atr * 0.10, 2),
+            price_is_live   = price_is_live,
         )
 
 

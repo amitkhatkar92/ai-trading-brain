@@ -418,6 +418,11 @@ class CapitalRiskEngine:
                         # this survives). Audit/observability only.
                         try:
                             from analysis.rejection_tracker import get_rejection_tracker as _get_rt_cre
+                            # DTA-FORENSIC-AUDIT-001: surface whether price_at_rejection
+                            # was a live quote or a stale base_ltp fallback -- prevents
+                            # a forensic audit from mistaking a stale-price artifact for
+                            # a genuinely missed favorable move.
+                            _price_live = getattr(_rem_sig, "price_is_live", None)
                             _get_rt_cre().ingest_rejection(
                                 symbol=_rec["symbol"], strategy=str(_rec["strategy"] or "UNKNOWN"),
                                 trade_date=_dt.now().strftime("%Y-%m-%d"),
@@ -427,7 +432,10 @@ class CapitalRiskEngine:
                                 price_at_rejection=float(_rec["entry"] or 0.0),
                                 direction=str(_rec.get("direction", "BUY")),
                                 market_regime=str(_rec.get("regime", "UNKNOWN")),
-                                notes=f"cap_rank={_cap_rank} positions_counted={len(result)} max_positions={_MAX_POSITIONS}",
+                                notes=(
+                                    f"cap_rank={_cap_rank} positions_counted={len(result)} "
+                                    f"max_positions={_MAX_POSITIONS} price_is_live={_price_live}"
+                                ),
                             )
                         except Exception:
                             pass
@@ -599,6 +607,7 @@ class CapitalRiskEngine:
                             price_at_rejection=float(sig.entry_price or 0.0),
                             direction=str(sig.direction.value if hasattr(sig.direction, "value") else sig.direction),
                             market_regime=str(_ec_regime or "UNKNOWN"),
+                            notes=f"price_is_live={getattr(sig, 'price_is_live', None)}",
                         )
                     except Exception:
                         pass

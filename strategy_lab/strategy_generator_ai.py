@@ -75,6 +75,13 @@ def classify_rejection_reason(
     instead of lumping every drop into one generic "ASSIGN_REJECTED" bucket.
     Never changes which signals are dropped -- pure post-hoc labeling.
     """
+    # DTA-FORENSIC-AUDIT-001: knowledge_referred signals are NEVER rejected
+    # by StrategyLab -- _assign() returns None for them purely to preserve
+    # KDA-only routing (DTA-SYSTEM-019/020), not because a gate fired. Must
+    # be checked FIRST, mirroring _assign()'s own gate order, so these are
+    # never mislabeled "ASSIGN_REJECTED" (a real reject) in rejection_audit.db.
+    if strategy_name == "knowledge_referred":
+        return "KDA_ONLY_ROUTED"
     if cycle_regime == "BEAR_MARKET" and signal_type == "equity" and direction == "BUY":
         return "BEAR_MARKET_BUY_REJECTED"
     if risk_reward_ratio < min_rr:
@@ -85,6 +92,7 @@ def classify_rejection_reason(
     if strategy_name in disabled_strategies:
         return "STRATEGY_DISABLED"
     return "ASSIGN_REJECTED"
+
 
 
 class StrategyGeneratorAI:

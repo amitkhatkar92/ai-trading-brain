@@ -2141,6 +2141,7 @@ class MasterOrchestrator:
                                 snapshot.regime.value if hasattr(snapshot.regime, "value")
                                 else str(snapshot.regime)
                             ),
+                            notes=f"price_is_live={getattr(_sig, 'price_is_live', None)}",
                         )
                     except Exception:
                         pass
@@ -2662,6 +2663,13 @@ class MasterOrchestrator:
             _reject_by_reason[_rej_reason]    = _reject_by_reason.get(_rej_reason, 0) + 1
             _reject_by_strategy[_strat]       = _reject_by_strategy.get(_strat, 0) + 1
             _sl_attrition_recs.append((_s, _rej_reason, _bt_score))
+            # DTA-FORENSIC-AUDIT-001: knowledge_referred signals are routed to
+            # a separate KDA-only path, not rejected -- never persist them to
+            # rejection_audit.db as a fake StrategyLab rejection (they were
+            # never rejected; ingest_rejection() is a rejection ledger, not a
+            # routing log). Still logged/counted above for observability.
+            if _rej_reason == "KDA_ONLY_ROUTED":
+                continue
             # GAP-009: feed StrategyLab rejections to rejection_audit.db so KFE
             # can distinguish strategy-rejected signals from risk-rejected ones.
             try:
@@ -2679,6 +2687,7 @@ class MasterOrchestrator:
                                   getattr(_s.direction, "value", str(getattr(_s, "direction", "BUY")))
                                   or "BUY"),
                     market_regime=_regime_match,
+                    notes=f"price_is_live={getattr(_s, 'price_is_live', None)}",
                 )
             except Exception:
                 pass
@@ -4081,6 +4090,31 @@ class MasterOrchestrator:
                     "votes":     {v.agent_name: v.score for v in votes},
                 },
             ))
+            # DTA-FORENSIC-AUDIT-001: Debate/KDA final rejections previously had
+            # zero symbol-level record in rejection_audit.db (only CRE/
+            # StrategyLab/RiskControl/RiskGuardian persisted there) -- closing
+            # that forensic gap. Audit/observability only, never affects the
+            # decision itself (already made above).
+            try:
+                from analysis.rejection_tracker import get_rejection_tracker as _get_rt_deb
+                _get_rt_deb().ingest_rejection(
+                    symbol=signal.symbol,
+                    strategy=str(signal.strategy_name or "UNKNOWN"),
+                    trade_date=datetime.now().strftime("%Y-%m-%d"),
+                    decision_score=float(decision.confidence_score or 0.0),
+                    quality_score=float(decision.confidence_score or 0.0),
+                    quality_tier="DEBATE_REJECTION",
+                    rejected_reason="CONFIDENCE_BELOW_THRESHOLD"[:200],
+                    price_at_rejection=float(getattr(signal, "entry_price", 0.0) or 0.0),
+                    direction=str(getattr(signal.direction, "value", signal.direction) or "BUY"),
+                    market_regime=(
+                        snapshot.regime.value if hasattr(snapshot.regime, "value")
+                        else str(snapshot.regime)
+                    ),
+                    notes=f"price_is_live={getattr(signal, 'price_is_live', None)}",
+                )
+            except Exception:
+                pass
         return None
 
     def _execute_decided_signal(self, signal: TradeSignal, decision, votes,
