@@ -176,6 +176,8 @@ data/data_integrity/
 data/risk_control/
 # Options health metrics dashboard (item #10)
 data/data_feeds/
+# Dynamic target expansion evidence + calibration (self-learning module #29)
+data/learning_system/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json

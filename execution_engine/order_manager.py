@@ -291,6 +291,11 @@ class OrderRecord:
     # Set from signal.opportunity_id at execute() time so every downstream
     # store (live journal, outcome, KEL) can join on this single key.
     opportunity_id:        str   = ""
+    # Dynamic Target Expansion (self-learning #29): set once by TradeMonitor
+    # when strong-trend conditions hold well before `target` is reached.
+    # None = never expanded (default, zero behavior change). Never mutates
+    # `target` itself — checked BEFORE it as the effective exit price.
+    adaptive_target:       Optional[float] = None
 
 
 @dataclass
@@ -1211,6 +1216,22 @@ class OrderManager:
             "direction": rec.direction,
             "reason":    reason,   # canonical exit reason (EARLY_LOSS, STOP_HIT, etc.)
         }
+
+        # Self-learning #29: record the real outcome of a target-expanded trade
+        # (did the extra room beyond the original target actually pay off, or
+        # give back gains?) -- observational only, never affects this close.
+        if rec.adaptive_target is not None:
+            try:
+                from learning_system.target_expansion_evidence_log import record_expansion_outcome
+                record_expansion_outcome(
+                    order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
+                    direction=rec.direction, entry_price=rec.entry_price,
+                    risk_per_share=abs(rec.entry_price - _isl),
+                    original_target=rec.target, expanded_target=rec.adaptive_target,
+                    exit_price=exit_price, final_r_multiple=_r,
+                )
+            except Exception as _tgt_exc:
+                log.debug("[TargetExpansion] evidence log failed (non-critical): %s", _tgt_exc)
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)
@@ -2410,6 +2431,24 @@ class OrderManager:
                     os.fsync(fh.fileno())
         except Exception as exc:
             log.debug("[OrderManager] Could not write EXTEND journal event: %s", exc)
+
+    def journal_write_target_expansion(self, order_id: str, new_target: float) -> None:
+        """Append a TARGET_EXPANDED event so adaptive_target survives a restart.
+
+        Unlike journal_write_extend() (paper-mode CSV only), this uses the
+        live JSONL journal since the production system runs in live mode —
+        _restore_from_live_journal() replays TARGET_EXPANDED rows to restore
+        order.adaptive_target on the reconstructed OrderRecord.
+        """
+        rec = self._orders.get(order_id)
+        if not rec:
+            return
+        try:
+            self._append_live_journal(
+                "TARGET_EXPANDED", rec, extra={"adaptive_target": new_target},
+            )
+        except Exception as exc:
+            log.debug("[OrderManager] Could not write TARGET_EXPANDED event: %s", exc)
 
     def _journal_write_reentry(self, rec: "OrderRecord",
                                slot: "ReentrySlot") -> None:
@@ -4498,6 +4537,7 @@ class OrderManager:
         opened: dict = {}
         closed: set  = set()
         closed_rows: dict = {}  # D-003: oid → CLOSE row for cooldown restore
+        expanded_targets: dict = {}  # self-learning #29: oid → last adaptive_target seen
         today  = datetime.now()
         cutoff = today - timedelta(days=7)
 
@@ -4528,6 +4568,15 @@ class OrderManager:
                         pass
                     if event == "OPEN":
                         opened[oid] = row
+                    elif event == "TARGET_EXPANDED":
+                        # self-learning #29: keep the LATEST expansion per oid
+                        # (one-time-only in practice, but last-write-wins is safe)
+                        _tgt = row.get("adaptive_target")
+                        if _tgt is not None:
+                            try:
+                                expanded_targets[oid] = float(_tgt)
+                            except (TypeError, ValueError):
+                                pass
                     elif event in ("CLOSE", "CANCELLED", "SESSION_EXPIRED", "REJECTED"):
                         closed.add(oid)
                         closed_rows[oid] = row  # D-003: keep for cooldown restore
@@ -4615,6 +4664,7 @@ class OrderManager:
                     opportunity_id    = row.get("opportunity_id") or "",
                     placed_at         = _placed_at,
                     product_type      = row.get("product_type") or "INTRADAY",
+                    adaptive_target   = expanded_targets.get(oid),
                 )
                 self._orders[oid] = rec
                 # D-008: use Position object, not plain dict — downstream code

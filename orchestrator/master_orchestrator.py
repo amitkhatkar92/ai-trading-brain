@@ -8159,6 +8159,14 @@ class MasterOrchestrator:
         except Exception as _sbre_exc:
             log.debug("[SizingBoundsRE] refinement check error (non-critical): %s", _sbre_exc)
 
+        # ── Self-learning #29: Dynamic Target Expansion calibration check ──
+        try:
+            from learning_system.target_expansion_refinement_engine import run_daily_refinement_check as _run_tgt_check
+            _tgtre = _run_tgt_check()
+            log.info("[TargetExpansionRE] %s", _tgtre.get("state_status"))
+        except Exception as _tgtre_exc:
+            log.debug("[TargetExpansionRE] refinement check error (non-critical): %s", _tgtre_exc)
+
         # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
         # Read-only status check only -- never touches any open position.
         # See analysis/capital_reserve_readiness_engine.py for why the

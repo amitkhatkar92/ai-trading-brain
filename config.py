@@ -214,6 +214,26 @@ ADAPTIVE_EXTENSION_TIME_CAP_MIN = 90     # extended trade still going after this
                                           # → tighten SL to 0.5R step (force trailing close)
 
 # ─────────────────────────────────────────────
+# DYNAMIC TARGET EXPANSION  (self-learning #29 — adaptive_exit_roadmap.md Phase 3)
+# When a trade is already deep in profit WELL BEFORE its original fixed
+# target and the trend is still strong, push the effective exit price much
+# further out instead of capping the win at the original R:R target — the
+# "don't cut a confirmed winner short" pattern (Dixon/CDSL podcast case).
+# NEVER modifies order.target (the CSV/journal-logged fixed price) — only
+# order.adaptive_target, checked BEFORE order.target by TradeMonitor.
+# Mutually exclusive per-trade with ADAPTIVE PROFIT EXTENSION above (that
+# mechanism only makes sense relative to the ORIGINAL target).
+# The multiplier below is only the fallback default — once enough real
+# trade evidence exists, learning_system/target_expansion_refinement_engine.py
+# auto-tunes it (bounded, shadow-then-live, auto-rollback) with zero human
+# step, exactly like every other self-learning module in this system.
+# ─────────────────────────────────────────────
+ENABLE_ADAPTIVE_TARGET_EXPANSION       = True
+ADAPTIVE_TARGET_EXPANSION_TRIGGER_R    = 2.50   # fire well before the original target
+ADAPTIVE_TARGET_EXPANSION_MAX_VIX      = 15.0   # tighter than Adaptive Extension — bigger commitment
+ADAPTIVE_TARGET_EXPANSION_MULTIPLIER   = 5.0    # default: new target = entry + risk * 5.0
+
+# ─────────────────────────────────────────────
 # MULTI-STAGE MARKET PREPARATION ENGINE
 # Phase C-H feature flags — each independently disable-able at runtime.
 # Set False to instantly revert any phase without redeployment.

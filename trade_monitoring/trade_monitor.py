@@ -38,6 +38,11 @@ try:
     _EXT_MAX_VIX           = getattr(_cfg, "ADAPTIVE_EXTENSION_MAX_VIX",         20.0)
     _EXT_TARGET_PCT        = getattr(_cfg, "ADAPTIVE_EXTENSION_TARGET_PCT",        0.10)
     _EXT_TIME_CAP_MIN      = getattr(_cfg, "ADAPTIVE_EXTENSION_TIME_CAP_MIN",     90)
+    # ── Dynamic Target Expansion (self-learning #29) ────────────────────
+    _TGT_ENABLED           = getattr(_cfg, "ENABLE_ADAPTIVE_TARGET_EXPANSION",      True)
+    _TGT_TRIGGER_R         = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_TRIGGER_R",    2.50)
+    _TGT_MAX_VIX           = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_MAX_VIX",      15.0)
+    _TGT_MULTIPLIER        = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_MULTIPLIER",   5.0)
 except Exception:
     _AE_ENABLED            = True
     _AE_TIME_MIN           = 180
@@ -54,6 +59,10 @@ except Exception:
     _EXT_MAX_VIX           = 20.0
     _EXT_TARGET_PCT        = 0.10
     _EXT_TIME_CAP_MIN      = 90
+    _TGT_ENABLED           = True
+    _TGT_TRIGGER_R         = 2.50
+    _TGT_MAX_VIX           = 15.0
+    _TGT_MULTIPLIER        = 5.0
 
 log = get_logger(__name__)
 
@@ -529,12 +538,26 @@ class TradeMonitor:
         unrealised  = (ltp - entry) if is_long else (entry - ltp)
         r_multiple  = unrealised / risk
 
+        # ── Dynamic Target Expansion (self-learning #29): extend the
+        # effective target once, well before the original target, when
+        # strong-trend conditions hold. Never mutates order.target (the
+        # CSV/journal-logged fixed price) -- only order.adaptive_target.
+        if _TGT_ENABLED:
+            self._maybe_expand_target(order, r_multiple)
+
+        eff_target = order.adaptive_target if order.adaptive_target else target
+
         # ── Check: target hit (or near-target extension intercept) ───────────────
-        if target and ((is_long and ltp >= target) or (not is_long and ltp <= target)):
+        if eff_target and ((is_long and ltp >= eff_target) or (not is_long and ltp <= eff_target)):
             # Adaptive Profit Extension: intercept the exit if conditions are strong.
-            # Only fires once per trade; never modifies order.target.
+            # Only fires once per trade; never modifies order.target. Skipped once
+            # the target itself has already been expanded (order.adaptive_target
+            # set) -- the two mechanisms are mutually exclusive per trade; Adaptive
+            # Extension's own internal checks are only meaningful relative to the
+            # ORIGINAL target's distance, which no longer applies post-expansion.
             oid = order.order_id
-            if _EXT_ENABLED and self._can_extend(oid, r_multiple, order):
+            if (_EXT_ENABLED and order.adaptive_target is None
+                    and self._can_extend(oid, r_multiple, order)):
                 # Dynamic lock: strong move gets higher protection
                 lock_r  = _EXT_LOCK_STRONG_R if r_multiple >= _EXT_STRONG_R else _EXT_LOCK_R
                 locked_sl = (entry + risk * lock_r) if is_long \
@@ -584,6 +607,69 @@ class TradeMonitor:
                          order.symbol, entry)
 
         return None
+
+    def _maybe_expand_target(self, order: OrderRecord, r_multiple: float) -> None:
+        """
+        Dynamic Target Expansion (self-learning #29, adaptive_exit_roadmap.md
+        Phase 3) -- one-time-only. Extends order.adaptive_target when, well
+        before the ORIGINAL fixed target is reached, the trend is still
+        strongly bullish and low-VIX. Never mutates order.target itself.
+
+        Gate (all must hold):
+          1. Not already expanded this trade (one-time only)
+          2. Regime = bull_trend AND VIX <= _TGT_MAX_VIX (tighter than
+             Adaptive Profit Extension's own VIX gate -- this is a bigger,
+             longer-horizon commitment)
+          3. r_multiple already >= _TGT_TRIGGER_R (well before target,
+             unlike Adaptive Extension which only fires near-target)
+          4. The computed new target is genuinely further out than the
+             current effective target (never shrinks it)
+        """
+        oid = order.order_id
+        if order.adaptive_target is not None:
+            return                                 # already expanded once
+        if not self._last_regime or "bull" not in self._last_regime:
+            return
+        if self._last_vix and self._last_vix > _TGT_MAX_VIX:
+            return
+        if r_multiple < _TGT_TRIGGER_R:
+            return
+
+        entry   = order.entry_price
+        sl      = order.stop_loss
+        is_long = order.direction == "BUY"
+        risk    = abs(entry - sl) if sl else 0.0
+        if risk <= 0:
+            return
+
+        try:
+            from learning_system.target_expansion_refinement_engine import (
+                get_effective_expansion_multiplier,
+            )
+            multiplier = get_effective_expansion_multiplier()
+        except Exception:
+            multiplier = _TGT_MULTIPLIER
+
+        new_target = round(entry + risk * multiplier, 2) if is_long \
+                     else round(entry - risk * multiplier, 2)
+        current_eff = order.target
+        if is_long and new_target <= current_eff:
+            return                                 # not a genuine extension
+        if not is_long and new_target >= current_eff:
+            return
+
+        order.adaptive_target = new_target
+        log.info(
+            "[TargetExpansion] EXPAND target %s → %.2f (was %.2f)  "
+            "r=%.2fR  multiplier=%.1f  regime=%s  vix=%.1f",
+            order.symbol, new_target, current_eff, r_multiple,
+            multiplier, self._last_regime, self._last_vix,
+        )
+        if self._order_manager is not None:
+            try:
+                self._order_manager.journal_write_target_expansion(oid, new_target)
+            except Exception as exc:
+                log.debug("[TargetExpansion] journal write failed (non-critical): %s", exc)
 
     def _can_extend(self, oid: str, r_multiple: float,
                     order: OrderRecord) -> bool:
