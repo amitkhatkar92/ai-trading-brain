@@ -5951,14 +5951,31 @@ class MasterOrchestrator:
             pnl        = getattr(trade, "pnl",           0.0)
             r_multiple = getattr(trade, "r_multiple",    0.0)
             won        = pnl > 0
-            self.performance_evaluator.record_trade(
-                strategy=strategy, regime=regime,
-                pnl=pnl, r_multiple=r_multiple, won=won,
-            )
-            # ── Q3: Strategy Performance Tracker (win rate, auto-disable) ──
-            # Pass order_id so LearningGate can filter LEGACY_UNVERIFIED trades.
-            _oid = getattr(trade, "order_id", "")
-            self.perf_tracker.record_trade(strategy, pnl_r=r_multiple, order_id=_oid)
+            # DTA-PERFTRACKER-SILENT-FAIL-001: this block previously had no
+            # try/except -- an exception on trade N (e.g. a malformed record)
+            # would silently abort the loop for all remaining trades, with
+            # nothing surfaced anywhere. Root-caused after strategy_performance.json
+            # was found permanently empty ({}) despite StrategyHealthMonitor
+            # (fed by the same `trades` list, a few lines earlier via
+            # learning_engine.learn()) showing real, non-zero trade counts.
+            try:
+                self.performance_evaluator.record_trade(
+                    strategy=strategy, regime=regime,
+                    pnl=pnl, r_multiple=r_multiple, won=won,
+                )
+                # ── Q3: Strategy Performance Tracker (win rate, auto-disable) ──
+                # Pass order_id so LearningGate can filter LEGACY_UNVERIFIED trades.
+                _oid = getattr(trade, "order_id", "")
+                self.perf_tracker.record_trade(strategy, pnl_r=r_multiple, order_id=_oid)
+            except Exception as _pe_exc:
+                log.error(
+                    "[PerfTracker] record_trade FAILED for strategy=%s order_id=%s "
+                    "r_multiple=%.3f -- this trade will NOT count toward win rate "
+                    "or strategy_performance.json: %s",
+                    strategy, getattr(trade, "order_id", ""), r_multiple, _pe_exc,
+                    exc_info=True,
+                )
+                _oid = getattr(trade, "order_id", "")
             # ── Self-learning #27: sizing bounds calibration evidence ──────
             # Additive-only observer of the exact same trade event -- feeds
             # risk_control/sizing_bounds_refinement_engine.py's evidence
