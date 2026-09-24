@@ -306,6 +306,11 @@ class KDADecisionRecord:
     # EMPIRICAL_OVERRIDE_NOT_APPLICABLE          — no empirical data available
     empirical_override_decision: str = "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
 
+    # Real observation/decision-time price (DTA-KDA-ENTRY-PRICE-001). Additive,
+    # optional — absent on any record logged before this field existed, in
+    # which case outcome evaluation falls back to bars[0].open (unchanged).
+    entry_price:                Optional[float] = None
+
     def as_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["authority"]      = self.authority.value
@@ -409,6 +414,10 @@ class KDADecisionRecord:
             empirical_override_decision=str(
                 d.get("empirical_override_decision", "EMPIRICAL_OVERRIDE_NOT_APPLICABLE") or
                 "EMPIRICAL_OVERRIDE_NOT_APPLICABLE"
+            ),
+            entry_price=(
+                float(d["entry_price"])
+                if d.get("entry_price") not in (None, 0, 0.0) else None
             ),
         )
 

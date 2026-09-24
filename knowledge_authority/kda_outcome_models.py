@@ -329,5 +329,10 @@ class AuthorityValidationReport:
     modifications:       int  = 0
     cancellations:       int  = 0
 
+    # Real sample size behind direction_accuracy (BUY/SELL only, resolved
+    # outcome) -- distinct from total_decisions, which also counts WAIT/
+    # HOLD/EXIT decisions that direction_accuracy is never computed over.
+    directional_decisions: int = 0
+
     def as_dict(self) -> Dict[str, Any]:
         return asdict(self)

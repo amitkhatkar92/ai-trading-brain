@@ -137,6 +137,7 @@ class KDAAuthorityReporter:
             orders              = 0,
             modifications       = 0,
             cancellations       = 0,
+            directional_decisions = len(directional),
         )
 
     def save(self, report: AuthorityValidationReport) -> None:

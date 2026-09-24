@@ -747,11 +747,13 @@ class KnowledgeDecisionPipeline:
                 "direction_accuracy": report.direction_accuracy,
                 "target_hit_rate": report.target_hit_rate,
                 "total_decisions": report.total_decisions,
+                "directional_decisions": report.directional_decisions,
             }
             log.info(
-                "[KDP-EOD] Authority report: status=%s accuracy=%.1f%% n=%d",
+                "[KDP-EOD] Authority report: status=%s accuracy=%.1f%% n=%d (of %d total decisions)",
                 report.authority_status,
                 float(report.direction_accuracy or 0.0) * 100,
+                report.directional_decisions,
                 report.total_decisions,
             )
         except Exception as exc:

@@ -181,6 +181,7 @@ class KDAOutcomeEngine:
             direction_correct,
             ref_return,
             n_bars,
+            first_event,
         )
 
         decision_correct = _decision_correct(outcome_class)
@@ -418,6 +419,7 @@ def _classify_outcome(
     direction_correct: Optional[bool],
     ref_return:       Optional[float],
     n_bars:           int,
+    first_event:      Optional[str] = None,
 ) -> str:
     d = decision_value.upper()
 
@@ -429,7 +431,12 @@ def _classify_outcome(
         if stop_hit and not target_hit:
             return OutcomeClass(f"INCORRECT_{suffix}").value
         if target_hit and stop_hit:
-            return OutcomeClass(f"CORRECT_{suffix}").value  # target first wins per earlier logic
+            # Whichever was hit FIRST decides the real outcome — a stop-out
+            # that happens to also touch target later in the window is
+            # still a real loss, not a win.
+            if first_event == "STOP_HIT":
+                return OutcomeClass(f"INCORRECT_{suffix}").value
+            return OutcomeClass(f"CORRECT_{suffix}").value
         # No event — use direction at T+5 or last available
         if direction_correct is True:
             return OutcomeClass(f"CORRECT_{suffix}").value
