@@ -306,6 +306,10 @@ class OrderRecord:
     # at signal time (None = no data). Observational -- same purpose as
     # institutional_flow_score above, feeds company_growth_evidence_log.py.
     company_growth_score: Optional[float] = None
+    # Self-learning #32 (Event Intelligence): the mechanical corporate-event
+    # score at signal time (None = no data). Observational -- feeds
+    # corporate_event_evidence_log.py.
+    corporate_event_score: Optional[float] = None
 
 
 @dataclass
@@ -1009,6 +1013,7 @@ class OrderManager:
             opportunity_id    = getattr(signal, "opportunity_id", "") or "",
             institutional_flow_score = getattr(signal, "institutional_flow_score", None),
             company_growth_score = getattr(signal, "company_growth_score", None),
+            corporate_event_score = getattr(signal, "corporate_event_score", None),
         )
         # Reconcile fill immediately after placement (live: queries broker, paper/sim: marks synthetic)
         self._reconcile_fill(record)
@@ -1270,6 +1275,18 @@ class OrderManager:
                 )
             except Exception as _growth_exc:
                 log.debug("[CompanyGrowth] evidence log failed (non-critical): %s", _growth_exc)
+
+        # Self-learning #32: same pattern for the corporate-event score.
+        if rec.corporate_event_score is not None:
+            try:
+                from learning_system.corporate_event_evidence_log import record_corporate_event_outcome
+                record_corporate_event_outcome(
+                    order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
+                    corporate_event_score=rec.corporate_event_score,
+                    r_multiple=_r, won=pnl > 0,
+                )
+            except Exception as _event_exc:
+                log.debug("[CorporateEvent] evidence log failed (non-critical): %s", _event_exc)
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)

@@ -11,6 +11,21 @@ try:
 except Exception:
     pass
 
+# Force pandas/yfinance to initialise fully before any test runs. Self-
+# learning #31/#32's non-blocking background-worker acquisition modules
+# (company_growth_signal.py, corporate_event_signal.py) import yfinance
+# from a spawned daemon thread; if that thread's first-ever `import
+# yfinance` races against a LATER test's own `import yfinance` on the
+# main thread, pandas's Cython extension modules can end up partially
+# initialised ("AttributeError: partially initialized module 'pandas'").
+# Same root cause class as the numpy guard above -- pre-import here so
+# it's already fully loaded in sys.modules before any thread touches it.
+try:
+    import pandas as _pd  # noqa: F401
+    import yfinance as _yf  # noqa: F401
+except Exception:
+    pass
+
 import pytest
 
 # --- Shared fixtures (implement in Wave 1) ---

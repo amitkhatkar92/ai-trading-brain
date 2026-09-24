@@ -603,6 +603,21 @@ class KnowledgeDecisionAuthority:
             growth_adj = 0.0
         relevance = min(max(relevance + growth_adj, 0.1), 1.0)
 
+        # Self-learning #32 KDA bridge: bounded +/-0.05 nudge from a real,
+        # evidence-validated corporate-event score (NSE announcements,
+        # keyword-classified). Fail-open; dormant (0.0) until
+        # learning_system/corporate_event_refinement_engine.py has validated
+        # the signal against enough real trade outcomes.
+        try:
+            from learning_system.corporate_event_refinement_engine import (
+                get_corporate_event_adjustment,
+            )
+            event_score = obs.get("corporate_event_score")
+            event_adj = get_corporate_event_adjustment(event_score)
+        except Exception:
+            event_adj = 0.0
+        relevance = min(max(relevance + event_adj, 0.1), 1.0)
+
         oos_q = _oos_quality(oos_status)
 
         # Source independence: needs at least 3 truly distinct sources for full score

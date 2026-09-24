@@ -125,6 +125,16 @@ class TradeSignal:
     company_growth_score:     Optional[float] = None   # [-1, +1], None = no data
     company_growth_available: Optional[bool]  = None
 
+    # Self-learning #32 (Event Intelligence): mechanical score from real NSE
+    # corporate announcements (bonus/buyback/order-win vs downgrade/
+    # litigation, keyword-matched only -- never reads the actual PDF text).
+    # None = not yet available (background-fetched, never blocks the scan
+    # cycle -- see opportunity_engine/corporate_event_signal.py). Purely
+    # observational until learning_system/corporate_event_refinement_engine.py
+    # validates it against real outcomes.
+    corporate_event_score:     Optional[float] = None   # [-1, +1], None = no data
+    corporate_event_available: Optional[bool]  = None
+
 
     @property
     def risk_reward_ratio(self) -> float:

@@ -8183,6 +8183,14 @@ class MasterOrchestrator:
         except Exception as _growthre_exc:
             log.debug("[CompanyGrowthRE] refinement check error (non-critical): %s", _growthre_exc)
 
+        # ── Self-learning #32: Corporate events (Event Intelligence) ──
+        try:
+            from learning_system.corporate_event_refinement_engine import run_daily_refinement_check as _run_event_check
+            _eventre = _run_event_check()
+            log.info("[CorporateEventRE] %s", _eventre.get("state_status"))
+        except Exception as _eventre_exc:
+            log.debug("[CorporateEventRE] refinement check error (non-critical): %s", _eventre_exc)
+
         # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
         # Read-only status check only -- never touches any open position.
         # See analysis/capital_reserve_readiness_engine.py for why the

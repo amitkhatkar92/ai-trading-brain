@@ -879,6 +879,14 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
             except Exception:
                 pass
 
+            # ── Self-learning #32: corporate events (Event Intelligence) ──
+            _event_score = None
+            try:
+                from opportunity_engine.corporate_event_signal import compute_corporate_event_score
+                _event_score = compute_corporate_event_score(c["symbol"])
+            except Exception:
+                pass
+
             rows.append({
                 "symbol":           c["symbol"],
                 "ltp":              _PRICE_CACHE.get(c["symbol"], c.get("base_ltp", 0.0)),
@@ -892,6 +900,8 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
                 "institutional_flow_available": _inst_flow_score is not None,
                 "company_growth_score":         _growth_score,
                 "company_growth_available":     _growth_score is not None,
+                "corporate_event_score":         _event_score,
+                "corporate_event_available":     _event_score is not None,
                 "resistance":       c["resistance"],
                 "support":          c["support"],
                 "volume_ratio":     c.get("volume_ratio", 1.0),
@@ -2165,6 +2175,9 @@ class EquityScannerAI:
         # Self-learning #31: company growth score, observational only.
         company_growth_score     = stock.get("company_growth_score")
         company_growth_available = stock.get("company_growth_available", False)
+        # Self-learning #32: corporate event score, observational only.
+        corporate_event_score     = stock.get("corporate_event_score")
+        corporate_event_available = stock.get("corporate_event_available", False)
         if extra_strategies is None:
             extra_strategies = []
 
@@ -2218,6 +2231,8 @@ class EquityScannerAI:
                 institutional_flow_available  = institutional_flow_available,
                 company_growth_score          = company_growth_score,
                 company_growth_available      = company_growth_available,
+                corporate_event_score         = corporate_event_score,
+                corporate_event_available     = corporate_event_available,
             )
             return sig, "signal_found"
 
@@ -2247,6 +2262,8 @@ class EquityScannerAI:
                 institutional_flow_available  = institutional_flow_available,
                 company_growth_score          = company_growth_score,
                 company_growth_available      = company_growth_available,
+                corporate_event_score         = corporate_event_score,
+                corporate_event_available     = corporate_event_available,
             )
             return sig, "signal_found"
 
@@ -2290,6 +2307,8 @@ class EquityScannerAI:
                     institutional_flow_available  = institutional_flow_available,
                     company_growth_score          = company_growth_score,
                     company_growth_available      = company_growth_available,
+                    corporate_event_score         = corporate_event_score,
+                    corporate_event_available     = corporate_event_available,
                 )
                 return sig, "signal_found"
             # Setup 3 not matched — stock is in bull trend but didn't qualify for
@@ -2323,6 +2342,8 @@ class EquityScannerAI:
                     institutional_flow_available  = institutional_flow_available,
                     company_growth_score          = company_growth_score,
                     company_growth_available      = company_growth_available,
+                    corporate_event_score         = corporate_event_score,
+                    corporate_event_available     = corporate_event_available,
                 )
                 return sig, "signal_found"
 
@@ -2353,6 +2374,8 @@ class EquityScannerAI:
                 institutional_flow_available  = institutional_flow_available,
                 company_growth_score          = company_growth_score,
                 company_growth_available      = company_growth_available,
+                corporate_event_score         = corporate_event_score,
+                corporate_event_available     = corporate_event_available,
             )
             return sig, "signal_found"
 
@@ -2399,6 +2422,9 @@ class EquityScannerAI:
         # Self-learning #31: company growth score, observational only.
         company_growth_score     = stock.get("company_growth_score")
         company_growth_available = stock.get("company_growth_available", False)
+        # Self-learning #32: corporate event score, observational only.
+        corporate_event_score     = stock.get("corporate_event_score")
+        corporate_event_available = stock.get("corporate_event_available", False)
 
         atr       = _estimate_atr(ltp, support, resistance)
         stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)
@@ -2431,6 +2457,8 @@ class EquityScannerAI:
             institutional_flow_available  = institutional_flow_available,
             company_growth_score          = company_growth_score,
             company_growth_available      = company_growth_available,
+            corporate_event_score         = corporate_event_score,
+            corporate_event_available     = corporate_event_available,
         )
 
 

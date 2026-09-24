@@ -886,6 +886,8 @@ class KnowledgeDecisionPipeline:
             "institutional_flow_score": getattr(signal, "institutional_flow_score", None),
             # Self-learning #31: real company growth score (None = no data).
             "company_growth_score": getattr(signal, "company_growth_score", None),
+            # Self-learning #32: real corporate-event score (None = no data).
+            "corporate_event_score": getattr(signal, "corporate_event_score", None),
         }
 
     # ─────────────────────────────────────────────────────────────────────────
