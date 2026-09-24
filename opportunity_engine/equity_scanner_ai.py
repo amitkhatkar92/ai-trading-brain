@@ -863,6 +863,14 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
             except Exception:
                 pass
 
+            # ── Self-learning #30: institutional flow (Positioning Intelligence) ──
+            _inst_flow_score = None
+            try:
+                from opportunity_engine.institutional_flow_signal import compute_institutional_flow_score
+                _inst_flow_score = compute_institutional_flow_score(c["symbol"])
+            except Exception:
+                pass
+
             rows.append({
                 "symbol":           c["symbol"],
                 "ltp":              _PRICE_CACHE.get(c["symbol"], c.get("base_ltp", 0.0)),
@@ -872,6 +880,8 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
                 # cycle's live quote -- lets rejection-outcome tracking flag
                 # unreliable prices instead of silently trusting them.
                 "price_is_live":    c["symbol"] in _PRICE_CACHE,
+                "institutional_flow_score":     _inst_flow_score,
+                "institutional_flow_available": _inst_flow_score is not None,
                 "resistance":       c["resistance"],
                 "support":          c["support"],
                 "volume_ratio":     c.get("volume_ratio", 1.0),
@@ -2139,6 +2149,9 @@ class EquityScannerAI:
         # DTA-FORENSIC-AUDIT-001: was entry_price (ltp) a live quote or a stale
         # base_ltp fallback? Recorded on the signal, never gates it.
         price_is_live = stock.get("price_is_live", True)
+        # Self-learning #30: institutional flow score, observational only.
+        institutional_flow_score     = stock.get("institutional_flow_score")
+        institutional_flow_available = stock.get("institutional_flow_available", False)
         if extra_strategies is None:
             extra_strategies = []
 
@@ -2188,6 +2201,8 @@ class EquityScannerAI:
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
                 price_is_live   = price_is_live,
+                institutional_flow_score      = institutional_flow_score,
+                institutional_flow_available  = institutional_flow_available,
             )
             return sig, "signal_found"
 
@@ -2213,6 +2228,8 @@ class EquityScannerAI:
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
                 price_is_live   = price_is_live,
+                institutional_flow_score      = institutional_flow_score,
+                institutional_flow_available  = institutional_flow_available,
             )
             return sig, "signal_found"
 
@@ -2252,6 +2269,8 @@ class EquityScannerAI:
                     entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                     entry_zone_high = round(ltp + atr * 0.10, 2),
                     price_is_live   = price_is_live,
+                    institutional_flow_score      = institutional_flow_score,
+                    institutional_flow_available  = institutional_flow_available,
                 )
                 return sig, "signal_found"
             # Setup 3 not matched — stock is in bull trend but didn't qualify for
@@ -2281,6 +2300,8 @@ class EquityScannerAI:
                     entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                     entry_zone_high = round(ltp + atr * 0.10, 2),
                     price_is_live   = price_is_live,
+                    institutional_flow_score      = institutional_flow_score,
+                    institutional_flow_available  = institutional_flow_available,
                 )
                 return sig, "signal_found"
 
@@ -2307,6 +2328,8 @@ class EquityScannerAI:
                 entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
                 entry_zone_high = round(ltp + atr * 0.10, 2),
                 price_is_live   = price_is_live,
+                institutional_flow_score      = institutional_flow_score,
+                institutional_flow_available  = institutional_flow_available,
             )
             return sig, "signal_found"
 
@@ -2347,6 +2370,9 @@ class EquityScannerAI:
         # DTA-FORENSIC-AUDIT-001: was entry_price (ltp) a live quote or a stale
         # base_ltp fallback? Recorded on the signal, never gates it.
         price_is_live = stock.get("price_is_live", True)
+        # Self-learning #30: institutional flow score, observational only.
+        institutional_flow_score     = stock.get("institutional_flow_score")
+        institutional_flow_available = stock.get("institutional_flow_available", False)
 
         atr       = _estimate_atr(ltp, support, resistance)
         stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)
@@ -2375,6 +2401,8 @@ class EquityScannerAI:
             entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
             entry_zone_high = round(ltp + atr * 0.10, 2),
             price_is_live   = price_is_live,
+            institutional_flow_score      = institutional_flow_score,
+            institutional_flow_available  = institutional_flow_available,
         )
 
 

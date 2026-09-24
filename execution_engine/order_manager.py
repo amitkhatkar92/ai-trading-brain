@@ -296,6 +296,12 @@ class OrderRecord:
     # None = never expanded (default, zero behavior change). Never mutates
     # `target` itself — checked BEFORE it as the effective exit price.
     adaptive_target:       Optional[float] = None
+    # Self-learning #30 (Positioning Intelligence): the institutional-flow
+    # score at signal time (None = no data available for this symbol that
+    # day). Observational — never affects entry/exit/sizing directly; only
+    # used to record real outcome evidence at close for
+    # learning_system/institutional_flow_refinement_engine.py's validation.
+    institutional_flow_score: Optional[float] = None
 
 
 @dataclass
@@ -997,6 +1003,7 @@ class OrderManager:
             broker_order_id   = order_id,
             requested_price   = signal.entry_price,
             opportunity_id    = getattr(signal, "opportunity_id", "") or "",
+            institutional_flow_score = getattr(signal, "institutional_flow_score", None),
         )
         # Reconcile fill immediately after placement (live: queries broker, paper/sim: marks synthetic)
         self._reconcile_fill(record)
@@ -1232,6 +1239,20 @@ class OrderManager:
                 )
             except Exception as _tgt_exc:
                 log.debug("[TargetExpansion] evidence log failed (non-critical): %s", _tgt_exc)
+
+        # Self-learning #30: record the real outcome of a trade that had a
+        # real institutional-flow score at signal time -- observational
+        # only, never affects this close.
+        if rec.institutional_flow_score is not None:
+            try:
+                from learning_system.institutional_flow_evidence_log import record_institutional_flow_outcome
+                record_institutional_flow_outcome(
+                    order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
+                    institutional_flow_score=rec.institutional_flow_score,
+                    r_multiple=_r, won=pnl > 0,
+                )
+            except Exception as _inst_exc:
+                log.debug("[InstitutionalFlow] evidence log failed (non-critical): %s", _inst_exc)
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)

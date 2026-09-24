@@ -8167,6 +8167,14 @@ class MasterOrchestrator:
         except Exception as _tgtre_exc:
             log.debug("[TargetExpansionRE] refinement check error (non-critical): %s", _tgtre_exc)
 
+        # ── Self-learning #30: Institutional flow (Positioning Intelligence) ──
+        try:
+            from learning_system.institutional_flow_refinement_engine import run_daily_refinement_check as _run_flow_check
+            _flowre = _run_flow_check()
+            log.info("[InstitutionalFlowRE] %s", _flowre.get("state_status"))
+        except Exception as _flowre_exc:
+            log.debug("[InstitutionalFlowRE] refinement check error (non-critical): %s", _flowre_exc)
+
         # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
         # Read-only status check only -- never touches any open position.
         # See analysis/capital_reserve_readiness_engine.py for why the

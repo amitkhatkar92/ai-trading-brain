@@ -881,6 +881,9 @@ class KnowledgeDecisionPipeline:
             "obs_sector": _sector(sym),
             "opportunity_id": str(getattr(signal, "opportunity_id", "") or ""),
             "no_lookahead": True,
+            # Self-learning #30: real institutional-flow score (None = no
+            # data). Fed to KDA's own evidence-gated, bounded nudge.
+            "institutional_flow_score": getattr(signal, "institutional_flow_score", None),
         }
 
     # ─────────────────────────────────────────────────────────────────────────

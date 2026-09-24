@@ -573,6 +573,21 @@ class KnowledgeDecisionAuthority:
             ars_adj = 0.0
         relevance = min(max(relevance + ars_adj, 0.1), 1.0)
 
+        # Self-learning #30 KDA bridge: bounded +/-0.05 nudge from a real,
+        # evidence-validated institutional-flow score (OIOS bulk/block-deal
+        # + delivery-% accumulation proxy). Fail-open; dormant (0.0) until
+        # learning_system/institutional_flow_refinement_engine.py has
+        # validated the signal against enough real trade outcomes.
+        try:
+            from learning_system.institutional_flow_refinement_engine import (
+                get_institutional_flow_adjustment,
+            )
+            flow_score = obs.get("institutional_flow_score")
+            flow_adj = get_institutional_flow_adjustment(flow_score)
+        except Exception:
+            flow_adj = 0.0
+        relevance = min(max(relevance + flow_adj, 0.1), 1.0)
+
         oos_q = _oos_quality(oos_status)
 
         # Source independence: needs at least 3 truly distinct sources for full score

@@ -106,6 +106,16 @@ class TradeSignal:
     # gates a signal; lets rejection-outcome tracking flag unreliable prices.
     price_is_live:         Optional[bool] = None
 
+    # Self-learning #30 (Positioning Intelligence): mechanical institutional-
+    # flow proxy computed from real OIOS bulk/block-deal + delivery-% data
+    # (never simulated). None = no bulk/block or delivery data available for
+    # this symbol in the lookback window (the normal case most days) --
+    # never gates a signal, purely observational until
+    # learning_system/institutional_flow_refinement_engine.py validates it
+    # against real outcomes.
+    institutional_flow_score:     Optional[float] = None   # [-1, +1], None = no data
+    institutional_flow_available: Optional[bool]  = None
+
 
     @property
     def risk_reward_ratio(self) -> float:
