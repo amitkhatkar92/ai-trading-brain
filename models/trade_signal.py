@@ -116,6 +116,15 @@ class TradeSignal:
     institutional_flow_score:     Optional[float] = None   # [-1, +1], None = no data
     institutional_flow_available: Optional[bool]  = None
 
+    # Self-learning #31 (Company Intelligence, growth-screen only): mechanical
+    # revenue/earnings growth score from real filed financials (yfinance).
+    # None = not yet available (background-fetched, never blocks the scan
+    # cycle -- see opportunity_engine/company_growth_signal.py). Purely
+    # observational until learning_system/company_growth_refinement_engine.py
+    # validates it against real outcomes.
+    company_growth_score:     Optional[float] = None   # [-1, +1], None = no data
+    company_growth_available: Optional[bool]  = None
+
 
     @property
     def risk_reward_ratio(self) -> float:

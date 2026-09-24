@@ -8175,6 +8175,14 @@ class MasterOrchestrator:
         except Exception as _flowre_exc:
             log.debug("[InstitutionalFlowRE] refinement check error (non-critical): %s", _flowre_exc)
 
+        # ── Self-learning #31: Company growth (Company Intelligence) ──
+        try:
+            from learning_system.company_growth_refinement_engine import run_daily_refinement_check as _run_growth_check
+            _growthre = _run_growth_check()
+            log.info("[CompanyGrowthRE] %s", _growthre.get("state_status"))
+        except Exception as _growthre_exc:
+            log.debug("[CompanyGrowthRE] refinement check error (non-critical): %s", _growthre_exc)
+
         # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
         # Read-only status check only -- never touches any open position.
         # See analysis/capital_reserve_readiness_engine.py for why the

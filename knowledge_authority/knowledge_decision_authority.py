@@ -588,6 +588,21 @@ class KnowledgeDecisionAuthority:
             flow_adj = 0.0
         relevance = min(max(relevance + flow_adj, 0.1), 1.0)
 
+        # Self-learning #31 KDA bridge: bounded +/-0.05 nudge from a real,
+        # evidence-validated company growth score (revenue/earnings growth,
+        # real filed financials). Fail-open; dormant (0.0) until
+        # learning_system/company_growth_refinement_engine.py has validated
+        # the signal against enough real trade outcomes.
+        try:
+            from learning_system.company_growth_refinement_engine import (
+                get_company_growth_adjustment,
+            )
+            growth_score = obs.get("company_growth_score")
+            growth_adj = get_company_growth_adjustment(growth_score)
+        except Exception:
+            growth_adj = 0.0
+        relevance = min(max(relevance + growth_adj, 0.1), 1.0)
+
         oos_q = _oos_quality(oos_status)
 
         # Source independence: needs at least 3 truly distinct sources for full score

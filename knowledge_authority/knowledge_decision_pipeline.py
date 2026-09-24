@@ -884,6 +884,8 @@ class KnowledgeDecisionPipeline:
             # Self-learning #30: real institutional-flow score (None = no
             # data). Fed to KDA's own evidence-gated, bounded nudge.
             "institutional_flow_score": getattr(signal, "institutional_flow_score", None),
+            # Self-learning #31: real company growth score (None = no data).
+            "company_growth_score": getattr(signal, "company_growth_score", None),
         }
 
     # ─────────────────────────────────────────────────────────────────────────

@@ -302,6 +302,10 @@ class OrderRecord:
     # used to record real outcome evidence at close for
     # learning_system/institutional_flow_refinement_engine.py's validation.
     institutional_flow_score: Optional[float] = None
+    # Self-learning #31 (Company Intelligence): the mechanical growth score
+    # at signal time (None = no data). Observational -- same purpose as
+    # institutional_flow_score above, feeds company_growth_evidence_log.py.
+    company_growth_score: Optional[float] = None
 
 
 @dataclass
@@ -1004,6 +1008,7 @@ class OrderManager:
             requested_price   = signal.entry_price,
             opportunity_id    = getattr(signal, "opportunity_id", "") or "",
             institutional_flow_score = getattr(signal, "institutional_flow_score", None),
+            company_growth_score = getattr(signal, "company_growth_score", None),
         )
         # Reconcile fill immediately after placement (live: queries broker, paper/sim: marks synthetic)
         self._reconcile_fill(record)
@@ -1253,6 +1258,18 @@ class OrderManager:
                 )
             except Exception as _inst_exc:
                 log.debug("[InstitutionalFlow] evidence log failed (non-critical): %s", _inst_exc)
+
+        # Self-learning #31: same pattern for the company-growth score.
+        if rec.company_growth_score is not None:
+            try:
+                from learning_system.company_growth_evidence_log import record_company_growth_outcome
+                record_company_growth_outcome(
+                    order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
+                    company_growth_score=rec.company_growth_score,
+                    r_multiple=_r, won=pnl > 0,
+                )
+            except Exception as _growth_exc:
+                log.debug("[CompanyGrowth] evidence log failed (non-critical): %s", _growth_exc)
 
         log.info("[OrderManager] Position closed: %s | PnL=₹%+.0f | Reason=%s",
                  rec.symbol, pnl, reason)
