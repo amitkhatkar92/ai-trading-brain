@@ -29,7 +29,7 @@ import sched
 import time
 import threading
 from datetime import datetime, timezone
-from typing import List, Optional, Set, Dict, Tuple
+from typing import List, Optional, Set, Dict, Tuple, Any
 
 from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
 from models import MarketSnapshot, TradeSignal, Portfolio
@@ -5662,6 +5662,27 @@ class MasterOrchestrator:
         except Exception as exc:
             log.error("[UniverseRebuild] Crashed: %s", exc, exc_info=True)
 
+    def _eod_status_today(self) -> Dict[str, Any]:
+        """
+        DTA-EOD-SAME-DAY-RETRY-001: read-only, always-fresh-from-disk check of
+        today's EOD status (never trusts in-memory cache, since a container
+        restart resets that but not the file). Returns {} if the file is
+        missing/corrupt/stale (a different day) — callers treat that as
+        "not completed yet".
+        """
+        from pathlib import Path as _EodPath
+        import json as _eod_json
+        try:
+            _f = _EodPath("data/eod_status.json")
+            if not _f.exists():
+                return {}
+            _d = _eod_json.loads(_f.read_text(encoding="utf-8"))
+            if _d.get("last_eod_date") != datetime.now().strftime("%Y-%m-%d"):
+                return {}
+            return _d
+        except Exception:
+            return {}
+
 
     def _do_eod_learning(self):
         """Internal — runs inside the LearningEngine worker thread."""
@@ -8825,6 +8846,54 @@ class MasterOrchestrator:
                 except Exception:
                     pass
         sched_lib.every().day.at(SCHEDULE["eod_learning"]).do(_guarded_eod)
+
+        # ── DTA-EOD-SAME-DAY-RETRY-001: bounded same-day retry ──────────
+        # The 15:35 slot above is the ONLY scheduled attempt per day — if it
+        # gets interrupted (e.g. a deploy landing mid-run, as happened
+        # 2026-09-22), there was previously no second chance until tomorrow's
+        # regular slot. These 2 extra checks reuse the EXACT existing
+        # STARTED/COMPLETED guard inside _do_eod_learning() (already
+        # retry-safe) — they just give it 2 more chances THE SAME DAY.
+        # Each check is cheap and a safe no-op if today is already COMPLETED.
+        def _guarded_eod_retry(attempt_label: str):
+            try:
+                status = self._eod_status_today()
+                if status.get("status") == "COMPLETED":
+                    return  # already done — nothing to do, no wasted work
+                log.warning(
+                    "[GuardedEOD] Same-day retry (%s): today's EOD status=%s — "
+                    "re-triggering full pipeline.",
+                    attempt_label, status.get("status", "NEVER_STARTED"),
+                )
+                self.run_eod_learning()
+            except Exception as _exc:
+                log.critical("[GuardedEOD] Same-day retry (%s) FAILURE error=%s",
+                             attempt_label, _exc)
+
+        def _guarded_eod_final_check():
+            try:
+                status = self._eod_status_today()
+                if status.get("status") == "COMPLETED":
+                    return  # completed by the original slot or a retry — no alert
+                from notifications.notifier_manager import get_notifier
+                get_notifier().send_alert(
+                    "\u26a0\ufe0f <b>[EOD Learning FAILED]</b> Today's EOD pipeline did "
+                    "not complete after 3 attempts (15:35 + 2 same-day retries). "
+                    f"Last known status: {status.get('status', 'NEVER_STARTED')}. "
+                    "Check container logs — will retry again at tomorrow's regular slot."
+                )
+            except Exception as _exc:
+                log.critical("[GuardedEOD] Final-check alert FAILURE error=%s", _exc)
+
+        sched_lib.every().day.at(SCHEDULE["eod_learning_retry_1"]).do(
+            lambda: _guarded_eod_retry("retry_1")
+        )
+        sched_lib.every().day.at(SCHEDULE["eod_learning_retry_2"]).do(
+            lambda: _guarded_eod_retry("retry_2")
+        )
+        sched_lib.every().day.at(SCHEDULE["eod_learning_final_check"]).do(
+            _guarded_eod_final_check
+        )
 
         # ── Post-market deep scan (Phase D) — 16:45 IST ───────────────
         sched_lib.every().day.at(SCHEDULE["post_market_scan"]).do(self._run_post_market_scan)

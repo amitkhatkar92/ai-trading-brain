@@ -132,6 +132,13 @@ SCHEDULE = {
     "closing_analysis":       "15:00",   # pre-expiry / closing trades      (15:00 IST — matches MarketMonitor)
     # ── EOD ────────────────────────────────────────────────────────────────
     "eod_learning":           "15:35",   # performance learning cycle       (15:35 IST = post market close)
+    # DTA-EOD-SAME-DAY-RETRY-001: bounded same-day retries if 15:35 gets
+    # interrupted (e.g. a deploy landing mid-run). Each slot is a cheap
+    # no-op if the day is already COMPLETED. Times chosen to avoid the
+    # 16:15 universe rebuild and 16:45 post_market_scan (~20min) slots.
+    "eod_learning_retry_1":       "16:00",
+    "eod_learning_retry_2":       "17:10",
+    "eod_learning_final_check":  "17:50",   # alert if still not COMPLETED after 3 attempts
     # ── Multi-Stage Market Preparation Engine ──────────────────────────────
     "post_market_scan":       "16:45",   # Phase D: full Nifty500 scanner   (runs ~20 min, after MF NAV settle)
     "premarket_refiner":      "08:45",   # Phase G: pre-open conviction decay + gap refresh
