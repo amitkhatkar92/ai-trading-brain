@@ -47,6 +47,40 @@ _REENTRY_AUDIT_LOG:  List[dict]      = []    # accumulated this session
 MAX_ORDER_RETRIES = 3       # attempts before giving up
 RETRY_BASE_DELAY  = 0.5    # seconds; doubles each attempt (0.5 → 1.0 → 2.0)
 
+# DTA-TICK-SIZE-001: NSE cash-market equities require every order price to be
+# an exact multiple of the tick size (0.05 for the vast majority of NSE_EQ
+# symbols). round(x, 2) alone does NOT guarantee this (e.g. 171.84 is valid
+# 2-decimal paisa but not a multiple of 0.05) — confirmed live as the root
+# cause of recurring Dhan rejections: "16283: EXCH:16283:The order price is
+# not multiple of the tick size." (SBIN, TATACONSUM, COALINDIA, INDHOTEL).
+NSE_EQUITY_TICK_SIZE = 0.05
+
+
+def _round_to_tick(price: float, tick_size: float = NSE_EQUITY_TICK_SIZE) -> float:
+    """Round *price* to the nearest valid exchange tick (never just 2dp)."""
+    if tick_size <= 0 or price <= 0:
+        return round(price, 2)
+    return round(round(price / tick_size) * tick_size, 2)
+
+
+def _resolve_tick_size(symbol: str) -> float:
+    """
+    DTA-TICK-SIZE-001 follow-up: a blanket 0.05 assumption is unsafe — some
+    liquid, high-priced NSE symbols (confirmed live: SBIN) use a wider tick
+    under SEBI's revised tick-size framework, and 979.95 (a valid 0.05
+    multiple) was still rejected by the exchange for exactly this reason.
+    Look up the real, verified tick size from Dhan's own instrument master;
+    fall back to the common NSE default only when the symbol isn't found.
+    """
+    try:
+        from data_feeds.dhan_fno_security_map import get_equity_tick_size
+        tick = get_equity_tick_size(symbol)
+        if tick and tick > 0:
+            return tick
+    except Exception:
+        pass
+    return NSE_EQUITY_TICK_SIZE
+
 # ── Limit-order expiry ───────────────────────────────────────────────────────
 # NSE 5-minute candle = 300 s.  Cancel any unfilled LIMIT order after
 # LIMIT_CANDLE_EXPIRY candles (increased 3→8 × 5 min = 40 minutes for better fill).
@@ -1506,8 +1540,8 @@ class OrderManager:
                         exchange         = "NSE",
                         transaction_type = close_dir,
                         quantity         = filled,
-                        trigger_price    = rec.stop_loss,
-                        price            = round(rec.stop_loss * 0.995, 2),
+                        trigger_price    = _round_to_tick(rec.stop_loss, _resolve_tick_size(rec.symbol)),
+                        price            = _round_to_tick(rec.stop_loss * 0.995, _resolve_tick_size(rec.symbol)),
                     )
                     rec.sl_order_id = new_sl_id or ""
                     log.info(
@@ -2686,11 +2720,12 @@ class OrderManager:
                      close_dir, sig.symbol, sig.stop_loss)
             return f"SIM_SL_{sig.symbol}"
         if hasattr(self._broker, "place_sl_order"):
+            _tick = _resolve_tick_size(sig.symbol)
             return self._broker.place_sl_order(
                 symbol=sig.symbol, exchange="NSE",
                 transaction_type=close_dir, quantity=qty,
-                trigger_price=sig.stop_loss,
-                price=round(sig.stop_loss * 0.995, 2),
+                trigger_price=_round_to_tick(sig.stop_loss, _tick),
+                price=_round_to_tick(sig.stop_loss * 0.995, _tick),
                 product_type=product_type,
             )
         # D9-005: broker connected but lacks SL method — operator must be aware
@@ -2738,12 +2773,15 @@ class OrderManager:
                 symbol,
             )
             return None
+        # DTA-TICK-SIZE-001: LIMIT prices must land on a valid exchange tick;
+        # MARKET orders carry no real price constraint, leave untouched.
+        _order_price = _round_to_tick(price, _resolve_tick_size(symbol)) if order_type == "LIMIT" else price
         return self._broker.place_order(
             security_id      = _meta["security_id"],
             exchange_segment = _meta["segment"],
             transaction_type = direction,
             quantity         = qty,
-            price            = price,
+            price            = _order_price,
             order_type       = order_type,
             product_type     = product_type,
         )

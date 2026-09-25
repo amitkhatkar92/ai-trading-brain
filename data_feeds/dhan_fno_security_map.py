@@ -50,6 +50,7 @@ class DhanFnOSecurityMap:
     def __init__(self) -> None:
         self._index:       Dict[_IndexKey, str] = {}
         self._lot_sizes:    Dict[str, int]      = {}   # underlying -> verified SEM_LOT_UNITS
+        self._equity_tick_sizes: Dict[str, float] = {}  # NSE_EQ symbol -> verified SEM_TICK_SIZE
         self._loaded_date: Optional[date]        = None
         self._lock         = threading.Lock()
         self._load()
@@ -108,6 +109,26 @@ class DhanFnOSecurityMap:
             if self._loaded_date != date.today():
                 self._load()
             return self._lot_sizes.get(underlying.upper())
+
+    def get_equity_tick_size(self, symbol: str) -> Optional[float]:
+        """
+        DTA-TICK-SIZE-001: return the verified NSE cash-equity tick size (in
+        rupees) for *symbol*, sourced from Dhan's own instrument master
+        (SEM_TICK_SIZE, stored there in paisa and converted here) -- never
+        hard-coded. Some liquid, high-priced symbols (confirmed live: SBIN,
+        TATACONSUM = Rs 0.10) use a wider tick than the common NSE default
+        of Rs 0.05 under SEBI's revised tick-size framework; a blanket 0.05
+        assumption is unsafe.
+
+        Returns None if the symbol is not found (master not loaded, a
+        genuinely unknown symbol, or an implausible raw value was rejected)
+        -- callers must fail closed to a documented default, never silently
+        guess for a real order.
+        """
+        with self._lock:
+            if self._loaded_date != date.today():
+                self._load()
+            return self._equity_tick_sizes.get(symbol.upper())
 
     # ── Internal ───────────────────────────────────────────────────────
 
@@ -179,14 +200,44 @@ class DhanFnOSecurityMap:
         """
         idx: Dict[_IndexKey, str] = {}
         lot_sizes: Dict[str, int] = {}
+        equity_tick_sizes: Dict[str, float] = {}
         skipped = 0
         for row in rows:
             exch     = (row.get("SEM_EXM_EXCH_ID") or "").strip()
             iname    = (row.get("SEM_INSTRUMENT_NAME") or "").strip()
-            opt_type = (row.get("SEM_OPTION_TYPE") or "").strip().upper()
 
             if exch != "NSE":
                 continue
+
+            # DTA-TICK-SIZE-001: opportunistically also index NSE cash-equity
+            # tick sizes from this same already-downloaded instrument master
+            # -- avoids a second live download purely for this lookup.
+            if iname == "EQUITY":
+                eq_symbol = (row.get("SEM_TRADING_SYMBOL") or "").strip().upper()
+                tick_raw  = row.get("SEM_TICK_SIZE")
+                if eq_symbol and tick_raw not in (None, ""):
+                    try:
+                        # DTA-TICK-SIZE-001 follow-up: confirmed live against
+                        # the real, freshly-downloaded 2026-09-25 instrument
+                        # master -- SEM_TICK_SIZE is expressed in PAISA
+                        # (integer smallest-currency-unit), not rupees, e.g.
+                        # SBIN/TATACONSUM=10 (-> Rs 0.10), COALINDIA=5
+                        # (-> Rs 0.05), GAIL/IOC=1 (-> Rs 0.01). Treating the
+                        # raw value as rupees directly (the original bug in
+                        # this same fix) would have rounded to an equally
+                        # wrong tick.
+                        tick_val = float(tick_raw) / 100.0
+                        # Sane bound: real NSE cash-equity ticks (per SEBI's
+                        # revised price-band ladder) never exceed ~1.00 --
+                        # a stale/malformed row must never silently corrupt
+                        # a real order price. Reject and fall back instead.
+                        if 0 < tick_val <= 2.0:
+                            equity_tick_sizes[eq_symbol] = tick_val
+                    except (ValueError, TypeError):
+                        pass
+                continue
+
+            opt_type = (row.get("SEM_OPTION_TYPE") or "").strip().upper()
             if iname not in ("OPTIDX", "OPTSTK"):
                 continue
             if opt_type not in ("CE", "PE"):
@@ -229,6 +280,7 @@ class DhanFnOSecurityMap:
 
         self._index = idx
         self._lot_sizes = lot_sizes
+        self._equity_tick_sizes = equity_tick_sizes
         if skipped:
             log.debug("[DhanFnOSecurityMap] Skipped %d malformed rows during index build.", skipped)
 
@@ -304,3 +356,11 @@ def get_fno_security_map() -> DhanFnOSecurityMap:
         if _MAP_INSTANCE is None:
             _MAP_INSTANCE = DhanFnOSecurityMap()
     return _MAP_INSTANCE
+
+
+def get_equity_tick_size(symbol: str) -> Optional[float]:
+    """DTA-TICK-SIZE-001: convenience wrapper over the process-wide singleton."""
+    try:
+        return get_fno_security_map().get_equity_tick_size(symbol)
+    except Exception:
+        return None
