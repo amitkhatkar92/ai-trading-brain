@@ -17,7 +17,9 @@ SAFETY RULES (enforced in every function):
 """
 from __future__ import annotations
 
+import json
 import logging
+import os
 import uuid
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -135,6 +137,7 @@ def _compute_features(df):
       mom_accel     — change in 5-day momentum vs 5 days ago -- the same
                       formula already used/validated elsewhere in this
                       codebase (Selection Intelligence Phase 2C/2D)
+      hv_20         — 20-day realized volatility (std of daily_return)
     Returns the augmented DataFrame (original is not mutated).
     """
     try:
@@ -147,6 +150,7 @@ def _compute_features(df):
         df["daily_return"] = close.pct_change() * 100.0
         df["momentum_5d"]  = close.pct_change(periods=5) * 100.0
         df["mom_accel"]    = df["momentum_5d"] - df["momentum_5d"].shift(5)
+        df["hv_20"]        = df["daily_return"].rolling(20, min_periods=10).std()
 
         delta    = close.diff()
         gain     = delta.clip(lower=0)
@@ -226,49 +230,134 @@ def _assess_evidence(df, direction: str, trigger_return_pct: float):
         return 0, 0.0, 0.0, 0.0
 
 
-# ── Additional combination fingerprints (DTA-RESEARCH-QUALITY-001) ───────────
+# ── Certified fingerprint library (DTA-RESEARCH-QUALITY-001, revised) ─────
 #
-# _assess_evidence() above tests exactly ONE hard-coded trigger condition
-# (volume spike + momentum). Real research quality improves when several
-# domain-reasoned combinations are tested and the best-evidenced one is
-# used -- never a blind brute-force search, and every candidate still has
-# to clear the exact same MIN_SAMPLE / MIN_WIN_RATE / MIN_LIFT bar as
-# before. "low RSI + high momentum acceleration" is not a new invention --
-# it is the single strongest, already-validated finding from this exact
-# codebase's Selection Intelligence Phase 2C/2D research (~2.6x baseline
-# mover rate for UP). Its DOWN mirror ("high RSI + strong negative
-# acceleration") is the same reversal-from-overbought thesis already used
-# there. "high ATR + strong momentum" mirrors that phase's fifth combo.
-# Bands are computed per-symbol (tertiles over that stock's OWN available
-# history), since CLE evaluates one symbol's series at a time rather than
-# a pooled cross-sectional population.
+# Earlier revision of this module hand-invented 2 extra combinations
+# alongside _assess_evidence()'s original volume+momentum condition. On
+# review, that duplicated work this codebase already does properly
+# elsewhere: Selection Intelligence Phase 2C/2D/7 independently discovers
+# and statistically validates combinations against POOLED, cross-sectional
+# data (hundreds of records across many symbols) with real promotion gates
+# -- a much stronger basis than one hand-picked idea tested for the first
+# time on a single stock. This module now REUSES that already-certified
+# library directly instead of re-inventing combinations:
+#   - data/discovered_fingerprints.json -- every fingerprint Phase 7 has
+#     auto-promoted so far (grows over time, zero code change needed here
+#     when a new one clears the bar).
+#   - _STATIC_CERTIFIED_FINGERPRINT -- the original Phase 2D finding,
+#     mirrored here as a plain data spec (kept in sync with
+#     FINGERPRINT_UP_LOW_RSI_HIGH_ACCEL in selection_characteristic_
+#     analyzer_001.py; not imported directly, to keep this module
+#     standalone per its own docstring).
+#
+# NAMING CAVEAT (found during review, not a bug -- documented in the
+# source system too): one certified entry's *name* is the legacy string
+# "UP_low_rsi_high_accel" even when its *direction* field is "DOWN" (a
+# historical artifact of Phase 7's COMBO_TO_FINGERPRINT_NAME remapping,
+# kept for backward compatibility with years of existing history/tests
+# elsewhere -- renaming it would break that unrelated system). This
+# module NEVER infers direction from the name string -- direction is
+# always read from its own explicit field, so this naming quirk cannot
+# cause a wrong-direction condition to be evaluated here.
+#
+# NOT every certified condition is usable here: some reference rs_pct_5d
+# (relative strength vs a benchmark index) or vol_expansion, features that
+# require data this module does not fetch (only one symbol's own OHLCV,
+# no benchmark/index series). Those are safely SKIPPED (fail closed, same
+# principle as everywhere else in this codebase) rather than approximated.
 
-def _assess_evidence_rsi_accel(df, direction: str, trigger_return_pct: float):
-    """low RSI + high momentum acceleration (UP) / high RSI + strong
-    negative acceleration (DOWN) -- see module note above."""
+_DIRECTIONAL_FEATURES = {"mom_5d", "mom_accel", "rs_pct_5d"}
+
+# certified feature name -> this module's own df column name
+_CLE_FEATURE_MAP = {
+    "mom_5d":  "momentum_5d",
+    "mom_accel": "mom_accel",
+    "rsi_14":  "rsi_14",
+    "hv_20":   "hv_20",
+}
+
+_CERTIFIED_FINGERPRINTS_PATH = os.path.join("data", "discovered_fingerprints.json")
+
+# Mirrors FINGERPRINT_UP_LOW_RSI_HIGH_ACCEL in selection_characteristic_
+# analyzer_001.py -- the one Phase 2D finding never written to the JSON
+# file above (it predates Phase 7's auto-promotion mechanism).
+_STATIC_CERTIFIED_FINGERPRINT = {
+    "name": "UP_low_rsi_high_accel",
+    "direction": "UP",
+    "conditions": [["rsi_14", "low"], ["mom_accel", "high"]],
+}
+
+
+def _load_certified_fingerprints() -> list:
+    """
+    Read the real, already-validated fingerprint library (Phase 7's auto-
+    promoted list + the one static Phase 2D finding). Re-read fresh every
+    call (the JSON file grows over time as new ones get promoted
+    elsewhere) -- fails open to just the static entry on any error.
+    """
+    out = [dict(_STATIC_CERTIFIED_FINGERPRINT)]
     try:
-        if "rsi_14" not in df.columns or "mom_accel" not in df.columns:
-            return 0, 0.0, 0.0, 0.0
+        if os.path.exists(_CERTIFIED_FINGERPRINTS_PATH):
+            with open(_CERTIFIED_FINGERPRINTS_PATH, encoding="utf-8") as fh:
+                specs = json.load(fh)
+            seen = {(out[0]["name"], out[0]["direction"])}
+            for spec in specs:
+                key = (spec.get("name"), spec.get("direction"))
+                if key in seen or not spec.get("conditions"):
+                    continue
+                seen.add(key)
+                out.append({
+                    "name": spec["name"], "direction": spec["direction"],
+                    "conditions": spec["conditions"],
+                })
+    except Exception as exc:
+        log.debug("[CLE-Research] certified fingerprint load failed: %s", exc)
+    return out
+
+
+def _evaluate_certified_fingerprint(df, direction: str, trigger_return_pct: float,
+                                     conditions: list):
+    """
+    Generic evaluator for a certified (feature, band) AND-condition list,
+    computed against THIS symbol's own trailing history (per-symbol
+    tertiles -- Phase 7's own bands are pooled across many symbols, not
+    directly reusable numerically, only the underlying idea is reused).
+    Returns (sample_count, base_rate, win_rate, lift); (0,0,0,0) if any
+    referenced feature isn't computable here (fail closed, never guess).
+    """
+    try:
+        mapped_cols = []
+        for feat, _band in conditions:
+            col = _CLE_FEATURE_MAP.get(feat)
+            if col is None or col not in df.columns:
+                return 0, 0.0, 0.0, 0.0   # unavailable feature -- skip, don't approximate
+            mapped_cols.append((feat, col, _band))
 
         threshold   = max(MOVE_THRESHOLD, abs(trigger_return_pct) * 0.5)
         total_days  = len(df)
         large_moves = (df["daily_return"].abs() >= threshold).sum()
         base_rate   = large_moves / max(total_days, 1)
 
-        rsi_vals   = df["rsi_14"].dropna()
-        accel_vals = df["mom_accel"].dropna()
-        if len(rsi_vals) < 20 or len(accel_vals) < 20:
-            return 0, base_rate, 0.0, 0.0
-        rsi_p33,   rsi_p66   = rsi_vals.quantile(0.33),   rsi_vals.quantile(0.66)
-        accel_p33, accel_p66 = accel_vals.quantile(0.33), accel_vals.quantile(0.66)
+        cond = None
+        for feat, col, band in mapped_cols:
+            vals = df[col].dropna()
+            if len(vals) < 20:
+                return 0, base_rate, 0.0, 0.0
+            p33, p66 = vals.quantile(0.33), vals.quantile(0.66)
+            flip = feat in _DIRECTIONAL_FEATURES and direction.upper() == "DOWN"
+            if band == "high":
+                feat_cond = (df[col] <= p33) if flip else (df[col] >= p66)
+            elif band == "low":
+                feat_cond = (df[col] >= p66) if flip else (df[col] <= p33)
+            else:  # "moderate"
+                feat_cond = df[col].between(p33, p66)
+            cond = feat_cond if cond is None else (cond & feat_cond)
+        cond = cond.fillna(False)
 
         if direction.upper() == "UP":
-            cond         = (df["rsi_14"] <= rsi_p33) & (df["mom_accel"] >= accel_p66)
             outcome_mask = df["daily_return"] >= threshold
         else:
-            cond         = (df["rsi_14"] >= rsi_p66) & (df["mom_accel"] <= accel_p33)
             outcome_mask = df["daily_return"] <= -threshold
-        cond = cond.fillna(False)
 
         trigger_idx  = df.index[cond]
         next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
@@ -283,70 +372,33 @@ def _assess_evidence_rsi_accel(df, direction: str, trigger_return_pct: float):
         return len(valid), base_rate, float(win_rate), float(lift)
 
     except Exception as exc:
-        log.debug("[CLE-Research] rsi_accel evidence error: %s", exc)
-        return 0, 0.0, 0.0, 0.0
-
-
-def _assess_evidence_atr_momentum(df, direction: str, trigger_return_pct: float):
-    """High intraday-range volatility + momentum aligned with direction."""
-    try:
-        if "high_low_pct" not in df.columns or "momentum_5d" not in df.columns:
-            return 0, 0.0, 0.0, 0.0
-
-        threshold   = max(MOVE_THRESHOLD, abs(trigger_return_pct) * 0.5)
-        total_days  = len(df)
-        large_moves = (df["daily_return"].abs() >= threshold).sum()
-        base_rate   = large_moves / max(total_days, 1)
-
-        vol_vals = df["high_low_pct"].dropna()
-        if len(vol_vals) < 20:
-            return 0, base_rate, 0.0, 0.0
-        vol_p66 = vol_vals.quantile(0.66)
-
-        if direction.upper() == "UP":
-            cond         = (df["high_low_pct"] >= vol_p66) & (df["momentum_5d"] > 0)
-            outcome_mask = df["daily_return"] >= threshold
-        else:
-            cond         = (df["high_low_pct"] >= vol_p66) & (df["momentum_5d"] < 0)
-            outcome_mask = df["daily_return"] <= -threshold
-        cond = cond.fillna(False)
-
-        trigger_idx  = df.index[cond]
-        next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
-        valid        = [i for i in next_day_idx if i in df.index]
-
-        if len(valid) < MIN_SAMPLE:
-            return len(valid), base_rate, 0.0, 0.0
-
-        outcomes = outcome_mask.reindex(valid).fillna(False)
-        win_rate = outcomes.sum() / len(outcomes)
-        lift     = win_rate / max(base_rate, 0.001)
-        return len(valid), base_rate, float(win_rate), float(lift)
-
-    except Exception as exc:
-        log.debug("[CLE-Research] atr_momentum evidence error: %s", exc)
+        log.debug("[CLE-Research] certified fingerprint evidence error: %s", exc)
         return 0, 0.0, 0.0, 0.0
 
 
 def _select_best_fingerprint(df, direction: str, trigger_return_pct: float) -> tuple:
     """
-    Test all named fingerprints and return (best, all_results).
+    Test volume_momentum (original, always tested) plus every certified
+    fingerprint whose OWN recorded direction matches *direction*, and
+    return (best, all_results). 'best' is whichever clears the exact same
+    MIN_SAMPLE / MIN_WIN_RATE / MIN_LIFT bar with the highest (evidence-
+    adjusted) lift. Falls back to volume_momentum's own result if nothing
+    qualifies -- preserving the original single-hypothesis failure/
+    messaging behavior exactly.
 
-    'best' is whichever fingerprint clears the exact same MIN_SAMPLE /
-    MIN_WIN_RATE / MIN_LIFT bar as before with the highest (evidence-
-    adjusted) lift. If none clear the bar, falls back to reporting
-    volume_momentum's own result -- preserving the original single-
-    hypothesis failure/messaging behavior exactly.
-
-    Function names are resolved from this module's namespace at CALL time
-    (not bound into a module-level list at import time) so that patching
-    _assess_evidence in tests continues to work correctly.
+    _assess_evidence is resolved from this module's namespace at CALL
+    time (not bound into a module-level list at import time) so patching
+    it in tests continues to work correctly.
     """
-    fingerprint_fns = [
-        ("volume_momentum",          _assess_evidence),
-        ("low_rsi_high_mom_accel",   _assess_evidence_rsi_accel),
-        ("high_atr_strong_momentum", _assess_evidence_atr_momentum),
-    ]
+    fingerprint_fns = [("volume_momentum", _assess_evidence)]
+    for fp in _load_certified_fingerprints():
+        if fp["direction"].upper() != direction.upper():
+            continue
+        conditions = [tuple(c) for c in fp["conditions"]]
+        fingerprint_fns.append((
+            fp["name"],
+            lambda d, dirn, ret, _c=conditions: _evaluate_certified_fingerprint(d, dirn, ret, _c),
+        ))
 
     results = []
     for name, fn in fingerprint_fns:
