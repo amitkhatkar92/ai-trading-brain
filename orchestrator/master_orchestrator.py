@@ -8191,6 +8191,14 @@ class MasterOrchestrator:
         except Exception as _eventre_exc:
             log.debug("[CorporateEventRE] refinement check error (non-critical): %s", _eventre_exc)
 
+        # ── DTA-RESEARCH-QUALITY-001: CLE-001 combination fingerprint quality ──
+        try:
+            from learning_system.cle_fingerprint_refinement_engine import run_daily_refinement_check as _run_cle_fp_check
+            _clefpre = _run_cle_fp_check()
+            log.info("[CLEFingerprintRE] %s", _clefpre.get("per_fingerprint"))
+        except Exception as _clefpre_exc:
+            log.debug("[CLEFingerprintRE] refinement check error (non-critical): %s", _clefpre_exc)
+
         # ── Self-learning #28: Intelligent Capital Reserve readiness gate ──
         # Read-only status check only -- never touches any open position.
         # See analysis/capital_reserve_readiness_engine.py for why the

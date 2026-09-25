@@ -249,6 +249,20 @@ def run_cat_e_learning(dry_run: bool = False) -> dict:
 
                     if research.status == "CANDIDATE_CREATED":
                         summary["n_candidates"] += 1
+                        if not dry_run and research.dna_id and research.feature_name:
+                            try:
+                                from learning_system.cle_fingerprint_evidence_log import (
+                                    record_fingerprint_used,
+                                )
+                                record_fingerprint_used(
+                                    dna_id=research.dna_id,
+                                    symbol=symbol,
+                                    direction=direction,
+                                    fingerprint_name=research.feature_name.rsplit("_", 1)[0],
+                                    created_date=today,
+                                )
+                            except Exception as exc:
+                                log.debug("[CLE] fingerprint evidence record failed: %s", exc)
                     elif research.status in ("INSUFFICIENT_DATA", "NO_ACTIONABLE_DNA"):
                         summary["n_no_dna"] += 1
                     elif research.status == "FAILED":

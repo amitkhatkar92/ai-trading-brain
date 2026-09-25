@@ -120,6 +120,7 @@ class SandySupervisor:
             self._poll_options_health,
             self._poll_debate_agents,
             self._poll_capital_risk_engine,
+            self._poll_cle_fingerprint_refinement,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -486,6 +487,23 @@ class SandySupervisor:
             name="Capital Risk Engine (rejection attribution, baseline)",
             category=BASELINE_LOOP, stage=stage,
             summary=f"Dominant rejection reason last cycle: {reason}.",
+        )
+
+    def _poll_cle_fingerprint_refinement(self) -> AgentHealthReport:
+        from learning_system.cle_fingerprint_refinement_engine import get_refinement_status
+        from learning_system.cle_fingerprint_evidence_log import get_records
+        status = get_refinement_status().get("per_fingerprint", {})
+        active = [k for k, s in status.items() if s.get("status") == "ACTIVE"]
+        shadow = [k for k, s in status.items() if s.get("status") == "SHADOW_ACTIVE"]
+        total_evidence = len(get_records())
+        stage = "ACTIVE" if active else ("SHADOW" if shadow else "WAITING_FOR_EVIDENCE")
+        return AgentHealthReport(
+            name="CLE-001 Combination Fingerprint Quality (DTA-RESEARCH-QUALITY-001)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=total_evidence,
+            summary=f"{len(active)} fingerprint(s) preferred, {len(shadow)} in SHADOW, "
+                    f"{total_evidence} DNA candidate(s) tracked total.",
+            raw=status,
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:

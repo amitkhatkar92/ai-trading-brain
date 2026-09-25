@@ -131,6 +131,10 @@ def _compute_features(df):
       momentum_5d   — 5-day return
       vol_ratio_20  — today volume / 20-day rolling average
       high_low_pct  — intraday range as % of close
+      rsi_14        — 14-period RSI (DTA-RESEARCH-QUALITY-001)
+      mom_accel     — change in 5-day momentum vs 5 days ago -- the same
+                      formula already used/validated elsewhere in this
+                      codebase (Selection Intelligence Phase 2C/2D)
     Returns the augmented DataFrame (original is not mutated).
     """
     try:
@@ -142,6 +146,15 @@ def _compute_features(df):
 
         df["daily_return"] = close.pct_change() * 100.0
         df["momentum_5d"]  = close.pct_change(periods=5) * 100.0
+        df["mom_accel"]    = df["momentum_5d"] - df["momentum_5d"].shift(5)
+
+        delta    = close.diff()
+        gain     = delta.clip(lower=0)
+        loss     = -delta.clip(upper=0)
+        avg_gain = gain.ewm(com=13, min_periods=14).mean()
+        avg_loss = loss.ewm(com=13, min_periods=14).mean()
+        rs       = avg_gain / avg_loss.replace(0, float("nan"))
+        df["rsi_14"] = 100 - (100 / (1 + rs))
 
         if volume is not None:
             vol_ma20       = volume.rolling(20, min_periods=5).mean()
@@ -211,6 +224,160 @@ def _assess_evidence(df, direction: str, trigger_return_pct: float):
     except Exception as exc:
         log.warning("[CLE-Research] Evidence assessment error: %s", exc)
         return 0, 0.0, 0.0, 0.0
+
+
+# ── Additional combination fingerprints (DTA-RESEARCH-QUALITY-001) ───────────
+#
+# _assess_evidence() above tests exactly ONE hard-coded trigger condition
+# (volume spike + momentum). Real research quality improves when several
+# domain-reasoned combinations are tested and the best-evidenced one is
+# used -- never a blind brute-force search, and every candidate still has
+# to clear the exact same MIN_SAMPLE / MIN_WIN_RATE / MIN_LIFT bar as
+# before. "low RSI + high momentum acceleration" is not a new invention --
+# it is the single strongest, already-validated finding from this exact
+# codebase's Selection Intelligence Phase 2C/2D research (~2.6x baseline
+# mover rate for UP). Its DOWN mirror ("high RSI + strong negative
+# acceleration") is the same reversal-from-overbought thesis already used
+# there. "high ATR + strong momentum" mirrors that phase's fifth combo.
+# Bands are computed per-symbol (tertiles over that stock's OWN available
+# history), since CLE evaluates one symbol's series at a time rather than
+# a pooled cross-sectional population.
+
+def _assess_evidence_rsi_accel(df, direction: str, trigger_return_pct: float):
+    """low RSI + high momentum acceleration (UP) / high RSI + strong
+    negative acceleration (DOWN) -- see module note above."""
+    try:
+        if "rsi_14" not in df.columns or "mom_accel" not in df.columns:
+            return 0, 0.0, 0.0, 0.0
+
+        threshold   = max(MOVE_THRESHOLD, abs(trigger_return_pct) * 0.5)
+        total_days  = len(df)
+        large_moves = (df["daily_return"].abs() >= threshold).sum()
+        base_rate   = large_moves / max(total_days, 1)
+
+        rsi_vals   = df["rsi_14"].dropna()
+        accel_vals = df["mom_accel"].dropna()
+        if len(rsi_vals) < 20 or len(accel_vals) < 20:
+            return 0, base_rate, 0.0, 0.0
+        rsi_p33,   rsi_p66   = rsi_vals.quantile(0.33),   rsi_vals.quantile(0.66)
+        accel_p33, accel_p66 = accel_vals.quantile(0.33), accel_vals.quantile(0.66)
+
+        if direction.upper() == "UP":
+            cond         = (df["rsi_14"] <= rsi_p33) & (df["mom_accel"] >= accel_p66)
+            outcome_mask = df["daily_return"] >= threshold
+        else:
+            cond         = (df["rsi_14"] >= rsi_p66) & (df["mom_accel"] <= accel_p33)
+            outcome_mask = df["daily_return"] <= -threshold
+        cond = cond.fillna(False)
+
+        trigger_idx  = df.index[cond]
+        next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
+        valid        = [i for i in next_day_idx if i in df.index]
+
+        if len(valid) < MIN_SAMPLE:
+            return len(valid), base_rate, 0.0, 0.0
+
+        outcomes = outcome_mask.reindex(valid).fillna(False)
+        win_rate = outcomes.sum() / len(outcomes)
+        lift     = win_rate / max(base_rate, 0.001)
+        return len(valid), base_rate, float(win_rate), float(lift)
+
+    except Exception as exc:
+        log.debug("[CLE-Research] rsi_accel evidence error: %s", exc)
+        return 0, 0.0, 0.0, 0.0
+
+
+def _assess_evidence_atr_momentum(df, direction: str, trigger_return_pct: float):
+    """High intraday-range volatility + momentum aligned with direction."""
+    try:
+        if "high_low_pct" not in df.columns or "momentum_5d" not in df.columns:
+            return 0, 0.0, 0.0, 0.0
+
+        threshold   = max(MOVE_THRESHOLD, abs(trigger_return_pct) * 0.5)
+        total_days  = len(df)
+        large_moves = (df["daily_return"].abs() >= threshold).sum()
+        base_rate   = large_moves / max(total_days, 1)
+
+        vol_vals = df["high_low_pct"].dropna()
+        if len(vol_vals) < 20:
+            return 0, base_rate, 0.0, 0.0
+        vol_p66 = vol_vals.quantile(0.66)
+
+        if direction.upper() == "UP":
+            cond         = (df["high_low_pct"] >= vol_p66) & (df["momentum_5d"] > 0)
+            outcome_mask = df["daily_return"] >= threshold
+        else:
+            cond         = (df["high_low_pct"] >= vol_p66) & (df["momentum_5d"] < 0)
+            outcome_mask = df["daily_return"] <= -threshold
+        cond = cond.fillna(False)
+
+        trigger_idx  = df.index[cond]
+        next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
+        valid        = [i for i in next_day_idx if i in df.index]
+
+        if len(valid) < MIN_SAMPLE:
+            return len(valid), base_rate, 0.0, 0.0
+
+        outcomes = outcome_mask.reindex(valid).fillna(False)
+        win_rate = outcomes.sum() / len(outcomes)
+        lift     = win_rate / max(base_rate, 0.001)
+        return len(valid), base_rate, float(win_rate), float(lift)
+
+    except Exception as exc:
+        log.debug("[CLE-Research] atr_momentum evidence error: %s", exc)
+        return 0, 0.0, 0.0, 0.0
+
+
+def _select_best_fingerprint(df, direction: str, trigger_return_pct: float) -> tuple:
+    """
+    Test all named fingerprints and return (best, all_results).
+
+    'best' is whichever fingerprint clears the exact same MIN_SAMPLE /
+    MIN_WIN_RATE / MIN_LIFT bar as before with the highest (evidence-
+    adjusted) lift. If none clear the bar, falls back to reporting
+    volume_momentum's own result -- preserving the original single-
+    hypothesis failure/messaging behavior exactly.
+
+    Function names are resolved from this module's namespace at CALL time
+    (not bound into a module-level list at import time) so that patching
+    _assess_evidence in tests continues to work correctly.
+    """
+    fingerprint_fns = [
+        ("volume_momentum",          _assess_evidence),
+        ("low_rsi_high_mom_accel",   _assess_evidence_rsi_accel),
+        ("high_atr_strong_momentum", _assess_evidence_atr_momentum),
+    ]
+
+    results = []
+    for name, fn in fingerprint_fns:
+        try:
+            count, base, wr, lift = fn(df, direction, trigger_return_pct)
+        except Exception as exc:
+            log.debug("[CLE-Research] fingerprint %s failed: %s", name, exc)
+            count, base, wr, lift = 0, 0.0, 0.0, 0.0
+
+        adj = 0.0
+        try:
+            from learning_system.cle_fingerprint_refinement_engine import (
+                get_fingerprint_preference_adjustment,
+            )
+            adj = get_fingerprint_preference_adjustment(name)
+        except Exception:
+            adj = 0.0
+
+        results.append({
+            "name": name, "sample_count": count, "base_rate": base,
+            "win_rate": wr, "lift": lift, "adjusted_lift": lift + adj,
+        })
+
+    qualifying = [
+        r for r in results
+        if r["sample_count"] >= MIN_SAMPLE
+        and r["win_rate"] >= MIN_WIN_RATE
+        and r["lift"] >= MIN_LIFT
+    ]
+    best = max(qualifying, key=lambda r: r["adjusted_lift"]) if qualifying else results[0]
+    return best, results
 
 
 # ── DNA creation ──────────────────────────────────────────────────────────────
@@ -347,8 +514,12 @@ def run_historical_research(
         result.reason = "Feature computation left < 30 rows"
         return result
 
-    # ── Step 3: assess evidence ───────────────────────────────────────────
-    sample_count, base_rate, win_rate, lift = _assess_evidence(df, direction, return_pct)
+    # ── Step 3: assess evidence across combination fingerprints ─────────
+    best, _all_fingerprint_results = _select_best_fingerprint(df, direction, return_pct)
+    sample_count = best["sample_count"]
+    base_rate    = best["base_rate"]
+    win_rate     = best["win_rate"]
+    lift         = best["lift"]
     result.sample_count = sample_count
     result.base_rate    = round(base_rate, 4)
     result.win_rate     = round(win_rate, 4)
@@ -374,7 +545,7 @@ def run_historical_research(
         return result
 
     # ── Step 5: create DNA if evidence sufficient ─────────────────────────
-    feature_name  = f"volume_momentum_{direction.lower()}"
+    feature_name  = f"{best['name']}_{direction.lower()}"
     effect_size   = round(win_rate - base_rate, 4)
     result.feature_name = feature_name
 
