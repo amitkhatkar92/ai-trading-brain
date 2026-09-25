@@ -180,6 +180,30 @@ def _compute_features(df):
 
 # ── Evidence assessment ───────────────────────────────────────────────────────
 
+def _next_day_positions(df, trigger_idx):
+    """
+    Map each trigger-day index label to the NEXT trading day's index label,
+    bounds-safe.
+
+    Root cause of a real, reproducible bug (DTA-CLE-NEXTDAY-BOUNDS-001,
+    found 2026-09-25 in a live EOD run): a trigger day that is itself the
+    LAST row of *df* has no next day. The original inline pattern
+    (`df.index.get_indexer(trigger_idx, method="pad") + 1`) always shifted
+    every position by 1 with no upper-bound check, so when a trigger fell
+    on the final row this produced position == len(df), which is out of
+    bounds for a 0..len(df)-1 index and raised IndexError. Caught by the
+    caller's own try/except (fail-safe, 0 evidence), but silently dropped
+    that trigger day's evidence from the count instead of just excluding
+    the one day with no valid outcome.
+
+    Returns a list of index labels safe to pass to df.index for the
+    next-day outcome lookup.
+    """
+    positions = df.index.get_indexer(trigger_idx, method="pad") + 1
+    positions = positions[(positions >= 0) & (positions < len(df))]
+    return df.index[positions]
+
+
 def _assess_evidence(df, direction: str, trigger_return_pct: float):
     """
     Assess how often a volume/momentum spike precedes a large directional move.
@@ -210,9 +234,9 @@ def _assess_evidence(df, direction: str, trigger_return_pct: float):
             cond = cond & (df["momentum_5d"] < 0)
             outcome_mask = df["daily_return"] <= -threshold
 
-        # Shift trigger one row forward to get next-day outcome
+        # Shift trigger one row forward to get next-day outcome (bounds-safe)
         trigger_idx  = df.index[cond]
-        next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
+        next_day_idx = _next_day_positions(df, trigger_idx)
         # Filter to valid indices
         valid        = [i for i in next_day_idx if i in df.index]
 
@@ -360,7 +384,7 @@ def _evaluate_certified_fingerprint(df, direction: str, trigger_return_pct: floa
             outcome_mask = df["daily_return"] <= -threshold
 
         trigger_idx  = df.index[cond]
-        next_day_idx = df.index[df.index.get_indexer(trigger_idx, method="pad") + 1]
+        next_day_idx = _next_day_positions(df, trigger_idx)
         valid        = [i for i in next_day_idx if i in df.index]
 
         if len(valid) < MIN_SAMPLE:

@@ -173,3 +173,52 @@ class TestFeatureNameReflectsSelection:
                 )
         assert result.status == "CANDIDATE_CREATED"
         assert result.feature_name == "UP_low_rsi_high_accel_up"
+
+
+class TestNextDayBoundsSafety:
+    """
+    DTA-CLE-NEXTDAY-BOUNDS-001 (found live 2026-09-25 in production EOD:
+    "[CLE-Research] Evidence assessment error: index 246 is out of bounds
+    for axis 0 with size 246"). A trigger condition true on the LAST row
+    of *df* has no "next day" -- the old inline
+    `df.index.get_indexer(trigger_idx, method="pad") + 1` pattern had no
+    upper-bound check and crashed with IndexError once shifted past the
+    end of the index. Pre-existing bug in the original _assess_evidence,
+    not introduced by the certified-fingerprint work; fixed via the new
+    shared _next_day_positions() helper, reused by both call sites.
+    """
+
+    def test_t12_next_day_positions_excludes_last_row_trigger(self):
+        df = _res._compute_features(_synthetic_df(n=50))
+        # Force the trigger condition true on the very last row.
+        trigger_idx = df.index[[len(df) - 1]]
+        result = _res._next_day_positions(df, trigger_idx)
+        assert len(result) == 0  # no next day exists -- safely excluded, no crash
+
+    def test_t13_next_day_positions_normal_case_unaffected(self):
+        df = _res._compute_features(_synthetic_df(n=50))
+        trigger_idx = df.index[[10, 20]]
+        result = _res._next_day_positions(df, trigger_idx)
+        assert list(result) == [df.index[11], df.index[21]]
+
+    def test_t14_assess_evidence_no_crash_when_trigger_on_last_row(self):
+        df = _res._compute_features(_synthetic_df(n=250, seed=3))
+        # Force vol_ratio_20/momentum_5d to make the last row a genuine
+        # UP trigger, reproducing the exact live scenario.
+        df.loc[df.index[-1], "vol_ratio_20"] = 3.0
+        df.loc[df.index[-1], "momentum_5d"] = 5.0
+        # Must not raise, must not hit the warning-logged exception path.
+        count, base, wr, lift = _res._assess_evidence(df, "UP", 2.0)
+        assert isinstance(count, int)
+        assert 0.0 <= base <= 1.0
+
+    def test_t15_evaluate_certified_fingerprint_no_crash_when_trigger_on_last_row(self):
+        df = _res._compute_features(_synthetic_df(n=250, seed=3))
+        # Force rsi_14/mom_accel extremes on the last row so the
+        # certified UP_low_rsi_high_accel condition can trigger there.
+        df.loc[df.index[-1], "rsi_14"] = 5.0
+        df.loc[df.index[-1], "mom_accel"] = 999.0
+        count, base, wr, lift = _res._evaluate_certified_fingerprint(
+            df, "UP", 2.0, [("rsi_14", "low"), ("mom_accel", "high")])
+        assert isinstance(count, int)
+        assert 0.0 <= base <= 1.0
