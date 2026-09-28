@@ -80,6 +80,7 @@ class TestStartupPhantomPositionCleanup:
     def test_cross_day_phantom_position_cleaned_up_at_startup(self):
         broker = _broker_stuck_api_error()
         broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {"status": "success", "remarks": "", "data": []}
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
@@ -170,6 +171,7 @@ class TestStartupPhantomPositionCleanup:
     def test_no_trade_monitor_injected_does_not_raise(self):
         broker = _broker_stuck_api_error()
         broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {"status": "success", "remarks": "", "data": []}
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))

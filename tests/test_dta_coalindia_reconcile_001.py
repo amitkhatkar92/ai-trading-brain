@@ -81,6 +81,7 @@ class TestCrossDayBrokerPositionCheck:
         """Order from a previous day, broker confirms no open position → removed."""
         broker = _broker_stuck_api_error()
         broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {"status": "success", "remarks": "", "data": []}
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
@@ -110,6 +111,7 @@ class TestCrossDayBrokerPositionCheck:
         """_trade_monitor defaults to None — cleanup must not raise."""
         broker = _broker_stuck_api_error()
         broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {"status": "success", "remarks": "", "data": []}
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))

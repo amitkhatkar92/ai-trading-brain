@@ -1570,10 +1570,20 @@ class OrderManager:
         production for order_id 34126090853803 / COALINDIA on 2026-09-08,
         confirmed via get_trade_history()).
 
-        Returns True only when the broker's position book was successfully
-        read AND the symbol is confirmed absent. Any failure/uncertainty
-        returns False (fail safe — keep retrying, never guess a position
-        away). Never places, modifies, or cancels any order.
+        DTA-CNC-HOLDINGS-PHANTOM-001: get_positions() ONLY reflects Dhan's
+        intraday/unsettled book — a CNC (delivery) position moves OUT of it
+        once T+1 settlement completes, even though the broker still
+        genuinely holds it. So absence from get_positions() alone is NOT
+        sufficient proof of "no position" for any CNC entry older than a
+        day. This method now ALSO checks get_portfolio() (settled Holdings)
+        and only concludes "no position" when the symbol is absent (or
+        zero-qty) in BOTH books.
+
+        Returns True only when both the broker's position book AND its
+        holdings book were successfully read AND the symbol is confirmed
+        absent/zero-qty in both. Any failure/uncertainty returns False
+        (fail safe — keep retrying, never guess a position away). Never
+        places, modifies, or cancels any order.
         """
         if not self._broker or not hasattr(self._broker, "get_positions"):
             log.info(
@@ -1629,6 +1639,38 @@ class OrderManager:
                 if int(row.get("netQty", 0) or 0) != 0:
                     return False
                 if str(row.get("positionType", "")).upper() not in ("", "CLOSED"):
+                    return False
+            # DTA-CNC-HOLDINGS-PHANTOM-001: get_positions() ONLY reflects
+            # Dhan's intraday/unsettled book. A CNC (delivery) BUY that has
+            # gone through T+1 settlement moves OUT of Positions and INTO
+            # Holdings -- it is then invisible here even though the broker
+            # still genuinely holds real, live shares. Confirmed live
+            # 2026-09-28: 6 real, currently-held CNC positions (SBIN, GAIL,
+            # TATACONSUM, IOC, SETFGOLD, TATAGOLD -- ~₹24,265 combined) were
+            # silently wiped from internal tracking (some CANCELLED, some
+            # CLOSED via the PhantomExitGuard path below) purely because
+            # this check only ever looked at Positions. Must also confirm
+            # absence from Holdings before ever concluding "no position".
+            if not hasattr(self._broker, "get_portfolio"):
+                return False  # can't verify holdings — fail safe, assume still held
+            hresp = self._broker.get_portfolio()
+            log.info(
+                "[BrokerHoldingsCheckDiag] symbol=%s resp_type=%s resp=%s",
+                symbol, type(hresp).__name__,
+                str(hresp)[:300] if hresp is not None else "None",
+            )
+            if not isinstance(hresp, dict) or hresp.get("status") != "success":
+                return False  # holdings unverifiable — fail safe
+            hrows = hresp.get("data", [])
+            if not isinstance(hrows, list):
+                return False
+            for hrow in hrows:
+                if not isinstance(hrow, dict):
+                    continue
+                if str(hrow.get("securityId", "")) != _sec_id:
+                    continue
+                if int(hrow.get("totalQty", 0) or 0) != 0:
+                    # Real, currently-held delivery shares — not a phantom.
                     return False
             return True
         except Exception as exc:

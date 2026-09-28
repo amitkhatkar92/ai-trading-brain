@@ -86,6 +86,7 @@ class TestClosePositionPhantomGuard:
     def test_t01_skips_broker_order_when_broker_confirms_absent(self):
         broker = MagicMock()
         broker.get_positions.return_value = _ABSENT_RESP
+        broker.get_portfolio.return_value = _ABSENT_RESP
         om = _make_om_live_with_broker(broker)
         _insert_open_order(om)
         with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP", _SEC_MAP):
@@ -124,6 +125,7 @@ class TestCarryExpiryPhantomGuard:
     def test_t04_cnc_skips_broker_order_when_absent(self):
         broker = MagicMock()
         broker.get_positions.return_value = _ABSENT_RESP
+        broker.get_portfolio.return_value = _ABSENT_RESP
         om = _make_om_live_with_broker(broker)
         old_placed = datetime.now() - timedelta(days=10)
         _insert_open_order(om, product_type="CNC", placed_at=old_placed)
