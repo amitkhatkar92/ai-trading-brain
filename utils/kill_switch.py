@@ -22,7 +22,10 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
-CONFIG_PATH = Path(__file__).parent / "kill_switch.json"
+# DTA-KILLSWITCH-PATH-001: the real, deployed file lives in config/, not
+# next to this module -- utils/kill_switch.json was never created, so this
+# always fell through to the (safe) "file not found" default.
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "kill_switch.json"
 _lock = threading.RLock()
 _cache = {"enabled": True, "timestamp": None}
 

@@ -8914,6 +8914,9 @@ class MasterOrchestrator:
         # Each check is cheap and a safe no-op if today is already COMPLETED.
         def _guarded_eod_retry(attempt_label: str):
             try:
+                from config import is_nse_holiday
+                if is_nse_holiday():
+                    return  # market closed today — EOD is correctly NEVER_STARTED
                 status = self._eod_status_today()
                 if status.get("status") == "COMPLETED":
                     return  # already done — nothing to do, no wasted work
@@ -8929,6 +8932,9 @@ class MasterOrchestrator:
 
         def _guarded_eod_final_check():
             try:
+                from config import is_nse_holiday
+                if is_nse_holiday():
+                    return  # market closed today (weekend/NSE holiday) — not a failure
                 status = self._eod_status_today()
                 if status.get("status") == "COMPLETED":
                     return  # completed by the original slot or a retry — no alert

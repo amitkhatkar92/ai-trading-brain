@@ -50,7 +50,9 @@ REPORT_DIR   = _APP_ROOT / "data" / "health_reports"
 HEALTH_LOG   = _APP_ROOT / "logs" / "health_monitor.log"
 CSV_FILE     = _APP_ROOT / "data" / "paper_trades.csv"
 PID_FILE     = _APP_ROOT / "data" / "trading_engine.pid"
-KILL_SWITCH  = _APP_ROOT / "utils" / "kill_switch.json"
+# DTA-KILLSWITCH-PATH-001: matches the real, deployed location (config/),
+# consistent with utils/kill_switch.py's own CONFIG_PATH.
+KILL_SWITCH  = _APP_ROOT / "config" / "kill_switch.json"
 
 REPORT_DIR.mkdir(parents=True, exist_ok=True)
 HEALTH_LOG.parent.mkdir(parents=True, exist_ok=True)
@@ -646,7 +648,7 @@ def _position_age_days(ts_str: str) -> float:
 
 
 def _read_kill_switch() -> tuple[bool, str]:
-    """Return (enabled, reason) from kill_switch.json."""
+    """Return (enabled, reason) from config/kill_switch.json."""
     try:
         raw = KILL_SWITCH.read_bytes()
         # Strip UTF-8 BOM if present
@@ -703,7 +705,7 @@ def _action_for_issues(issues: List[str]) -> List[str]:
             )
         if "KILL_SWITCH" in issue:
             actions.append(
-                "Re-enable trading: set trading_enabled=true in utils/kill_switch.json"
+                "Re-enable trading: set trading_enabled=true in config/kill_switch.json"
             )
         if "DB_ERRORS" in issue:
             actions.append(

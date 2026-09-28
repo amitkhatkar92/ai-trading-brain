@@ -158,3 +158,22 @@ class TestSchedulerWiring:
         # crude but effective: the retry/final-check block must contain at
         # least 2 more try/except pairs beyond the original _guarded_eod's own.
         assert src.count("except Exception as _exc:") >= 2
+
+    def test_t13_retry_and_final_check_skip_on_nse_holiday(self):
+        """DTA-EOD-WEEKEND-FALSEALARM-001: found live -- every Saturday and
+        Sunday, _guarded_eod_retry re-triggered run_eod_learning() twice
+        (wasted work, correctly no-op'd only INSIDE run_eod_learning's own
+        holiday guard) and _guarded_eod_final_check then sent a false
+        "[EOD Learning FAILED]" Telegram alert, because neither closure
+        knew a holiday/weekend is a legitimate reason EOD status stays
+        NEVER_STARTED all day. Both must short-circuit on is_nse_holiday()
+        before touching _eod_status_today()/run_eod_learning()/send_alert."""
+        src = self._source()
+        retry_start = src.index("def _guarded_eod_retry")
+        final_check_start = src.index("def _guarded_eod_final_check")
+        retry_src = src[retry_start:final_check_start]
+        final_check_src = src[final_check_start:src.index(
+            'sched_lib.every().day.at(SCHEDULE["eod_learning_retry_1"])'
+        )]
+        assert "is_nse_holiday" in retry_src
+        assert "is_nse_holiday" in final_check_src

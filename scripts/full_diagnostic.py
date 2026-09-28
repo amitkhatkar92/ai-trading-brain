@@ -325,7 +325,7 @@ if cap_info:
     for l in tail(cap_info, 3):
         print(f"    {l[:120]}")
 # Check kill-switch
-ks_path = Path("/app/utils/kill_switch.json")
+ks_path = Path("/app/config/kill_switch.json")
 if ks_path.exists():
     import json
     ks = json.load(open(ks_path))
