@@ -160,3 +160,108 @@ class TestFilledPositionNeverExpired:
         expired = om.check_and_expire_stale_limits(candle_expiry=1)
 
         assert expired == []
+
+
+class TestStaleLimitHoldingsAwareCheck:
+    """DTA-STALE-LIMIT-HOLDINGS-001 (found live 2026-09-29): a cross-day
+    order whose fill_status can never resolve to FILLED/PARTIALLY_FILLED
+    (day-scoped order-status endpoints can't confirm it) stays permanently
+    eligible for this function's other checks -- even when it is a
+    genuinely real, held position. Confirmed live: 6 positions repaired by
+    DTA-CNC-HOLDINGS-PHANTOM-001 (restored with the class default
+    order_type="LIMIT", fill_status stuck at API_ERROR) were wrongly
+    cancelled here as "expired pending limit orders" despite the broker's
+    own Positions+Holdings books confirming every one still genuinely
+    held. Fix: before ever cancelling, positively confirm with the broker
+    (via the same dual Positions+Holdings check already proven elsewhere)
+    that nothing is actually held."""
+
+    def _broker_with_holding(self, security_id, qty):
+        broker = MagicMock()
+        broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {
+            "status": "success", "remarks": "",
+            "data": [{"securityId": security_id, "tradingSymbol": "ONGC", "totalQty": qty}],
+        }
+        return broker
+
+    def _broker_with_nothing(self):
+        broker = MagicMock()
+        broker.get_positions.return_value = {"status": "success", "remarks": "", "data": []}
+        broker.get_portfolio.return_value = {"status": "success", "remarks": "", "data": []}
+        return broker
+
+    def test_api_error_fill_status_survives_when_broker_confirms_held(self):
+        from unittest.mock import patch
+        om = _make_bare_om()
+        om._broker = self._broker_with_holding("2475", 24)
+        rec = _make_rec("REPAIR001", fill_status="API_ERROR", age_hours=1.0)
+        om._orders["REPAIR001"] = rec
+
+        with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP",
+                   {"ONGC": {"security_id": "2475", "segment": "NSE_EQ"}}):
+            expired = om.check_and_expire_stale_limits(candle_expiry=1)
+
+        assert expired == []
+        assert rec.status == "open"
+
+    def test_journal_restored_fill_status_survives_when_broker_confirms_held(self):
+        from unittest.mock import patch
+        om = _make_bare_om()
+        om._broker = self._broker_with_holding("2475", 24)
+        rec = _make_rec("REPAIR002", fill_status="JOURNAL_RESTORED", age_hours=1.0)
+        om._orders["REPAIR002"] = rec
+
+        with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP",
+                   {"ONGC": {"security_id": "2475", "segment": "NSE_EQ"}}):
+            expired = om.check_and_expire_stale_limits(candle_expiry=1)
+
+        assert expired == []
+        assert rec.status == "open"
+
+    def test_genuinely_phantom_pending_order_still_expires(self):
+        """Regression guard: when the broker confirms NOTHING is held,
+        a genuinely never-filled pending order must still expire
+        correctly -- this fix must not block real cleanup."""
+        from unittest.mock import patch
+        om = _make_bare_om()
+        om._broker = self._broker_with_nothing()
+        rec = _make_rec("PEND002", fill_status="PENDING", age_hours=1.0)
+        om._orders["PEND002"] = rec
+
+        with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP",
+                   {"ONGC": {"security_id": "2475", "segment": "NSE_EQ"}}):
+            expired = om.check_and_expire_stale_limits(candle_expiry=1)
+
+        assert expired == ["PEND002"]
+        assert rec.status == "cancelled"
+
+    def test_no_broker_configured_preserves_original_behavior(self):
+        """No broker (e.g. bare test harness / paper mode) must behave
+        exactly as before this fix -- expiry logic runs unmodified."""
+        om = _make_bare_om()
+        om._broker = None
+        rec = _make_rec("PEND003", fill_status="PENDING", age_hours=1.0)
+        om._orders["PEND003"] = rec
+
+        expired = om.check_and_expire_stale_limits(candle_expiry=1)
+
+        assert expired == ["PEND003"]
+
+    def test_broker_check_exception_fails_safe_no_cancellation(self):
+        """If the broker holdings/positions check itself raises, fail
+        safe -- never guess a real position away."""
+        from unittest.mock import patch
+        om = _make_bare_om()
+        broker = MagicMock()
+        broker.get_positions.side_effect = RuntimeError("network error")
+        om._broker = broker
+        rec = _make_rec("REPAIR003", fill_status="API_ERROR", age_hours=1.0)
+        om._orders["REPAIR003"] = rec
+
+        with patch("data_feeds.dhan_feed.DHAN_SECURITY_MAP",
+                   {"ONGC": {"security_id": "2475", "segment": "NSE_EQ"}}):
+            expired = om.check_and_expire_stale_limits(candle_expiry=1)
+
+        assert expired == []
+        assert rec.status == "open"

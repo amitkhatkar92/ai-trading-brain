@@ -1995,6 +1995,32 @@ class OrderManager:
                 continue
             if rec.placed_at is None:
                 continue
+            # DTA-STALE-LIMIT-HOLDINGS-001: a cross-day order whose fill
+            # status can never be resolved via day-scoped order-status
+            # endpoints (get_order_by_id/get_order_list) stays stuck at
+            # "API_ERROR"/"JOURNAL_RESTORED" forever, even when it is a
+            # genuinely real, filled, currently-held position -- the
+            # fill_status check above can never save it. Confirmed live
+            # 2026-09-29: all 6 positions re-registered by the
+            # DTA-CNC-HOLDINGS-PHANTOM-001 repair (GAIL/IOC/TATAGOLD/
+            # SETFGOLD/SBIN/TATACONSUM, restored with the class default
+            # order_type="LIMIT" since _restore_from_live_journal() never
+            # sets it explicitly) were wrongly cancelled here as "expired
+            # pending limit orders" at candle-expiry time, even though the
+            # broker's own Positions+Holdings books confirmed every one of
+            # them still genuinely held. Before ever cancelling on a
+            # time/distortion/regime/VIX trigger, positively confirm with
+            # the broker that nothing is actually held there -- reuses the
+            # same dual Positions+Holdings check already proven for
+            # PhantomExitGuard/reconcile_pending_orders/reconcile_startup_fills.
+            if (
+                not self._paper_mode
+                and self._broker
+                and not order_id.startswith("SIM_")
+                and not self._broker_confirms_no_open_position(rec.symbol)
+            ):
+                continue
+
 
             elapsed = (now - rec.placed_at).total_seconds()
 
