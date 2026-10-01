@@ -1329,6 +1329,11 @@ class MasterOrchestrator:
                                 getattr(_kda_sig, "strategy_name", ""),
                             )
                             _kda_sig.confidence = _kr_conv
+                            # DTA-CONFIDENCE-PROVENANCE-001: make the override
+                            # permanent on the signal itself, not just a log line,
+                            # so every downstream consumer/record can tell this is
+                            # no longer the raw scanner value.
+                            _kda_sig.confidence_source = "KDA_CONVICTION_OVERRIDE"
                     else:
                         _kda_sig.kda_conviction = None
 

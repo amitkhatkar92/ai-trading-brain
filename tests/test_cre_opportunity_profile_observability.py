@@ -28,6 +28,7 @@ def test_cre_records_available_scanner_and_kda_fields():
 
     assert metadata == {
         "scanner_score": 5.3,
+        "confidence_source": "SCANNER",
         "kda_conviction": 8.1,
         "knowledge_authority_score": 0.86,
         "kda_evidence_state": "VALIDATED",

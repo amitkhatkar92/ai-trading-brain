@@ -88,6 +88,13 @@ class TradeSignal:
     kda_target:           Optional[float] = None  # KDA empirical target (may differ from target_price)
     kda_stop:             Optional[float] = None  # KDA empirical stop   (may differ from stop_loss)
     kda_horizon_p50:      Optional[int]  = None  # expected holding horizon (days, p50)
+
+    # DTA-CONFIDENCE-PROVENANCE-001: .confidence can be overwritten in place by
+    # KDA conviction (DTA-KDA-AUTHORITY-001) -- this flag makes that mutation
+    # explicit and permanent on the signal itself, independent of any log line.
+    # "SCANNER" = untouched scanner value (the common case). Never read by any
+    # decision/risk gate -- observability/provenance only.
+    confidence_source:    str            = "SCANNER"  # "SCANNER" | "KDA_CONVICTION_OVERRIDE"
     target_source:        Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
     stop_source:          Optional[str]  = None  # "KDA_EMPIRICAL" | "ATR_FALLBACK"
     horizon_source:       Optional[str]  = None  # "HBE_EMPIRICAL" | "ATR_FALLBACK" | "NONE"

@@ -211,6 +211,7 @@ class CapitalRiskEngine:
         """Return observational scanner/KDA fields for CRE diagnostics."""
         return {
             "scanner_score": getattr(sig, "scanner_score", 0.0),
+            "confidence_source": getattr(sig, "confidence_source", "SCANNER"),
             "kda_conviction": getattr(sig, "kda_conviction", None),
             "knowledge_authority_score": getattr(sig, "knowledge_authority_score", None),
             "kda_evidence_state": getattr(sig, "kda_evidence_state", None),
