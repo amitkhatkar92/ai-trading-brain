@@ -26,7 +26,10 @@ Safety contract:
 """
 from __future__ import annotations
 
+import json
+import os
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from .kda_models import KDADecision, KDADecisionRecord
@@ -36,6 +39,11 @@ from .kda_outcome_models import (
     OutcomeClass,
     OverruleResult,
 )
+
+_DATA_DIR = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "klp", "kda"
+)
+_SUMMARY_HISTORY_PATH = os.path.join(_DATA_DIR, "comparative_summary_history.jsonl")
 
 # Scanner approves when confidence >= this threshold
 _SCANNER_APPROVAL_THRESHOLD = 6.0
@@ -273,3 +281,50 @@ def _safe_rate(values: List[Optional[bool]]) -> Optional[float]:
     if not decided:
         return None
     return sum(1 for v in decided if v) / len(decided)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Research-only persistence -- surfaces the "KDA vs StrategyLab vs Scanner,
+# who decides better" conclusion this module already computes via summarize().
+# Diagnostic only: never read back into any trading decision. broker_calls=0,
+# orders=0 always; this file never imports execution_engine/order_manager/
+# risk_control.
+# ─────────────────────────────────────────────────────────────────────────────
+
+def record_comparative_summary(summary: Dict[str, Any], trading_date: str) -> None:
+    """Append-only daily snapshot of KDAComparativeAnalyzer.summarize() output.
+
+    Fails open (never raises) -- a write failure must never interrupt the
+    EOD pipeline.
+    """
+    try:
+        os.makedirs(_DATA_DIR, exist_ok=True)
+        record = {
+            "trading_date": trading_date,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            **summary,
+        }
+        with open(_SUMMARY_HISTORY_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, default=str) + "\n")
+    except Exception:
+        pass
+
+
+def get_comparative_summary_history(n: int = 20) -> List[Dict[str, Any]]:
+    """Read-only accessor -- last n recorded daily summaries, oldest-first."""
+    if not os.path.exists(_SUMMARY_HISTORY_PATH):
+        return []
+    out: List[Dict[str, Any]] = []
+    try:
+        with open(_SUMMARY_HISTORY_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    out.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return []
+    return out[-n:] if n else out

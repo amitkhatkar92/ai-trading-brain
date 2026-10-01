@@ -39,7 +39,11 @@ from .kda_outcome_models import (
 # KDA-002 — engines
 from .kda_ledger           import KDALedger
 from .kda_outcome_engine   import KDAOutcomeEngine
-from .kda_comparative      import KDAComparativeAnalyzer
+from .kda_comparative      import (
+    KDAComparativeAnalyzer,
+    get_comparative_summary_history,
+    record_comparative_summary,
+)
 from .kda_authority_report import KDAAuthorityReporter
 
 # KDA-003 — shadow pipeline orchestration boundary
@@ -65,4 +69,5 @@ __all__ = [
     "EvidenceTierResult", "AuthorityValidationReport",
     # KDA-002 engines
     "KDALedger", "KDAOutcomeEngine", "KDAComparativeAnalyzer", "KDAAuthorityReporter",
+    "record_comparative_summary", "get_comparative_summary_history",
 ]

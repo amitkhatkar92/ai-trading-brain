@@ -68,6 +68,16 @@ _DATA_DIR = _ROOT / "data"
 # (mirrors the max_items convention used by LOL/KLP-002/RejectionAttribution).
 _MAX_SYMBOL_FETCHES_PER_RUN = 250
 
+
+def _fmt_pct(value: Optional[float]) -> str:
+    """Format an Optional[0-1] accuracy value as 'NN.N%' or 'N/A' (no sample yet)."""
+    if value is None:
+        return "N/A"
+    try:
+        return f"{float(value) * 100:.1f}%"
+    except (TypeError, ValueError):
+        return "N/A"
+
 # Backfill state: which past ledger date was last fully processed for outcomes.
 _OUTCOME_BACKFILL_STATE_PATH = _DATA_DIR / "kda_outcome_backfill_state.json"
 
@@ -768,14 +778,42 @@ class KnowledgeDecisionPipeline:
 
         if comparison_records:
             summary = _Comp.summarize(comparison_records)
+            # NOTE: prior to this fix, this log line read non-existent dict
+            # keys ("kda_successful_overrules"/"kda_overrule_total") and
+            # therefore always printed 0/0 regardless of the real computed
+            # values -- the correct keys are "successful_overrules" and
+            # "overrule_count" (see KDAComparativeAnalyzer.summarize()).
             log.info(
                 "[KDP-EOD] Comparison summary: kda_accuracy=%.1f%% "
                 "overrules=%d/%d comparisons=%d",
                 float(summary.get("kda_direction_accuracy", 0) or 0) * 100,
-                summary.get("kda_successful_overrules", 0),
-                summary.get("kda_overrule_total", 0),
+                summary.get("successful_overrules", 0),
+                summary.get("overrule_count", 0),
                 comparisons_done,
             )
+            # Research-only: surface the "who decides better" conclusion this
+            # engine already computes but never exposed. Diagnostic only --
+            # never read back into any trading decision (no consumer of this
+            # log line or persisted file exists anywhere in the live path).
+            try:
+                log.info(
+                    "[KDAvsStrategyLab] date=%s n=%d kda_acc=%s strategy_acc=%s "
+                    "scanner_acc=%s successful_overrules=%d false_overrules=%d "
+                    "missed_opportunities=%d false_selections=%d",
+                    trading_date,
+                    summary.get("n", 0),
+                    _fmt_pct(summary.get("kda_direction_accuracy")),
+                    _fmt_pct(summary.get("strategy_direction_accuracy")),
+                    _fmt_pct(summary.get("scanner_direction_accuracy")),
+                    summary.get("successful_overrules", 0),
+                    summary.get("false_overrules", 0),
+                    summary.get("missed_opportunities", 0),
+                    summary.get("false_selections", 0),
+                )
+                from .kda_comparative import record_comparative_summary
+                record_comparative_summary(summary, trading_date)
+            except Exception as exc:
+                log.debug("[KDAvsStrategyLab] persistence error: %s", exc)
         else:
             summary = {}
 
