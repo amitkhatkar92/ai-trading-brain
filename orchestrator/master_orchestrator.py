@@ -6036,12 +6036,17 @@ class MasterOrchestrator:
             s.official_trades for s in self.perf_tracker.get_all_stats().values()
         )
         if _total_official >= 30:
-            self.validation_engine.validate(
+            _val_report = self.validation_engine.validate(
                 strategy_name="Portfolio",
                 pnl_series=all_pnls,
                 capital=TOTAL_CAPITAL,
                 print_report=True,
             )
+            try:
+                from validation_engine import record_validation_report
+                record_validation_report(_val_report)
+            except Exception as exc:
+                log.debug("[ValidationEngine] history persistence error: %s", exc)
         else:
             log.info("[ValidationEngine] Only %d official trades — need 30+ to validate.",
                      _total_official)

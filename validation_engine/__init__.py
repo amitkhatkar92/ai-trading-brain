@@ -32,6 +32,11 @@ from .monte_carlo_simulator  import MonteCarloSimulator, MonteCarloResult
 from .parameter_sensitivity  import ParameterSensitivityAnalyzer, SensitivityResult, ParamGrid
 from .regime_robustness_test import RegimeRobustnessTester, RegimeRobustnessResult
 from .validation_report      import ValidationReport, ValidationReportBuilder
+from .validation_history      import (
+    record_validation_report,
+    get_latest_validation_report,
+    get_validation_report_history,
+)
 
 log = get_logger(__name__)
 
@@ -197,4 +202,7 @@ __all__ = [
     "SensitivityResult",
     "RegimeRobustnessResult",
     "ParamGrid",
+    "record_validation_report",
+    "get_latest_validation_report",
+    "get_validation_report_history",
 ]

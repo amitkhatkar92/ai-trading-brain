@@ -121,6 +121,7 @@ class SandySupervisor:
             self._poll_debate_agents,
             self._poll_capital_risk_engine,
             self._poll_cle_fingerprint_refinement,
+            self._poll_validation_engine,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -504,6 +505,34 @@ class SandySupervisor:
             summary=f"{len(active)} fingerprint(s) preferred, {len(shadow)} in SHADOW, "
                     f"{total_evidence} DNA candidate(s) tracked total.",
             raw=status,
+        )
+
+    def _poll_validation_engine(self) -> AgentHealthReport:
+        """
+        Surfaces ValidationEngine's own already-computed Portfolio verdict
+        (DTA-VALIDATION-REPORT-SURFACE-001) -- previously computed+printed
+        at EOD but discarded by the only call site, so nothing could query
+        "what was the last verdict". Advisory-only: never gates a trade.
+        """
+        from validation_engine import get_latest_validation_report, get_validation_report_history
+        latest = get_latest_validation_report()
+        history = get_validation_report_history()
+        if latest is None:
+            return AgentHealthReport(
+                name="Validation Engine (Portfolio verdict)",
+                category=BASELINE_LOOP, stage="NO DATA YET",
+                evidence_count=0,
+                summary="No portfolio validation recorded yet (needs >=30 official trades).",
+            )
+        verdict = latest.get("verdict", "PENDING")
+        score = latest.get("overall_score", 0.0)
+        return AgentHealthReport(
+            name="Validation Engine (Portfolio verdict)",
+            category=BASELINE_LOOP, stage=verdict,
+            evidence_count=len(history),
+            summary=f"Latest verdict={verdict} score={score:.1f}/100 "
+                    f"({len(history)} report(s) recorded).",
+            raw=latest,
         )
 
     def _poll_rsl_001(self) -> AgentHealthReport:
