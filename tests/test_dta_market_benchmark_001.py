@@ -109,12 +109,12 @@ def test_symbol_case_and_suffix_normalized():
 def test_broad_universe_excludes_test_symbols(tmp_path):
     from predictive_gap.broad_market_universe import load_broad_nse_equity_symbols
     csv_content = (
-        "SEM_EXM_EXCH_ID,SEM_SERIES,SEM_TRADING_SYMBOL\n"
-        "NSE,EQ,RELIANCE\n"
-        "NSE,EQ,011NSETEST\n"
-        "NSE,EQ,TCS\n"
-        "NSE,SG,SOMEBOND\n"
-        "BSE,EQ,BSESTOCK\n"
+        "SEM_EXM_EXCH_ID,SEM_SERIES,SEM_EXCH_INSTRUMENT_TYPE,SEM_TRADING_SYMBOL\n"
+        "NSE,EQ,ES,RELIANCE\n"
+        "NSE,EQ,ES,011NSETEST\n"
+        "NSE,EQ,ES,TCS\n"
+        "NSE,SG,ES,SOMEBOND\n"
+        "BSE,EQ,ES,BSESTOCK\n"
     )
     p = tmp_path / "sec.csv"
     p.write_text(csv_content, encoding="utf-8")
@@ -123,6 +123,29 @@ def test_broad_universe_excludes_test_symbols(tmp_path):
     assert "011NSETEST" not in syms
     assert "SOMEBOND" not in syms   # wrong series
     assert "BSESTOCK" not in syms   # wrong exchange
+
+
+def test_broad_universe_excludes_etfs(tmp_path):
+    """DTA-UNIVERSE-ETF-EXCLUSION-001: SEM_SERIES=='EQ' alone is not
+    sufficient -- NSE tags ETFs with the same 'EQ' series as common
+    stock. SEM_EXCH_INSTRUMENT_TYPE must be 'ES' (real equity share)."""
+    from predictive_gap.broad_market_universe import load_broad_nse_equity_symbols
+    csv_content = (
+        "SEM_EXM_EXCH_ID,SEM_SERIES,SEM_EXCH_INSTRUMENT_TYPE,SEM_TRADING_SYMBOL\n"
+        "NSE,EQ,ES,RELIANCE\n"
+        "NSE,EQ,ETF,NIFTYBEES\n"
+        "NSE,EQ,ETF,LIQUIDBEES\n"
+        "NSE,EQ,ETF,GOLDBEES\n"
+        "NSE,EQ,MF,SOMEMUTUALFUND\n"
+    )
+    p = tmp_path / "sec_etf.csv"
+    p.write_text(csv_content, encoding="utf-8")
+    syms = load_broad_nse_equity_symbols(csv_path=p, force_reload=True)
+    assert syms == ["RELIANCE"]
+    assert "NIFTYBEES" not in syms
+    assert "LIQUIDBEES" not in syms
+    assert "GOLDBEES" not in syms
+    assert "SOMEMUTUALFUND" not in syms
 
 
 def test_broad_universe_missing_file_returns_empty(tmp_path):

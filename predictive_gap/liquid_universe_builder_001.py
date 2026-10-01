@@ -52,13 +52,23 @@ _MIN_ACCEPTABLE_FRACTION = 0.5
 
 def _load_existing_sector_map() -> Dict[str, str]:
     """Reuse sector labels already curated in the embedded 230-symbol
-    list -- never invents new sector classifications."""
+    list, merged with any real sectors persisted by the sector-enrichment
+    cache (DTA-UNIVERSE-SECTOR-ENRICHMENT-001, predictive_gap.
+    sector_enrichment_001) for symbols outside that original list --
+    never invents new sector classifications. Embedded-230 labels take
+    precedence on overlap (same convention as before this change)."""
+    merged: Dict[str, str] = {}
+    try:
+        from predictive_gap.sector_enrichment_001 import load_sector_cache
+        merged.update(load_sector_cache())
+    except Exception as exc:
+        log.warning("[LiquidUniverse] Could not load sector enrichment cache: %s", exc)
     try:
         from opportunity_engine.market_scanner import _builtin_universe
-        return {e["symbol"]: e["sector"] for e in _builtin_universe() if e.get("sector")}
+        merged.update({e["symbol"]: e["sector"] for e in _builtin_universe() if e.get("sector")})
     except Exception as exc:
         log.warning("[LiquidUniverse] Could not load existing sector map: %s", exc)
-        return {}
+    return merged
 
 
 def _compute_adv_crore(db_path: Path) -> Dict[str, float]:

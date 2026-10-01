@@ -216,6 +216,50 @@ def test_target_universe_size_is_500():
     assert TARGET_UNIVERSE_SIZE == 500
 
 
+# ── _load_existing_sector_map() merge (DTA-UNIVERSE-SECTOR-ENRICHMENT-001) ──
+
+def test_load_existing_sector_map_merges_enrichment_cache():
+    """New symbols outside the embedded-230 list get a real sector from
+    the enrichment cache instead of staying unmapped."""
+    with patch(
+        "predictive_gap.sector_enrichment_001.load_sector_cache",
+        return_value={"NEWSTOCK": "Technology"},
+    ), patch(
+        "opportunity_engine.market_scanner._builtin_universe",
+        return_value=[{"symbol": "RELIANCE", "sector": "Energy"}],
+    ):
+        result = _load_existing_sector_map()
+    assert result["RELIANCE"] == "Energy"
+    assert result["NEWSTOCK"] == "Technology"
+
+
+def test_load_existing_sector_map_embedded_takes_precedence():
+    """If a symbol somehow exists in both sources with conflicting
+    values, the hand-curated embedded-230 label wins (never overwritten
+    by an auto-fetched value)."""
+    with patch(
+        "predictive_gap.sector_enrichment_001.load_sector_cache",
+        return_value={"RELIANCE": "WRONG_SECTOR"},
+    ), patch(
+        "opportunity_engine.market_scanner._builtin_universe",
+        return_value=[{"symbol": "RELIANCE", "sector": "Energy"}],
+    ):
+        result = _load_existing_sector_map()
+    assert result["RELIANCE"] == "Energy"
+
+
+def test_load_existing_sector_map_fails_open_on_cache_error():
+    with patch(
+        "predictive_gap.sector_enrichment_001.load_sector_cache",
+        side_effect=RuntimeError("boom"),
+    ), patch(
+        "opportunity_engine.market_scanner._builtin_universe",
+        return_value=[{"symbol": "RELIANCE", "sector": "Energy"}],
+    ):
+        result = _load_existing_sector_map()
+    assert result == {"RELIANCE": "Energy"}
+
+
 # ── _write_universe_json() wiring (opportunity_engine/market_scanner.py) ────
 
 def test_write_universe_json_uses_liquid_universe_when_available(tmp_path):

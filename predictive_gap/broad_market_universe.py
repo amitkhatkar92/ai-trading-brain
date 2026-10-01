@@ -11,12 +11,29 @@ REMEDIATION.md. yfinance (already used by predictive_gap/pga_collector.py
 for the NIFTY500 benchmark) remains the price-fetch mechanism; this module
 only supplies a broader SYMBOL LIST for that fetch.
 
-Filter: SEM_EXM_EXCH_ID == "NSE" and SEM_SERIES == "EQ" — "EQ" is NSE's
-standard series code for regular equity shares (T+1, normal trading).
-This cleanly excludes SDLs/bonds/SG/MF/GS/BE/etc. series codes present in
-the same file. ~2,460 symbols as of the current security_id_list.csv,
-vs. 230 in nifty500_universe.json — genuinely broader, not a relabeled
-NIFTY500 list.
+Filter: SEM_EXM_EXCH_ID == "NSE" and SEM_SERIES == "EQ" and
+SEM_EXCH_INSTRUMENT_TYPE == "ES" — "EQ" is NSE's standard series code for
+regular equity shares (T+1, normal trading), cleanly excluding
+SDLs/bonds/SG/MF/GS/BE/etc. series codes present in the same file.
+
+DTA-UNIVERSE-ETF-EXCLUSION-001: SEM_SERIES=="EQ" alone is NOT sufficient —
+confirmed live that NSE tags ETFs (NIFTYBEES, GOLDBEES, LIQUIDBEES, etc.,
+350 of ~2,670 EQ-series rows) with the SAME "EQ" series code as common
+stock, since ETFs also trade on the regular T+1 equity segment. The
+authoritative distinguishing field is SEM_EXCH_INSTRUMENT_TYPE: "ES" for
+real common-stock equity shares vs "ETF"/other for funds — confirmed via
+direct inspection of security_id_list.csv (RELIANCE/TCS = "ES",
+NIFTYBEES/GOLDBEES/LIQUIDBEES/BANKBEES = "ETF"). Without this filter,
+liquid_universe_builder_001.py's ADV-ranking let high-volume ETFs (used
+for cash-parking, not momentum/breakout patterns) consume universe slots
+meant for genuine single-stock candidates — those ETFs also structurally
+can never have a real "sector" classification, contributing directly to
+the sector="UNKNOWN" concentration flagged by weekend_intelligence.py's
+Sunday risk-concentration check.
+
+~2,319 symbols as of the current security_id_list.csv (real equities
+only), vs. 230 in nifty500_universe.json — genuinely broader, not a
+relabeled NIFTY500 list.
 
 Read-only. Never modifies security_id_list.csv or any trading state.
 """
@@ -64,7 +81,8 @@ def load_broad_nse_equity_symbols(
             reader = csv.DictReader(fh)
             for row in reader:
                 if (row.get("SEM_EXM_EXCH_ID") == "NSE"
-                        and row.get("SEM_SERIES") == "EQ"):
+                        and row.get("SEM_SERIES") == "EQ"
+                        and row.get("SEM_EXCH_INSTRUMENT_TYPE") == "ES"):
                     sym = (row.get("SEM_TRADING_SYMBOL") or "").strip()
                     # Exclude NSE's own dummy/test securities (e.g. "011NSETEST")
                     # which carry SEM_SERIES='EQ' but are not real listings.

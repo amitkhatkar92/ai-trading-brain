@@ -230,6 +230,7 @@ data/hkap/
 data/kde/
 data/validation_engine/
 data/sandy/
+data/sector_enrichment_cache.json
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/
