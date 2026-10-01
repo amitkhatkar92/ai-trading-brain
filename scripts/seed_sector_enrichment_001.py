@@ -27,6 +27,10 @@ DB_PATH = ROOT / "data" / "market_behavior.db"
 
 
 def _load_active_universe_symbols() -> list:
+    """Returns bare symbols (no .NS/.BO suffix) -- universe_stocks stores
+    symbols WITH the .NS suffix (confirmed live), same normalization
+    convention already used by liquid_universe_builder_001.py's
+    _compute_adv_crore()."""
     try:
         conn = sqlite3.connect(str(DB_PATH))
         try:
@@ -35,7 +39,7 @@ def _load_active_universe_symbols() -> list:
             ).fetchall()
         finally:
             conn.close()
-        return [r[0] for r in rows]
+        return [r[0].replace(".NS", "").replace(".BO", "") for r in rows]
     except Exception as exc:
         log.error("Failed to load universe_stocks: %s", exc)
         return []
