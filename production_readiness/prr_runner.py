@@ -267,10 +267,11 @@ def _get_ils_score(data: Dict[str, Any]) -> float:
         from institutional_learning.ilc_verification import get_all_records, run_verification_pass
         from institutional_learning.ilc_roi import compute_all_roi
         from institutional_learning.ilc_lifecycle import update_lifecycle
+        today     = data.get("date") or datetime.now().date().isoformat()
         records   = get_all_records()
-        verified  = run_verification_pass(dry_run=True)
+        verified  = run_verification_pass(today, dry_run=True)
         roi_list  = compute_all_roi(records)
-        lifecycle = update_lifecycle(verified, dry_run=True)
+        lifecycle = update_lifecycle(verified, today, dry_run=True)
         ils = compute_ils_score(records, verified, lifecycle, roi_list)
         return getattr(ils, "overall_score", 0.0)
     except Exception:
@@ -280,13 +281,11 @@ def _get_ils_score(data: Dict[str, Any]) -> float:
 def _get_gva_score() -> float:
     """Get current GVA score."""
     try:
-        from growth_validator.growth_validator_ai import GrowthValidatorAI
-        gva = GrowthValidatorAI()
-        result = gva.run_daily_validation()
-        if hasattr(result, "score"):
-            return float(result.score)
+        from growth_validator import run_gva
+        result = run_gva()
         if isinstance(result, dict):
-            return float(result.get("score", 0.0))
+            return float(result.get("overall_score", 0.0))
+        return float(getattr(result, "overall_score", 0.0))
     except Exception:
         pass
     return 0.0
