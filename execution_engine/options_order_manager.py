@@ -42,6 +42,28 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
+
+def _resolve_lot_size(symbol: str) -> Optional[int]:
+    """DTA-OPTIONS-LOTSIZE-001: always prefer the verified, auto-refreshing
+    Dhan instrument-master lookup (SEM_LOT_UNITS) over the static
+    NSE_LOT_SIZES fallback, which goes stale whenever NSE/BSE revise an
+    index's F&O lot size (confirmed live 2026-10-05: NIFTY/BANKNIFTY/
+    FINNIFTY/MIDCPNIFTY had all drifted, e.g. BANKNIFTY hardcoded=15 vs
+    real=30 -- sending an order at the stale quantity is not a valid
+    multiple of the exchange's current lot size, causing the broker to
+    reject it). Returns None if neither source resolves -- callers must
+    reject rather than guess."""
+    lot_size = None
+    try:
+        from data_feeds.dhan_fno_security_map import get_fno_security_map
+        lot_size = get_fno_security_map().get_lot_size(symbol)
+    except Exception as exc:
+        log.debug("[OptionsOrderManager] %s — verified lot-size lookup failed (%s); "
+                  "falling back to static NSE_LOT_SIZES.", symbol, exc)
+    if lot_size is None:
+        lot_size = NSE_LOT_SIZES.get(symbol)
+    return lot_size
+
 # ── Config ─────────────────────────────────────────────────────────────────
 
 # Maximum concurrent options positions (spreads count as one position)
@@ -295,15 +317,12 @@ class OptionsOrderManager:
                     return None
 
         # ── Determine lot count (from risk engine or default 1) ────────
-        # DTA-EQUITY-HEDGE-EXEC-001: NSE_LOT_SIZES only covers indices.
-        # For single-stock underlyings, resolve the verified lot size from
-        # Dhan's own instrument master (SEM_LOT_UNITS) -- never default/
-        # guess a lot size for a real order. Reject rather than risk a
-        # wrong quantity.
-        lot_size = NSE_LOT_SIZES.get(signal.symbol)
-        if lot_size is None:
-            from data_feeds.dhan_fno_security_map import get_fno_security_map
-            lot_size = get_fno_security_map().get_lot_size(signal.symbol)
+        # DTA-OPTIONS-LOTSIZE-001: always prefer the verified, auto-
+        # refreshing Dhan instrument-master lookup over the static
+        # NSE_LOT_SIZES fallback (see _resolve_lot_size() docstring —
+        # confirmed live 2026-10-05 the static dict had drifted stale for
+        # every index, causing DH-905 broker rejections at order time).
+        lot_size = _resolve_lot_size(signal.symbol)
         if lot_size is None:
             log.warning(
                 "[OptionsOrderManager] %s — no verified lot size available "

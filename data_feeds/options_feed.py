@@ -31,14 +31,23 @@ _IV_HISTORY_FILE  = os.path.join(_IV_DATA_DIR, "iv_history.json")
 
 log = get_logger(__name__)
 
-# ── NSE lot sizes — check NSE circulars periodically ──────────────────────
+# ── NSE/BSE lot sizes — LAST-RESORT FALLBACK ONLY (DTA-OPTIONS-LOTSIZE-001).
+# Both options_opportunity_ai.py and options_order_manager.py now resolve
+# lot size via the verified, auto-refreshing Dhan instrument master
+# (data_feeds/dhan_fno_security_map.py's get_lot_size(), sourced from
+# SEM_LOT_UNITS) FIRST — this dict is only consulted if that lookup fails
+# (master not loaded yet, or a BSE-listed symbol the master doesn't index).
+# Values below verified against the live Dhan instrument master 2026-10-05
+# after discovering ALL SIX were stale (e.g. BANKNIFTY was hardcoded 15,
+# real exchange lot size is 30) — still check NSE/BSE circulars
+# periodically, this fallback will drift again over time.
 NSE_LOT_SIZES: Dict[str, int] = {
-    "NIFTY":       75,
-    "BANKNIFTY":   15,
-    "FINNIFTY":    65,
-    "MIDCPNIFTY":  75,
-    "SENSEX":      10,
-    "BANKEX":      15,
+    "NIFTY":       65,
+    "BANKNIFTY":   30,
+    "FINNIFTY":    60,
+    "MIDCPNIFTY":  120,
+    "SENSEX":      20,
+    "BANKEX":      30,
 }
 
 # NSE strike-price intervals per instrument

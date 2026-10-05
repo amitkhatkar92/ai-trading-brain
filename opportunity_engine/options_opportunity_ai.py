@@ -33,6 +33,27 @@ from utils import get_logger
 
 log = get_logger(__name__)
 
+
+def _resolve_lot_size(symbol: str) -> int:
+    """DTA-OPTIONS-LOTSIZE-001: NSE/BSE revise index F&O lot sizes
+    periodically (confirmed live 2026-10-05: NIFTY/BANKNIFTY/FINNIFTY/
+    MIDCPNIFTY had all drifted from the static NSE_LOT_SIZES fallback,
+    e.g. BANKNIFTY hardcoded=15 vs real=30 -- a stale lot size here feeds
+    OptionsRiskEngine.approve_and_size()'s max_loss/sizing math with the
+    wrong multiplier). Always prefers the verified, auto-refreshing
+    Dhan instrument-master lookup (SEM_LOT_UNITS); the static dict is
+    now a last-resort fallback only, for when the master hasn't loaded.
+    """
+    try:
+        from data_feeds.dhan_fno_security_map import get_fno_security_map
+        verified = get_fno_security_map().get_lot_size(symbol)
+        if verified:
+            return verified
+    except Exception as exc:
+        log.debug("[OptionsOpportunityAI] %s — verified lot-size lookup failed (%s); "
+                   "falling back to static NSE_LOT_SIZES.", symbol, exc)
+    return NSE_LOT_SIZES.get(symbol, 75)
+
 # ── Config ─────────────────────────────────────────────────────────────────
 
 # Instruments to scan on every cycle
@@ -487,7 +508,7 @@ class OptionsOpportunityAI:
             "spread_width": spread_width,
             "max_profit": max_profit,
             "max_loss": net_debit,
-            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "lot_size": _resolve_lot_size(chain.symbol),
             "dte": chain.dte,
             "iv_rank": chain.iv_rank,
             "spot": chain.spot,
@@ -584,7 +605,7 @@ class OptionsOpportunityAI:
             "spread_width": spread_width,
             "max_profit": max_profit,
             "max_loss": net_debit,
-            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "lot_size": _resolve_lot_size(chain.symbol),
             "dte": chain.dte,
             "iv_rank": chain.iv_rank,
             "spot": chain.spot,
@@ -713,7 +734,7 @@ class OptionsOpportunityAI:
             "credit_to_width": round(credit_to_width, 3),
             "max_profit": net_credit,
             "max_loss": max_loss,
-            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "lot_size": _resolve_lot_size(chain.symbol),
             "dte": chain.dte,
             "iv_rank": chain.iv_rank,
             "spot": chain.spot,
@@ -823,7 +844,7 @@ class OptionsOpportunityAI:
             "credit_to_width": round(credit_to_width, 3),
             "max_profit": net_credit,
             "max_loss": max_loss,
-            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "lot_size": _resolve_lot_size(chain.symbol),
             "dte": chain.dte,
             "iv_rank": chain.iv_rank,
             "spot": chain.spot,
@@ -895,7 +916,7 @@ class OptionsOpportunityAI:
             "max_loss": total_debit,
             "breakeven_up":   round(atm_c.strike + total_debit, 2),
             "breakeven_down": round(atm_p.strike - total_debit, 2),
-            "lot_size": NSE_LOT_SIZES.get(chain.symbol, 75),
+            "lot_size": _resolve_lot_size(chain.symbol),
             "dte": chain.dte,
             "iv_rank": chain.iv_rank,
             "spot": chain.spot,
