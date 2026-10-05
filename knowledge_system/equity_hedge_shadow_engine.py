@@ -33,6 +33,18 @@ Readiness gate (EQH-Ready-1..5) — automated, no human sign-off required
 for the AUTHENTICATION decision itself, mirroring the same no-human-gate
 philosophy already used by OptionsKnowledgeStore:
   EQH-Ready-1  >= MIN_OBS_AUTHENTICATED analysed observations, per symbol
+               (DTA-REALISTIC-THRESHOLDS-001: originally mirrored
+               OptionsKnowledgeStore's pooled-evidence AUTHENTICATED bar
+               of 40, but this engine's evidence is scoped PER SYMBOL, not
+               pooled across one options underlying -- confirmed live
+               2026-10-05: 40 real observations existed in total, spread
+               across 18 different symbols, with the single most-observed
+               symbol at only 6 in 20 days. At that rate no symbol would
+               ever realistically reach 40. Lowered to 10 -- this is also
+               the pre-existing internal floor EQH-Ready-2's OOS split
+               test already required (len(pnls)>=10) to run at all, so
+               the two gates now align instead of Ready-1 being stricter
+               than Ready-2 could ever test for.)
   EQH-Ready-2  OOS split: p < ALPHA (one-tailed sign test on the split halves)
   EQH-Ready-3  mean hypothetical PnL, net of COST_ESTIMATE_PCT, is positive
   EQH-Ready-4  no single symbol > MAX_CONCENTRATION of the evidence base
@@ -83,10 +95,10 @@ LOOP_INTERVAL_MINUTES = 30
 # How long to watch the underlying before scoring the hypothetical hedge.
 MONITOR_HORIZON_DAYS = 10
 
-# ── Readiness-gate thresholds (reuse existing project bars, no new
-#    numbers invented — matches OptionsKnowledgeStore's own AUTHENTICATED
-#    thresholds) ──────────────────────────────────────────────────────────
-MIN_OBS_AUTHENTICATED = 40     # EQH-Ready-1 (mirrors MIN_OUTCOMES_AUTHENTICATED)
+# ── Readiness-gate thresholds (DTA-REALISTIC-THRESHOLDS-001: MIN_OBS_
+#    AUTHENTICATED recalibrated 2026-10-05 -- see module docstring for
+#    why 40 was unreachable for a per-symbol-scoped evidence pool) ──────
+MIN_OBS_AUTHENTICATED = 10     # EQH-Ready-1 (per-symbol volume floor)
 OOS_P_ALPHA            = 0.10  # EQH-Ready-2 (mirrors OOS_P_ALPHA)
 COST_ESTIMATE_PCT      = 0.02  # EQH-Ready-3: assumed round-trip cost as a
                                 # fraction of premium (slippage + brokerage)

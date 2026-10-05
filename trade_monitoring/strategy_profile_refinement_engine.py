@@ -24,9 +24,20 @@ WHY A HIGHER BAR THAN THE SUGGESTION'S OWN 30-TRADE FLOOR
 strategy_governance_roadmap.md's own human-authored Phase 3 design states
 a stricter trigger for ACTING on profile classification: "Trigger: >= 50
 official trades per strategy (classification too noisy below this)".
-MIN_SAMPLE_FOR_AUTO_APPLY=50 here honors that stricter, stated floor --
-below 50 trades, suggestions remain advisory-only exactly as before
+MIN_SAMPLE_FOR_AUTO_APPLY originally honored that stricter, stated floor
+at 50 -- below it, suggestions remain advisory-only exactly as before
 (unchanged [ProfileSuggestion] log line), never auto-applied.
+
+DTA-REALISTIC-THRESHOLDS-001 (2026-10-05): confirmed live that no
+strategy has come close to 50 official trades after a month+ of live
+trading (best case: 6). At this pace 50 would likely never be reached.
+Lowered to 25 -- still meaningfully higher than the simple regime-pair
+modules' floor of 10 (payoff-shape classification is a more noise-
+sensitive judgment than a win-rate sign test, so it keeps a larger
+sample requirement), but realistically achievable as real trade volume
+grows, instead of a de facto permanent floor. Still advisory-only below
+this -- the field remains metadata-only regardless (see below), so the
+risk of a smaller sample is low.
 
 WHY THIS IS LOW-RISK TO AUTOMATE (unlike a P&L-consequential gate)
 ---------------------------------------------------------------------
@@ -82,8 +93,8 @@ _STORE_DIR     = os.path.join(_ROOT, "data", "trade_monitoring", "profile_refine
 _STATE_PATH    = os.path.join(_STORE_DIR, "state.json")
 _LEDGER_PATH   = os.path.join(_STORE_DIR, "ledger.jsonl")
 
-MIN_SAMPLE_FOR_AUTO_APPLY = 50
-MIN_SHADOW_NEW_TRADES     = 15
+MIN_SAMPLE_FOR_AUTO_APPLY = 25    # DTA-REALISTIC-THRESHOLDS-001: lowered from 50 (see module docstring)
+MIN_SHADOW_NEW_TRADES     = 8     # scaled down proportionally with the floor above
 COOLDOWN_DAYS             = 30
 
 STATUS_WAITING     = "WAITING_FOR_EVIDENCE"

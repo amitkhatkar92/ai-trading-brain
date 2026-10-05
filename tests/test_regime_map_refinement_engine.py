@@ -103,11 +103,11 @@ def test_t04_shadow_blocked_until_enough_new_evidence():
                return_value=[("bear_market", "Hedging_Model")]):
         engine.run_daily_refinement_check()  # -> SHADOW at n=40
 
-        with_few_more = all_records + _records(5, win_rate=0.20)
+        with_few_more = all_records + _records(3, win_rate=0.20)
         with patch("meta_learning.regime_map_evidence_log.get_records", return_value=with_few_more):
             result = engine.run_daily_refinement_check()
     status = result["per_pair"]["bear_market::Hedging_Model"]["status"]
-    assert status == engine.STATUS_SHADOW  # not enough new evidence yet (5 < 12)
+    assert status == engine.STATUS_SHADOW  # not enough new evidence yet (3 < 5)
 
 
 def test_t05_shadow_promotes_on_reconfirmation():

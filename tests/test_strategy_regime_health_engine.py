@@ -82,7 +82,7 @@ def test_t04_shadow_blocked_until_enough_new_evidence():
                return_value=[("bear_market", "Hedging_Model")]):
         with patch("meta_learning.regime_map_evidence_log.get_records", return_value=all_records):
             engine.run_daily_refinement_check()
-        with_few_more = all_records + _records(5, win_rate=0.15)
+        with_few_more = all_records + _records(3, win_rate=0.15)
         with patch("meta_learning.regime_map_evidence_log.get_records", return_value=with_few_more):
             result = engine.run_daily_refinement_check()
     assert result["per_pair"]["bear_market::Hedging_Model"]["status"] == engine.STATUS_SHADOW

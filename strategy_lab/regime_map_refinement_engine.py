@@ -37,11 +37,21 @@ written by a human) states: "Trigger: After 30-50 clean live trades
 across multiple regimes... Min: ~10 trades per regime before
 regime-level disable fires." Because this module is a FULLY AUTOMATED,
 NO-HUMAN-STEP mechanism (unlike the roadmap's original human-reviewed
-design), it uses the roadmap's own stricter, upper bound
+design), it originally used the roadmap's own stricter upper bound
 (MIN_SAMPLE_FOR_VALIDATION=30 per pair) as an extra safety margin, and
 adds the same statistical rigor already applied elsewhere in this
 session (time-ordered 70/30 split, bootstrap CI, sign consistency,
 minimum effect magnitude) rather than a bare win-rate threshold.
+
+DTA-REALISTIC-THRESHOLDS-001 (2026-10-05): confirmed live that real
+per-(regime,strategy)-pair evidence accumulates far too slowly for 30 to
+ever be reached (only 1-2 real trades recorded per pair after weeks of
+live trading, system-wide official-trade count still in single digits).
+Lowered back to the roadmap's own originally-documented floor (10) --
+the statistical rigor (bootstrap CI/train-OOS split/sign-consistency/
+effect-magnitude) is unchanged and applies identically regardless of n;
+removing the human-review step doesn't require 3x the evidence when the
+validation methodology itself is already this rigorous.
 
 LIFECYCLE (fully automated, no human step at any transition)
 --------------------------------------------------------------
@@ -104,8 +114,8 @@ _STATE_PATH     = os.path.join(_STORE_DIR, "state.json")
 _DEMOTIONS_PATH = os.path.join(_STORE_DIR, "active_demotions.json")
 _LEDGER_PATH    = os.path.join(_STORE_DIR, "ledger.jsonl")
 
-MIN_SAMPLE_FOR_VALIDATION = 30    # roadmap's own stated trigger, used as a floor for full automation
-MIN_SHADOW_NEW_EVIDENCE   = 12    # new trades required during shadow before promotion/rejection
+MIN_SAMPLE_FOR_VALIDATION = 10    # DTA-REALISTIC-THRESHOLDS-001: roadmap's own originally-stated floor (see module docstring)
+MIN_SHADOW_NEW_EVIDENCE   = 5     # new trades required during shadow before promotion/rejection (scaled down with the floor above)
 MIN_EFFECT_MAGNITUDE      = 0.05  # OOS win-rate must be >=5pp below the 0.50 null
 BOOTSTRAP_ITERS           = 1000
 COOLDOWN_DAYS             = 30

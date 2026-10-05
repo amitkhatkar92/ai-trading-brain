@@ -28,13 +28,22 @@ ADDITIVE to StrategyGeneratorAI's existing exclusion set
 excluded_strategies=shm_disabled|perf_disabled -- this module contributes
 one more, regime-scoped set, unioned in at the orchestrator call site).
 
-WHY A HIGHER BAR THAN THE ROADMAP'S OWN STATED FLOOR
+WHY A HIGHER BAR THAN THE ROADMAP'S OWN STATED FLOOR (historical -- see
+DTA-REALISTIC-THRESHOLDS-001 below)
 -----------------------------------------------------
 The roadmap's "~10 trades per regime" was written for a human-reviewed
-decision. This is fully automated (zero human step), so it uses the
-roadmap's own upper bound (MIN_SAMPLE_FOR_VALIDATION=30) as a floor,
-mirroring the identical reasoning already used in
-strategy_lab/regime_map_refinement_engine.py.
+decision. This module originally used the roadmap's own upper bound
+(MIN_SAMPLE_FOR_VALIDATION=30) as a floor for full automation, mirroring
+the identical reasoning in strategy_lab/regime_map_refinement_engine.py.
+
+DTA-REALISTIC-THRESHOLDS-001 (2026-10-05): confirmed live that real
+per-(regime,strategy)-pair evidence (shared with regime_map_refinement_
+engine.py's own evidence log) accumulates far too slowly for 30 to ever
+be reached at this system's actual trade pace. Lowered back to the
+roadmap's own originally-documented floor (10), matching regime_map_
+refinement_engine.py's identical recalibration -- the statistical rigor
+(bootstrap CI/train-OOS split/sign-consistency/effect-magnitude) is
+unchanged and applies identically regardless of n.
 
 LIFECYCLE (fully automated, no human step at any transition)
 --------------------------------------------------------------
@@ -71,13 +80,13 @@ _STATE_PATH     = os.path.join(_STORE_DIR, "state.json")
 _DISABLES_PATH  = os.path.join(_STORE_DIR, "active_disables.json")
 _LEDGER_PATH    = os.path.join(_STORE_DIR, "ledger.jsonl")
 
-MIN_SAMPLE_FOR_VALIDATION = 30
-MIN_SHADOW_NEW_EVIDENCE   = 12
+MIN_SAMPLE_FOR_VALIDATION = 10   # DTA-REALISTIC-THRESHOLDS-001: roadmap's own originally-stated floor
+MIN_SHADOW_NEW_EVIDENCE   = 5
 MIN_EFFECT_MAGNITUDE      = 0.05
 BOOTSTRAP_ITERS           = 1000
 COOLDOWN_DAYS             = 30
 ROLLBACK_RECOVERY         = 0.05
-MIN_POST_DISABLE_FOR_ROLLBACK_CHECK = 12
+MIN_POST_DISABLE_FOR_ROLLBACK_CHECK = 5
 
 STATUS_WAITING     = "WAITING_FOR_EVIDENCE"
 STATUS_SHADOW      = "SHADOW_ACTIVE"
