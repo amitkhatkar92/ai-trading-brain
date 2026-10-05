@@ -488,15 +488,10 @@ class TestShadowConsumer:
 
     def test_t027_load_state_default(self, tmp_path):
         """T027: load_state returns fresh state when file doesn't exist."""
-        import scripts.knowledge_system.shadow_evidence_consumer_001 as c
-        original = c.STATE_PATH
-        c.STATE_PATH = tmp_path / "ksl_state.json"
-        try:
-            state = load_state()
-            assert state.last_processed_byte_offset == 0
-            assert state.total_records_ingested == 0
-        finally:
-            c.STATE_PATH = original
+        state_path = tmp_path / "ksl_state.json"
+        state = load_state(state_path)
+        assert state.last_processed_byte_offset == 0
+        assert state.total_records_ingested == 0
 
     def test_t028_save_and_reload_state(self, tmp_path):
         """T028: save_state / load_state round-trip preserves byte offset."""

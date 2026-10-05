@@ -20,7 +20,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from .ksl_models import (
     Classification,
@@ -46,20 +46,24 @@ GE2_THRESHOLD = 2.0  # |t1_ret_pct| threshold
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def load_state() -> KSLState:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    if STATE_PATH.exists():
-        with open(STATE_PATH) as f:
+def load_state(state_path: Optional[Path] = None) -> KSLState:
+    if state_path is None:
+        state_path = STATE_PATH
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    if state_path.exists():
+        with open(state_path) as f:
             return KSLState.from_dict(json.load(f))
     return KSLState()
 
 
-def save_state(state: KSLState) -> None:
-    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    tmp = STATE_PATH.with_suffix(".tmp")
+def save_state(state: KSLState, state_path: Optional[Path] = None) -> None:
+    if state_path is None:
+        state_path = STATE_PATH
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = state_path.with_suffix(".tmp")
     with open(tmp, "w") as f:
         json.dump(state.to_dict(), f, indent=2)
-    os.replace(tmp, STATE_PATH)
+    os.replace(tmp, state_path)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -71,15 +75,26 @@ def _dedup_key(rec: Dict) -> str:
     return f"{rec.get('run_id','')}|{rec.get('symbol','')}|{rec.get('trade_date','')}|{rec.get('direction','')}"
 
 
-def _load_existing_keys(ledger_path: Path = LEDGER_PATH) -> Set[str]:
+def _load_existing_keys(ledger_path: Path = LEDGER_PATH) -> Dict[str, bool]:
+    """Maps dedup_key -> whether a RESOLVED (t1_ret_pct is not None) record
+    has already been consumed for that key. `run_shadow_day()`'s run_id is
+    deterministic per trade_date (see _make_run_id), so the same-day
+    (always-unresolved-at-creation) and later backfill/backlog-catchup
+    (resolved) raw occurrences of a candidate share the IDENTICAL dedup
+    key -- a plain set-membership check would silently discard the
+    resolved duplicate forever (DTA-KSL-STALE-OUTCOME-001). Tracking the
+    resolved state lets the main loop allow exactly one corrective append
+    when a previously-unresolved key's outcome finally becomes available.
+    """
     if not ledger_path.exists():
-        return set()
-    keys: Set[str] = set()
+        return {}
+    keys: Dict[str, bool] = {}
     with open(ledger_path) as f:
         for line in f:
             try:
                 r = json.loads(line)
-                keys.add(f"{r.get('source_run_id','')}|{r.get('symbol','')}|{r.get('trade_date','')}|{r.get('direction','')}")
+                key = f"{r.get('source_run_id','')}|{r.get('symbol','')}|{r.get('trade_date','')}|{r.get('direction','')}"
+                keys[key] = keys.get(key, False) or (r.get("t1_ret_pct") is not None)
             except json.JSONDecodeError:
                 pass
     return keys
@@ -229,21 +244,30 @@ def _build_evidence_record(raw: Dict) -> EvidenceRecord:
 
 
 def consume_new_records(
-    shadow_path: Path = SHADOW_JSONL,
-    ledger_path: Path = LEDGER_PATH,
-    knowledge_ledger_path: Path = KNOWLEDGE_LEDGER,
-    state_path: Path = STATE_PATH,
+    shadow_path: Optional[Path] = None,
+    ledger_path: Optional[Path] = None,
+    knowledge_ledger_path: Optional[Path] = None,
+    state_path: Optional[Path] = None,
 ) -> List[EvidenceRecord]:
     """
     Read new SHADOW_CANDIDATE records since last run.
     Classify them and append to the evidence ledger.
     Returns list of newly processed EvidenceRecords.
     """
+    if shadow_path is None:
+        shadow_path = SHADOW_JSONL
+    if ledger_path is None:
+        ledger_path = LEDGER_PATH
+    if knowledge_ledger_path is None:
+        knowledge_ledger_path = KNOWLEDGE_LEDGER
+    if state_path is None:
+        state_path = STATE_PATH
+
     if not shadow_path.exists():
         return []
 
-    state = load_state()
-    existing_keys = _load_existing_keys()
+    state = load_state(state_path)
+    existing_keys = _load_existing_keys(ledger_path)
     new_records: List[EvidenceRecord] = []
 
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
@@ -271,8 +295,10 @@ def consume_new_records(
                 continue
 
             key = _dedup_key(raw)
-            if key in existing_keys:
-                continue  # already processed
+            raw_resolved = raw.get("t1_ret_pct") is not None
+            prior_resolved = existing_keys.get(key)
+            if prior_resolved is not None and (prior_resolved or not raw_resolved):
+                continue  # already resolved, or still nothing new to correct
 
             ev = _build_evidence_record(raw)
             ev_dict = ev.to_dict()
@@ -291,7 +317,7 @@ def consume_new_records(
                 "recorded_at": ev.processed_at,
             }) + "\n")
 
-            existing_keys.add(key)
+            existing_keys[key] = raw_resolved
             new_records.append(ev)
 
     new_offset = file_size
@@ -300,7 +326,7 @@ def consume_new_records(
     state.last_processed_byte_offset = new_offset
     state.last_processed_at = datetime.now(timezone.utc).isoformat()
     state.total_records_ingested += len(new_records)
-    save_state(state)
+    save_state(state, state_path)
 
     return new_records
 
@@ -430,7 +456,7 @@ def seed_from_historical_audit_csv(
                     "recorded_at": ev.processed_at,
                 }) + "\n")
 
-                existing_keys.add(key)
+                existing_keys[key] = True
                 new_records.append(ev)
 
     return new_records
