@@ -131,6 +131,72 @@ def select_c2_top_n(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Model C — SHADOW-ONLY, OBSERVATIONAL alternative to the frozen C2 formula
+# (DTA-C2-MODELC-001). Never overrides c2_score/c2_rank/selected_final_5.
+# ─────────────────────────────────────────────────────────────────────────────
+
+C2_V2_GAP_WEIGHT = 0.5   # unoptimized, simple 50/50 starting split -- not
+C2_V2_V3_WEIGHT  = 0.5   # backtested or tuned; a research candidate only.
+
+
+def select_c2_top_n_v2(
+    pool: List[Dict[str, Any]],
+    n: int = C2_TOP_N,
+    weight_gap: float = C2_V2_GAP_WEIGHT,
+    weight_v3: float = C2_V2_V3_WEIGHT,
+) -> List[Dict[str, Any]]:
+    """
+    Blends the frozen gap-based c2_score (favorability rank within the pool)
+    with v3_score (the momentum/ATR/volume/RS continuation confidence already
+    computed by mover_discovery_v3.score_universe(), 0-1 normalized), to also
+    surface candidates that open flat/modestly but carry a strong V3
+    continuation signal -- invisible to a gap-only ranking.
+
+    Real example this was built to address: CUPID.NS on 2026-09-30 had
+    gap_pct=0.0 (flat open) but v3_rank=5/20, then moved +8.21% intraday
+    (ge1/ge2/ge3 all True) -- a genuine V3 catch the frozen gap-only C2
+    formula could never select.
+
+    Requires `pool` to already carry c2_score/c2_rank/selected_final_5 from
+    select_c2_top_n() (called first). Returns a NEW list, SAME ORDER as
+    input, with c2_score_v2/c2_rank_v2/selected_final_5_v2 added -- never
+    mutates or reorders the existing frozen fields. A candidate with no
+    c2_score (no T+1 opening price available) gets v2 fields of None/False,
+    same safety behavior as the frozen formula.
+
+    Purely additive research signal: never read by StrategyLab, KDA, Risk,
+    or Execution -- observational only, same as Model A/Model B.
+    """
+    from opportunity_engine.mover_discovery_v3 import _rank_pct
+
+    valid_idx = [i for i, c in enumerate(pool) if c.get("c2_score") is not None]
+    gap_values = [pool[i]["c2_score"] for i in valid_idx]
+    gap_ranks = _rank_pct(gap_values) if gap_values else []
+
+    blended: Dict[int, float] = {}
+    for pos, i in enumerate(valid_idx):
+        v3 = float(pool[i].get("v3_score") or 0.0)
+        blended[i] = weight_gap * gap_ranks[pos] + weight_v3 * v3
+
+    sorted_idx = sorted(blended.keys(), key=lambda i: blended[i], reverse=True)
+    rank_of = {i: r + 1 for r, i in enumerate(sorted_idx)}
+
+    result = []
+    for i, cand in enumerate(pool):
+        rec = dict(cand)
+        if i in blended:
+            rec["c2_score_v2"]         = round(blended[i], 6)
+            rec["c2_rank_v2"]          = rank_of[i]
+            rec["selected_final_5_v2"] = rank_of[i] <= n
+        else:
+            rec["c2_score_v2"]         = None
+            rec["c2_rank_v2"]          = None
+            rec["selected_final_5_v2"] = False
+        result.append(rec)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Strategy layer (read-only — rules from STRATEGY_RECONSTRUCTION_VALIDATION_001)
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -608,6 +674,8 @@ def rebuild_csv_reports(jsonl_path: Path = SHADOW_LOG_PATH) -> None:
             "previous_close", "opening_price", "gap_pct", "gap_rank",
             # C2
             "c2_score", "c2_rank", "selected_final_5",
+            # Model C (DTA-C2-MODELC-001, shadow-only blended alternative)
+            "c2_score_v2", "c2_rank_v2", "selected_final_5_v2",
             # Strategy (as context, not gate)
             "strategy_status", "strategy_name", "strategy_reason",
             "strategy_regime", "strategy_rejected",
@@ -641,6 +709,9 @@ def rebuild_csv_reports(jsonl_path: Path = SHADOW_LOG_PATH) -> None:
             "t1_dir_acc_model_b_up", "t1_dir_acc_model_b_down",
             "t1_ge2_model_a_up", "t1_ge2_model_a_down",
             "t1_ge2_model_b_up", "t1_ge2_model_b_down",
+            "model_c_up_count", "model_c_down_count",
+            "t1_dir_acc_model_c_up", "t1_dir_acc_model_c_down",
+            "t1_ge2_model_c_up", "t1_ge2_model_c_down",
         ]
         with open(daily_path, "w", newline="", encoding="utf-8") as fh:
             w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
@@ -946,6 +1017,16 @@ def run_shadow_day(
                     r["direction"],
                     selected_top5=bool(r.get("selected_final_5")),
                 )
+
+            # Model C (DTA-C2-MODELC-001): shadow-only, additive, blended
+            # gap+V3 alternative selection -- never touches c2_score/
+            # c2_rank/selected_final_5 above. Fails open (no v2 fields) if
+            # anything goes wrong.
+            try:
+                ranked = select_c2_top_n_v2(ranked, n=C2_TOP_N)
+            except Exception as _c2v2_exc:
+                log.debug("[ModelC] select_c2_top_n_v2 skipped: %s", _c2v2_exc)
+
             return ranked
 
         up_recs = _assign_ranks(up_recs)
@@ -983,6 +1064,11 @@ def run_shadow_day(
         mb_up_sel = [r for r in up_sel if r.get("model_b_included")]
         mb_dn_sel = dn_sel  # no DOWN gate
 
+        # Model C (DTA-C2-MODELC-001): shadow-only, additive, blended-score
+        # alternative selection -- never fed into StrategyLab/KDA/Risk/Execution.
+        mc_up_sel = [r for r in up_recs if r.get("selected_final_5_v2")]
+        mc_dn_sel = [r for r in dn_recs if r.get("selected_final_5_v2")]
+
         summary = {
             "run_id":               run_id,
             "trade_date":           td,
@@ -1013,6 +1099,12 @@ def run_shadow_day(
             "t1_ge2_model_a_down":      ge2_rate(dn_sel),
             "t1_ge2_model_b_up":        ge2_rate(mb_up_sel),
             "t1_ge2_model_b_down":      ge2_rate(mb_dn_sel),
+            "model_c_up_count":         len(mc_up_sel),
+            "model_c_down_count":       len(mc_dn_sel),
+            "t1_dir_acc_model_c_up":    dir_acc(mc_up_sel),
+            "t1_dir_acc_model_c_down":  dir_acc(mc_dn_sel),
+            "t1_ge2_model_c_up":        ge2_rate(mc_up_sel),
+            "t1_ge2_model_c_down":      ge2_rate(mc_dn_sel),
         }
 
         # ── Step 9: Write to JSONL ────────────────────────────────────────────

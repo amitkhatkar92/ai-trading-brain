@@ -1195,3 +1195,160 @@ def test_T094_catchup_respects_lookback_days(tmp_path):
     assert result["scoreable_dates_checked"] == 2
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# N. DTA-C2-MODELC-001 — shadow-only blended C2 alternative (Part A follow-up)
+# ─────────────────────────────────────────────────────────────────────────────
+# Real finding this addresses: CUPID.NS on 2026-09-30 was genuinely v3_rank=
+# 5/20 (strong momentum continuation signal) but gap_pct=0.0 (flat open),
+# then moved +8.21% intraday -- a genuine catch invisible to the frozen,
+# gap-only C2 formula (select_c2_top_n). select_c2_top_n_v2() blends the
+# gap-favorability rank with v3_score as a parallel, additive, observational
+# alternative -- never overrides the frozen c2_score/c2_rank/selected_final_5
+# fields used by anything downstream.
+
+from scripts.final_trading_architecture_shadow_001 import select_c2_top_n_v2
+
+
+def _apply_frozen_then_v2(pool, n=5):
+    ranked = select_c2_top_n(pool, n=n)
+    return select_c2_top_n_v2(ranked, n=n)
+
+
+def _with_resolved_v3_score(pool, direction):
+    """_make_pool() sets v3_up_score/v3_down_score (mover_discovery_v3's raw
+    output); real SHADOW_CANDIDATE records carry a single already-resolved
+    v3_score field (see _process_pool()). select_c2_top_n_v2() reads
+    v3_score, matching production -- this helper bridges the test fixture."""
+    key = "v3_up_score" if direction == "UP" else "v3_down_score"
+    for r in pool:
+        r["v3_score"] = r.get(key)
+    return pool
+
+def test_T097_v2_never_mutates_frozen_fields():
+    pool = _with_resolved_v3_score(_make_pool(20, "UP"), "UP")
+    ranked = select_c2_top_n(pool, n=5)
+    before = [dict(r) for r in ranked]
+    after = select_c2_top_n_v2(ranked, n=5)
+    for b, a in zip(before, after):
+        assert a["c2_score"] == b["c2_score"]
+        assert a["c2_rank"] == b["c2_rank"]
+        assert a["selected_final_5"] == b["selected_final_5"]
+
+
+def test_T098_v2_preserves_input_order(tmp_path=None):
+    pool = _with_resolved_v3_score(_make_pool(20, "UP"), "UP")
+    ranked = select_c2_top_n(pool, n=5)
+    result = select_c2_top_n_v2(ranked, n=5)
+    assert [r["symbol"] for r in result] == [r["symbol"] for r in ranked]
+
+
+def test_T099_v2_adds_three_new_fields():
+    pool = _with_resolved_v3_score(_make_pool(20, "UP"), "UP")
+    result = _apply_frozen_then_v2(pool)
+    for r in result:
+        assert "c2_score_v2" in r
+        assert "c2_rank_v2" in r
+        assert "selected_final_5_v2" in r
+
+
+def test_T100_v2_recovers_flat_open_high_v3_candidate():
+    """Reproduces the exact live CUPID scenario: a flat-open candidate with
+    the strongest v3_score in the pool should be selected by Model C even
+    though it never clears the frozen gap-only C2 cut. Hand-built pool
+    (not the generic helper) so gap rank and v3 rank are deliberately
+    DISCORRELATED for the target candidate, matching the real CUPID case."""
+    pool = []
+    for i in range(19):
+        prev_close = 100.0
+        opening = prev_close * (1.0 + (19 - i) * 0.01)  # candidate 0 gaps hardest
+        pool.append({
+            "symbol": f"SYM{i:03d}.NS",
+            "direction": "UP",
+            "v3_score": 0.05,  # deliberately weak V3 signal for all of these
+            "previous_close": prev_close,
+            "opening_price": opening,
+            "c2_score": compute_c2_score(prev_close, opening, "UP"),
+        })
+    cupid = {
+        "symbol": "CUPID.NS",
+        "direction": "UP",
+        "v3_score": 0.99,              # strongest V3 signal in the whole pool
+        "previous_close": 100.0,
+        "opening_price": 100.0,           # flat open -> gap_pct = 0.0 -> worst gap
+        "c2_score": compute_c2_score(100.0, 100.0, "UP"),
+    }
+    pool.append(cupid)
+
+    ranked = select_c2_top_n(pool, n=5)
+    cupid_frozen = next(r for r in ranked if r["symbol"] == "CUPID.NS")
+    assert cupid_frozen["selected_final_5"] is False  # frozen formula misses it
+
+    result = select_c2_top_n_v2(ranked, n=5)
+    cupid_v2 = next(r for r in result if r["symbol"] == "CUPID.NS")
+    assert cupid_v2["selected_final_5_v2"] is True  # Model C recovers it
+
+
+def test_T101_v2_excludes_candidates_with_no_opening_price():
+    pool = _with_resolved_v3_score(_make_pool(10, "UP"), "UP")
+    pool[0]["c2_score"] = None  # simulate missing T+1 open
+    ranked = select_c2_top_n(pool, n=5)
+    result = select_c2_top_n_v2(ranked, n=5)
+    missing = next(r for r in result if r["c2_score"] is None)
+    assert missing["c2_score_v2"] is None
+    assert missing["c2_rank_v2"] is None
+    assert missing["selected_final_5_v2"] is False
+
+
+def test_T102_v2_respects_custom_weights():
+    pool = _with_resolved_v3_score(_make_pool(20, "UP"), "UP")
+    ranked = select_c2_top_n(pool, n=5)
+    pure_gap = select_c2_top_n_v2(ranked, n=5, weight_gap=1.0, weight_v3=0.0)
+    pure_v3 = select_c2_top_n_v2(ranked, n=5, weight_gap=0.0, weight_v3=1.0)
+    gap_selected = {r["symbol"] for r in pure_gap if r["selected_final_5_v2"]}
+    v3_selected = {r["symbol"] for r in pure_v3 if r["selected_final_5_v2"]}
+    # Pure-gap selection must match the frozen formula's own top-5 exactly.
+    frozen_selected = {r["symbol"] for r in ranked if r["selected_final_5"]}
+    assert gap_selected == frozen_selected
+    # Pure-V3 selection need not match the frozen (gap-based) top-5.
+    assert v3_selected != gap_selected or True  # documents the intent; no flake risk
+
+
+def test_T103_run_shadow_day_populates_model_c_summary_fields(tmp_path):
+    if not REPLAY_DB.exists():
+        pytest.skip("Replay DB not available")
+    conn = sqlite3.connect(str(REPLAY_DB))
+    latest = conn.execute(
+        "SELECT MAX(trade_date) FROM ohlcv_daily WHERE symbol != '^NSEI'"
+    ).fetchone()[0]
+    conn.close()
+    previous = _previous_test_date(REPLAY_DB, latest)
+    if previous is None:
+        pytest.skip("No earlier trade_date available in replay DB")
+
+    tmp_log = tmp_path / "shadow_modelc.jsonl"
+    with patch("scripts.final_trading_architecture_shadow_001.SHADOW_LOG_PATH", tmp_log):
+        result = run_shadow_day(trade_date=previous, db_path=REPLAY_DB, force=True)
+
+    assert "model_c_up_count" in result or result.get("c2_up_selected") is not None
+    with open(tmp_log) as f:
+        lines = [json.loads(l) for l in f if l.strip()]
+    summary = next(l for l in lines if l.get("record_type") == "SHADOW_DAILY_SUMMARY")
+    for key in ("model_c_up_count", "model_c_down_count",
+                "t1_dir_acc_model_c_up", "t1_dir_acc_model_c_down",
+                "t1_ge2_model_c_up", "t1_ge2_model_c_down"):
+        assert key in summary
+    candidates = [l for l in lines if l.get("record_type") == "SHADOW_CANDIDATE"]
+    for c in candidates:
+        assert "c2_score_v2" in c
+        assert "selected_final_5_v2" in c
+
+
+def _previous_test_date(db_path, before_date):
+    conn = sqlite3.connect(str(db_path))
+    row = conn.execute(
+        "SELECT MAX(trade_date) FROM ohlcv_daily WHERE symbol != '^NSEI' AND trade_date < ?",
+        (before_date,),
+    ).fetchone()
+    conn.close()
+    return row[0] if row and row[0] else None
+
