@@ -132,7 +132,11 @@ def test_t09_close_position_gates_evidence_call():
     from execution_engine import order_manager as om_mod
 
     src = inspect.getsource(om_mod.OrderManager.close_position)
-    assert "if rec.company_growth_score is not None:" in src
+    # DTA-EVIDENCE-INFLOW-001: close_position() now re-fetches the score
+    # fresh (the entry-time snapshot is almost always None due to the
+    # non-blocking cache-miss design) before gating the evidence call.
+    assert "compute_company_growth_score" in src
+    assert "if _growth_score_at_close is not None:" in src
     assert "record_company_growth_outcome" in src
 
 

@@ -1299,24 +1299,51 @@ class OrderManager:
                 log.debug("[InstitutionalFlow] evidence log failed (non-critical): %s", _inst_exc)
 
         # Self-learning #31: same pattern for the company-growth score.
-        if rec.company_growth_score is not None:
+        # DTA-EVIDENCE-INFLOW-001: the entry-time snapshot is almost always
+        # None -- compute_company_growth_score() returns None on a cache
+        # miss and enqueues a background fetch rather than blocking (by
+        # design, never slows the scanner), so a symbol seen for the first
+        # time that day never gets a real score at signal-creation time.
+        # By close time (hours-to-days later) the background worker has
+        # very likely finished, so re-fetch fresh here instead of trusting
+        # the stale entry-time value -- this is the actual fix for
+        # evidence that was structurally never recorded, not just slow to
+        # accumulate.
+        _growth_score_at_close = rec.company_growth_score
+        try:
+            from opportunity_engine.company_growth_signal import compute_company_growth_score
+            _fresh_growth = compute_company_growth_score(rec.symbol)
+            if _fresh_growth is not None:
+                _growth_score_at_close = _fresh_growth
+        except Exception:
+            pass
+        if _growth_score_at_close is not None:
             try:
                 from learning_system.company_growth_evidence_log import record_company_growth_outcome
                 record_company_growth_outcome(
                     order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
-                    company_growth_score=rec.company_growth_score,
+                    company_growth_score=_growth_score_at_close,
                     r_multiple=_r, won=pnl > 0,
                 )
             except Exception as _growth_exc:
                 log.debug("[CompanyGrowth] evidence log failed (non-critical): %s", _growth_exc)
 
-        # Self-learning #32: same pattern for the corporate-event score.
-        if rec.corporate_event_score is not None:
+        # Self-learning #32: same pattern for the corporate-event score
+        # (identical wiring-gap fix as company-growth above).
+        _event_score_at_close = rec.corporate_event_score
+        try:
+            from opportunity_engine.corporate_event_signal import compute_corporate_event_score
+            _fresh_event = compute_corporate_event_score(rec.symbol)
+            if _fresh_event is not None:
+                _event_score_at_close = _fresh_event
+        except Exception:
+            pass
+        if _event_score_at_close is not None:
             try:
                 from learning_system.corporate_event_evidence_log import record_corporate_event_outcome
                 record_corporate_event_outcome(
                     order_id=order_id, symbol=rec.symbol, strategy=rec.strategy,
-                    corporate_event_score=rec.corporate_event_score,
+                    corporate_event_score=_event_score_at_close,
                     r_multiple=_r, won=pnl > 0,
                 )
             except Exception as _event_exc:

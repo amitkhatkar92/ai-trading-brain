@@ -137,7 +137,11 @@ def test_t09_close_position_gates_evidence_call():
     from execution_engine import order_manager as om_mod
 
     src = inspect.getsource(om_mod.OrderManager.close_position)
-    assert "if rec.corporate_event_score is not None:" in src
+    # DTA-EVIDENCE-INFLOW-001: close_position() now re-fetches the score
+    # fresh (the entry-time snapshot is almost always None due to the
+    # non-blocking cache-miss design) before gating the evidence call.
+    assert "compute_corporate_event_score" in src
+    assert "if _event_score_at_close is not None:" in src
     assert "record_corporate_event_outcome" in src
 
 
