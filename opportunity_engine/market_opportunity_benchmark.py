@@ -81,6 +81,7 @@ DATA = ROOT / "data"
 UNIVERSE_FILE = DATA / "nifty500_universe.json"
 SHADOW_LEDGER = DATA / "shadow_evidence_ledger.jsonl"
 CT_DB = DATA / "control_tower.db"
+MARKET_BEHAVIOR_DB = DATA / "market_behavior.db"
 BENCHMARK_DIR = DATA / "market_benchmark"
 
 TOP_N_DEFAULT = 20
@@ -277,11 +278,42 @@ def _load_universe_symbols() -> set:
         return set()
 
 
+def _v3_decision_date_for_move(move_date: str) -> str:
+    """DTA-MARKET-BENCHMARK-DATE-OFFSET-001: the V3/C2 selection pool for a
+    given move is computed and persisted under the PRIOR trading date (T) --
+    `trade_date` in the evidence ledger is the day the pool was built, not
+    the day the move (T+1) happened. Looking up shadow records by the
+    move's own date therefore NEVER matches any real record (confirmed
+    live: CUPID.NS was genuinely rank 5/20 in the V3 pool and correctly
+    predicted its own +8.21% move, yet was misclassified as
+    IN_UNIVERSE_NOT_IN_20POOL because of this exact off-by-one mismatch).
+    Falls back to move_date itself (preserves old, always-miss behavior)
+    if the prior trading date can't be resolved -- never raises."""
+    try:
+        conn = sqlite3.connect(f"file:{MARKET_BEHAVIOR_DB}?mode=ro", uri=True)
+        try:
+            row = conn.execute(
+                "SELECT MAX(trade_date) FROM ohlcv_daily "
+                "WHERE symbol != '^NSEI' AND trade_date < ?",
+                (move_date,),
+            ).fetchone()
+            if row and row[0]:
+                return str(row[0])
+        finally:
+            conn.close()
+    except Exception as exc:
+        log.warning("[MarketBenchmark] _v3_decision_date_for_move failed: %s", exc)
+    return move_date
+
+
 def _load_shadow_records_for_date(trade_date: str) -> Dict[Tuple[str, str], Dict[str, Any]]:
-    """Return {(symbol, direction): latest record} for the given trade_date."""
+    """Return {(symbol, direction): latest record} for the V3/C2 selection
+    pool whose T+1 outcome is `trade_date` -- i.e. keyed by the prior
+    trading date the pool was actually computed on, not `trade_date` itself."""
     out: Dict[Tuple[str, str], Dict[str, Any]] = {}
     if not SHADOW_LEDGER.exists():
         return out
+    decision_date = _v3_decision_date_for_move(trade_date)
     try:
         with open(SHADOW_LEDGER, encoding="utf-8", errors="replace") as fh:
             for line in fh:
@@ -289,7 +321,7 @@ def _load_shadow_records_for_date(trade_date: str) -> Dict[Tuple[str, str], Dict
                     rec = json.loads(line)
                 except json.JSONDecodeError:
                     continue
-                if rec.get("trade_date") != trade_date:
+                if rec.get("trade_date") != decision_date:
                     continue
                 key = (str(rec.get("symbol", "")).upper().replace(".NS", ""), rec.get("direction", "UP"))
                 existing = out.get(key)
