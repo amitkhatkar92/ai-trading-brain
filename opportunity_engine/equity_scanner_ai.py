@@ -54,7 +54,15 @@ _oe_io_counters: Dict[str, int] = {
 # Updated in sync with _PRICE_CACHE by _do_fetch_prices().
 # symbol → "DHAN" | "YAHOO" | "CACHE" | "SIM" | "" (unknown)
 # Protected by _PRICE_CACHE_LOCK (written together with _PRICE_CACHE).
-_FEED_SOURCE_CACHE: Dict[str, str] = {}# ── Phase 9 (Selection Intelligence Layer): fingerprint evidence lookup ─────
+_FEED_SOURCE_CACHE: Dict[str, str] = {}
+
+# ── DTA-GAP-CONTINUATION-001: real intraday gap cache ───────────────────────
+# Updated in sync with _PRICE_CACHE by _do_fetch_prices() from TickerQuote's
+# own .open (today's actual open) / .close (previous close) fields — data the
+# feed already returns but this module previously discarded, keeping only ltp.
+# symbol → (gap_pct, day_open). Empty/missing entry = "no gap data" (safe
+# default), never fabricated.
+_GAP_CACHE: Dict[str, Tuple[float, float]] = {}# ── Phase 9 (Selection Intelligence Layer): fingerprint evidence lookup ─────
 # {symbol}_{direction} → eligibility entry. Rebuilt once per TTL window from
 # data/live_selection_eligibility.json (written by the EOD
 # live_selection_eligibility_001.py pipeline) — never recomputed live,
@@ -148,6 +156,15 @@ RR_STRONG_BREAKOUT = 4.0   # vol_ratio ≥ 3.0 → fat-tail bonus in DecisionEng
 RR_NORMAL_BREAKOUT = 2.5   # vol_ratio < 3.0
 RR_TREND_PULLBACK  = 3.0   # confirmed bull-trend → asymmetry bonus in DecisionEngine
 RR_DEFAULT         = 2.5   # all other setups
+
+# ── DTA-GAP-CONTINUATION-001 ─────────────────────────────────────────────────
+# Evidence-aligned with EMP-001's own 60-day finding (OPTION_E: previous-day +
+# opening-window combined is the strongest predictor) — this setup requires
+# the gap to still be HOLDING by the time the scan runs, never a blind
+# pre-open chase of the raw gap tick itself.
+GAP_CONTINUATION_MIN_PCT    = 2.0   # minimum |gap| % (open vs prior close) to qualify
+GAP_CONTINUATION_MIN_VOLUME = 1.5   # minimum vol_ratio — confirms real participation
+RR_GAP_CONTINUATION         = 2.0
 
 
 def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
@@ -425,8 +442,12 @@ def _do_fetch_prices(symbols: List[str]) -> Dict[str, float]:
     _FEED_SOURCE_CACHE with the feed_source tag ('DHAN'/'YAHOO'/'CACHE'/'SIM')
     for each successfully fetched symbol.  This lets the enrichment pipeline
     know whether each live price was live-grade or fallback.
+
+    DTA-GAP-CONTINUATION-001: also populates _GAP_CACHE with (gap_pct,
+    day_open) from the same TickerQuote's .open/.close fields — no extra
+    network calls, just extracting data the feed already returned.
     """
-    global _FEED_SOURCE_CACHE
+    global _FEED_SOURCE_CACHE, _GAP_CACHE
     try:
         from data_feeds.data_feed_manager import get_feed_manager
         feed = get_feed_manager()
@@ -434,15 +455,24 @@ def _do_fetch_prices(symbols: List[str]) -> Dict[str, float]:
         quotes = feed.get_multiple_quotes(ns_symbols)
         prices: Dict[str, float] = {}
         sources: Dict[str, str] = {}
+        gaps: Dict[str, Tuple[float, float]] = {}
         for ns_sym, q in quotes.items():
             bare = ns_sym.replace(".NS", "").strip()
             if q is not None and hasattr(q, "ltp") and q.ltp and q.ltp > 0:
                 prices[bare] = float(q.ltp)
                 sources[bare] = (getattr(q, "feed_source", "") or "").upper()
-        # Update source cache alongside prices (atomic dict replacement — no lock
-        # needed: single-writer pattern, GIL-safe on CPython, forensic-only data)
+                day_open   = float(getattr(q, "open", 0.0) or 0.0)
+                prev_close = float(getattr(q, "close", 0.0) or 0.0)
+                if day_open > 0 and prev_close > 0:
+                    gap_pct = (day_open - prev_close) / prev_close * 100.0
+                    gaps[bare] = (gap_pct, day_open)
+        # Update source/gap caches alongside prices (atomic dict replacement —
+        # no lock needed: single-writer pattern, GIL-safe on CPython,
+        # forensic-only data)
         if sources:
             _FEED_SOURCE_CACHE = sources
+        if gaps:
+            _GAP_CACHE = gaps
         if prices:
             log.debug("[EquityScannerAI] Fetched live prices: %d/%d symbols.",
                       len(prices), len(symbols))
@@ -902,6 +932,11 @@ def _prepared_watchlist() -> List[Dict[str, Any]]:
                 "company_growth_available":     _growth_score is not None,
                 "corporate_event_score":         _event_score,
                 "corporate_event_available":     _event_score is not None,
+                # DTA-GAP-CONTINUATION-001: real today-open-vs-prior-close gap,
+                # None when the live feed's open/close fields weren't available
+                # this cycle — _identify_setup() treats None as "no gap data".
+                "gap_pct":          _GAP_CACHE.get(c["symbol"], (None, None))[0],
+                "gap_day_open":     _GAP_CACHE.get(c["symbol"], (None, None))[1],
                 "resistance":       c["resistance"],
                 "support":          c["support"],
                 "volume_ratio":     c.get("volume_ratio", 1.0),
@@ -2199,6 +2234,63 @@ class EquityScannerAI:
         # mechanics (ATR * multiplier).  Position sizing is delegated entirely
         # to the Risk Engine (PortfolioAllocationAI).
         stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)  # floor at 1% of price
+
+        # ── Setup 0: Gap Continuation ──────────────────────────────────
+        # DTA-GAP-CONTINUATION-001: a real intraday gap (today's open vs prior
+        # close) that is STILL HOLDING by the time this scan runs — never a
+        # blind pre-open chase of the raw gap tick. Evidence-aligned with
+        # EMP-001's own 60-day finding (Option_E: previous-day + opening-window
+        # combined beats either alone). Dormant for the overwhelming majority
+        # of symbols/days (gap_pct is None absent real feed open/close data,
+        # or below threshold) — zero effect on existing setup classification
+        # in that case.
+        gap_pct  = stock.get("gap_pct")
+        day_open = stock.get("gap_day_open")
+        if (
+            gap_pct is not None and day_open and day_open > 0
+            and abs(gap_pct) >= GAP_CONTINUATION_MIN_PCT
+            and vol_ratio >= GAP_CONTINUATION_MIN_VOLUME
+        ):
+            gap_up = gap_pct > 0
+            # "held": price hasn't filled back through the open (small wick tolerance)
+            gap_held = (ltp >= day_open * 0.998) if gap_up else (ltp <= day_open * 1.002)
+            if gap_held:
+                gap_direction = SignalDirection.BUY if gap_up else SignalDirection.SHORT
+                if gap_up:
+                    gap_stop   = round(min(day_open, ltp - stop_dist), 2)
+                    gap_target = round(ltp + RR_GAP_CONTINUATION * stop_dist, 2)
+                    gap_valid  = gap_target > ltp and gap_stop < ltp
+                else:
+                    gap_stop   = round(max(day_open, ltp + stop_dist), 2)
+                    gap_target = round(ltp - RR_GAP_CONTINUATION * stop_dist, 2)
+                    gap_valid  = 0 < gap_target < ltp and gap_stop > ltp
+                if gap_valid:
+                    sig = TradeSignal(
+                        symbol          = stock["symbol"],
+                        direction       = gap_direction,
+                        signal_type     = SignalType.EQUITY,
+                        strength        = SignalStrength.STRONG if abs(gap_pct) >= GAP_CONTINUATION_MIN_PCT * 1.5 else SignalStrength.MODERATE,
+                        entry_price     = ltp,
+                        stop_loss       = gap_stop,
+                        target_price    = gap_target,
+                        quantity        = 1,   # placeholder — Risk Engine will overwrite
+                        strategy_name   = "Gap_Continuation",
+                        confidence      = round(min(6.0 + abs(gap_pct) * 0.5 + (vol_ratio - 1.0) * 0.5, 9.0), 2),
+                        source_agent    = "EquityScannerAI",
+                        atr             = atr,
+                        adv_crore       = adv_crore,
+                        entry_zone_low  = round(max(0.0, ltp - atr * 0.10), 2),
+                        entry_zone_high = round(ltp + atr * 0.10, 2),
+                        price_is_live   = price_is_live,
+                        gap_pct         = round(gap_pct, 2),
+                        institutional_flow_score      = institutional_flow_score,
+                        institutional_flow_available  = institutional_flow_available,
+                        company_growth_score          = company_growth_score,
+                        company_growth_available      = company_growth_available,
+                        corporate_event_score         = corporate_event_score,
+                        corporate_event_available     = corporate_event_available,
+                    )
+                    return sig, "signal_found"
 
         # ── Setup 1: Breakout with volume ─────────────────────────────
         # Active in all non-bear regimes including BULL_TREND.

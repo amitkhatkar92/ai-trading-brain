@@ -50,6 +50,11 @@ STRATEGY_PARAMS = {
     # while keeping meaningful asymmetry (2.5:1 and 2.0:1 still require more winners than losers)
     "Equity_Breakout":        {"min_rr": 2.5, "max_loss_pct": 0.015},  # balanced: was 3.0
     "Equity_Retest":          {"min_rr": 2.0, "max_loss_pct": 0.015},  # balanced: was 2.5
+    # DTA-GAP-CONTINUATION-001: registered so a real, held, volume-confirmed
+    # gap signal (equity_scanner_ai.py Setup 0) keeps its own identity through
+    # StrategyLab instead of being silently relabeled by auto-assign (same
+    # precedent as Bear_Put_Spread's prior missing-entry fix).
+    "Gap_Continuation":       {"min_rr": 2.0, "max_loss_pct": 0.015},
 }
 
 # Minimum confidence (0–10) required for equity signals in volatile regime.

@@ -142,6 +142,11 @@ class TradeSignal:
     corporate_event_score:     Optional[float] = None   # [-1, +1], None = no data
     corporate_event_available: Optional[bool]  = None
 
+    # DTA-GAP-CONTINUATION-001: real today-open-vs-prior-close gap %, set only
+    # on "Gap_Continuation" setup signals (see equity_scanner_ai.py). None for
+    # every other setup/strategy — observational, never gates any decision.
+    gap_pct: Optional[float] = None
+
 
     @property
     def risk_reward_ratio(self) -> float:
