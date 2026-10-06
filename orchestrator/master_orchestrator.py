@@ -8871,6 +8871,11 @@ class MasterOrchestrator:
         # ── Intraday full-cycle slots ───────────────────────────────────
         # 09:45  first trade decision window
         sched_lib.every().day.at(SCHEDULE["trade_decision"]).do(self._guarded_cycle)
+        # 10:00  DTA-EARLY-MOVE-SCAN-001: EMP-001-evidenced checkpoint, closes
+        # the 09:45->10:30 scan gap for stocks that open normally then start
+        # moving mid-morning (same full cycle, same risk/execution gates --
+        # additive scan slot only, does not touch the 09:45 execution window)
+        sched_lib.every().day.at(SCHEDULE["late_morning_scan"]).do(self._guarded_cycle)
         # 10:30  mid-morning re-scan
         sched_lib.every().day.at(SCHEDULE["mid_morning_scan"]).do(self._guarded_cycle)
         # 11:30  post-circuit / momentum phase

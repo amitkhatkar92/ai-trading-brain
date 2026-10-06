@@ -124,6 +124,12 @@ SCHEDULE = {
     "first_opportunity_scan": "09:10",   # first equity + options scan
     "strategy_evaluation":    "09:20",   # select active strategies
     "trade_decision":         "09:45",   # first trade window (09:45 IST = 30 min after open)
+    # DTA-EARLY-MOVE-SCAN-001: EMP-001's own 60-day live research (recommendation
+    # OPTION_E, "previous-day + opening-window combined") found 10:00 IST already
+    # shows 68.3% directional continuation to close -- a real, evidenced
+    # checkpoint the schedule never scanned (09:45 -> 10:30 was a 45-min gap
+    # with zero per-stock scanning). Closes that gap; no execution-window change.
+    "late_morning_scan":      "10:00",   # catches Case-2 "normal open, then moves" stocks
     # ── Intraday deep scans ────────────────────────────────────────────────
     "mid_morning_scan":       "10:30",   # re-check regime + new setups    (10:30 IST)
     "mid_session_scan":        "11:30",   # post-circuit / momentum phase    (11:30 IST)

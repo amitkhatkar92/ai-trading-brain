@@ -155,6 +155,7 @@ class SchedulerHealth:
             from config import SCHEDULE
             _slots = [
                 SCHEDULE.get("trade_decision",        "09:45"),
+                SCHEDULE.get("late_morning_scan",     "10:00"),
                 SCHEDULE.get("mid_morning_scan",      "10:30"),
                 SCHEDULE.get("mid_session_scan",      "11:30"),
                 SCHEDULE.get("afternoon_scan",        "13:00"),
