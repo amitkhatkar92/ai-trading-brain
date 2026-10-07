@@ -11,27 +11,56 @@ a TEMPLATE only. Zero imports from oios/, zero shared storage. This
 module owns its own store: data/ksl/ranking_shadow_candidates.json.
 
 Lifecycle (fully automated, no human step at any transition):
-  SHADOW_ELIGIBLE  -- a validated hypothesis (RHV-001 verdict=VALIDATED)
-                      registered here, not yet observed live.
-  SHADOW_ACTIVE    -- parallel/shadow scoring is being computed (via
-                      annotate_adjusted_scores) alongside the live,
-                      unmodified C2 ranking. Zero effect on real
-                      selection while in this state.
-  ACTIVE           -- shadow period confirmed the effect; the adjustment
-                      now actually influences selection (bounded, small,
-                      reversible — see apply guardrails below).
-  ROLLED_BACK      -- live performance degraded past the guardrail;
-                      automatically reverted. No human step.
-  REJECTED         -- shadow period failed to confirm the effect.
+  SHADOW_ELIGIBLE     -- a validated hypothesis (RHV-001 verdict=VALIDATED)
+                         registered here, not yet observed live.
+  SHADOW_ACTIVE       -- parallel/shadow scoring is being computed (via
+                         annotate_adjusted_scores) alongside the live,
+                         unmodified C2 ranking. Zero effect on real
+                         selection while in this state.
+  PROVISIONAL_ACTIVE  -- DTA-RSL-PROVISIONAL-001: a REDUCED evidence bar
+                         (fewer qualifying rows/new-picks than full
+                         authentication) has been met with a non-negative
+                         signal. Lets partially-authenticated research
+                         become part of shadow selection NOW, at a small,
+                         bounded weight (PROVISIONAL_WEIGHT) -- instead of
+                         sitting at zero influence until the full bar is
+                         reached. Continues accumulating evidence every
+                         cycle; graduates to full ACTIVE (full weight)
+                         the moment it also clears the original, stricter
+                         bar -- i.e. "more research -> re-authenticate at
+                         the original, higher standard", not a permanent
+                         relaxation. Still subject to the same rollback
+                         monitor as ACTIVE, just at a lower sample floor.
+  ACTIVE              -- the ORIGINAL, full evidence bar is met; the
+                         adjustment influences selection at full weight
+                         (bounded, reversible — see guardrails below).
+  ROLLED_BACK         -- live performance degraded past the guardrail;
+                         automatically reverted. No human step.
+  REJECTED            -- shadow period failed to confirm the effect, or
+                         produced no usable signal within the maximum
+                         observation window.
 
 Guardrails (values chosen to mirror OIOS's already-proven numbers,
 reused as constants only — no code coupling):
-  MIN_OBS_FOR_ACTIVATION   min shadow-period sample before a promotion
-                           decision is made
+  MIN_OBS_FOR_ACTIVATION   min shadow-period sample before a FULL (ACTIVE)
+                           promotion decision is made -- unchanged, this
+                           is the "original idea of authentication"
+  MIN_NEW_PICKS_FOR_FULL   min genuinely-new picks for FULL authentication
+  MIN_NEW_PICKS_FOR_PROVISIONAL  lower bar for PROVISIONAL_ACTIVE -- gives
+                           research a bounded, small, real voice before
+                           enough evidence exists for full authentication
+  PROVISIONAL_WEIGHT       smaller contribution cap for PROVISIONAL_ACTIVE
+                           (a fraction of DEFAULT_WEIGHT)
+  MAX_OBSERVATION_DAYS     fail-safe: reject if NEITHER bar is ever met
+                           within this many trading dates (prevents an
+                           indefinite, silently-stuck shadow candidate)
   MAX_WEIGHT               bounded contribution cap (secondary key can
                            never dominate c2_score)
   COOLDOWN_DAYS            no repeat activation attempts for the same
-                           feature within this window
+                           feature within this window -- recalibrated for
+                           this early-stage system's real evidence
+                           velocity (see constant comment); expected to
+                           lengthen again once evidence volume grows
   ROLLBACK_DEGRADATION_PP  live post-activation correct-select rate
                            dropping this many percentage points below
                            the OOS baseline triggers auto-revert
@@ -71,19 +100,42 @@ SHADOW_JSONL_PATH  = ROOT / "data" / "logs" / "final_trading_architecture_shadow
 # Guardrails (mirrors OIOS's proven numbers — reused as constants only)
 # ─────────────────────────────────────────────────────────────────────────────
 
-STATUS_SHADOW_ELIGIBLE = "SHADOW_ELIGIBLE"
-STATUS_SHADOW_ACTIVE   = "SHADOW_ACTIVE"
-STATUS_ACTIVE          = "ACTIVE"
-STATUS_ROLLED_BACK     = "ROLLED_BACK"
-STATUS_REJECTED        = "REJECTED"
+STATUS_SHADOW_ELIGIBLE    = "SHADOW_ELIGIBLE"
+STATUS_SHADOW_ACTIVE      = "SHADOW_ACTIVE"
+STATUS_PROVISIONAL_ACTIVE = "PROVISIONAL_ACTIVE"
+STATUS_ACTIVE             = "ACTIVE"
+STATUS_ROLLED_BACK        = "ROLLED_BACK"
+STATUS_REJECTED           = "REJECTED"
 
-REQUIRED_OBSERVATION_DAYS = 10       # min new trading dates before a promotion decision
-MIN_OBS_FOR_ACTIVATION    = 20       # min qualifying evidence rows in the shadow window
+REQUIRED_OBSERVATION_DAYS = 10       # min new trading dates before ANY promotion decision
+MIN_OBS_FOR_ACTIVATION    = 20       # min qualifying evidence rows for FULL (ACTIVE) authentication
+MIN_NEW_PICKS_FOR_FULL    = 5        # min genuinely-new picks for FULL (ACTIVE) authentication
 MAX_WEIGHT                = 0.15     # bounded contribution cap (mirrors OIOS's +-15%)
-DEFAULT_WEIGHT            = 0.10     # starting bounded weight when first promoted to ACTIVE
-COOLDOWN_DAYS             = 90       # one activation attempt per feature per quarter
+DEFAULT_WEIGHT            = 0.10     # full weight once FULLY authenticated (ACTIVE)
+
+# DTA-RSL-PROVISIONAL-001: at this early stage the system has near-zero
+# accumulated evidence (confirmed live: 0 ACTIVE promotions ever) -- the
+# full MIN_OBS_FOR_ACTIVATION/MIN_NEW_PICKS_FOR_FULL bar is the right
+# long-term standard but leaves research with ZERO real influence while
+# evidence is still thin. PROVISIONAL_ACTIVE gives a reduced-bar, smaller-
+# weight tier so partially-authenticated research has SOME bounded voice
+# now; it still must clear the ORIGINAL full bar above to reach full
+# weight -- this is re-authentication at the original standard once more
+# data exists, not a permanent relaxation.
+MIN_NEW_PICKS_FOR_PROVISIONAL = 2    # reduced bar -- intentionally << MIN_NEW_PICKS_FOR_FULL
+PROVISIONAL_WEIGHT            = 0.05 # half of DEFAULT_WEIGHT -- small, bounded, cautious
+MIN_OBS_FOR_ROLLBACK_CHECK_PROVISIONAL = 10  # lower post-promotion monitoring floor, proportional to the smaller weight's smaller downside
+MAX_OBSERVATION_DAYS      = 30       # fail-safe: reject if NEITHER bar is ever met by this many trading dates
+
+# COOLDOWN_DAYS: was 90 (one quarter) -- sized for a mature system already
+# generating lots of evidence. Recalibrated to this early-stage system's
+# real evidence velocity (confirmed live: ~0.25 new-picks/day system-wide
+# before the DTA-RSL-SCALE-FIX-001 formula fix). Expected to lengthen again
+# once real evidence volume grows -- this is a realistic value for right
+# now, not a permanent loosening.
+COOLDOWN_DAYS             = 30       # one retry attempt per feature per month
 ROLLBACK_DEGRADATION_PP   = 0.05     # 5pp degradation vs OOS baseline triggers auto-revert
-MIN_OBS_FOR_ROLLBACK_CHECK = 20      # min post-activation rows before judging rollback
+MIN_OBS_FOR_ROLLBACK_CHECK = 20      # min post-ACTIVE-activation rows before judging rollback
 MAX_CONCURRENT_SHADOW     = 5        # sanity cap on simultaneously shadow-tested features
 
 
@@ -174,7 +226,7 @@ def register_shadow_candidate(
     feat_id = _feature_id(area, direction, miss_reason)
     candidates = _load_candidates()
 
-    active_states = (STATUS_SHADOW_ELIGIBLE, STATUS_SHADOW_ACTIVE, STATUS_ACTIVE)
+    active_states = (STATUS_SHADOW_ELIGIBLE, STATUS_SHADOW_ACTIVE, STATUS_PROVISIONAL_ACTIVE, STATUS_ACTIVE)
     live_count = sum(1 for c in candidates if c.status in active_states)
     if live_count >= MAX_CONCURRENT_SHADOW:
         print(f"[RAE-001] Blocked — MAX_CONCURRENT_SHADOW ({MAX_CONCURRENT_SHADOW}) reached.")
@@ -207,9 +259,11 @@ def register_shadow_candidate(
         risk="LOW — observation-only shadow system, never touches live/paper trading",
         required_observation_days=REQUIRED_OBSERVATION_DAYS,
         promotion_requirements=(
-            f"Shadow period (>= {REQUIRED_OBSERVATION_DAYS} new trading dates, "
-            f">= {MIN_OBS_FOR_ACTIVATION} qualifying rows) must replicate the same-signed "
-            f"effect before promotion to ACTIVE."
+            f"Shadow period (>= {REQUIRED_OBSERVATION_DAYS} new trading dates): "
+            f">= {MIN_NEW_PICKS_FOR_PROVISIONAL} new-selection rows with a non-negative signal "
+            f"-> PROVISIONAL_ACTIVE (weight={PROVISIONAL_WEIGHT}); "
+            f">= {MIN_OBS_FOR_ACTIVATION} qualifying rows AND >= {MIN_NEW_PICKS_FOR_FULL} new-selection "
+            f"rows replicating the same-signed effect -> full ACTIVE (weight={DEFAULT_WEIGHT})."
         ),
         status=STATUS_SHADOW_ELIGIBLE,
         feature_id=feat_id,
@@ -253,7 +307,7 @@ def advance_shadow_tracking() -> Dict[str, Any]:
             changed = True
 
     for c in candidates:
-        if c.status != STATUS_SHADOW_ACTIVE or not c.shadow_start_date:
+        if c.status not in (STATUS_SHADOW_ACTIVE, STATUS_PROVISIONAL_ACTIVE) or not c.shadow_start_date:
             continue
         area, direction, miss_reason = (c.feature_id.split("|") + [None, None, None])[:3]
         window = _load_raw_shadow_records(since_date=c.shadow_start_date)
@@ -263,41 +317,84 @@ def advance_shadow_tracking() -> Dict[str, Any]:
             continue
 
         qualifying = [r for r in window if r.get("would_select_adjusted") is not None]
-        if len(qualifying) < MIN_OBS_FOR_ACTIVATION:
-            continue
 
         # Shadow effect: among candidates the ADJUSTED ranking would newly select
         # (would_select_adjusted=True, selected_final_5=False under the frozen
         # ranking), what fraction are real >=2% movers?
         would_select_new = [r for r in qualifying
                              if r.get("would_select_adjusted") and not r.get("selected_final_5")]
-        if len(would_select_new) < 5:
-            c.status = STATUS_REJECTED
-            c.status_reason = "Shadow period produced too few new-selection candidates to judge."
-            changed = True
+
+        full_bar_met = len(qualifying) >= MIN_OBS_FOR_ACTIVATION and len(would_select_new) >= MIN_NEW_PICKS_FOR_FULL
+        provisional_bar_met = len(would_select_new) >= MIN_NEW_PICKS_FOR_PROVISIONAL
+
+        if not full_bar_met and not provisional_bar_met:
+            # DTA-RSL-PROVISIONAL-001 fail-safe: no usable signal of ANY kind yet.
+            # Keep waiting (research deserves time), but not forever.
+            if len(distinct_dates) >= MAX_OBSERVATION_DAYS:
+                c.status = STATUS_REJECTED
+                c.status_reason = (
+                    f"No usable signal within the maximum observation window "
+                    f"({MAX_OBSERVATION_DAYS} trading dates)."
+                )
+                summary["rejected"] += 1
+                changed = True
             continue
 
-        hits = sum(1 for r in would_select_new if _ge2(r))
-        hit_rate = hits / len(would_select_new)
+        hits = sum(1 for r in would_select_new if _ge2(r)) if would_select_new else 0
+        hit_rate = (hits / len(would_select_new)) if would_select_new else 0.0
+        hit_rate_ok = hit_rate >= (1.0 - c.oos_dir_acc) * 0.8  # within 80% of the OOS-projected capture rate
 
-        if hit_rate >= (1.0 - c.oos_dir_acc) * 0.8:  # within 80% of the OOS-projected capture rate
+        if full_bar_met and hit_rate_ok:
+            # The ORIGINAL, full authentication bar is met -- promote/graduate
+            # to full weight regardless of whether this candidate arrived here
+            # via SHADOW_ACTIVE directly or via PROVISIONAL_ACTIVE first.
             c.status = STATUS_ACTIVE
             c.live_activated_at = datetime.now(timezone.utc).isoformat()
-            c.status_reason = f"Shadow confirmed: hit_rate={round(hit_rate, 4)} on n={len(would_select_new)}."
-            _activate_in_config(c)
+            c.status_reason = f"Fully authenticated: hit_rate={round(hit_rate, 4)} on n={len(would_select_new)}."
+            _activate_in_config(c, weight=DEFAULT_WEIGHT)
             summary["promoted_live"] += 1
-        else:
+            changed = True
+        elif full_bar_met and not hit_rate_ok:
             c.status = STATUS_REJECTED
             c.status_reason = f"Shadow failed to confirm: hit_rate={round(hit_rate, 4)} on n={len(would_select_new)}."
             summary["rejected"] += 1
-        changed = True
+            changed = True
+        elif provisional_bar_met and hit_rate_ok:
+            if c.status != STATUS_PROVISIONAL_ACTIVE:
+                c.status = STATUS_PROVISIONAL_ACTIVE
+                if not c.live_activated_at:
+                    c.live_activated_at = datetime.now(timezone.utc).isoformat()
+                c.status_reason = (
+                    f"Provisionally authenticated (reduced bar): hit_rate={round(hit_rate, 4)} "
+                    f"on n={len(would_select_new)}. Continuing to accumulate evidence toward "
+                    f"full authentication (needs n>={MIN_NEW_PICKS_FOR_FULL})."
+                )
+                _activate_in_config(c, weight=PROVISIONAL_WEIGHT)
+                summary["provisional_activated"] = summary.get("provisional_activated", 0) + 1
+                changed = True
+            # else: already PROVISIONAL_ACTIVE and still holding up -- keep
+            # accumulating, no status change needed this cycle.
+        else:
+            # provisional_bar_met but NOT hit_rate_ok
+            if c.status == STATUS_PROVISIONAL_ACTIVE:
+                # Evidence turned negative after being provisionally trusted -- revert.
+                c.status = STATUS_REJECTED
+                c.status_reason = (
+                    f"Provisional evidence turned negative before reaching full "
+                    f"authentication: hit_rate={round(hit_rate, 4)} on n={len(would_select_new)}."
+                )
+                _deactivate_in_config(direction)
+                summary["rejected"] += 1
+                changed = True
+            # else: still SHADOW_ACTIVE with a weak signal -- let it keep
+            # accumulating rather than reject outright (same fail-safe as above).
 
     if changed:
         _save_candidates(candidates)
     return summary
 
 
-def _activate_in_config(candidate: KSLShadowCandidate) -> None:
+def _activate_in_config(candidate: KSLShadowCandidate, weight: float = DEFAULT_WEIGHT) -> None:
     parts = candidate.feature_id.split("|")
     direction = parts[1] if len(parts) > 1 else "UP"
     miss_reason = parts[2] if len(parts) > 2 else None
@@ -306,7 +403,7 @@ def _activate_in_config(candidate: KSLShadowCandidate) -> None:
         "candidate_id": candidate.candidate_id,
         "feature_id": candidate.feature_id,
         "miss_reason": miss_reason,
-        "weight": DEFAULT_WEIGHT,
+        "weight": max(0.0, min(weight, MAX_WEIGHT)),
         "activated_at": candidate.live_activated_at,
         "baseline_oos_dir_acc": candidate.oos_dir_acc,
     }
@@ -318,22 +415,27 @@ def _activate_in_config(candidate: KSLShadowCandidate) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 
 def check_rollback() -> Dict[str, Any]:
-    """Monitor ACTIVE adjustments for post-activation degradation; auto-revert."""
+    """Monitor ACTIVE and PROVISIONAL_ACTIVE adjustments for post-activation
+    degradation; auto-revert. PROVISIONAL_ACTIVE uses a proportionally lower
+    sample floor (MIN_OBS_FOR_ROLLBACK_CHECK_PROVISIONAL) since its smaller
+    weight carries smaller downside risk."""
     summary = {"checked": 0, "rolled_back": 0}
     candidates = _load_candidates()
-    active = [c for c in candidates if c.status == STATUS_ACTIVE and c.live_activated_at]
-    if not active:
+    monitored = [c for c in candidates
+                 if c.status in (STATUS_ACTIVE, STATUS_PROVISIONAL_ACTIVE) and c.live_activated_at]
+    if not monitored:
         return summary
 
     changed = False
-    for c in active:
+    for c in monitored:
         summary["checked"] += 1
         parts = c.feature_id.split("|")
         direction = parts[1] if len(parts) > 1 else "UP"
         activation_date = c.live_activated_at[:10]
         window = _load_raw_shadow_records(since_date=activation_date)
         window = [r for r in window if r.get("direction") == direction and r.get("selected_final_5")]
-        if len(window) < MIN_OBS_FOR_ROLLBACK_CHECK:
+        min_obs = MIN_OBS_FOR_ROLLBACK_CHECK if c.status == STATUS_ACTIVE else MIN_OBS_FOR_ROLLBACK_CHECK_PROVISIONAL
+        if len(window) < min_obs:
             continue
 
         hits = sum(1 for r in window if _ge2(r))

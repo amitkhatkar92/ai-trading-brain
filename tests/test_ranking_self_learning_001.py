@@ -504,6 +504,142 @@ def test_t035b_annotate_uses_percentile_rank_not_raw_c2_score(_isolated_store):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# T041-T045 — DTA-RSL-PROVISIONAL-001: reduced-bar provisional tier
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_t041_advance_shadow_tracking_promotes_to_provisional(_isolated_store):
+    """Reduced bar (>=2 new picks, positive signal) -> PROVISIONAL_ACTIVE at
+    the smaller PROVISIONAL_WEIGHT -- research gets a bounded real voice
+    before enough evidence exists for full authentication."""
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS",
+                                   _scorecard(oos_miss_rate=0.65))
+    rae.advance_shadow_tracking()  # -> SHADOW_ACTIVE
+
+    recs = []
+    for d in range(10):
+        is_new_pick = d < 2  # only 2 new picks: >= MIN_NEW_PICKS_FOR_PROVISIONAL(2), < MIN_NEW_PICKS_FOR_FULL(5)
+        recs.append({"trade_date": f"2099-02-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": is_new_pick, "selected_final_5": False,
+                      "t1_ret_pct": 3.0 if is_new_pick else None})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+
+    summary = rae.advance_shadow_tracking()
+    candidates = rae._load_candidates()
+    assert summary.get("provisional_activated") == 1
+    assert candidates[0].status == rae.STATUS_PROVISIONAL_ACTIVE
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert active_config["UP"]["weight"] == rae.PROVISIONAL_WEIGHT
+
+
+def test_t042_provisional_graduates_to_full_active_with_more_evidence(_isolated_store):
+    """Once the ORIGINAL, stricter bar is also cleared, a PROVISIONAL_ACTIVE
+    candidate graduates to full ACTIVE at full weight -- 're-authenticate
+    at the original standard once more data exists', not a permanent cap."""
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS",
+                                   _scorecard(oos_miss_rate=0.65))
+    rae.advance_shadow_tracking()  # -> SHADOW_ACTIVE
+
+    recs = []
+    for d in range(10):
+        is_new_pick = d < 2
+        recs.append({"trade_date": f"2099-03-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": is_new_pick, "selected_final_5": False,
+                      "t1_ret_pct": 3.0 if is_new_pick else None})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    rae.advance_shadow_tracking()
+    assert rae._load_candidates()[0].status == rae.STATUS_PROVISIONAL_ACTIVE
+
+    recs2 = list(recs)
+    for d in range(10, 25):
+        recs2.append({"trade_date": f"2099-03-{d+1:02d}", "direction": "UP",
+                       "would_select_adjusted": True, "selected_final_5": False,
+                       "t1_ret_pct": 3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs2)
+
+    summary = rae.advance_shadow_tracking()
+    candidates = rae._load_candidates()
+    assert summary["promoted_live"] == 1
+    assert candidates[0].status == rae.STATUS_ACTIVE
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert active_config["UP"]["weight"] == rae.DEFAULT_WEIGHT
+
+
+def test_t043_provisional_rejected_on_negative_evidence(_isolated_store):
+    """A PROVISIONAL_ACTIVE candidate whose evidence turns negative before
+    reaching the full bar is rejected -- the reduced bar is not a one-way
+    rubber stamp."""
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS",
+                                   _scorecard(oos_miss_rate=0.65))
+    rae.advance_shadow_tracking()  # -> SHADOW_ACTIVE
+
+    recs = []
+    for d in range(10):
+        is_new_pick = d < 2
+        recs.append({"trade_date": f"2099-04-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": is_new_pick, "selected_final_5": False,
+                      "t1_ret_pct": 3.0 if is_new_pick else None})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    rae.advance_shadow_tracking()
+    assert rae._load_candidates()[0].status == rae.STATUS_PROVISIONAL_ACTIVE
+
+    recs2 = list(recs)
+    for d in range(10, 12):
+        recs2.append({"trade_date": f"2099-04-{d+1:02d}", "direction": "UP",
+                       "would_select_adjusted": True, "selected_final_5": False,
+                       "t1_ret_pct": -3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs2)
+
+    summary = rae.advance_shadow_tracking()
+    candidates = rae._load_candidates()
+    assert summary["rejected"] == 1
+    assert candidates[0].status == rae.STATUS_REJECTED
+
+
+def test_t044_rejected_after_max_observation_days_with_no_signal(_isolated_store):
+    """Fail-safe: a candidate that never clears even the reduced bar is
+    rejected after MAX_OBSERVATION_DAYS -- research gets real time, not
+    indefinite limbo."""
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()  # -> SHADOW_ACTIVE
+
+    recs = []
+    for d in range(rae.MAX_OBSERVATION_DAYS):
+        recs.append({"trade_date": f"2099-05-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": False, "selected_final_5": True, "t1_ret_pct": 1.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+
+    summary = rae.advance_shadow_tracking()
+    candidates = rae._load_candidates()
+    assert summary["rejected"] == 1
+    assert candidates[0].status == rae.STATUS_REJECTED
+
+
+def test_t045_check_rollback_monitors_provisional_active_at_lower_floor(_isolated_store):
+    """PROVISIONAL_ACTIVE is monitored by the same auto-rollback mechanism
+    as ACTIVE, at a proportionally lower sample floor (smaller weight,
+    smaller downside)."""
+    cand = KSLShadowCandidate(
+        candidate_id="C1", research_question_id="RQ1", finding_id="F1", created_at="2026-09-01",
+        baseline_version="v1", candidate_version="v1+ADJ", reason="", evidence="",
+        oos_dir_acc=0.9, oos_ge2_rate=0.6, expected_improvement="", risk="",
+        required_observation_days=10, promotion_requirements="",
+        status=rae.STATUS_PROVISIONAL_ACTIVE, feature_id="C2_RANKING|UP|X",
+        live_activated_at="2026-09-01T00:00:00+00:00",
+    )
+    rae._save_candidates([cand])
+    recs = []
+    for d in range(rae.MIN_OBS_FOR_ROLLBACK_CHECK_PROVISIONAL):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "selected_final_5": True, "t1_ret_pct": -3.0})  # all losers
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+
+    summary = rae.check_rollback()
+    candidates = rae._load_candidates()
+    assert summary["rolled_back"] == 1
+    assert candidates[0].status == rae.STATUS_ROLLED_BACK
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # T036-T040 — safety: no execution/broker imports
 # ─────────────────────────────────────────────────────────────────────────────
 
