@@ -274,7 +274,11 @@ def _get_ils_score(data: Dict[str, Any]) -> float:
         lifecycle = update_lifecycle(verified, today, dry_run=True)
         ils = compute_ils_score(records, verified, lifecycle, roi_list)
         return getattr(ils, "overall_score", 0.0)
-    except Exception:
+    except Exception as exc:
+        # DTA-PRR-GVA-SILENT-FAIL-001: was a bare `except Exception: return 0.0`
+        # -- a real failure was indistinguishable from a genuine 0.0 score with
+        # zero trace left anywhere. Log it so the next occurrence is diagnosable.
+        log.warning("[PRR-001] ILS score calculation failed: %s", exc, exc_info=True)
         return 0.0
 
 
@@ -286,8 +290,14 @@ def _get_gva_score() -> float:
         if isinstance(result, dict):
             return float(result.get("overall_score", 0.0))
         return float(getattr(result, "overall_score", 0.0))
-    except Exception:
-        pass
+    except Exception as exc:
+        # DTA-PRR-GVA-SILENT-FAIL-001: confirmed live on 2026-10-06 -- the
+        # scheduled EOD call recorded gva=0.0 in the certification history
+        # while a manual re-run of the identical call moments later returned a
+        # healthy 73.1, with zero error trace anywhere to explain the gap.
+        # Logging here doesn't fix the (still unreproduced) transient cause,
+        # but makes the next occurrence root-causable instead of invisible.
+        log.warning("[PRR-001] GVA score calculation failed: %s", exc, exc_info=True)
     return 0.0
 
 

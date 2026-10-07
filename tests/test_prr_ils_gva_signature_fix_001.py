@@ -105,3 +105,26 @@ class TestGetGvaScore:
         assert "growth_validator_ai" not in src
         assert "GrowthValidatorAI" not in src
         assert "run_gva" in src
+
+    def test_T09_exception_is_logged_not_silent(self, caplog):
+        """DTA-PRR-GVA-SILENT-FAIL-001: confirmed live on 2026-10-06 -- a real
+        failure inside run_gva() produced gva=0.0 in the certification
+        history with zero trace anywhere. The exception must now be logged."""
+        import logging
+        with caplog.at_level(logging.WARNING, logger="production_readiness.prr_runner"):
+            with patch("growth_validator.run_gva", side_effect=RuntimeError("boom")):
+                score = _get_gva_score()
+        assert score == 0.0
+        assert any("GVA score calculation failed" in r.message for r in caplog.records)
+
+
+class TestIlsScoreLogging:
+    def test_T10_exception_is_logged_not_silent(self, caplog):
+        import logging
+        with caplog.at_level(logging.WARNING, logger="production_readiness.prr_runner"):
+            with patch("institutional_learning.ilc_verification.get_all_records",
+                       side_effect=RuntimeError("boom")):
+                score = _get_ils_score({"date": "2026-10-05"})
+        assert score == 0.0
+        assert any("ILS score calculation failed" in r.message for r in caplog.records)
+
