@@ -476,8 +476,31 @@ def test_t035_annotate_bounded_weight_never_exceeds_max(_isolated_store):
                                      "activated_at": "now", "baseline_oos_dir_acc": 0.9}})
     recs = [{"symbol": "A", "direction": "UP", "c2_score": 1.0, "v3_score": 1.0}]
     out = rae.annotate_adjusted_scores(recs, "UP")
-    # adjusted = c2_score + weight * v3_norm; weight must be clamped to MAX_WEIGHT
+    # adjusted = c2_rank + weight * v3; weight must be clamped to MAX_WEIGHT
     assert out[0]["c2_score_shadow_adjusted"] <= 1.0 + rae.MAX_WEIGHT + 1e-9
+
+
+def test_t035b_annotate_uses_percentile_rank_not_raw_c2_score(_isolated_store):
+    """DTA-RSL-SCALE-FIX-001 regression guard: c2_score's raw scale varies
+    arbitrarily day to day (confirmed live: adjacent-rank gaps from ~0.03 to
+    >2.0), so blending the RAW value with a bounded 0.10-0.15 weight was
+    structurally almost never enough to change the top-5. Blending the
+    PERCENTILE RANK instead means the v3 nudge is always meaningfully sized
+    relative to c2's own spread for that day, regardless of its raw scale."""
+    # Large raw c2_score gap (100 vs 1) that a raw-value formula could NEVER
+    # flip with weight<=0.15, but percentile rank puts both candidates on an
+    # equal footing before the v3 nudge is applied.
+    recs = [
+        {"symbol": "A", "direction": "UP", "c2_score": 100.0, "v3_score": 0.1},
+        {"symbol": "B", "direction": "UP", "c2_score": 1.0,   "v3_score": 0.9},
+    ]
+    out = rae.annotate_adjusted_scores(recs, "UP")
+    by_symbol = {r["symbol"]: r for r in out}
+    # Percentile rank: A=1.0 (highest), B=0.0 (lowest) regardless of raw gap.
+    # adjusted_A = 1.0 + 0.10*0.1 = 1.01; adjusted_B = 0.0 + 0.10*0.9 = 0.09
+    assert by_symbol["A"]["c2_score_shadow_adjusted"] > by_symbol["B"]["c2_score_shadow_adjusted"]
+    assert by_symbol["A"]["c2_score_shadow_adjusted"] == pytest.approx(1.01, abs=1e-6)
+    assert by_symbol["B"]["c2_score_shadow_adjusted"] == pytest.approx(0.09, abs=1e-6)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

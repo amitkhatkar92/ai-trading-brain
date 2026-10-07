@@ -401,6 +401,16 @@ def annotate_adjusted_scores(recs: List[Dict[str, Any]], direction: str) -> List
     direction has an ACTIVE adjustment — before that, this function never
     changes selection behaviour. Never raises; returns `recs` unchanged
     on any error.
+
+    DTA-RSL-SCALE-FIX-001: c2_score is blended via its PERCENTILE RANK
+    within the day's pool, not its raw value — c2_score's raw scale
+    varies arbitrarily day to day (confirmed on real data: adjacent-rank
+    gaps ranging from ~0.03 to >2.0), so a fixed 0.10-0.15 additive weight
+    on the raw score was structurally almost never large enough to change
+    which 5 symbols rank highest. Same percentile-rank technique already
+    proven in final_trading_architecture_shadow_001.py's
+    select_c2_top_n_v2 (Model C). Confirmed live: would_select_new was 0
+    across all 23 shadow-tracked days under the old raw-score formula.
     """
     try:
         config = _load_active_config()
@@ -408,16 +418,14 @@ def annotate_adjusted_scores(recs: List[Dict[str, Any]], direction: str) -> List
         weight = active_entry["weight"] if active_entry else DEFAULT_WEIGHT
         weight = max(0.0, min(weight, MAX_WEIGHT))
 
-        v3_scores = [float(r.get("v3_score") or 0.0) for r in recs]
-        max_v3 = max(v3_scores) if v3_scores else 0.0
+        from opportunity_engine.mover_discovery_v3 import _rank_pct
 
-        for r in recs:
-            c2 = r.get("c2_score")
-            if c2 is None:
-                continue
+        scored = [r for r in recs if r.get("c2_score") is not None]
+        c2_ranks = _rank_pct([float(r["c2_score"]) for r in scored]) if scored else []
+
+        for r, c2_rank in zip(scored, c2_ranks):
             v3 = float(r.get("v3_score") or 0.0)
-            v3_norm = (v3 / max_v3) if max_v3 > 0 else 0.0
-            adjusted = c2 + weight * v3_norm
+            adjusted = c2_rank + weight * v3
             r["c2_score_shadow_adjusted"] = round(adjusted, 6)
 
         if active_entry:
