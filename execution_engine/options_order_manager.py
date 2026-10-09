@@ -550,7 +550,13 @@ class OptionsOrderManager:
                 quantity         = lot_qty,
                 price            = 0.0,
                 order_type       = "MARKET",
-                product_type     = "NRML",
+                # DTA-OPTIONS-PRODUCTTYPE-001: Dhan's API has no "NRML" product
+                # type (valid values: INTRADAY/CNC/MARGIN/MTF, per DhanBroker.
+                # place_order's own docstring) -- "NRML" is Zerodha/NSE naming,
+                # not Dhan's. Every real leg placement was rejected with DH-905
+                # "bad values for parameters" because of this exact mismatch.
+                # "MARGIN" is Dhan's equivalent for a carried F&O position.
+                product_type     = "MARGIN",
             )
 
             if order_id is None:
@@ -690,7 +696,10 @@ class OptionsOrderManager:
                         quantity         = filled_qty,
                         price            = 0.0,
                         order_type       = "MARKET",
-                        product_type     = "NRML",
+                        # DTA-OPTIONS-PRODUCTTYPE-001: must match the entry leg's
+                        # real product_type (see _place_live_legs) -- "MARGIN",
+                        # not the invalid "NRML".
+                        product_type     = "MARGIN",
                     )
                 except Exception as rev_exc:
                     log.critical(
@@ -1050,7 +1059,9 @@ class OptionsOrderManager:
                 quantity         = lot_qty,
                 price            = 0.0,
                 order_type       = "MARKET",
-                product_type     = "NRML",
+                # DTA-OPTIONS-PRODUCTTYPE-001: must match the entry leg's real
+                # product_type (see _place_live_legs) -- "MARGIN", not "NRML".
+                product_type     = "MARGIN",
             )
             if order_id is None or str(order_id).startswith("SIM_"):
                 log.error(
