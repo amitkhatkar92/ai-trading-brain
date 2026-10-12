@@ -84,6 +84,10 @@ def _build_mgr(mock_broker=None) -> OptionsOrderManager:
     mgr._broker.get_order_status.return_value = {
         "status": "TRADED", "filled_qty": 65, "avg_fill_price": 40.0,
     }
+    mgr._broker.get_positions.return_value = {
+        "status": "success",
+        "data": [{"securityId": "SEC_ID_1", "netQty": 65, "positionType": "LONG"}],
+    }
     mgr._orders     = {}
     mgr._lock       = threading.Lock()
     mgr._unresolved = {}
@@ -127,7 +131,9 @@ class TestExitLegProductType:
     def test_exit_leg_sends_margin_not_nrml(self):
         mgr = _build_mgr()
         mgr._broker.place_order.return_value = "EXIT_123"
-        rec = _make_rec()
+        rec = _make_rec(legs=[
+            {"direction": "BUY", "strike": 25300, "type": "CE", "premium": 30},
+        ])
 
         fake_map = MagicMock()
         fake_map.lookup.return_value = "SEC_ID_1"

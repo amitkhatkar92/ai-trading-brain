@@ -551,13 +551,20 @@ class TestO_ClosedOnConfirmedFills(unittest.TestCase):
         mock_broker.get_order_status.return_value = {
             "status": "TRADED", "filled_qty": 75, "avg_fill_price": 80.0,
         }
+        mock_broker.get_positions.return_value = {
+            "status": "success",
+            "data": [
+                {"securityId": "SEC_BUY", "netQty": 75, "positionType": "LONG"},
+                {"securityId": "SEC_SELL", "netQty": -75, "positionType": "SHORT"},
+            ],
+        }
         mgr = _make_mgr_live(mock_broker)
         rec = _make_open_rec()
         rec.actual_entry_fill_price = 100.0   # simulate entry already reconciled
         mgr._orders[rec.order_id] = rec
 
         fno_map = MagicMock()
-        fno_map.lookup = MagicMock(return_value="99999")
+        fno_map.lookup = MagicMock(side_effect=["SEC_BUY", "SEC_SELL"])
 
         with patch("data_feeds.dhan_fno_security_map.get_fno_security_map", return_value=fno_map), \
              patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_close"), \

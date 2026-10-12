@@ -108,6 +108,13 @@ def _make_mgr_live(broker=None):
     mock_broker.calculate_multi_order_margin.return_value = {
         "status": "success", "data": {"totalMargin": 1000.0},
     }
+    mock_broker.get_positions.return_value = {
+        "status": "success",
+        "data": [
+            {"securityId": "SEC_BUY", "netQty": 75, "positionType": "LONG"},
+            {"securityId": "SEC_SELL", "netQty": -75, "positionType": "SHORT"},
+        ],
+    }
     if mock_broker.get_order_status._mock_return_value is DEFAULT:
         mock_broker.get_order_status.side_effect = lambda _order_id: {
             "status": "TRADED",
@@ -640,13 +647,27 @@ class TestExitPath(unittest.TestCase):
         mock_broker.get_order_status.return_value = {
             "status": "TRADED", "filled_qty": 75, "avg_fill_price": 90.0
         }
+        mock_broker.get_positions.return_value = {
+            "status": "success",
+            "data": [
+                {"securityId": "SEC_BUY", "netQty": 75, "positionType": "LONG"},
+                {"securityId": "SEC_SELL", "netQty": -75, "positionType": "SHORT"},
+            ],
+        }
         mgr = _make_mgr_live(mock_broker)
 
         rec = self._make_open_rec()
         mgr._orders[rec.order_id] = rec
 
         fno_map = MagicMock()
-        fno_map.lookup = MagicMock(return_value="99999")
+        fno_map.lookup = MagicMock(side_effect=["SEC_BUY", "SEC_SELL"])
+        mock_broker.get_positions.return_value = {
+            "status": "success",
+            "data": [
+                {"securityId": "SEC_BUY", "netQty": 75, "positionType": "LONG"},
+                {"securityId": "SEC_SELL", "netQty": -75, "positionType": "SHORT"},
+            ],
+        }
 
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_close"), \
              patch("data_feeds.dhan_fno_security_map.get_fno_security_map", return_value=fno_map), \
@@ -794,7 +815,7 @@ class TestLearningCapture(unittest.TestCase):
         mgr._orders[rec.order_id] = rec
 
         fno_map = MagicMock()
-        fno_map.lookup = MagicMock(return_value="99999")
+        fno_map.lookup = MagicMock(side_effect=["SEC_BUY", "SEC_SELL"])
 
         captured = []
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_close"), \

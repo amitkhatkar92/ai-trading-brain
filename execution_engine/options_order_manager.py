@@ -1300,6 +1300,74 @@ class OptionsOrderManager:
                 len(self._unresolved), list(self._unresolved.keys()),
             )
 
+    def _get_live_positions_by_security_id(self) -> Optional[Dict[str, int]]:
+        """Return broker net quantities; None means the snapshot is unusable."""
+        try:
+            response = self._broker.get_positions()
+        except Exception as exc:
+            log.error("[OptionsOrderManager] Broker positions query failed: %s", exc)
+            return None
+
+        if isinstance(response, dict):
+            if response.get("status") != "success":
+                return None
+            positions = response.get("data")
+        elif isinstance(response, list):
+            positions = response
+        else:
+            positions = None
+        if not isinstance(positions, list):
+            return None
+
+        quantities: Dict[str, int] = {}
+        try:
+            for position in positions:
+                if not isinstance(position, dict):
+                    continue
+                security_id = str(position.get("securityId", ""))
+                if not security_id:
+                    continue
+                net_qty = int(position.get("netQty", 0) or 0)
+                if str(position.get("positionType", "")).upper() == "SHORT" and net_qty > 0:
+                    net_qty = -net_qty
+                quantities[security_id] = quantities.get(security_id, 0) + net_qty
+        except (TypeError, ValueError) as exc:
+            log.error("[OptionsOrderManager] Invalid broker positions response: %s", exc)
+            return None
+        return quantities
+
+    def _record_has_live_position(
+        self,
+        rec: "OptionsOrderRecord",
+        live_positions: Dict[str, int],
+    ) -> Optional[bool]:
+        """Return whether any recorded filled contract remains open at Dhan."""
+        try:
+            from data_feeds.dhan_fno_security_map import get_fno_security_map
+            fno_map = get_fno_security_map()
+            found_filled_leg = False
+            for leg in rec.legs:
+                if self._filled_qty_for_leg(rec, leg) <= 0:
+                    continue
+                found_filled_leg = True
+                security_id = fno_map.lookup(
+                    underlying=rec.symbol,
+                    expiry_date_str=rec.expiry_date.isoformat(),
+                    strike=float(leg.get("strike", 0)),
+                    option_type=str(leg.get("type", "")),
+                )
+                if security_id is None:
+                    return None
+                if live_positions.get(str(security_id), 0) != 0:
+                    return True
+            return False if found_filled_leg else None
+        except Exception as exc:
+            log.warning(
+                "[OptionsOrderManager] Startup broker-position reconciliation "
+                "unavailable for %s: %s", rec.order_id, exc,
+            )
+            return None
+
     def _place_live_exit_legs(
         self,
         rec: "OptionsOrderRecord",
@@ -1321,29 +1389,67 @@ class OptionsOrderManager:
 
         from data_feeds.dhan_fno_security_map import get_fno_security_map
         fno_map = get_fno_security_map()
-        exit_ids: List[str] = []
-
+        live_positions = self._get_live_positions_by_security_id()
+        if live_positions is None:
+            log.critical(
+                "[OptionsOrderManager] [LiveExitFailed] %s — cannot verify broker "
+                "positions; refusing to submit exit orders.", rec.order_id,
+            )
+            return None
+        close_legs: List[tuple] = []
+        absent_leg_count = 0
         for leg in rec.legs:
             lot_qty = self._filled_qty_for_leg(rec, leg)
             if lot_qty <= 0:
                 continue
             security_id = fno_map.lookup(
-                underlying      = rec.symbol,
-                expiry_date_str = rec.expiry_date.isoformat(),
-                strike          = float(leg.get("strike", 0)),
-                option_type     = str(leg.get("type", "")),
+                underlying=rec.symbol,
+                expiry_date_str=rec.expiry_date.isoformat(),
+                strike=float(leg.get("strike", 0)),
+                option_type=str(leg.get("type", "")),
             )
             if security_id is None:
                 log.error(
-                    "[OptionsOrderManager] [LiveExitFailed] %s  leg=%s%s  — "
-                    "security_id not found. MANUAL CLOSE REQUIRED.",
+                    "[OptionsOrderManager] [LiveExitFailed] %s leg=%s%s — "
+                    "security_id not found; manual close required.",
                     rec.order_id, leg.get("strike"), leg.get("type"),
                 )
                 return None
+            broker_qty = live_positions.get(str(security_id), 0)
+            expected_sign = 1 if str(leg.get("direction", "BUY")).upper() == "BUY" else -1
+            if broker_qty == 0:
+                absent_leg_count += 1
+                continue
+            if (1 if broker_qty > 0 else -1) != expected_sign:
+                log.critical(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — broker position for "
+                    "security_id=%s has the opposite direction to the recorded leg.",
+                    rec.order_id, security_id,
+                )
+                return None
+            if abs(broker_qty) != lot_qty:
+                log.critical(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — broker net quantity=%d "
+                    "does not match recorded filled quantity=%d for security_id=%s. "
+                    "Manual reconciliation required.",
+                    rec.order_id, broker_qty, lot_qty, security_id,
+                )
+                return None
+            close_dir = "SELL" if expected_sign > 0 else "BUY"
+            close_legs.append((leg, security_id, lot_qty, close_dir))
 
-            orig_dir  = str(leg.get("direction", "BUY")).upper()
-            close_dir = "SELL" if orig_dir == "BUY" else "BUY"
+        if absent_leg_count:
+            if close_legs:
+                log.critical(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — broker shows a mixed "
+                    "open/absent leg set. No exit orders submitted; manual reconciliation required.",
+                    rec.order_id,
+                )
+                return None
+            return []
 
+        exit_ids: List[str] = []
+        for leg, security_id, lot_qty, close_dir in close_legs:
             order_id = self._broker.place_order(
                 security_id      = security_id,
                 exchange_segment = "NSE_FNO",
@@ -1756,12 +1862,18 @@ class OptionsOrderManager:
 
             if not exit_order_ids:
                 with self._lock:
-                    rec.broker_status = _BRKST_UNRESOLVED
-                log.critical(
-                    "[OptionsOrderManager] [LiveExitFailed] %s — no confirmed "
-                    "filled leg could be matched to the broker position. "
-                    "Position remains EXIT_SUBMITTED for reconciliation.",
-                    order_id,
+                    rec.status = "closed"
+                    rec.broker_status = _BRKST_CLOSED
+                    rec.reconciliation_status = _RCON_UNRECONCILED
+                    rec.exit_reason = "BROKER_POSITION_ABSENT"
+                    rec.pnl_rs = 0.0
+                    rec.realized_pnl = None
+                    rec.closed_at = datetime.now()
+                self._journal_write_close(rec)
+                log.warning(
+                    "[OptionsOrderManager] %s has no matching open Dhan position; "
+                    "retired stale internal record without a close order or "
+                    "learning outcome.", order_id,
                 )
                 return
 
@@ -2042,6 +2154,9 @@ class OptionsOrderManager:
         # Restore open positions
         today = date.today()
         restored = 0
+        live_positions = None
+        if not getattr(self, "_paper_mode", True) and getattr(self, "_broker", None):
+            live_positions = self._get_live_positions_by_security_id()
         for row in rows:
             oid = row.get("order_id", "")
             if oid.endswith("_CLOSE"):
@@ -2279,6 +2394,18 @@ class OptionsOrderManager:
                         "(P&L=₹%.0f). Not added to active positions.", oid, _pnl,
                     )
                     continue   # skip self._orders[oid] = rec
+
+                if live_positions is not None and rec.entry_leg_fills:
+                    has_live_position = self._record_has_live_position(
+                        rec, live_positions
+                    )
+                    if has_live_position is False:
+                        log.warning(
+                            "[OptionsOrderManager] Not restoring %s: Dhan confirms "
+                            "none of its recorded entry contracts remain open. "
+                            "External close P&L is not inferred.", oid,
+                        )
+                        continue
 
                 self._orders[oid] = rec
                 restored += 1

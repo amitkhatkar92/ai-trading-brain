@@ -55,6 +55,10 @@ def _record(**overrides) -> OptionsOrderRecord:
 
 def _ready_broker() -> MagicMock:
     broker = MagicMock()
+    broker.get_positions.return_value = {
+        "status": "success",
+        "data": [{"securityId": "SEC", "netQty": 65, "positionType": "LONG"}],
+    }
     broker.get_fund_limits.return_value = {
         "status": "success", "data": {"availabelBalance": 100000.0},
     }
@@ -66,7 +70,7 @@ def _ready_broker() -> MagicMock:
 
 def _security_map():
     fake_map = MagicMock()
-    fake_map.lookup.side_effect = ["SEC_BUY", "SEC_SELL"]
+    fake_map.lookup.return_value = "SEC"
     return fake_map
 
 
@@ -198,6 +202,51 @@ def test_exit_places_order_only_for_the_leg_and_quantity_actually_filled():
     broker.place_order.assert_called_once()
     assert broker.place_order.call_args.kwargs["transaction_type"] == "SELL"
     assert broker.place_order.call_args.kwargs["quantity"] == 65
+
+
+def test_broker_confirmed_absence_never_submits_a_duplicate_exit():
+    broker = _ready_broker()
+    broker.get_positions.return_value = {"status": "success", "data": []}
+    manager = _manager(broker)
+    record = _record(entry_leg_fills=[{
+        "direction": "BUY", "strike": 22000, "opt_type": "CE",
+        "status": "TRADED", "qty_filled": 65, "avg_price": 282.55,
+    }])
+    manager._orders[record.order_id] = record
+    manager._journal_write_close = MagicMock()
+
+    with patch(
+        "data_feeds.dhan_fno_security_map.get_fno_security_map",
+        return_value=_security_map(),
+    ):
+        manager._close_position(record.order_id, 250.0, "STOP_LOSS")
+
+    broker.place_order.assert_not_called()
+    assert record.status == "closed"
+    assert record.exit_reason == "BROKER_POSITION_ABSENT"
+    assert record.realized_pnl is None
+    manager._journal_write_close.assert_called_once_with(record)
+
+
+def test_startup_does_not_restore_record_when_broker_confirms_contract_absent(tmp_path):
+    broker = _ready_broker()
+    broker.get_positions.return_value = {"status": "success", "data": []}
+    manager = _manager(broker)
+    record = _record(entry_leg_fills=[{
+        "direction": "BUY", "strike": 22000, "opt_type": "CE",
+        "status": "TRADED", "qty_filled": 65, "avg_price": 282.55,
+    }])
+    journal = tmp_path / "options_trades.csv"
+
+    with patch("execution_engine.options_order_manager.JOURNAL_PATH", str(journal)), \
+         patch(
+             "data_feeds.dhan_fno_security_map.get_fno_security_map",
+             return_value=_security_map(),
+         ):
+        manager._journal_write_open(record)
+        manager._restore_from_journal()
+
+    assert record.order_id not in manager._orders
 
 
 def test_partial_exit_fill_does_not_mark_position_closed():
