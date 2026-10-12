@@ -475,7 +475,7 @@ class TestOptionsRollbackSafety(unittest.TestCase):
         total = mgr.get_total_options_exposure_rs()
         # No open _orders, but one unresolved leg with per-leg estimate
         self.assertGreater(total, 0.0)
-        self.assertAlmostEqual(total, 7500.0 / 2, places=0)
+        self.assertAlmostEqual(total, 200.0 * 75, places=0)
 
 
 if __name__ == "__main__":

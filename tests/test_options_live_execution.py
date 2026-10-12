@@ -27,7 +27,7 @@ import unittest
 from datetime import date, datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import DEFAULT, MagicMock, patch, PropertyMock
 
 # ── Path setup ─────────────────────────────────────────────────────────────
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -102,6 +102,20 @@ def _make_mgr_paper():
 def _make_mgr_live(broker=None):
     """Build an OptionsOrderManager in live mode with a mock broker."""
     mock_broker = broker or MagicMock()
+    mock_broker.get_fund_limits.return_value = {
+        "status": "success", "data": {"availabelBalance": 1000000.0},
+    }
+    mock_broker.calculate_multi_order_margin.return_value = {
+        "status": "success", "data": {"totalMargin": 1000.0},
+    }
+    if mock_broker.get_order_status._mock_return_value is DEFAULT:
+        mock_broker.get_order_status.side_effect = lambda _order_id: {
+            "status": "TRADED",
+            "filled_qty": mock_broker.place_order.call_args_list[0].kwargs.get(
+                "quantity", 75
+            ),
+            "avg_fill_price": 100.0,
+        }
     from execution_engine.options_order_manager import OptionsOrderManager
     mgr = OptionsOrderManager.__new__(OptionsOrderManager)
     mgr._paper_mode      = False
@@ -346,6 +360,7 @@ class TestLiveExecution(unittest.TestCase):
         """Return a mock DhanFnOSecurityMap that always resolves to `returns`."""
         m = MagicMock()
         m.lookup = MagicMock(return_value=returns)
+        m.get_lot_size.return_value = 75
         return m
 
     def test_e01_live_execute_calls_broker_place_order(self):
@@ -469,6 +484,7 @@ class TestMultiLeg(unittest.TestCase):
 
         fno_map = MagicMock()
         fno_map.lookup = MagicMock(return_value="12345")
+        fno_map.get_lot_size.return_value = 75
 
         signal = _make_signal(stype="IRON_CONDOR", legs=self._legs_iron_condor())
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_open"), \
@@ -494,6 +510,7 @@ class TestMultiLeg(unittest.TestCase):
 
         fno_map = MagicMock()
         fno_map.lookup = MagicMock(return_value="12345")
+        fno_map.get_lot_size.return_value = 75
 
         # BEAR_PUT_SPREAD: BUY ATM PE, SELL OTM PE — broker must see BUY first
         legs = [
@@ -519,6 +536,7 @@ class TestMultiLeg(unittest.TestCase):
 
         fno_map = MagicMock()
         fno_map.lookup = MagicMock(return_value="12345")
+        fno_map.get_lot_size.return_value = 75
 
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_open"), \
              patch("execution_engine.options_order_manager.OptionsOrderManager._ensure_journal"), \
@@ -541,6 +559,7 @@ class TestMultiLeg(unittest.TestCase):
 
         fno_map = MagicMock()
         fno_map.lookup = MagicMock(return_value="12345")
+        fno_map.get_lot_size.return_value = 75
 
         with patch("execution_engine.options_order_manager.OptionsOrderManager._journal_write_open"), \
              patch("execution_engine.options_order_manager.OptionsOrderManager._ensure_journal"), \

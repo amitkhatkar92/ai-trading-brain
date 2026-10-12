@@ -75,6 +75,15 @@ def _build_mgr(mock_broker=None) -> OptionsOrderManager:
     mgr = OptionsOrderManager.__new__(OptionsOrderManager)
     mgr._paper_mode = False
     mgr._broker     = mock_broker or MagicMock()
+    mgr._broker.get_fund_limits.return_value = {
+        "status": "success", "data": {"availabelBalance": 100000.0},
+    }
+    mgr._broker.calculate_multi_order_margin.return_value = {
+        "status": "success", "data": {"totalMargin": 1000.0},
+    }
+    mgr._broker.get_order_status.return_value = {
+        "status": "TRADED", "filled_qty": 65, "avg_fill_price": 40.0,
+    }
     mgr._orders     = {}
     mgr._lock       = threading.Lock()
     mgr._unresolved = {}

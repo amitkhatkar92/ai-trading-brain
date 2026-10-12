@@ -77,6 +77,8 @@ JOURNAL_PATH           = "data/options_trades.csv"
 
 # Slippage assumption: 0.5 % of premium (mid-to-fill gap)
 SLIPPAGE_PCT           = 0.005
+ENTRY_FILL_POLL_ATTEMPTS = 5
+ENTRY_FILL_POLL_INTERVAL_S = 0.25
 
 # Persistent record for rollback failures / unresolved live exposures
 ROLLBACK_FAILURES_PATH   = "data/options_rollback_failures.csv"
@@ -427,13 +429,6 @@ class OptionsOrderManager:
                 )
                 return None
             rec.broker_order_ids = broker_ids
-            # Phase 2: poll entry fills — capture actual broker execution
-            rec.entry_leg_fills = self._poll_entry_fills(rec, broker_ids)
-            _net = self._compute_net_fill_price(rec.entry_leg_fills)
-            if _net is not None:
-                rec.actual_entry_fill_price = _net
-                rec.reconciliation_status   = _RCON_ENTRY
-                rec.broker_status           = _BRKST_FILLED
         else:
             with self._lock:
                 self._orders[oid] = rec
@@ -522,8 +517,7 @@ class OptionsOrderManager:
         # BUY legs first: ensures we hold protection before writing short positions
         sorted_legs = sorted(legs, key=lambda l: (0 if l.get("direction") == "BUY" else 1))
 
-        placed: List[tuple] = []   # [(order_id, security_id, transaction_type, leg)]
-
+        resolved_legs: List[tuple] = []
         for leg in sorted_legs:
             security_id = fno_map.lookup(
                 underlying      = rec.symbol,
@@ -537,12 +531,18 @@ class OptionsOrderManager:
                     "leg=%s%s  expiry=%s  — security_id not found; "
                     "rolling back %d already-placed leg(s).",
                     rec.symbol, leg.get("strike"), leg.get("type"),
-                    rec.expiry_date.isoformat(), len(placed),
+                    rec.expiry_date.isoformat(), 0,
                 )
-                self._rollback_legs(placed, rec)
                 return None
 
             tx = str(leg.get("direction", "BUY")).upper()
+            resolved_legs.append((security_id, tx, leg))
+
+        if not self._preflight_live_margin(resolved_legs, lot_qty):
+            return None
+
+        placed: List[tuple] = []   # [(order_id, security_id, transaction_type, leg)]
+        for security_id, tx, leg in resolved_legs:
             order_id = self._broker.place_order(
                 security_id      = security_id,
                 exchange_segment = "NSE_FNO",
@@ -587,7 +587,111 @@ class OptionsOrderManager:
                 float(leg.get("premium", 0)), lot_qty, security_id, order_id,
             )
 
-        return [p[0] for p in placed]
+        fills: List[dict] = []
+        for attempt in range(ENTRY_FILL_POLL_ATTEMPTS):
+            fills = self._poll_entry_fills(rec, [item[0] for item in placed])
+            if all(
+                str(fill.get("status", "")).upper()
+                in ("TRADED", "FILLED", "PARTIALLY_TRADED", "PARTIALLY_FILLED")
+                and int(fill.get("qty_filled", 0) or 0) == lot_qty
+                for fill in fills
+            ) and len(fills) == len(placed):
+                rec.entry_leg_fills = fills
+                rec.actual_entry_fill_price = self._compute_net_fill_price(fills)
+                rec.reconciliation_status = _RCON_ENTRY
+                rec.broker_status = _BRKST_FILLED
+                return [item[0] for item in placed]
+
+            if any(
+                str(fill.get("status", "")).upper() in ("REJECTED", "CANCELLED")
+                for fill in fills
+            ):
+                break
+            if attempt + 1 < ENTRY_FILL_POLL_ATTEMPTS:
+                time.sleep(ENTRY_FILL_POLL_INTERVAL_S)
+
+        rec.entry_leg_fills = fills
+        rec.broker_status = _BRKST_UNRESOLVED
+        log.error(
+            "[OptionsOrderManager] [EntryFillIncomplete] %s — every leg must be "
+            "fully filled; observed=%s. Cancelling/reversing confirmed fills.",
+            rec.order_id,
+            [
+                (f.get("status"), f.get("qty_filled"), f.get("oms_error_detail", ""))
+                for f in fills
+            ],
+        )
+        self._rollback_legs(placed, rec)
+        return None
+
+    def _preflight_live_margin(self, resolved_legs: List[tuple], lot_qty: int) -> bool:
+        """Fail closed unless Dhan confirms the complete structure fits funds."""
+        orders: List[Dict[str, Any]] = []
+        for security_id, tx, leg in resolved_legs:
+            price = float(
+                leg.get("ask", 0.0) if tx == "BUY"
+                else leg.get("bid", 0.0)
+            ) or float(leg.get("premium", 0.0) or 0.0)
+            if price <= 0:
+                log.error(
+                    "[OptionsOrderManager] [MarginPreflightFailed] Missing usable "
+                    "price for %s %s%s; refusing live placement.",
+                    tx, leg.get("strike"), leg.get("type"),
+                )
+                return False
+            orders.append({
+                "exchangeSegment": "NSE_FNO",
+                "transactionType": tx,
+                "quantity": lot_qty,
+                "productType": "MARGIN",
+                "securityId": str(security_id),
+                "price": price,
+            })
+
+        try:
+            margin_response = self._broker.calculate_multi_order_margin(
+                orders, include_positions=False, include_orders=False
+            )
+            funds_response = self._broker.get_fund_limits()
+            margin_data = margin_response.get("data", {})
+            funds_data = funds_response.get("data", {})
+            if (
+                margin_response.get("status") != "success"
+                or funds_response.get("status") != "success"
+                or not isinstance(margin_data, dict)
+                or not isinstance(funds_data, dict)
+            ):
+                raise ValueError("Dhan margin/fund response was not successful")
+            required_margin = float(
+                margin_data.get("totalMargin", margin_data.get("total_margin"))
+            )
+            available_funds = float(
+                funds_data.get(
+                    "availabelBalance", funds_data.get("availableBalance")
+                )
+            )
+            if required_margin < 0 or available_funds < 0:
+                raise ValueError("Dhan returned a negative margin/funds value")
+        except Exception as exc:
+            log.error(
+                "[OptionsOrderManager] [MarginPreflightFailed] %s — %s; "
+                "refusing live options placement.", type(exc).__name__, exc,
+            )
+            return False
+
+        if available_funds < required_margin:
+            log.warning(
+                "[OptionsOrderManager] [InsufficientFunds] live options blocked: "
+                "required_margin=₹%.2f available=₹%.2f shortfall=₹%.2f.",
+                required_margin, available_funds,
+                required_margin - available_funds,
+            )
+            return False
+        log.info(
+            "[OptionsOrderManager] [MarginPreflightPassed] required=₹%.2f "
+            "available=₹%.2f.", required_margin, available_funds,
+        )
+        return True
 
     def _rollback_legs(
         self,
@@ -648,14 +752,97 @@ class OptionsOrderManager:
                 continue
 
             broker_status = str(status.get("status", "")).upper()
-            traded = broker_status in ("TRADED", "PARTIALLY_TRADED", "FILLED")
+            if broker_status in (
+                "PARTIALLY_TRADED", "PART_TRADED", "PARTIAL", "PARTIALLY_FILLED"
+            ):
+                try:
+                    self._broker.cancel_order(order_id)
+                    final_status = self._broker.get_order_status(order_id)
+                except Exception as cancel_exc:
+                    final_status = None
+                    log.critical(
+                        "[OptionsRollback] CRITICAL — could not cancel/reconcile "
+                        "partial order_id=%s: %s.", order_id, cancel_exc,
+                    )
+                if not final_status:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=status.get("filled_qty"),
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED,
+                        reason="partial order cancel/final status unresolved",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
+                    continue
+                status = final_status
+                broker_status = str(status.get("status", "")).upper()
+                try:
+                    final_filled_qty = int(status.get("filled_qty", 0) or 0)
+                    remaining_qty = int(status.get("remaining_qty", 0) or 0)
+                except (TypeError, ValueError):
+                    final_filled_qty = -1
+                    remaining_qty = -1
+                if final_filled_qty < 0 or remaining_qty < 0:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=status.get("filled_qty"),
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED_QTY,
+                        reason="invalid post-cancel quantity for partial order",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
+                    continue
+                if broker_status in ("CANCELLED", "REJECTED") and final_filled_qty > 0:
+                    broker_status = "PARTIALLY_TRADED"
+                elif broker_status not in (
+                    "CANCELLED", "REJECTED", "TRADED", "FILLED"
+                ) and remaining_qty > 0:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=final_filled_qty,
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED,
+                        reason="partial order remains active after cancellation",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
+                    continue
+                elif final_filled_qty > 0 and remaining_qty == 0:
+                    broker_status = "PARTIALLY_TRADED"
+
+            try:
+                observed_filled_qty = int(status.get("filled_qty", 0) or 0)
+            except (TypeError, ValueError):
+                observed_filled_qty = -1
+            traded = broker_status in (
+                "TRADED", "PARTIALLY_TRADED", "PART_TRADED", "PARTIAL",
+                "PARTIALLY_FILLED", "FILLED",
+            )
 
             if broker_status in ("CANCELLED", "REJECTED"):
-                log.info(
-                    "[OptionsRollback] Leg order_id=%s already %s — no action needed.",
-                    order_id, broker_status,
-                )
-                continue
+                if observed_filled_qty > 0:
+                    broker_status = "PARTIALLY_TRADED"
+                    traded = True
+                else:
+                    log.info(
+                        "[OptionsRollback] Leg order_id=%s already %s — no action needed.",
+                        order_id, broker_status,
+                    )
+                    continue
 
             if traded:
                 raw_qty = status.get("filled_qty", None)
@@ -778,9 +965,93 @@ class OptionsOrderManager:
                 continue
 
             if ok:
-                log.info(
-                    "[OptionsRollback] Cancelled pending leg order_id=%s", order_id,
-                )
+                try:
+                    final_status = self._broker.get_order_status(order_id)
+                except Exception as status_exc:
+                    final_status = None
+                    log.critical(
+                        "[OptionsRollback] CRITICAL — post-cancel status failed "
+                        "for order_id=%s: %s.", order_id, status_exc,
+                    )
+                if not final_status:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=None,
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED,
+                        reason="post-cancel order status unavailable",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
+                    continue
+                try:
+                    final_filled_qty = int(final_status.get("filled_qty", 0) or 0)
+                    final_remaining_qty = int(final_status.get("remaining_qty", 0) or 0)
+                except (TypeError, ValueError):
+                    final_filled_qty = -1
+                    final_remaining_qty = -1
+                final_state = str(final_status.get("status", "")).upper()
+                if final_filled_qty < 0 or final_remaining_qty < 0:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=final_status.get("filled_qty"),
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED_QTY,
+                        reason="invalid post-cancel order quantity",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
+                    continue
+                if final_filled_qty > 0:
+                    if final_state in (
+                        "TRADED", "FILLED", "PARTIALLY_TRADED", "PART_TRADED",
+                        "PARTIAL", "PARTIALLY_FILLED", "CANCELLED", "REJECTED",
+                    ) or final_remaining_qty == 0:
+                        self._rollback_legs(
+                            [(order_id, security_id, original_tx, leg)], rec
+                        )
+                    else:
+                        self._record_rollback_failure(
+                            original_order_id=order_id,
+                            security_id=security_id,
+                            leg=leg,
+                            rec=rec,
+                            original_tx=original_tx,
+                            filled_qty_raw=final_filled_qty,
+                            reversal_tx=None,
+                            reversal_order_id=None,
+                            status=_RBST_UNRESOLVED,
+                            reason="order filled during cancellation and remains active",
+                            per_leg_max_loss=per_leg_max_loss,
+                        )
+                    continue
+                if final_state in ("CANCELLED", "REJECTED", "EXPIRED") or final_remaining_qty == 0:
+                    log.info(
+                        "[OptionsRollback] Cancelled pending leg order_id=%s",
+                        order_id,
+                    )
+                else:
+                    self._record_rollback_failure(
+                        original_order_id=order_id,
+                        security_id=security_id,
+                        leg=leg,
+                        rec=rec,
+                        original_tx=original_tx,
+                        filled_qty_raw=0,
+                        reversal_tx=None,
+                        reversal_order_id=None,
+                        status=_RBST_UNRESOLVED,
+                        reason="order remains active after successful cancel response",
+                        per_leg_max_loss=per_leg_max_loss,
+                    )
             else:
                 # Cancel returned False — may have filled during the cancel window
                 self._reconcile_and_record(
@@ -881,6 +1152,25 @@ class OptionsOrderManager:
         per_leg_max_loss: float,
     ) -> None:
         """Persist a rollback failure record and register the unresolved exposure."""
+        try:
+            filled_qty = int(filled_qty_raw) if filled_qty_raw is not None else None
+        except (TypeError, ValueError):
+            filled_qty = None
+        if filled_qty is None:
+            exposure_estimate = float("inf")
+        elif filled_qty <= 0:
+            exposure_estimate = per_leg_max_loss
+        elif str(original_tx).upper() == "BUY":
+            try:
+                premium = float(leg.get("premium", 0.0) or 0.0)
+            except (TypeError, ValueError):
+                premium = 0.0
+            exposure_estimate = max(per_leg_max_loss, premium * filled_qty)
+        else:
+            # An unclosed short without confirmed hedge quantity is not bounded
+            # by the intended spread's max-loss estimate.
+            exposure_estimate = float("inf")
+
         exposure_id = (
             f"RBF_{rec.order_id}_{security_id}_{int(time.time_ns() // 1_000_000)}"
         )
@@ -901,7 +1191,7 @@ class OptionsOrderManager:
             "reversal_order_id": reversal_order_id or "",
             "status":            status,
             "reason":            reason,
-            "max_loss_rs_estimate": str(round(per_leg_max_loss, 4)),
+            "max_loss_rs_estimate": str(round(exposure_estimate, 4)),
         }
         try:
             with open(ROLLBACK_FAILURES_PATH, "a", newline="", encoding="utf-8") as fh:
@@ -920,7 +1210,7 @@ class OptionsOrderManager:
                 "order_id":             original_order_id,
                 "security_id":          security_id,
                 "status":               status,
-                "max_loss_rs_estimate": per_leg_max_loss,
+                "max_loss_rs_estimate": exposure_estimate,
             }
 
         log.critical(
@@ -928,7 +1218,7 @@ class OptionsOrderManager:
             "exposure_id=%s  underlying=%s  security_id=%s  "
             "status=%s  max_loss_estimate=\u20b9%.0f  reason=%s",
             exposure_id, rec.symbol, security_id,
-            status, per_leg_max_loss, reason,
+            status, exposure_estimate, reason,
         )
 
     def _ensure_rollback_journal(self) -> None:
@@ -1031,10 +1321,12 @@ class OptionsOrderManager:
 
         from data_feeds.dhan_fno_security_map import get_fno_security_map
         fno_map = get_fno_security_map()
-        lot_qty = rec.lots * rec.lot_size
         exit_ids: List[str] = []
 
         for leg in rec.legs:
+            lot_qty = self._filled_qty_for_leg(rec, leg)
+            if lot_qty <= 0:
+                continue
             security_id = fno_map.lookup(
                 underlying      = rec.symbol,
                 expiry_date_str = rec.expiry_date.isoformat(),
@@ -1072,6 +1364,7 @@ class OptionsOrderManager:
                 return None
 
             exit_ids.append(order_id)
+            rec.exit_broker_order_ids = list(exit_ids)
             log.info(
                 "[OptionsLegExit] ✅ Closed  %s  %s%s  qty=%d  "
                 "security_id=%s  exit_order_id=%s",
@@ -1080,6 +1373,27 @@ class OptionsOrderManager:
             )
 
         return exit_ids
+
+    def _filled_qty_for_leg(
+        self,
+        rec: "OptionsOrderRecord",
+        leg: dict,
+    ) -> int:
+        """Use confirmed entry quantity; legacy records assume their full size."""
+        if not rec.entry_leg_fills:
+            return rec.lots * rec.lot_size
+        for fill in rec.entry_leg_fills:
+            try:
+                same_strike = float(fill.get("strike", 0)) == float(leg.get("strike", 0))
+            except (TypeError, ValueError):
+                same_strike = False
+            if (
+                same_strike
+                and str(fill.get("opt_type", "")).upper() == str(leg.get("type", "")).upper()
+                and str(fill.get("direction", "")).upper() == str(leg.get("direction", "")).upper()
+            ):
+                return max(0, int(fill.get("qty_filled", 0) or 0))
+        return 0
 
     # ── Fill polling helpers (Phase 2 / Phase 3) ───────────────────────────
 
@@ -1107,6 +1421,7 @@ class OptionsOrderManager:
                     "status":     st.get("status", "UNKNOWN"),
                     "qty_filled": int(st.get("filled_qty", 0) or 0),
                     "avg_price":  float(st.get("avg_fill_price", 0.0) or 0.0),
+                    "oms_error_detail": st.get("oms_error_detail", "") or "",
                     "ts":         datetime.now().isoformat(),
                 })
             except Exception as exc:
@@ -1119,6 +1434,7 @@ class OptionsOrderManager:
                     "qty_filled": 0,
                     "avg_price":  0.0,
                     "error":      str(exc),
+                    "oms_error_detail": "",
                     "ts":         datetime.now().isoformat(),
                 })
         return fills
@@ -1133,10 +1449,14 @@ class OptionsOrderManager:
         Correlates exit_order_ids with rec.legs (same iteration order as _place_live_exit_legs).
         """
         fills: List[dict] = []
+        exit_legs = [
+            leg for leg in rec.legs if self._filled_qty_for_leg(rec, leg) > 0
+        ]
         for i, oid in enumerate(exit_order_ids):
-            leg = rec.legs[i] if i < len(rec.legs) else {}
+            leg = exit_legs[i] if i < len(exit_legs) else {}
             orig_dir  = str(leg.get("direction", "BUY")).upper()
             close_dir = "SELL" if orig_dir == "BUY" else "BUY"
+            requested_qty = self._filled_qty_for_leg(rec, leg) if leg else 0
             try:
                 st = self._broker.get_order_status(oid)
                 fills.append({
@@ -1146,6 +1466,7 @@ class OptionsOrderManager:
                     "opt_type":   leg.get("type", ""),
                     "status":     st.get("status", "UNKNOWN"),
                     "qty_filled": int(st.get("filled_qty", 0) or 0),
+                    "requested_qty": requested_qty,
                     "avg_price":  float(st.get("avg_fill_price", 0.0) or 0.0),
                     "ts":         datetime.now().isoformat(),
                 })
@@ -1157,6 +1478,7 @@ class OptionsOrderManager:
                     "opt_type":   leg.get("type", ""),
                     "status":     "POLL_ERROR",
                     "qty_filled": 0,
+                    "requested_qty": requested_qty,
                     "avg_price":  0.0,
                     "error":      str(exc),
                     "ts":         datetime.now().isoformat(),
@@ -1188,6 +1510,35 @@ class OptionsOrderManager:
         Compute realized P&L using actual entry and exit fill prices.
         Returns None if either actual price is unavailable.
         """
+        if rec.entry_leg_fills and rec.exit_leg_fills:
+            entry_cashflow = 0.0
+            exit_cashflow = 0.0
+            entry_fill_count = 0
+            exit_fill_count = 0
+            for fill in rec.entry_leg_fills:
+                quantity = int(fill.get("qty_filled", 0) or 0)
+                if quantity <= 0:
+                    continue
+                price = float(fill.get("avg_price", 0.0) or 0.0)
+                if price <= 0:
+                    return None
+                direction = str(fill.get("direction", "")).upper()
+                entry_cashflow += price * quantity * (1.0 if direction == "SELL" else -1.0)
+                entry_fill_count += 1
+            for fill in rec.exit_leg_fills:
+                quantity = int(fill.get("qty_filled", 0) or 0)
+                if quantity <= 0:
+                    continue
+                price = float(fill.get("avg_price", 0.0) or 0.0)
+                if price <= 0:
+                    return None
+                direction = str(fill.get("direction", "")).upper()
+                exit_cashflow += price * quantity * (1.0 if direction == "SELL" else -1.0)
+                exit_fill_count += 1
+            if entry_fill_count and exit_fill_count:
+                return round(entry_cashflow + exit_cashflow, 2)
+            return None
+
         entry = rec.actual_entry_fill_price
         exit_ = rec.actual_exit_fill_price
         if entry is None or exit_ is None:
@@ -1342,6 +1693,32 @@ class OptionsOrderManager:
             if rec is None or rec.status not in ("open", "EXIT_SUBMITTED"):
                 return
 
+        if (
+            not self._paper_mode
+            and rec.entry_leg_fills
+            and all(int(fill.get("qty_filled", 0) or 0) == 0 for fill in rec.entry_leg_fills)
+            and all(
+                str(fill.get("status", "")).upper()
+                in ("REJECTED", "CANCELLED", "EXPIRED")
+                for fill in rec.entry_leg_fills
+            )
+        ):
+            with self._lock:
+                rec.status = "closed"
+                rec.broker_status = _BRKST_CLOSED
+                rec.reconciliation_status = _RCON_FULL
+                rec.exit_reason = "NO_ENTRY_FILL"
+                rec.exit_premium = 0.0
+                rec.pnl_rs = 0.0
+                rec.realized_pnl = 0.0
+                rec.closed_at = datetime.now()
+            self._journal_write_close(rec)
+            log.info(
+                "[OptionsExit] No broker entry fills for %s; no exit orders or "
+                "learning outcome recorded.", order_id,
+            )
+            return
+
         # ── Live exit path ─────────────────────────────────────────────────
         if not self._paper_mode and self._broker is not None:
             # Set EXIT_SUBMITTED before placing — prevents duplicate exit on next cycle
@@ -1377,16 +1754,29 @@ class OptionsOrderManager:
                 )
                 return   # position stays EXIT_SUBMITTED
 
+            if not exit_order_ids:
+                with self._lock:
+                    rec.broker_status = _BRKST_UNRESOLVED
+                log.critical(
+                    "[OptionsOrderManager] [LiveExitFailed] %s — no confirmed "
+                    "filled leg could be matched to the broker position. "
+                    "Position remains EXIT_SUBMITTED for reconciliation.",
+                    order_id,
+                )
+                return
+
             # Phase 3: poll fills to confirm execution before marking closed
             exit_fills = self._poll_exit_fills(rec, exit_order_ids)
             with self._lock:
                 rec.exit_broker_order_ids = exit_order_ids
                 rec.exit_leg_fills        = exit_fills
 
-            all_filled = all(
+            all_filled = bool(exit_fills) and all(
                 str(f.get("status", "")).upper()
                 in ("TRADED", "FILLED", "PARTIALLY_TRADED")
-                and int(f.get("qty_filled", 0) or 0) > 0
+                and int(f.get("qty_filled", 0) or 0)
+                == int(f.get("requested_qty", 0) or 0)
+                and int(f.get("requested_qty", 0) or 0) > 0
                 for f in exit_fills
             )
 
@@ -1698,6 +2088,22 @@ class OptionsOrderManager:
                 _exit_fills  = _safe_json(row.get("exit_leg_fills", "")) or []
                 _kp          = _safe_json(row.get("knowledge_provenance", "")) or {}
                 _leg_out     = _safe_json(row.get("leg_outcomes", "")) or []
+
+                if (
+                    isinstance(_entry_fills, list)
+                    and _entry_fills
+                    and all(int(fill.get("qty_filled", 0) or 0) == 0 for fill in _entry_fills)
+                    and all(
+                        str(fill.get("status", "")).upper()
+                        in ("REJECTED", "CANCELLED", "EXPIRED")
+                        for fill in _entry_fills
+                    )
+                ):
+                    log.warning(
+                        "[OptionsOrderManager] Not restoring %s: persisted entry "
+                        "fills confirm no broker position was opened.", oid,
+                    )
+                    continue
 
                 # ── EXIT_SUBMITTED startup reconciliation (Phase 3 — Part A) ───
                 # Determine the restore status by polling the broker for exit

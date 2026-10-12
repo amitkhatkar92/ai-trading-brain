@@ -8,7 +8,7 @@ Install: pip install dhanhq
 """
 
 from __future__ import annotations
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from utils import get_logger
 
@@ -326,6 +326,41 @@ class DhanBroker:
         if not self._connected or self._dhan is None:
             return {}
         return self._dhan.get_holdings()
+
+    def get_fund_limits(self) -> Dict[str, Any]:
+        """Return Dhan's current available-funds snapshot; never raises."""
+        if not self._connected or self._dhan is None:
+            return {}
+        try:
+            response = self._dhan.get_fund_limits()
+            return response if isinstance(response, dict) else {}
+        except Exception as exc:
+            log.warning("[DhanBroker] get_fund_limits failed: %s", exc)
+            return {}
+
+    def calculate_multi_order_margin(
+        self,
+        orders: List[Dict[str, Any]],
+        include_positions: bool = False,
+        include_orders: bool = False,
+    ) -> Dict[str, Any]:
+        """Calculate combined order margin through Dhan's read-only API."""
+        if not self._connected or self._dhan is None or not orders:
+            return {}
+        payload = {
+            "includePosition": include_positions,
+            "includeOrders": include_orders,
+            "dhanClientId": self.client_id,
+            "scripList": orders,
+        }
+        try:
+            response = self._dhan.dhan_http.post(
+                "/margincalculator/multi", payload
+            )
+            return response if isinstance(response, dict) else {}
+        except Exception as exc:
+            log.warning("[DhanBroker] multi-order margin calculation failed: %s", exc)
+            return {}
 
     def get_order_status(self, order_id: str) -> Dict[str, Any]:
         """Return fill status for order_id (ARCH-004 LIVE-003/004: fill reconciliation).

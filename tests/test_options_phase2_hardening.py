@@ -121,7 +121,7 @@ class TestA_RollbackEstimatePersisted(unittest.TestCase):
                 rows = list(csv.DictReader(fh))
 
             self.assertEqual(len(rows), 1)
-            self.assertEqual(rows[0]["max_loss_rs_estimate"], "2500.0")
+            self.assertEqual(rows[0]["max_loss_rs_estimate"], "7500.0")
         finally:
             shutil.rmtree(tmp_dir, ignore_errors=True)
 
