@@ -242,6 +242,7 @@ class OptionsOrderManager:
         self._lock       = threading.Lock()
         self._feed       = get_options_feed()
         self._unresolved: Dict[str, dict] = {}   # exposure_id → rollback failure record
+        self.last_rejection_detail = ""
         self._ensure_rollback_journal()
         self._ensure_journal()
         self._restore_unresolved()
@@ -274,10 +275,13 @@ class OptionsOrderManager:
             )
             return None
 
+        self.last_rejection_detail = ""
+
         # Parse options metadata from signal.notes
         try:
             meta = json.loads(signal.notes)
         except Exception:
+            self.last_rejection_detail = "INVALID_SIGNAL_METADATA"
             log.warning(
                 "[OptionsOrderManager] Could not parse notes for %s — rejecting.",
                 signal.symbol,
@@ -300,6 +304,7 @@ class OptionsOrderManager:
         with self._lock:
             open_count = len([o for o in self._orders.values() if o.status == "open"])
         if open_count >= MAX_OPTIONS_POSITIONS:
+            self.last_rejection_detail = "OPTIONS_POSITION_LIMIT"
             log.info(
                 "[OptionsOrderManager] Position limit (%d) reached — "
                 "rejected %s %s.",
@@ -312,6 +317,7 @@ class OptionsOrderManager:
         with self._lock:
             for o in self._orders.values():
                 if o.status == "open" and o.symbol == signal.symbol and o.option_type == stype:
+                    self.last_rejection_detail = "DUPLICATE_OPEN_OPTIONS_POSITION"
                     log.info(
                         "[OptionsOrderManager] Already have open %s %s — skip.",
                         signal.symbol, stype,
@@ -326,6 +332,7 @@ class OptionsOrderManager:
         # every index, causing DH-905 broker rejections at order time).
         lot_size = _resolve_lot_size(signal.symbol)
         if lot_size is None:
+            self.last_rejection_detail = "VERIFIED_LOT_SIZE_UNAVAILABLE"
             log.warning(
                 "[OptionsOrderManager] %s — no verified lot size available "
                 "(not an index, not found in instrument master) — rejecting "
@@ -507,6 +514,7 @@ class OptionsOrderManager:
 
         legs = meta.get("legs", [])
         if not legs:
+            self.last_rejection_detail = "MISSING_OPTION_LEGS"
             log.error(
                 "[OptionsOrderManager] [LiveAbort] No legs in meta for %s — cannot place.",
                 rec.order_id,
@@ -526,6 +534,9 @@ class OptionsOrderManager:
                 option_type     = str(leg.get("type", "")),
             )
             if security_id is None:
+                self.last_rejection_detail = (
+                    f"CONTRACT_NOT_RESOLVED strike={leg.get('strike')} type={leg.get('type')}"
+                )
                 log.error(
                     "[OptionsOrderManager] [ContractNotResolved] %s  "
                     "leg=%s%s  expiry=%s  — security_id not found; "
@@ -560,6 +571,10 @@ class OptionsOrderManager:
             )
 
             if order_id is None:
+                self.last_rejection_detail = str(
+                    getattr(self._broker, "_last_failure_detail", "")
+                    or "BROKER_REJECTED_ORDER"
+                )
                 log.error(
                     "[OptionsOrderManager] [LegRejected] %s  leg=%s%s  — "
                     "broker returned None; rolling back %d placed leg(s).",
@@ -570,6 +585,7 @@ class OptionsOrderManager:
 
             # SIM order ID means broker is disconnected; reject to prevent phantom live records
             if str(order_id).startswith("SIM_"):
+                self.last_rejection_detail = "BROKER_SIM_FALLBACK_IN_LIVE_MODE"
                 log.error(
                     "[OptionsOrderManager] [BrokerSimFallback] Live mode but broker "
                     "returned SIM id '%s'; rolling back %d placed leg(s). "
@@ -612,6 +628,10 @@ class OptionsOrderManager:
 
         rec.entry_leg_fills = fills
         rec.broker_status = _BRKST_UNRESOLVED
+        self.last_rejection_detail = "ENTRY_FILL_INCOMPLETE: " + "; ".join(
+            str(fill.get("oms_error_detail") or fill.get("status", "UNKNOWN"))
+            for fill in fills
+        )
         log.error(
             "[OptionsOrderManager] [EntryFillIncomplete] %s — every leg must be "
             "fully filled; observed=%s. Cancelling/reversing confirmed fills.",
@@ -633,6 +653,7 @@ class OptionsOrderManager:
                 else leg.get("bid", 0.0)
             ) or float(leg.get("premium", 0.0) or 0.0)
             if price <= 0:
+                self.last_rejection_detail = "MARGIN_PREFLIGHT_MISSING_LEG_PRICE"
                 log.error(
                     "[OptionsOrderManager] [MarginPreflightFailed] Missing usable "
                     "price for %s %s%s; refusing live placement.",
@@ -673,6 +694,9 @@ class OptionsOrderManager:
             if required_margin < 0 or available_funds < 0:
                 raise ValueError("Dhan returned a negative margin/funds value")
         except Exception as exc:
+            self.last_rejection_detail = (
+                f"MARGIN_PREFLIGHT_UNAVAILABLE: {type(exc).__name__}: {exc}"
+            )
             log.error(
                 "[OptionsOrderManager] [MarginPreflightFailed] %s — %s; "
                 "refusing live options placement.", type(exc).__name__, exc,
@@ -680,6 +704,10 @@ class OptionsOrderManager:
             return False
 
         if available_funds < required_margin:
+            self.last_rejection_detail = (
+                f"INSUFFICIENT_FUNDS: required=₹{required_margin:.2f} "
+                f"available=₹{available_funds:.2f}"
+            )
             log.warning(
                 "[OptionsOrderManager] [InsufficientFunds] live options blocked: "
                 "required_margin=₹%.2f available=₹%.2f shortfall=₹%.2f.",

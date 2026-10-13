@@ -62,6 +62,7 @@ class OptionsRiskEngine:
 
     def __init__(self) -> None:
         self._disabled_strategies: dict = {}   # strategy_type → disable_until date
+        self.last_rejection_detail = ""
         log.info("[OptionsRiskEngine] Initialised.")
 
     # ── Primary gate ───────────────────────────────────────────────────
@@ -79,12 +80,15 @@ class OptionsRiskEngine:
         The lot count is written into signal.notes["lots"] so the
         OptionsOrderManager can read it.
         """
+        self.last_rejection_detail = ""
         if signal.signal_type not in (SignalType.OPTIONS, SignalType.SPREAD):
+            self.last_rejection_detail = "UNSUPPORTED_SIGNAL_TYPE"
             return False
 
         try:
             meta = json.loads(signal.notes)
         except Exception:
+            self.last_rejection_detail = "INVALID_SIGNAL_METADATA"
             log.warning("[OptionsRiskEngine] Cannot parse notes — rejecting.")
             return False
 
@@ -96,11 +100,13 @@ class OptionsRiskEngine:
         # instead, matching the same fail-closed rule already applied in
         # OptionsOrderManager.execute().
         if "lot_size" not in meta:
+            self.last_rejection_detail = "LOT_SIZE_MISSING"
             log.warning("[OptionsRiskEngine] %s — lot_size missing from signal "
                         "metadata — rejecting rather than guessing.", signal.symbol)
             return False
         lot_size = int(meta["lot_size"])
         if lot_size <= 0:
+            self.last_rejection_detail = "LOT_SIZE_INVALID"
             log.warning("[OptionsRiskEngine] %s — invalid lot_size=%d — rejecting.",
                        signal.symbol, lot_size)
             return False
@@ -109,6 +115,7 @@ class OptionsRiskEngine:
         # ── Gate 1: total capital exposure ───────────────────────────
         max_options_capital = TOTAL_CAPITAL * OPTIONS_CAPITAL_PCT / 100.0
         if open_exposure_rs >= max_options_capital:
+            self.last_rejection_detail = "OPTIONS_CAPITAL_EXPOSURE_LIMIT"
             log.info(
                 "[OptionsRiskEngine] Capital gate: exposure ₹%.0f ≥ limit ₹%.0f — "
                 "rejected %s %s.",
@@ -122,6 +129,7 @@ class OptionsRiskEngine:
         # Compute viable lot count
         max_loss_per_lot = max_loss * lot_size
         if max_loss_per_lot <= 0:
+            self.last_rejection_detail = "MAX_LOSS_PER_LOT_INVALID"
             log.warning("[OptionsRiskEngine] max_loss_per_lot=0 — rejecting %s.", signal.symbol)
             return False
 
@@ -138,6 +146,7 @@ class OptionsRiskEngine:
                 lots = 1
                 trade_max_loss = max_loss_per_lot
             else:
+                self.last_rejection_detail = "OPTIONS_CAPITAL_CAPACITY_INSUFFICIENT"
                 log.info(
                     "[OptionsRiskEngine] Capacity gate: trade_max_loss ₹%.0f > "
                     "remaining ₹%.0f — rejected %s.",
@@ -192,6 +201,7 @@ class OptionsRiskEngine:
 
         # ── Gate 3: VIX guard for credit strategies ───────────────────
         if stype == "IRON_CONDOR" and vix > VIX_SELL_LIMIT:
+            self.last_rejection_detail = "IRON_CONDOR_VIX_SELL_LIMIT"
             log.info(
                 "[OptionsRiskEngine] VIX=%.1f > %.1f — Iron Condor rejected "
                 "(too risky to sell premium in high-vol).", vix, VIX_SELL_LIMIT,
@@ -200,6 +210,7 @@ class OptionsRiskEngine:
 
         # ── Gate 4: strategy loss-streak ──────────────────────────────
         if self._is_strategy_disabled(stype):
+            self.last_rejection_detail = "OPTIONS_STRATEGY_LOSS_STREAK_DISABLED"
             log.info(
                 "[OptionsRiskEngine] %s is temporarily disabled "
                 "(loss streak ≥ %d).", stype, MAX_LOSS_STREAK,
@@ -209,6 +220,7 @@ class OptionsRiskEngine:
         # ── Approved: inject lots back into meta ──────────────────────
         meta["lots"] = lots
         signal.notes = json.dumps(meta)
+        self.last_rejection_detail = ""
 
         log.info(
             "[OptionsRiskEngine] ✅ Approved %s %s  lots=%d  "

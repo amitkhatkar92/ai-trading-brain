@@ -28,7 +28,7 @@ import os
 import sched
 import time
 import threading
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import List, Optional, Set, Dict, Tuple, Any
 
 from config import SCHEDULE, MAX_DRAWDOWN_PCT, TOTAL_CAPITAL
@@ -2768,6 +2768,100 @@ class MasterOrchestrator:
     # Chain quality score minimum (0.0–1.0, see OptionsFeed.chain_quality_score)
     _CHAIN_QUALITY_MIN        = 0.5
 
+    def _record_options_shadow_decision(
+        self,
+        signal: TradeSignal,
+        snapshot: MarketSnapshot,
+        opportunity_id: Optional[str],
+        prod_executed: bool,
+    ) -> None:
+        if not opportunity_id:
+            return
+        try:
+            import json as _json
+            from learning_system.options_shadow_scorer import get_options_shadow_scorer
+            from knowledge_system.options_feature_extractor import _ivr_band, _dte_band
+
+            meta = _json.loads(signal.notes or "{}")
+            regime = str(
+                snapshot.regime.value
+                if hasattr(snapshot.regime, "value")
+                else snapshot.regime
+            )
+            context_key = (
+                f"{regime}|{_ivr_band(float(meta.get('iv_rank', 0.0)))}|"
+                f"{_dte_band(int(meta.get('dte', 0) or 0))}"
+            )
+            get_options_shadow_scorer().record_decision(
+                opportunity_id=opportunity_id,
+                symbol=signal.symbol,
+                strategy_name=signal.strategy_name or "",
+                context_key=context_key,
+                prod_confidence=float(signal.confidence),
+                prod_executed=prod_executed,
+            )
+        except Exception as exc:
+            log.debug("[OptionsShadow] decision recording skipped: %s", exc)
+
+    def _register_options_counterfactual(
+        self,
+        signal: TradeSignal,
+        snapshot: MarketSnapshot,
+        rejection_reason: str,
+    ) -> None:
+        """Persist a no-order candidate for hypothetical options learning."""
+        try:
+            import json as _json
+            meta = _json.loads(signal.notes or "{}")
+            opportunity_id = meta.get("opportunity_id")
+            if not opportunity_id:
+                return
+            expiry = meta.get("expiry_date") or getattr(signal, "expiry", None)
+            if isinstance(expiry, str):
+                expiry_date = expiry
+            elif isinstance(expiry, date):
+                expiry_date = expiry.isoformat()
+            else:
+                expiry_date = ""
+            direction = str(
+                signal.direction.value
+                if hasattr(signal.direction, "value")
+                else signal.direction
+            )
+            regime = str(
+                snapshot.regime.value
+                if hasattr(snapshot.regime, "value")
+                else snapshot.regime
+            )
+            from knowledge_system.options_counterfactual_engine import (
+                get_options_counterfactual_engine,
+            )
+            get_options_counterfactual_engine().register_rejection(
+                opportunity_id=opportunity_id,
+                symbol=signal.symbol,
+                strategy_name=signal.strategy_name or "",
+                direction=direction,
+                rejection_reason=rejection_reason,
+                expected_pnl=0.0,
+                expected_entry_price=float(signal.entry_price or 0.0),
+                dte=int(meta.get("dte", 0) or 0),
+                spot=float(meta.get("spot", 0.0) or 0.0),
+                iv=float(meta.get("atm_iv", meta.get("iv", 0.0)) or 0.0),
+                regime=regime,
+                confidence=float(signal.confidence),
+                iv_rank=float(meta.get("iv_rank", 0.0) or 0.0),
+                legs=meta.get("legs", []),
+                lots=int(meta.get("lots", 1) or 1),
+                lot_size=int(meta.get("lot_size", 1) or 1),
+                expiry_date=expiry_date,
+                stop_premium=float(signal.stop_loss or 0.0),
+                target_premium=float(signal.target_price or 0.0),
+                entry_quotes_live=bool(meta.get("is_live", False)),
+                entry_quote_source=str(meta.get("data_source", "") or ""),
+            )
+        except Exception as exc:
+            log.debug("[OptionsCounterfactual] registration skipped: %s", exc)
+
     def _run_options_fast_path(self, signals: List[TradeSignal],
                                snapshot: MarketSnapshot) -> None:
         """
@@ -2800,6 +2894,10 @@ class MasterOrchestrator:
                 "execution window opens 09:45.",
                 _ofp_now.strftime("%H:%M:%S"),
             )
+            for signal in signals:
+                self._register_options_counterfactual(
+                    signal, snapshot, "EXECUTION_WINDOW_CLOSED"
+                )
             return
         # ── end Layer 2 (options) ─────────────────────────────────────────
 
@@ -2808,6 +2906,10 @@ class MasterOrchestrator:
         # Options must never trade when the entire system is halted.
         if not is_trading_enabled():
             log.warning("[OptionsFastPath] ⛔ Kill switch active — all options blocked.")
+            for signal in signals:
+                self._register_options_counterfactual(
+                    signal, snapshot, "GLOBAL_KILL_SWITCH"
+                )
             return
 
         if snapshot.vix > 45.0:
@@ -2815,6 +2917,10 @@ class MasterOrchestrator:
                 "[OptionsFastPath] ⛔ VIX=%.1f > 45 — extreme market stress, "
                 "options blocked (all strategies).", snapshot.vix
             )
+            for signal in signals:
+                self._register_options_counterfactual(
+                    signal, snapshot, "VIX_EXTREME_BLOCK"
+                )
             return
 
         # ── LAYER B: Signal Quality Gate ────────────────────────────────
@@ -2851,6 +2957,10 @@ class MasterOrchestrator:
                 open_exposure_rs=self.options_order_manager.get_total_options_exposure_rs(),
             )
             if not approved:
+                _risk_rejection_detail = str(
+                    getattr(self.options_risk_engine, "last_rejection_detail", "")
+                    or "OPTIONS_RISK_ENGINE_REJECTED"
+                )
                 log.info(
                     "[OptionsFastPath] ❌ [LayerC] Risk engine rejected %s %s.",
                     signal.symbol, signal.strategy_name,
@@ -2876,29 +2986,19 @@ class MasterOrchestrator:
                         ),
                         regime        = _sig_ctx.get("regime", ""),
                         vix           = _sig_ctx.get("vix", 0.0),
+                        dte           = int(_sig_notes_meta.get("dte", 0) or 0),
+                        iv_rank       = float(_sig_notes_meta.get("iv_rank", 0.0) or 0.0),
+                        chain_quality = float(_sig_notes_meta.get("chain_quality", 0.0) or 0.0),
+                        spot_price    = float(_sig_notes_meta.get("spot", 0.0) or 0.0),
+                        atm_iv        = float(_sig_notes_meta.get("atm_iv", 0.0) or 0.0),
+                        legs_context  = _sig_notes_meta.get("legs", []),
                         quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
                         risk_approved         = False,
-                        risk_rejection_reason = "options_risk_engine_rejected",
+                        risk_rejection_reason = _risk_rejection_detail,
                     ))
-                    # Register counterfactual monitoring for risk-blocked signals
-                    if _sig_opp_id:
-                        from knowledge_system.options_counterfactual_engine import (
-                            get_options_counterfactual_engine,
-                        )
-                        get_options_counterfactual_engine().register_rejection(
-                            opportunity_id       = _sig_opp_id,
-                            symbol               = signal.symbol,
-                            strategy_name        = signal.strategy_name or "",
-                            direction            = str(signal.direction.value if hasattr(signal.direction, "value") else signal.direction),
-                            rejection_reason     = "options_risk_engine_rejected",
-                            expected_pnl         = 0.0,
-                            expected_entry_price = float(signal.entry_price or 0),
-                            dte                  = int(_sig_notes_meta.get("dte", 0)),
-                            spot                 = float(_sig_notes_meta.get("spot", 0)),
-                            iv                   = 0.0,
-                            regime               = _sig_ctx.get("regime", ""),
-                            confidence           = signal.confidence,
-                        )
+                    self._register_options_counterfactual(
+                        signal, snapshot, _risk_rejection_detail
+                    )
                 except Exception:
                     pass
                 continue
@@ -2922,6 +3022,12 @@ class MasterOrchestrator:
                     direction     = str(signal.direction.value if hasattr(signal.direction, "value") else signal.direction),
                     regime        = _sig_ctx.get("regime", ""),
                     vix           = _sig_ctx.get("vix", 0.0),
+                    dte           = int(_sig_notes_meta.get("dte", 0) or 0),
+                    iv_rank       = float(_sig_notes_meta.get("iv_rank", 0.0) or 0.0),
+                    chain_quality = float(_sig_notes_meta.get("chain_quality", 0.0) or 0.0),
+                    spot_price    = float(_sig_notes_meta.get("spot", 0.0) or 0.0),
+                    atm_iv        = float(_sig_notes_meta.get("atm_iv", 0.0) or 0.0),
+                    legs_context  = _sig_notes_meta.get("legs", []),
                     quality_checks_passed = ["C1", "C2", "C3", "C4", "C5", "C6"],
                     risk_approved = True,
                 ))
@@ -2938,6 +3044,9 @@ class MasterOrchestrator:
 
             if order:
                 self._last_options_placed += 1
+                self._record_options_shadow_decision(
+                    signal, snapshot, _sig_opp_id, prod_executed=True
+                )
                 log.info(
                     "[OptionsFastPath] ✅ PLACED %s  %s  lots=%d  "
                     "max_loss=₹%.0f  DTE=%d  chain_quality=%.2f",
@@ -3067,6 +3176,15 @@ class MasterOrchestrator:
                     ))
                 except Exception:
                     pass
+                self._register_options_counterfactual(
+                    signal,
+                    snapshot,
+                    getattr(
+                        self.options_order_manager,
+                        "last_rejection_detail",
+                        "OPTIONS_LAYER_D_PLACEMENT_FAILED",
+                    ) or "OPTIONS_LAYER_D_PLACEMENT_FAILED",
+                )
 
         # Run exit checks each cycle to close positions that hit SL/TP/DTE
         self.options_order_manager.check_exits()
@@ -3145,6 +3263,9 @@ class MasterOrchestrator:
                     vix               = snapshot.vix,
                     data_source       = _obs_meta.get("data_source", ""),
                     iv_source         = _obs_meta.get("iv_source", ""),
+                    spot_price        = float(_obs_meta.get("spot", 0.0) or 0.0),
+                    atm_iv            = float(_obs_meta.get("atm_iv", 0.0) or 0.0),
+                    legs_context      = _obs_meta.get("legs", []),
                     quality_checks_passed = checks_passed or [],
                     rejection_check       = check,
                     rejection_reason      = reason,
@@ -3155,34 +3276,9 @@ class MasterOrchestrator:
 
                 # Register counterfactual monitoring for rejected signals
                 if state == "REJECTED" and _opportunity_id:
-                    try:
-                        from knowledge_system.options_counterfactual_engine import (
-                            get_options_counterfactual_engine,
-                        )
-                        get_options_counterfactual_engine().register_rejection(
-                            opportunity_id       = _opportunity_id,
-                            symbol               = sig.symbol,
-                            strategy_name        = sig.strategy_name or "",
-                            direction            = str(
-                                sig.direction.value
-                                if hasattr(sig.direction, "value")
-                                else sig.direction
-                            ),
-                            rejection_reason     = reason or check or "quality_gate",
-                            expected_pnl         = 0.0,
-                            expected_entry_price = float(sig.entry_price or 0),
-                            dte                  = int(_obs_meta.get("dte", 0)),
-                            spot                 = float(_obs_meta.get("spot", 0)),
-                            iv                   = float(_obs_meta.get("iv_rank", 0)) / 100.0,
-                            regime               = str(
-                                snapshot.regime.value
-                                if hasattr(snapshot.regime, "value")
-                                else snapshot.regime
-                            ),
-                            confidence           = sig.confidence,
-                        )
-                    except Exception:
-                        pass
+                    self._register_options_counterfactual(
+                        sig, snapshot, reason or check or "OPTIONS_QUALITY_GATE_REJECTED"
+                    )
 
                 # Shadow scorer: record production decision for quality-gate signals
                 if state in ("SHORTLISTED", "REJECTED") and _opportunity_id:
@@ -3207,7 +3303,7 @@ class MasterOrchestrator:
                             strategy_name   = sig.strategy_name or "",
                             context_key     = _ctx,
                             prod_confidence = sig.confidence,
-                            prod_executed   = (state == "SHORTLISTED"),
+                            prod_executed   = False,
                         )
                     except Exception:
                         pass

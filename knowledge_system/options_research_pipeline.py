@@ -302,32 +302,50 @@ class OptionsResearchPipeline:
         engine = get_options_counterfactual_engine()
         results = engine.run_analysis()
 
-        # Feed false-rejection outcomes back into knowledge store
+        # Only executable-side live option quotes are strong enough for
+        # knowledge evidence. Legacy underlying-direction estimates remain
+        # visible in the journal but cannot authenticate a strategy.
         if results:
             from knowledge_system.options_knowledge_store import get_options_knowledge_store
             from knowledge_system.options_feature_extractor import extract_features
             store = get_options_knowledge_store()
             for m in results:
-                if (m.rejection_classification == "REJECTION_INCORRECT"
-                        and m.hypothetical_pnl is not None):
-                    # Record the missed opportunity as a negative (we missed profit)
-                    # Use a minimal synthetic observation for feature extraction
+                if (
+                    m.pnl_method == "LIVE_OPTION_QUOTES_NET_ESTIMATED_COSTS"
+                    and m.hypothetical_pnl is not None
+                ):
                     fv = extract_features({
                         "symbol":        m.symbol,
                         "strategy_name": m.strategy_name,
                         "direction":     m.direction,
                         "regime":        m.regime_at_rejection,
                         "confidence":    m.confidence,
+                        "iv_rank":       m.iv_rank_at_rejection,
+                        "dte":            m.dte_at_rejection,
                     })
                     if fv.is_valid:
-                        # Record with negative pnl to signal "we should have traded this"
                         store.record_outcome(
                             strategy_name      = m.strategy_name,
                             context_key        = fv.regime_ivr_dte,
-                            feature_components = {},
+                            feature_components = {
+                                "evidence_source": "LIVE_OPTION_QUOTES_SHADOW",
+                                "pnl_method": m.pnl_method,
+                            },
                             pnl                = m.hypothetical_pnl,
                             opportunity_id     = m.opportunity_id,
+                            evidence_source    = "SHADOW_LIVE_OPTION_QUOTES",
                         )
+                    try:
+                        from learning_system.options_shadow_scorer import (
+                            get_options_shadow_scorer,
+                        )
+                        get_options_shadow_scorer().record_outcome(
+                            m.opportunity_id,
+                            float(m.hypothetical_pnl),
+                            outcome_source="SHADOW_LIVE_OPTION_QUOTES",
+                        )
+                    except Exception as exc:
+                        log.debug("[ResearchPipeline] Shadow outcome update failed: %s", exc)
 
         return len(results)
 

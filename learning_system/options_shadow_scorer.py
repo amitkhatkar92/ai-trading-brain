@@ -66,6 +66,8 @@ class ShadowRecord:
 
     # ── Eventual outcome (filled after trade closes) ───────────────────
     actual_pnl:        Optional[float] = None
+    shadow_pnl:        Optional[float] = None
+    outcome_source:    str = ""
     prod_was_correct:  Optional[bool]  = None
     ks_was_correct:    Optional[bool]  = None
 
@@ -156,14 +158,24 @@ class OptionsShadowScorer:
         )
         return record
 
-    def record_outcome(self, opportunity_id: str, actual_pnl: float) -> None:
-        """Fill in the eventual outcome for a shadow record."""
+    def record_outcome(
+        self,
+        opportunity_id: str,
+        actual_pnl: float,
+        outcome_source: str = "EXECUTED_FILL",
+    ) -> None:
+        """Record either a broker-realized P&L or a clearly labeled shadow P&L."""
         with self._lock:
             rec = self._records.get(opportunity_id)
             if not rec:
                 return
-            rec.actual_pnl = actual_pnl
-            rec.prod_was_correct = actual_pnl > 0 if rec.prod_executed else None
+            rec.outcome_source = outcome_source
+            is_shadow = outcome_source.startswith("SHADOW_")
+            if is_shadow:
+                rec.shadow_pnl = actual_pnl
+            else:
+                rec.actual_pnl = actual_pnl
+                rec.prod_was_correct = actual_pnl > 0 if rec.prod_executed else None
 
             # KS was correct if: KS said BOOST and trade was profitable,
             # or KS said REDUCE and trade was not profitable
@@ -184,9 +196,17 @@ class OptionsShadowScorer:
             disagrees = sum(1 for r in self._records.values() if r.agreement == "DISAGREE")
             abstains = sum(1 for r in self._records.values() if r.agreement == "ABSTAIN")
 
-            outcomes = [r for r in self._records.values() if r.actual_pnl is not None]
-            ks_correct = sum(1 for r in outcomes if r.ks_was_correct is True)
-            prod_correct = sum(1 for r in outcomes if r.prod_was_correct is True)
+            outcomes = [
+                r for r in self._records.values()
+                if r.actual_pnl is not None or r.shadow_pnl is not None
+            ]
+            ks_evaluated = [r for r in outcomes if r.ks_was_correct is not None]
+            prod_outcomes = [
+                r for r in outcomes
+                if r.actual_pnl is not None and r.prod_executed
+            ]
+            ks_correct = sum(1 for r in ks_evaluated if r.ks_was_correct is True)
+            prod_correct = sum(1 for r in prod_outcomes if r.prod_was_correct is True)
 
             return {
                 "total_records":    total,
@@ -195,8 +215,10 @@ class OptionsShadowScorer:
                 "abstain":          abstains,
                 "agree_rate":       agrees / total if total else 0,
                 "outcomes_tracked": len(outcomes),
-                "ks_win_rate":      ks_correct / len(outcomes) if outcomes else 0,
-                "prod_win_rate":    prod_correct / len(outcomes) if outcomes else 0,
+                "executed_outcomes": len(prod_outcomes),
+                "shadow_outcomes":   sum(1 for r in outcomes if r.shadow_pnl is not None),
+                "ks_win_rate":      ks_correct / len(ks_evaluated) if ks_evaluated else 0,
+                "prod_win_rate":    prod_correct / len(prod_outcomes) if prod_outcomes else 0,
             }
 
     def get_record(self, opportunity_id: str) -> Optional[ShadowRecord]:

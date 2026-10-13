@@ -115,6 +115,8 @@ class KnowledgeItem:
 
     # ── Evidence counts ────────────────────────────────────────────────
     total_outcomes:  int   = 0
+    actual_outcomes: int   = 0
+    shadow_outcomes: int   = 0
     wins:            int   = 0
     win_rate:        float = 0.0
 
@@ -171,6 +173,7 @@ class OptionsKnowledgeStore:
         feature_components: Dict[str, str],
         pnl:            float,
         opportunity_id: Optional[str] = None,
+        evidence_source: str = "ACTUAL_EXECUTED",
     ) -> KnowledgeItem:
         """
         Record a trade outcome and update the corresponding knowledge item.
@@ -180,7 +183,7 @@ class OptionsKnowledgeStore:
         """
         with self._lock:
             item = self._get_or_create(strategy_name, context_key, feature_components)
-            self._update_stats(item, pnl, opportunity_id)
+            self._update_stats(item, pnl, opportunity_id, evidence_source)
             self._evaluate_state(item)
             self._save()
             return item
@@ -413,9 +416,14 @@ class OptionsKnowledgeStore:
         item: KnowledgeItem,
         pnl:  float,
         opportunity_id: Optional[str],
+        evidence_source: str,
     ) -> None:
         win = 1 if pnl > 0 else 0
         item.total_outcomes += 1
+        if str(evidence_source).upper().startswith("SHADOW_"):
+            item.shadow_outcomes += 1
+        else:
+            item.actual_outcomes += 1
         item.wins           += win
         item.win_rate        = item.wins / item.total_outcomes
         item.total_pnl      += pnl
