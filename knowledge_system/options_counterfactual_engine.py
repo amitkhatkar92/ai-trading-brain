@@ -55,6 +55,17 @@ _CF_PENDING_PATH = "data/options_cf_pending.json"
 MAX_MONITOR_DTE  = 60
 MIN_MONITOR_DAYS = 1
 
+# DTA-OPTIONS-CREDIT-CLASSIFICATION-001: mirrors the authoritative
+# _CREDIT_OPTION_TYPES fix in execution_engine/options_order_manager.py.
+# monitor.strategy_name holds the human-readable label (e.g. "Iron_Condor_Range",
+# "Hedging_Model", "Bear_Put_Spread") -- NOT the option_type/strategy_type
+# code -- so the token set is matched against that naming convention instead.
+# Deliberately does NOT fall back to `direction == "SELL"`: that field is the
+# signal's directional VIEW, not its credit/debit nature (Bear_Put_Spread is a
+# DEBIT spread with a bearish view, hence direction=SELL -- the prior fallback
+# misclassified it as credit, inverting its hypothetical P&L sign).
+_CREDIT_STRATEGY_NAME_TOKENS = ("IRON_CONDOR", "HEDGING_MODEL")
+
 
 @dataclass
 class CounterfactualMonitor:
@@ -429,9 +440,9 @@ class OptionsCounterfactualEngine:
             monitor.last_mark_at = datetime.now().isoformat()
 
             net_premium = abs(current_net)
-            is_credit = (
-                "IRON_CONDOR" in monitor.strategy_name.upper()
-                or monitor.direction.upper() == "SELL"
+            is_credit = any(
+                token in monitor.strategy_name.upper()
+                for token in _CREDIT_STRATEGY_NAME_TOKENS
             )
             close_reason = ""
             if is_credit:

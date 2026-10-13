@@ -56,7 +56,12 @@ class FakeRec:
 
     @property
     def is_credit(self) -> bool:
-        return self.option_type == "IRON_CONDOR" or self.direction == "SELL"
+        # DTA-OPTIONS-CREDIT-CLASSIFICATION-001: mirrors the authoritative
+        # fix in execution_engine/options_order_manager.py -- NOT derived
+        # from `direction` (Bear_Put_Spread is a DEBIT spread with a
+        # bearish VIEW, i.e. direction="SELL", which the old
+        # `direction == "SELL"` fallback misclassified as credit).
+        return self.option_type in ("IRON_CONDOR", "HEDGING_MODEL_BEAR_CALL_SPREAD")
 
     @property
     def quantity(self) -> int:

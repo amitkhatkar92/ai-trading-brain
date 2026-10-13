@@ -90,6 +90,19 @@ ROLLBACK_FAILURE_COLUMNS = [
     "max_loss_rs_estimate",  # persisted so restart recovers RiskGuardian exposure estimate
 ]
 
+# DTA-OPTIONS-CREDIT-CLASSIFICATION-001: authoritative set of strategy_type
+# values that receive a NET CREDIT at entry (Iron Condor + the Hedging Model
+# bear-call credit spread). Deliberately NOT derived from `direction` --
+# that field encodes the signal's directional VIEW (bullish/bearish), not
+# the transaction's credit/debit nature. Bear_Put_Spread is a DEBIT spread
+# (net premium paid) with a bearish VIEW, hence direction=SELL -- a prior
+# `direction == "SELL"` fallback in `is_credit` silently misclassified it
+# as a credit position, inverting its real-money P&L sign on any exit.
+# No Bear_Put_Spread position had been live-traded or shadow-tracked at the
+# time this was found/fixed (verified against data/options_trades.csv and
+# data/options_cf_pending.json), so no past P&L was corrupted by this bug.
+_CREDIT_OPTION_TYPES = frozenset({"IRON_CONDOR", "HEDGING_MODEL_BEAR_CALL_SPREAD"})
+
 # Rollback failure status values
 _RBST_FAILED         = "ROLLBACK_FAILED"
 _RBST_UNRESOLVED_QTY = "UNRESOLVED_QUANTITY"
@@ -211,8 +224,10 @@ class OptionsOrderRecord:
 
     @property
     def is_credit(self) -> bool:
-        """Iron Condor and short spreads receive credit (SELL direction)."""
-        return self.option_type == "IRON_CONDOR" or self.direction == "SELL"
+        """Net-credit (premium received) strategies only -- see
+        _CREDIT_OPTION_TYPES docstring for why this is NOT derived from
+        `direction`."""
+        return self.option_type in _CREDIT_OPTION_TYPES
 
 
 # ── Main class ─────────────────────────────────────────────────────────────

@@ -461,6 +461,97 @@ class TestK_ComputeRealizedPnlDebit(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------------
+# K2 — DTA-OPTIONS-CREDIT-CLASSIFICATION-001: is_credit must reflect the real
+# net credit/debit nature of the strategy, never the signal's directional
+# VIEW. Bear_Put_Spread is a DEBIT strategy (net premium paid) that carries
+# a bearish VIEW (direction="SELL") -- a prior `direction == "SELL"` fallback
+# silently classified it as credit, inverting its real-money P&L sign.
+# ---------------------------------------------------------------------------
+class TestK2_IsCreditClassification(unittest.TestCase):
+
+    def test_k2_01_bear_put_spread_is_debit_not_credit(self):
+        """Regression guard for the found-and-fixed bug: BEAR_PUT_SPREAD must
+        be is_credit=False even though its signal direction is SELL."""
+        rec = _make_open_rec()
+        rec.option_type = "BEAR_PUT_SPREAD"
+        rec.direction   = "SELL"   # bearish VIEW, not a credit transaction
+        self.assertFalse(rec.is_credit)
+
+    def test_k2_02_bear_put_spread_pnl_profits_when_value_rises(self):
+        """A debit spread profits when its value rises above what was paid.
+        Before the fix, (entry - exit) inverted this to a loss."""
+        mgr = _make_mgr_paper()
+        rec = _make_open_rec()
+        rec.option_type = "BEAR_PUT_SPREAD"
+        rec.direction   = "SELL"
+        rec.lots = 1
+        rec.lot_size = 75
+        rec.actual_entry_fill_price = 2.50   # net debit paid
+        rec.actual_exit_fill_price  = 4.00   # spread value rose — should be a WIN
+        pnl = mgr._compute_realized_pnl(rec)
+        self.assertAlmostEqual(pnl, (4.00 - 2.50) * 75)
+        self.assertGreater(pnl, 0)
+
+    def test_k2_03_hedging_model_bear_call_spread_is_credit(self):
+        """Hedging_Model (Bear Call credit spread) must remain is_credit=True."""
+        rec = _make_open_rec()
+        rec.option_type = "HEDGING_MODEL_BEAR_CALL_SPREAD"
+        rec.direction   = "SELL"
+        self.assertTrue(rec.is_credit)
+
+    def test_k2_04_iron_condor_is_credit(self):
+        """Iron Condor must remain is_credit=True (regression guard)."""
+        rec = _make_open_rec()
+        rec.option_type = "IRON_CONDOR"
+        rec.direction   = "SELL"
+        self.assertTrue(rec.is_credit)
+
+    def test_k2_05_bull_call_spread_and_long_straddle_are_debit(self):
+        """Debit strategies with a bullish/long-vol VIEW remain is_credit=False."""
+        rec = _make_open_rec()
+        rec.option_type = "BULL_CALL_SPREAD"
+        rec.direction   = "BUY"
+        self.assertFalse(rec.is_credit)
+
+        rec2 = _make_open_rec()
+        rec2.option_type = "LONG_STRADDLE"
+        rec2.direction   = "BUY"
+        self.assertFalse(rec2.is_credit)
+
+    def test_k2_06_bear_put_spread_no_premature_stop_loss(self):
+        """Regression guard for the found-and-fixed bug's most severe real-money
+        mechanism: with is_credit wrongly True, _evaluate_exit's STOP_LOSS check
+        used `est >= stop_premium` instead of `est <= stop_premium`. Since a
+        freshly-entered debit spread's current value (~entry_premium) is almost
+        always >= half of itself (stop_premium), this fired STOP_LOSS on
+        essentially the very first exit check after entry -- regardless of real
+        price action. With the fix, a live position whose value hasn't moved
+        must NOT exit."""
+        mgr = _make_mgr_paper()
+        rec = _make_open_rec()
+        rec.option_type    = "BEAR_PUT_SPREAD"
+        rec.direction      = "SELL"   # bearish VIEW, not a credit transaction
+        rec.entry_premium  = 30.0     # net debit paid
+        rec.stop_premium   = 15.0     # net_debit * 0.5
+        rec.target_premium = 48.0     # net_debit + profit * 0.6
+        rec.dte_at_entry   = 30
+        rec.expiry_date    = date.today() + timedelta(days=30)
+
+        with patch.object(mgr, "_estimate_current_premium", return_value=30.0):
+            self.assertIsNone(mgr._evaluate_exit(rec, None))  # unchanged value: stay open
+
+        with patch.object(mgr, "_estimate_current_premium", return_value=10.0):
+            reason = mgr._evaluate_exit(rec, None)
+            self.assertIsNotNone(reason)
+            self.assertIn("STOP_LOSS", reason)
+
+        with patch.object(mgr, "_estimate_current_premium", return_value=50.0):
+            reason = mgr._evaluate_exit(rec, None)
+            self.assertIsNotNone(reason)
+            self.assertIn("TARGET_HIT", reason)
+
+
+# ---------------------------------------------------------------------------
 # L — EXIT_SUBMITTED set before exit placement
 # ---------------------------------------------------------------------------
 class TestL_ExitSubmittedBeforePlacement(unittest.TestCase):
