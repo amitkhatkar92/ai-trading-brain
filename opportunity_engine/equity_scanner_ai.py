@@ -167,12 +167,85 @@ GAP_CONTINUATION_MIN_VOLUME = 1.5   # minimum vol_ratio — confirms real partic
 RR_GAP_CONTINUATION         = 2.0
 
 
-def _estimate_atr(ltp: float, support: float, resistance: float) -> float:
+# DTA-EQUITY-SIM-STABILITY-001: _estimate_atr()'s 20-day-range proxy
+# (0.40 x (resistance-support)) was found, on 2026-10-13, to produce stop
+# distances far wider than a real ATR(14) for many watchlist symbols (e.g.
+# INFY ~9.2% vs a real ATR(14) typically ~1-2%). Combined with
+# ATR_STOP_MULTIPLIER and RR_DEFAULT this pushed MarketSimulation's
+# profit-factor-based stability score below threshold for essentially every
+# equity candidate that day (confirmed live: 0/408 signals approved across
+# 6 cycles; reproduced offline with the real watchlist's resistance/support
+# spreads). Real daily OHLCV is now collected for the active universe
+# (DTA-UNIVERSE-EXPANSION-001), so the proxy this docstring always said to
+# "replace... in live trading" can now actually be replaced. Falls back to
+# the original proxy formula whenever real history is unavailable -- no
+# regression for any symbol lacking sufficient OHLCV.
+_REAL_ATR14_MIN_ROWS = 15
+_ATR14_CACHE: Dict[str, Tuple[str, float]] = {}   # symbol -> (date_computed_iso, atr)
+
+
+def _compute_real_atr14(symbol: str) -> Optional[float]:
+    """Wilder ATR(14) from data/market_behavior.db's ohlcv_daily table.
+    Cached per symbol per calendar day. Returns None on any failure or
+    insufficient history -- callers must fall back, never guess."""
+    today_iso = datetime.now().date().isoformat()
+    cached = _ATR14_CACHE.get(symbol)
+    if cached and cached[0] == today_iso:
+        return cached[1]
+    try:
+        from oios.db.connection import get_connection
+        conn = get_connection()
+        try:
+            rows = conn.execute(
+                "SELECT high, low, close FROM ohlcv_daily "
+                "WHERE symbol = ? ORDER BY trade_date DESC LIMIT 60",
+                (f"{symbol}.NS",),
+            ).fetchall()
+        finally:
+            conn.close()
+    except Exception as exc:
+        log.debug("[RealATR14] %s query failed: %s", symbol, exc)
+        return None
+
+    if len(rows) < _REAL_ATR14_MIN_ROWS:
+        return None
+    rows = list(reversed(rows))   # ascending by date
+    highs  = [float(r[0]) for r in rows]
+    lows   = [float(r[1]) for r in rows]
+    closes = [float(r[2]) for r in rows]
+
+    true_ranges = [
+        max(highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1]))
+        for i in range(1, len(closes))
+    ]
+    if len(true_ranges) < 14:
+        return None
+    atr = sum(true_ranges[:14]) / 14.0
+    for tr in true_ranges[14:]:
+        atr = (atr * 13.0 + tr) / 14.0
+    if atr <= 0:
+        return None
+    _ATR14_CACHE[symbol] = (today_iso, round(atr, 4))
+    return _ATR14_CACHE[symbol][1]
+
+
+def _estimate_atr(
+    ltp: float, support: float, resistance: float, symbol: Optional[str] = None
+) -> float:
     """
-    Estimate ATR(14) from price structure (support-resistance spread).
-    Uses ~40% of daily range as a proxy for 14-period ATR.
-    Replace with real broker ATR data in live trading.
+    Estimate ATR(14) for stop/target sizing.
+
+    Prefers a real Wilder ATR(14) computed from actual OHLCV history when
+    `symbol` is given and history is available. Falls back to the original
+    proxy (~40% of the 20-day support-resistance range) otherwise.
     """
+    if symbol:
+        real_atr = _compute_real_atr14(symbol)
+        if real_atr is not None:
+            return real_atr
+
     daily_range = resistance - support
     if daily_range <= 0:
         daily_range = ltp * 0.02   # fallback: 2% of price
@@ -2218,7 +2291,7 @@ class EquityScannerAI:
 
         # ── Volatility guard ──────────────────────────────────────────
         # Skip signal if market is too noisy for reliable mean-reversion entries.
-        atr     = _estimate_atr(ltp, support, resistance)
+        atr     = _estimate_atr(ltp, support, resistance, stock.get("symbol"))
         atr_pct = (atr / ltp * 100.0) if ltp > 0 else 0.0
         if atr_pct > VOLATILITY_GUARD_ATR_PCT:
             return None, "high_atr"
@@ -2518,7 +2591,7 @@ class EquityScannerAI:
         corporate_event_score     = stock.get("corporate_event_score")
         corporate_event_available = stock.get("corporate_event_available", False)
 
-        atr       = _estimate_atr(ltp, support, resistance)
+        atr       = _estimate_atr(ltp, support, resistance, stock.get("symbol"))
         stop_dist = max(atr * ATR_STOP_MULTIPLIER, ltp * 0.010)
 
         # Confidence: 5.0 base (below normal pattern-matched range of 5.5–9.5)
