@@ -16,6 +16,10 @@ T09  is_backfill=1 rows are excluded from reliability computation, even at
      or above the sample threshold
 T10  Root-cause fix regression: rejection_audit.py's seed_synthetic_data()
      marks its seeded rows is_backfill=1, not 0
+T15  DTA-REJECTION-STARVATION-FIX-001: a rare reason's mature rows resolve
+     despite a dominant reason's much larger backlog (fair round-robin)
+T16  The dominant reason itself still resolves correctly (no regression)
+T17  max_items still bounds total resolution across all reasons combined
 """
 from __future__ import annotations
 
@@ -92,6 +96,76 @@ class TestResolution:
         assert result["skipped_no_data"] == 1
         assert result["resolved"] == 0
         assert len(tr.get_pending()) == 1
+
+
+class TestStarvationFix:
+    """DTA-REJECTION-STARVATION-FIX-001: get_pending() has no ORDER BY, so a
+    high-volume reason's backlog (e.g. MAX_POSITIONS_CAP) could permanently
+    occupy the front of insertion-order iteration and starve a rare reason
+    (e.g. MAX_POSITIONS_CAP_FINAL) out of its daily resolution budget."""
+
+    def test_T15_rare_reason_resolves_despite_dominant_backlog(self, tmp_path):
+        tr = _tracker(tmp_path)
+        # Reproduces the real-world shape: ~150 old, mature, high-volume
+        # "MAX_POSITIONS_CAP" rows (inserted first, lowest rowids) vs 3 rare
+        # "MAX_POSITIONS_CAP_FINAL" rows inserted interleaved among them.
+        for i in range(150):
+            _ingest(tr, symbol=f"DOM{i}", reason="MAX_POSITIONS_CAP", days_ago=MATURITY_DAYS + 10)
+        for i in range(3):
+            _ingest(tr, symbol=f"RARE{i}", reason="MAX_POSITIONS_CAP_FINAL", days_ago=MATURITY_DAYS + 10)
+
+        mon = RejectionAttributionMonitor(tracker=tr)
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1010.0, 1015.0, 1030.0, 1040.0, 1050.0],
+        ):
+            # Old code: a max_items=10 cap processing in pure insertion order
+            # would resolve 10 MAX_POSITIONS_CAP rows and never reach any
+            # MAX_POSITIONS_CAP_FINAL row in a single call.
+            result = mon.run_daily_cycle(max_items=10)
+
+        classified_reasons = {
+            r["rejected_reason"] for r in tr.get_classified()
+        }
+        assert "MAX_POSITIONS_CAP_FINAL" in classified_reasons, (
+            "rare reason was starved out of its daily resolution budget"
+        )
+        # Fair round-robin: all 3 rare rows resolve well within a 10-item cap
+        # (each reason gets one item per turn), unlike the old insertion-
+        # order behavior that would only ever touch the dominant reason.
+        rare_resolved = sum(
+            1 for r in tr.get_classified() if r["rejected_reason"] == "MAX_POSITIONS_CAP_FINAL"
+        )
+        assert rare_resolved == 3
+
+    def test_T16_still_resolves_dominant_reason_too(self, tmp_path):
+        tr = _tracker(tmp_path)
+        for i in range(5):
+            _ingest(tr, symbol=f"DOM{i}", reason="MAX_POSITIONS_CAP", days_ago=MATURITY_DAYS + 1)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1010.0, 1015.0, 1030.0, 1040.0, 1050.0],
+        ):
+            result = mon.run_daily_cycle(max_items=10)
+        assert result["resolved"] == 5
+        assert len(tr.get_pending()) == 0
+
+    def test_T17_respects_max_items_cap_across_reasons(self, tmp_path):
+        tr = _tracker(tmp_path)
+        for i in range(20):
+            _ingest(tr, symbol=f"A{i}", reason="REASON_A", days_ago=MATURITY_DAYS + 1)
+        for i in range(20):
+            _ingest(tr, symbol=f"B{i}", reason="REASON_B", days_ago=MATURITY_DAYS + 1)
+        mon = RejectionAttributionMonitor(tracker=tr)
+        with patch(
+            "analysis.rejection_attribution_monitor._fetch_ohlcv_closes",
+            return_value=[1010.0, 1015.0, 1030.0, 1040.0, 1050.0],
+        ):
+            result = mon.run_daily_cycle(max_items=10)
+        assert result["resolved"] == 10
+        assert result["capped"] is True
+        assert len(tr.get_pending()) == 30
 
 
 class TestReliabilityAccessor:

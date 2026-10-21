@@ -7,17 +7,17 @@ Verifies:
   1. OrderManager.execute_late_cap_swap() correctly reuses _smart_swap_check()
      + the shared daily rotation throttle + close_position(), returning
      True only on a real, successful swap.
-  2. risk_control/late_cap_swap_bridge.py's SHADOW registration records a
-     shadow candidate without ever calling execute_late_cap_swap(), and
-     returns False (no behavior change) in SHADOW mode.
-  3. ACTIVE mode calls execute_late_cap_swap() and returns its result.
-  4. resolve_matured_shadow_records() correctly classifies CORRECT_SWAP /
-     INCORRECT_SWAP once both legs of evidence exist, and leaves records
-     PENDING otherwise.
-  5. advance_lifecycle() promotes SHADOW_ACTIVE -> ACTIVE on sufficient
-     evidence, REJECTED after the max observation window, and ACTIVE ->
-     ROLLED_BACK on post-activation degradation.
-  6. The real correctness fix: capital_reserve_readiness_engine.py now
+  2. risk_control/late_cap_swap_bridge.py's default (ACTIVE) mode executes a
+     real swap AND records its outcome for ongoing refinement; the SHADOW_
+     ACTIVE mode remains available as a pure decision-only observer.
+  3. resolve_matured_shadow_records() correctly classifies CORRECT_SWAP /
+     INCORRECT_SWAP for both SHADOW and real-swap records once both legs
+     of evidence exist, and leaves records PENDING otherwise.
+  4. advance_lifecycle() promotes SHADOW_ACTIVE -> ACTIVE, auto-reverts
+     ACTIVE -> ROLLED_BACK on degradation, and auto-reactivates ROLLED_BACK
+     -> ACTIVE (or gives up to REJECTED) once fresh post-rollback evidence
+     is resolved.
+  5. The real correctness fix: capital_reserve_readiness_engine.py now
      reads MAX_POSITIONS_CAP_FINAL, not MAX_POSITIONS_CAP.
 """
 from __future__ import annotations
@@ -25,7 +25,7 @@ from __future__ import annotations
 import json
 import threading
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -134,6 +134,8 @@ class TestA_ExecuteLateCapSwap:
 class TestB_Registration:
     def test_b01_shadow_mode_records_and_returns_false(self):
         mgr = _make_order_manager()
+        lcsb._save_state({"status": lcsb.STATUS_SHADOW_ACTIVE,
+                           "shadow_start_date": date.today().isoformat()})
         weak = _make_open_rec("OID1", "WEAK")
         mgr._orders["OID1"] = weak
         with patch.object(mgr, "_smart_swap_check", return_value=("OID1", "WEAK", 3.0)):
@@ -146,6 +148,7 @@ class TestB_Registration:
         assert records[0].rejected_symbol == "NEWSTK"
         assert records[0].weak_symbol == "WEAK"
         assert records[0].status == "PENDING"
+        assert records[0].is_real_swap is False
         assert mgr._orders["OID1"].status == "open"   # SHADOW is decision-only, nothing closed
 
     def test_b02_no_candidate_no_record(self):
@@ -155,14 +158,38 @@ class TestB_Registration:
         assert result is False
         assert lcsb._load_records() == []
 
-    def test_b03_active_mode_delegates_to_execute_late_cap_swap(self):
+    def test_b03_active_mode_executes_real_swap_and_records_evidence(self):
+        # DTA-LATE-CAP-SWAP-GO-LIVE-001: ACTIVE is now the default state --
+        # a real swap both executes AND records its own outcome for
+        # ongoing refinement (is_real_swap=True), unlike the old "ACTIVE
+        # never shadow-records" design.
         mgr = _make_order_manager()
-        lcsb._save_state({"status": lcsb.STATUS_ACTIVE, "activated_at": "2026-10-01T00:00:00+00:00"})
-        with patch.object(mgr, "execute_late_cap_swap", return_value=True) as mock_exec:
+        weak = _make_open_rec("OID1", "WEAK")
+        mgr._orders["OID1"] = weak
+
+        def _fake_execute(symbol, score, entry, stop, target):
+            mgr._orders["OID1"].status = "closed"
+            mgr._orders["OID1"].pnl = -15.0
+            return True
+
+        with patch.object(mgr, "_smart_swap_check", return_value=("OID1", "WEAK", 3.0)), \
+             patch.object(mgr, "execute_late_cap_swap", side_effect=_fake_execute) as mock_exec:
             result = lcsb.register_late_cap_swap_opportunity(mgr, _signal(), _decision(8.5), "2026-10-05")
         assert result is True
         mock_exec.assert_called_once()
-        assert lcsb._load_records() == []   # ACTIVE mode doesn't shadow-record
+        records = lcsb._load_records()
+        assert len(records) == 1
+        assert records[0].is_real_swap is True
+        assert records[0].admitted_symbol == "NEWSTK"
+        assert records[0].weak_actual_pnl == -15.0
+        assert records[0].status == "PENDING"   # admitted leg not yet closed
+
+    def test_b03b_active_mode_no_candidate_returns_false_no_record(self):
+        mgr = _make_order_manager()
+        with patch.object(mgr, "_smart_swap_check", return_value=None):
+            result = lcsb.register_late_cap_swap_opportunity(mgr, _signal(), _decision(8.5), "2026-10-05")
+        assert result is False
+        assert lcsb._load_records() == []
 
     def test_b04_never_raises_on_internal_error(self):
         mgr = _make_order_manager()
@@ -265,6 +292,102 @@ class TestC_Resolution:
 
 
 # ---------------------------------------------------------------------------
+# G — real-swap (is_real_swap=True) resolution path
+# ---------------------------------------------------------------------------
+
+class TestG_RealSwapResolution:
+    def _real_swap_record(self, trade_date, swap_executed_at, weak_actual_pnl=-15.0):
+        return lcsb.LateCapSwapShadowRecord(
+            swap_id="LCSB-REAL01", created_at="2026-10-01T00:00:00+00:00",
+            trade_date=trade_date, rejected_symbol="NEWSTK",
+            rejected_strategy="Breakout", rejected_direction="BUY",
+            rejected_score=8.0, rejected_entry=100.0, rejected_stop=98.0,
+            rejected_target=106.0, weak_order_id="OID1", weak_symbol="WEAK",
+            weak_score=3.0, weak_direction="BUY", weak_entry_price=50.0,
+            weak_quantity=20, weak_stop_loss=48.0, weak_target=55.0,
+            weak_pnl_if_closed_at_decision=weak_actual_pnl,
+            weak_actual_pnl=weak_actual_pnl,
+            is_real_swap=True, admitted_symbol="NEWSTK",
+            swap_executed_at=swap_executed_at,
+        )
+
+    def test_g01_resolves_once_admitted_leg_closes_and_weak_hypothetical_available(self):
+        old_date = (date.today() - timedelta(days=10)).isoformat()
+        swap_time = (datetime.now() - timedelta(days=10)).isoformat()
+        rec = self._real_swap_record(old_date, swap_time, weak_actual_pnl=-15.0)
+        lcsb._save_records([rec])
+
+        mgr = _make_order_manager()
+        admitted_closed = _make_open_rec("OID2", "NEWSTK")
+        admitted_closed.status = "closed"
+        admitted_closed.pnl = 300.0
+        admitted_closed.placed_at = datetime.now() - timedelta(days=9)   # after swap_time
+        mgr._orders["OID2"] = admitted_closed
+
+        with patch.object(lcsb, "_simulate_candidate_exit", return_value=-120.0), \
+             patch.object(lcsb, "_swap_cost_estimate", return_value=10.0):
+            result = lcsb.resolve_matured_shadow_records(mgr)
+
+        assert result["resolved"] == 1
+        records = lcsb._load_records()
+        assert records[0].status == "RESOLVED"
+        assert records[0].admitted_real_pnl == 300.0
+        assert records[0].admitted_order_id == "OID2"
+        # scenario_swap_real = -15 + 300 - 10 = 275; scenario_no_swap_hyp = -120; benefit = 395
+        assert records[0].net_benefit_rs == pytest.approx(395.0)
+        assert records[0].classification == "CORRECT_SWAP"
+
+    def test_g02_stays_pending_until_admitted_leg_closes(self):
+        old_date = (date.today() - timedelta(days=10)).isoformat()
+        swap_time = (datetime.now() - timedelta(days=10)).isoformat()
+        rec = self._real_swap_record(old_date, swap_time)
+        lcsb._save_records([rec])
+
+        mgr = _make_order_manager()
+        admitted_open = _make_open_rec("OID2", "NEWSTK")   # still open
+        admitted_open.placed_at = datetime.now() - timedelta(days=9)
+        mgr._orders["OID2"] = admitted_open
+
+        with patch.object(lcsb, "_simulate_candidate_exit", return_value=-120.0):
+            result = lcsb.resolve_matured_shadow_records(mgr)
+
+        assert result["resolved"] == 0
+        assert lcsb._load_records()[0].status == "PENDING"
+
+    def test_g03_never_matches_an_order_placed_before_the_swap(self):
+        old_date = (date.today() - timedelta(days=10)).isoformat()
+        swap_time = (datetime.now() - timedelta(days=10)).isoformat()
+        rec = self._real_swap_record(old_date, swap_time)
+        lcsb._save_records([rec])
+
+        mgr = _make_order_manager()
+        stale_closed = _make_open_rec("OID_OLD", "NEWSTK")   # pre-dates the swap
+        stale_closed.status = "closed"
+        stale_closed.pnl = 999.0
+        stale_closed.placed_at = datetime.now() - timedelta(days=30)
+        mgr._orders["OID_OLD"] = stale_closed
+
+        with patch.object(lcsb, "_simulate_candidate_exit", return_value=-120.0):
+            result = lcsb.resolve_matured_shadow_records(mgr)
+
+        assert result["resolved"] == 0
+        assert lcsb._load_records()[0].admitted_real_pnl is None
+
+    def test_g04_abandons_real_swap_record_after_max_age(self):
+        very_old = (date.today() - timedelta(days=lcsb.MAX_RECORD_AGE_DAYS + 5)).isoformat()
+        swap_time = (datetime.now() - timedelta(days=lcsb.MAX_RECORD_AGE_DAYS + 5)).isoformat()
+        rec = self._real_swap_record(very_old, swap_time)
+        lcsb._save_records([rec])
+
+        mgr = _make_order_manager()   # no admitted order ever appears
+        with patch.object(lcsb, "_simulate_candidate_exit", return_value=None):
+            result = lcsb.resolve_matured_shadow_records(mgr)
+
+        assert result["abandoned"] == 1
+        assert lcsb._load_records()[0].status == "ABANDONED"
+
+
+# ---------------------------------------------------------------------------
 # D — advance_lifecycle()
 # ---------------------------------------------------------------------------
 
@@ -296,7 +419,8 @@ class TestD_Lifecycle:
     def test_d01_insufficient_samples_stays_shadow(self):
         lcsb._save_state({"status": lcsb.STATUS_SHADOW_ACTIVE,
                            "shadow_start_date": date.today().isoformat()})
-        lcsb._save_records(self._resolved_records(10, 2))
+        n_correct = max(1, lcsb.MIN_SAMPLES_FOR_ACTIVATION // 4)
+        lcsb._save_records(self._resolved_records(n_correct, 1))
         result = lcsb.advance_lifecycle()
         assert result["status"] == lcsb.STATUS_SHADOW_ACTIVE
 
@@ -345,6 +469,34 @@ class TestD_Lifecycle:
             result = lcsb.advance_lifecycle()
         assert result["status"] == "ERROR"
 
+    def test_d07_rolled_back_stays_rolled_back_on_insufficient_post_rollback_evidence(self):
+        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK,
+                           "rolled_back_at": "2026-10-10T00:00:00+00:00"})
+        lcsb._save_records(self._resolved_records(1, 1, resolved_at="2026-10-15T00:00:00+00:00"))
+        result = lcsb.advance_lifecycle()
+        assert result["status"] == lcsb.STATUS_ROLLED_BACK
+        assert lcsb.get_status() == lcsb.STATUS_ROLLED_BACK
+
+    def test_d08_rolled_back_reactivates_on_sufficient_post_rollback_evidence(self):
+        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK,
+                           "rolled_back_at": "2026-10-10T00:00:00+00:00"})
+        n_correct = int(lcsb.MIN_SAMPLES_FOR_ACTIVATION * 0.7) or 1
+        n_incorrect = max(lcsb.MIN_SAMPLES_FOR_ACTIVATION - n_correct, 1)
+        lcsb._save_records(self._resolved_records(
+            n_correct, n_incorrect, resolved_at="2026-10-15T00:00:00+00:00",
+        ))
+        result = lcsb.advance_lifecycle()
+        assert result["status"] == lcsb.STATUS_ACTIVE
+        assert lcsb.get_status() == lcsb.STATUS_ACTIVE
+
+    def test_d09_rolled_back_gives_up_after_max_observation_days(self):
+        old_rollback = (datetime.now(timezone.utc) - timedelta(days=lcsb.MAX_OBSERVATION_DAYS + 5)).isoformat()
+        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK, "rolled_back_at": old_rollback})
+        lcsb._save_records(self._resolved_records(1, 1))   # never re-qualifies
+        result = lcsb.advance_lifecycle()
+        assert result["status"] == lcsb.STATUS_REJECTED
+        assert lcsb.get_status() == lcsb.STATUS_REJECTED
+
 
 # ---------------------------------------------------------------------------
 # E — get_readiness_status()
@@ -353,7 +505,7 @@ class TestD_Lifecycle:
 class TestE_ReadinessAccessor:
     def test_e01_empty_state(self):
         status = lcsb.get_readiness_status()
-        assert status["status"] == lcsb.STATUS_SHADOW_ACTIVE
+        assert status["status"] == lcsb.STATUS_ACTIVE   # default is now ACTIVE
         assert status["resolved"] == 0
         assert status["hit_rate"] is None
 

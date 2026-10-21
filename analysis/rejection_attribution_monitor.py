@@ -185,7 +185,39 @@ class RejectionAttributionMonitor:
         skipped_no_data = 0
         capped = False
 
+        # DTA-REJECTION-STARVATION-FIX-001 (root cause, found auditing the
+        # capital-reserve-readiness module): get_pending() has no ORDER BY,
+        # so a full table scan returns rows in insertion order. One reason
+        # (MAX_POSITIONS_CAP -- CapitalRiskEngine's early, high-frequency,
+        # pre-Debate/KDA eval-pool cutoff) generates far more PENDING rows
+        # per day than this loop's budget can clear, so its backlog never
+        # shrinks and permanently occupies the front of iteration order --
+        # a rare-but-important reason (e.g. MAX_POSITIONS_CAP_FINAL, ~1/day)
+        # could sit PENDING for weeks despite being long past MATURITY_DAYS.
+        # Fixed with fair round-robin scheduling ACROSS distinct reasons
+        # (oldest-first within each reason's own queue) -- a reason with a
+        # 6,000-row backlog and a reason with 40 rows now get equal per-turn
+        # attention, so the small queue fully resolves within its first ~40
+        # turns regardless of the other's backlog size. Zero change to
+        # ingestion/what gets persisted -- only the resolution order.
+        queues: Dict[str, List[dict]] = {}
         for row in self._tracker.get_pending():
+            queues.setdefault(row.get("rejected_reason") or "UNKNOWN", []).append(row)
+        reason_order = list(queues.keys())
+
+        exhausted: set = set()
+        turn = 0
+        while reason_order and len(exhausted) < len(reason_order) and (resolved + skipped_no_data) < max_items:
+            reason = reason_order[turn % len(reason_order)]
+            turn += 1
+            if reason in exhausted:
+                continue
+            queue = queues[reason]
+            if not queue:
+                exhausted.add(reason)
+                continue
+            row = queue.pop(0)
+
             try:
                 trade_date = date.fromisoformat(row["trade_date"])
             except (ValueError, TypeError):
@@ -195,10 +227,6 @@ class RejectionAttributionMonitor:
             if (today - trade_date).days < MATURITY_DAYS:
                 skipped_immature += 1
                 continue
-
-            if resolved + skipped_no_data >= max_items:
-                capped = True
-                break
 
             closes = _fetch_ohlcv_closes(row["symbol"], row["trade_date"])
             if len(closes) < 5:
@@ -210,6 +238,9 @@ class RejectionAttributionMonitor:
             )
             if ok:
                 resolved += 1
+
+        if (resolved + skipped_no_data) >= max_items:
+            capped = True
 
         reliability = self._compute_reliability_summary()
         self._write_daily_summary(resolved, skipped_immature, skipped_no_data, reliability)

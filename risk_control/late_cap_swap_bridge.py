@@ -46,16 +46,25 @@ from observe-only to live.
 
 Lifecycle (same automatic, no-human-gate pattern as every other
 self-learning module in this ecosystem -- explicit user instruction):
-  SHADOW_ACTIVE -> ACTIVE (auto-promoted once real evidence confirms a
-  net benefit) -> ROLLED_BACK (auto-reverted on live degradation) /
-  REJECTED (gave up -- no usable signal within the max observation
-  window).
+  ACTIVE (default, from deploy) -> ROLLED_BACK (auto-paused on live
+  degradation, keeps shadow-collecting) -> ACTIVE again (auto-reactivated
+  once fresh post-rollback evidence clears the bar) / REJECTED (gave up
+  -- failed to re-qualify within the observation window).
 
-Evidence requirement is deliberately HIGHER than most other modules in
-this session (MIN_SAMPLES_FOR_ACTIVATION=30, MIN_HIT_RATE=0.55) because,
-unlike a ranking-weight or sizing-bound nudge, going ACTIVE here means
-this module will itself close a real, currently-open position the next
-time it fires -- the one module in this set with that property.
+DTA-LATE-CAP-SWAP-GO-LIVE-001 (2026-10-21, user-directed reversal): the
+original design gated the ENTIRE feature behind 30 resolved SHADOW
+samples before any real swap ever happened -- at the real ~1 MAX_
+POSITIONS_CAP_FINAL rejection/day observed in production, that would
+have taken 3-4 months to even start. Reversed per explicit instruction:
+the swap executes live from day one (every real swap evaluated and
+confirmed by _smart_swap_check()'s existing, already-tested safety
+gates -- nothing novel is risked), and every real swap's own outcome is
+recorded and resolved (see is_real_swap on LateCapSwapShadowRecord) to
+keep validating/refining the parameters and to drive the automatic
+ROLLED_BACK safety net if live performance degrades. MIN_SAMPLES_FOR_
+ACTIVATION was lowered from 30 to 10 (the repo-wide "normal" floor,
+DTA-REALISTIC-THRESHOLDS-001 precedent) -- it now only governs how fast
+a ROLLED_BACK pause can automatically re-qualify back to ACTIVE.
 
 Safety contract: SHADOW mode never touches execution_engine/order_manager
 beyond the existing, already-tested _smart_swap_check() (read-only
@@ -85,9 +94,24 @@ _STATE_PATH  = os.path.join(_STORE_DIR, "state.json")
 _LEDGER_PATH = os.path.join(_STORE_DIR, "ledger.jsonl")
 
 # ── Governance ───────────────────────────────────────────────────────────
-MIN_SAMPLES_FOR_ACTIVATION  = 30     # resolved shadow records before any promotion
+# DTA-LATE-CAP-SWAP-GO-LIVE-001 (user-directed reversal, 2026-10-21):
+# originally gated the ENTIRE feature behind 30 resolved samples before any
+# real swap ever happened -- at ~1 real MAX_POSITIONS_CAP_FINAL rejection/day
+# that would have taken 3-4 months to even start collecting usable evidence.
+# Reversed per explicit instruction: the swap mechanism goes LIVE immediately
+# (see _load_state()'s default == STATUS_ACTIVE below) since it only reuses
+# the existing, already-safety-gated _smart_swap_check() logic -- nothing
+# novel is being risked. Shadow-style evidence collection now runs ALONGSIDE
+# live swapping (every real swap is itself recorded and resolved -- see
+# is_real_swap below) purely to keep refining/validating the parameters and
+# to drive the automatic ROLLED_BACK safety net if live performance sours.
+MIN_SAMPLES_FOR_ACTIVATION  = 10     # lowered from 30 to the repo-wide "normal"
+                                      # floor (DTA-REALISTIC-THRESHOLDS-001
+                                      # precedent) -- now only governs
+                                      # re-promotion after a ROLLED_BACK pause
 MIN_HIT_RATE_FOR_ACTIVATION = 0.55   # must show a clear edge, not a coin flip
-MAX_OBSERVATION_DAYS        = 60     # give up (REJECTED) if never conclusive by then
+MAX_OBSERVATION_DAYS        = 30     # lowered from 60, matches RSL-001's own
+                                      # provisional give-up window
 RESOLUTION_HORIZON_DAYS     = 5      # T+5 follow-through window for the rejected candidate
 MAX_RECORD_AGE_DAYS         = 60     # give up waiting for a weak position's real close
 MIN_SAMPLES_FOR_ROLLBACK_CHECK = 15
@@ -118,12 +142,25 @@ class LateCapSwapShadowRecord:
     weak_entry_price:      float
     weak_quantity:         int
     weak_pnl_if_closed_at_decision: float
+    weak_stop_loss:        float = 0.0   # snapshot at swap time, for forward simulation
+    weak_target:           float = 0.0
     rejected_hypothetical_pnl: Optional[float] = None
     weak_actual_pnl:       Optional[float] = None
     resolved_at:           str = ""
     classification:        Optional[str] = None   # CORRECT_SWAP | INCORRECT_SWAP
     net_benefit_rs:         Optional[float] = None
     status:                str = "PENDING"         # PENDING | RESOLVED | ABANDONED
+    # DTA-LATE-CAP-SWAP-GO-LIVE-001: set True for a REAL executed swap (vs a
+    # SHADOW-only hypothetical record). Real swaps resolve the other
+    # direction -- weak_actual_pnl is known immediately (the weak leg really
+    # closed); admitted_real_pnl / weak_hypothetical_pnl_if_held fill in once
+    # the admitted position itself closes and enough days pass.
+    is_real_swap:          bool = False
+    admitted_symbol:       str = ""
+    swap_executed_at:      str = ""    # naive local clock, matches OrderRecord.placed_at
+    admitted_order_id:     Optional[str] = None
+    admitted_real_pnl:     Optional[float] = None
+    weak_hypothetical_pnl_if_held: Optional[float] = None
 
 
 def _ensure_dir() -> None:
@@ -155,13 +192,21 @@ def _save_records(records: List[LateCapSwapShadowRecord]) -> None:
 def _load_state() -> Dict[str, Any]:
     _ensure_dir()
     if not os.path.exists(_STATE_PATH):
-        return {"status": STATUS_SHADOW_ACTIVE, "shadow_start_date": date.today().isoformat()}
+        # DTA-LATE-CAP-SWAP-GO-LIVE-001: starts ACTIVE, not SHADOW_ACTIVE --
+        # see module docstring / Governance block above for why.
+        return {
+            "status": STATUS_ACTIVE,
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+        }
     try:
         with open(_STATE_PATH, encoding="utf-8") as fh:
             return json.load(fh)
     except Exception as exc:
         log.warning("[LateCapSwapBridge] state load failed: %s", exc)
-        return {"status": STATUS_SHADOW_ACTIVE, "shadow_start_date": date.today().isoformat()}
+        return {
+            "status": STATUS_ACTIVE,
+            "activated_at": datetime.now(timezone.utc).isoformat(),
+        }
 
 
 def _save_state(state: Dict[str, Any]) -> None:
@@ -186,7 +231,7 @@ def _append_ledger(event: Dict[str, Any]) -> None:
 
 
 def get_status() -> str:
-    return _load_state().get("status", STATUS_SHADOW_ACTIVE)
+    return _load_state().get("status", STATUS_ACTIVE)
 
 
 def get_readiness_status() -> Dict[str, Any]:
@@ -197,7 +242,7 @@ def get_readiness_status() -> Dict[str, Any]:
         resolved = [r for r in records if r.status == "RESOLVED"]
         correct = sum(1 for r in resolved if r.classification == "CORRECT_SWAP")
         return {
-            "status": state.get("status", STATUS_SHADOW_ACTIVE),
+            "status": state.get("status", STATUS_ACTIVE),
             "shadow_candidates_total": len(records),
             "resolved": len(resolved),
             "correct_swap_count": correct,
@@ -247,9 +292,63 @@ def _register_impl(order_manager, signal, decision, trade_date) -> bool:
     new_target = float(getattr(signal, "target_price", 0.0) or 0.0)
 
     if status == STATUS_ACTIVE:
-        return bool(order_manager.execute_late_cap_swap(
+        # DTA-LATE-CAP-SWAP-GO-LIVE-001: peek (read-only, deterministic given
+        # unchanged state) at the same decision execute_late_cap_swap() will
+        # make, so a real-swap evidence record can be built -- the swap
+        # mechanism itself still only ever runs through the one, already-
+        # tested execute_late_cap_swap()/_smart_swap_check() path; this adds
+        # no new swap logic, only post-hoc evidence capture for ongoing
+        # refinement and the automatic ROLLED_BACK safety net below.
+        swap = order_manager._smart_swap_check(
+            signal.symbol, new_score, new_entry=new_entry, new_stop=new_stop, new_target=new_target,
+        )
+        if not swap:
+            return False
+        weak_oid, weak_sym, weak_score = swap
+        weak_rec = order_manager._orders.get(weak_oid)
+        if weak_rec is None:
+            return False
+        weak_entry_price, weak_direction = weak_rec.entry_price, weak_rec.direction
+        weak_quantity, weak_stop_loss, weak_target = (
+            weak_rec.quantity, weak_rec.stop_loss, weak_rec.target,
+        )
+
+        executed = bool(order_manager.execute_late_cap_swap(
             signal.symbol, new_score, new_entry, new_stop, new_target,
         ))
+        if not executed:
+            return False
+
+        closed_rec = order_manager._orders.get(weak_oid)
+        weak_actual = float(closed_rec.pnl) if closed_rec is not None else None
+
+        record = LateCapSwapShadowRecord(
+            swap_id=f"LCSB-{uuid.uuid4().hex[:12]}",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            trade_date=trade_date or date.today().isoformat(),
+            rejected_symbol=signal.symbol,
+            rejected_strategy=str(getattr(signal, "strategy_name", "") or ""),
+            rejected_direction=str(getattr(signal.direction, "value", signal.direction) or "BUY"),
+            rejected_score=new_score, rejected_entry=new_entry,
+            rejected_stop=new_stop, rejected_target=new_target,
+            weak_order_id=weak_oid, weak_symbol=weak_sym, weak_score=weak_score,
+            weak_direction=weak_direction, weak_entry_price=weak_entry_price,
+            weak_quantity=weak_quantity, weak_stop_loss=weak_stop_loss, weak_target=weak_target,
+            weak_pnl_if_closed_at_decision=round(weak_actual, 2) if weak_actual is not None else 0.0,
+            weak_actual_pnl=weak_actual,
+            is_real_swap=True,
+            admitted_symbol=signal.symbol,
+            swap_executed_at=datetime.now().isoformat(),
+        )
+        records = _load_records()
+        records.append(record)
+        _save_records(records)
+        log.info(
+            "[LateCapSwapBridge] REAL SWAP executed: closed %s(score=%.1f, pnl=%.2f) "
+            "-> admitted %s(score=%.1f).",
+            weak_sym, weak_score, weak_actual or 0.0, signal.symbol, new_score,
+        )
+        return True
 
     # SHADOW_ACTIVE / ROLLED_BACK (still observing) -- decision-only, no side effects
     swap = order_manager._smart_swap_check(
@@ -291,6 +390,8 @@ def _register_impl(order_manager, signal, decision, trade_date) -> bool:
         weak_direction=weak_rec.direction,
         weak_entry_price=weak_rec.entry_price,
         weak_quantity=weak_rec.quantity,
+        weak_stop_loss=weak_rec.stop_loss,
+        weak_target=weak_rec.target,
         weak_pnl_if_closed_at_decision=round(weak_pnl_if_closed, 2),
     )
     records = _load_records()
@@ -355,6 +456,26 @@ def _swap_cost_estimate(symbol: str, quantity: int, price: float) -> float:
         return 0.0
 
 
+def _find_order_by_symbol_after(order_manager: Any, symbol: str, since_iso: str) -> Optional[Any]:
+    """Best-effort match: the earliest order for `symbol` placed at/after
+    `since_iso` (naive local clock, matching OrderRecord.placed_at's own
+    convention). Low-volume-per-symbol-per-day heuristic -- the admitted
+    candidate's order is placed by the orchestrator immediately after this
+    bridge returns True, so there is normally exactly one match."""
+    try:
+        since_dt = datetime.fromisoformat(since_iso)
+    except Exception:
+        return None
+    candidates = [
+        rec for rec in order_manager._orders.values()
+        if rec.symbol == symbol and rec.placed_at is not None and rec.placed_at >= since_dt
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda r: r.placed_at)
+    return candidates[0]
+
+
 def resolve_matured_shadow_records(order_manager: Any, max_items: int = 50) -> Dict[str, Any]:
     """EOD-called. Never raises."""
     try:
@@ -377,6 +498,43 @@ def _resolve_impl(order_manager: Any, max_items: int) -> Dict[str, Any]:
             break
 
         age_days = (today - date.fromisoformat(rec.trade_date)).days
+
+        if rec.is_real_swap:
+            # Real swap: weak_actual_pnl is already known (captured at swap
+            # time). Resolve the admitted candidate's real close, and
+            # simulate what the weak leg WOULD have done had it not been
+            # swapped out -- the mirror image of the SHADOW resolution math.
+            if rec.admitted_real_pnl is None:
+                admitted_order = _find_order_by_symbol_after(
+                    order_manager, rec.admitted_symbol, rec.swap_executed_at,
+                )
+                if admitted_order is not None and admitted_order.status == "closed":
+                    rec.admitted_order_id = admitted_order.order_id
+                    rec.admitted_real_pnl = float(admitted_order.pnl)
+
+            if rec.weak_hypothetical_pnl_if_held is None and age_days >= RESOLUTION_HORIZON_DAYS:
+                rec.weak_hypothetical_pnl_if_held = _simulate_candidate_exit(
+                    rec.weak_symbol, rec.trade_date, rec.weak_direction,
+                    rec.weak_entry_price, rec.weak_stop_loss, rec.weak_target,
+                    rec.weak_quantity,
+                )
+
+            if rec.admitted_real_pnl is not None and rec.weak_hypothetical_pnl_if_held is not None:
+                cost = _swap_cost_estimate(
+                    rec.admitted_symbol, rec.weak_quantity, rec.rejected_entry,
+                )
+                scenario_swap_real = (rec.weak_actual_pnl or 0.0) + rec.admitted_real_pnl - cost
+                scenario_no_swap_hypothetical = rec.weak_hypothetical_pnl_if_held
+                net_benefit = scenario_swap_real - scenario_no_swap_hypothetical
+                rec.net_benefit_rs = round(net_benefit, 2)
+                rec.classification = "CORRECT_SWAP" if net_benefit > 0 else "INCORRECT_SWAP"
+                rec.status = "RESOLVED"
+                rec.resolved_at = datetime.now(timezone.utc).isoformat()
+                resolved_now += 1
+            elif age_days >= MAX_RECORD_AGE_DAYS:
+                rec.status = "ABANDONED"
+                abandoned_now += 1
+            continue
 
         if rec.rejected_hypothetical_pnl is None and age_days >= RESOLUTION_HORIZON_DAYS:
             rec.rejected_hypothetical_pnl = _simulate_candidate_exit(
@@ -434,7 +592,7 @@ def advance_lifecycle() -> Dict[str, Any]:
 
 def _advance_impl() -> Dict[str, Any]:
     state = _load_state()
-    status = state.get("status", STATUS_SHADOW_ACTIVE)
+    status = state.get("status", STATUS_ACTIVE)
     records = _load_records()
     resolved = [r for r in records if r.status == "RESOLVED"]
     correct = sum(1 for r in resolved if r.classification == "CORRECT_SWAP")
@@ -493,5 +651,48 @@ def _advance_impl() -> Dict[str, Any]:
                     post_hit, ROLLBACK_HIT_RATE_FLOOR, len(post_activation),
                 )
                 summary["status"] = STATUS_ROLLED_BACK
+
+    elif status == STATUS_ROLLED_BACK:
+        # DTA-LATE-CAP-SWAP-GO-LIVE-001: ROLLED_BACK is not terminal -- real
+        # swapping is paused, but register_late_cap_swap_opportunity() keeps
+        # shadow-recording in the meantime (same decision-only path as
+        # SHADOW_ACTIVE). Once fresh evidence since the rollback clears the
+        # same bar again, automatically re-promote; give up to REJECTED only
+        # after MAX_OBSERVATION_DAYS of failing to re-qualify.
+        rolled_back_at = state.get("rolled_back_at", "")
+        post_rollback = [r for r in resolved if r.resolved_at >= rolled_back_at] if rolled_back_at else resolved
+        post_hit = (
+            sum(1 for r in post_rollback if r.classification == "CORRECT_SWAP") / len(post_rollback)
+            if post_rollback else 0.0
+        )
+        if len(post_rollback) >= MIN_SAMPLES_FOR_ACTIVATION and post_hit >= MIN_HIT_RATE_FOR_ACTIVATION:
+            state["status"] = STATUS_ACTIVE
+            state["activated_at"] = datetime.now(timezone.utc).isoformat()
+            _save_state(state)
+            _append_ledger({
+                "event": "REACTIVATED_AFTER_ROLLBACK", "resolved": len(post_rollback),
+                "hit_rate": round(post_hit, 3),
+            })
+            log.info(
+                "[LateCapSwapBridge] REACTIVATED to ACTIVE after rollback: "
+                "post-rollback hit_rate=%.3f on n=%d.", post_hit, len(post_rollback),
+            )
+            summary["status"] = STATUS_ACTIVE
+        else:
+            try:
+                rolled_back_dt = datetime.fromisoformat(rolled_back_at) if rolled_back_at else datetime.now(timezone.utc)
+            except Exception:
+                rolled_back_dt = datetime.now(timezone.utc)
+            age_days_since_rollback = (datetime.now(timezone.utc) - rolled_back_dt).days
+            if age_days_since_rollback >= MAX_OBSERVATION_DAYS:
+                state["status"] = STATUS_REJECTED
+                state["status_reason"] = (
+                    f"Failed to re-qualify within {MAX_OBSERVATION_DAYS} days of rollback "
+                    f"(n={len(post_rollback)}, hit_rate={post_hit:.3f})."
+                )
+                _save_state(state)
+                _append_ledger({"event": "REJECTED_AFTER_ROLLBACK", "reason": state["status_reason"]})
+                log.info("[LateCapSwapBridge] REJECTED after rollback: %s", state["status_reason"])
+                summary["status"] = STATUS_REJECTED
 
     return summary
