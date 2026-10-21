@@ -3700,6 +3700,75 @@ class OrderManager:
         )
         return None
 
+    def execute_late_cap_swap(
+        self, new_symbol: str, new_signal_score: float,
+        new_entry: float, new_stop: float, new_target: float,
+    ) -> bool:
+        """
+        DTA-LATE-CAP-SWAP-BRIDGE-001: a NEW call site for the existing,
+        already-tested _smart_swap_check() mechanism. FIX1 (duplicate-symbol
+        re-entry) and FIX2 (this class's own internal MAX_OPEN_POSITIONS
+        safety-net cap) are the only two places _smart_swap_check() was ever
+        wired -- neither fires in practice, because the REAL, binding
+        capacity limit is master_orchestrator.py's own tighter LatePositionCap
+        (config.MAX_POSITIONS, e.g. 5 slots vs this class's 15-slot net).
+        Confirmed via real evidence: 41 real LatePositionCap rejections
+        (MAX_POSITIONS_CAP_FINAL) recorded, zero ever offered a swap.
+
+        Reuses the exact safety gates (age/R/score-delta/RR/price-improve),
+        the shared daily rotation throttle, and the close_position()
+        primitive FIX1/FIX2 already use -- this method does not add any new
+        swap logic, only a new trigger point. Only ever called by
+        risk_control/late_cap_swap_bridge.py, and only once that module's
+        own evidence-gated lifecycle has reached ACTIVE.
+
+        Returns True if a real swap was executed (caller should now place
+        the new order); False if no swap happened (caller keeps the
+        existing LatePositionCap rejection).
+        """
+        _swap = self._smart_swap_check(
+            new_symbol, new_signal_score,
+            new_entry=new_entry, new_stop=new_stop, new_target=new_target,
+        )
+        if not _swap:
+            return False
+        _swap_oid, _swap_sym, _weak_score = _swap
+
+        _today = datetime.now().strftime("%Y-%m-%d")
+        if self._swap_rotation_date == _today:
+            log.info(
+                "[LateCapSwapBridge] rotation_date=%s old_symbol=%s new_symbol=%s "
+                "status=BLOCKED reason=DAILY_CAP_REACHED",
+                _today, _swap_sym, new_symbol,
+            )
+            return False
+
+        _swap_rec = self._orders.get(_swap_oid)
+        if _swap_rec is None:
+            return False
+        _swap_pos = self._portfolio.positions.get(_swap_sym)
+        _exit_px = (
+            _swap_pos.ltp if _swap_pos and _swap_pos.has_live_ltp and _swap_pos.ltp > 0
+            else _swap_rec.entry_price
+        )
+        if not self.close_position(_swap_oid, _exit_px, reason="LATE_CAP_SWAP"):
+            log.error(
+                "[LateCapSwapBridge] Close failed for %s -- swap aborted, "
+                "%s stays capped.", _swap_sym, new_symbol,
+            )
+            return False
+
+        self._swap_rotation_date = _today
+        if not self._symbol_has_open_position(_swap_sym):
+            self._portfolio.positions.pop(_swap_sym, None)
+
+        log.info(
+            "[LateCapSwapBridge] Closed %s (score=%.1f) -> admitting %s "
+            "(score=%.1f) past LatePositionCap.",
+            _swap_sym, _weak_score, new_symbol, new_signal_score,
+        )
+        return True
+
     def _dup_guard_reentry_check(self, symbol: str,
                                    decision_score: float = 0.0,
                                    new_entry_price: float = 0.0) -> bool:

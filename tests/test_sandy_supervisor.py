@@ -59,7 +59,7 @@ def _fake_report(name, evidence_count=5):
     )
 
 
-_ALL_POLLER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXY"
+_ALL_POLLER_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 _ALL_POLLER_NAMES = [
     "_poll_options_ks_bridge", "_poll_ars_hypothesis_bridge", "_poll_pga_learning",
     "_poll_rejection_attribution", "_poll_production_readiness", "_poll_hkap_kde_bridge",
@@ -67,8 +67,9 @@ _ALL_POLLER_NAMES = [
     "_poll_ars_scheduler", "_poll_ikn_bridge", "_poll_debate_weight_refinement",
     "_poll_dtrace_scheduler", "_poll_regime_map_refinement", "_poll_shm_regime_health",
     "_poll_trust_weighted_ranking", "_poll_shm_profile_refinement", "_poll_sizing_bounds_refinement",
-    "_poll_capital_reserve_readiness", "_poll_options_health", "_poll_debate_agents",
-    "_poll_capital_risk_engine", "_poll_cle_fingerprint_refinement", "_poll_validation_engine",
+    "_poll_capital_reserve_readiness", "_poll_late_cap_swap_bridge", "_poll_options_health",
+    "_poll_debate_agents", "_poll_capital_risk_engine", "_poll_cle_fingerprint_refinement",
+    "_poll_validation_engine",
 ]
 
 

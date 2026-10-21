@@ -2123,6 +2123,30 @@ class MasterOrchestrator:
                     _approved_decisions, _open_now, _exec_max_positions, _enable_late_cap,
                 )
                 for _sig, _decision, _votes in _capped:
+                    # DTA-LATE-CAP-SWAP-BRIDGE-001: give the existing, already-
+                    # tested OrderManager swap mechanism a chance to free a
+                    # slot for this high-conviction, capped candidate before
+                    # rejecting it outright. SHADOW mode (the default until
+                    # real evidence confirms a net benefit) always returns
+                    # False here -- zero behavior change until promoted.
+                    try:
+                        from risk_control.late_cap_swap_bridge import (
+                            register_late_cap_swap_opportunity as _try_late_cap_swap,
+                        )
+                        _swapped = _try_late_cap_swap(
+                            self.order_manager, _sig, _decision,
+                            datetime.now().strftime("%Y-%m-%d"),
+                        )
+                    except Exception:
+                        _swapped = False
+                    if _swapped:
+                        row = self._execute_decided_signal(_sig, _decision, _votes, snapshot)
+                        if isinstance(row, dict):
+                            executed.append(row)
+                        elif isinstance(row, tuple) and row and row[0] == "EXECUTION_FAILED":
+                            execution_failed_syms.add(_sig.symbol)
+                        continue
+
                     cap_rejected_syms.add(_sig.symbol)
                     log.info(
                         "[LatePositionCap] %s approved by Debate (score=%.2f) but "
@@ -8315,6 +8339,25 @@ class MasterOrchestrator:
             log.info("[CapitalReserveReadiness] status=%s", _crre.get("status"))
         except Exception as _crre_exc:
             log.debug("[CapitalReserveReadiness] readiness check error (non-critical): %s", _crre_exc)
+
+        # ── DTA-LATE-CAP-SWAP-BRIDGE-001: resolve shadow swap records and
+        # advance the SHADOW_ACTIVE -> ACTIVE -> ROLLED_BACK lifecycle.
+        # Fully automatic, no human gate (same pattern as every other
+        # self-learning module in this ecosystem) -- see risk_control/
+        # late_cap_swap_bridge.py for the evidence bar.
+        try:
+            from risk_control.late_cap_swap_bridge import (
+                resolve_matured_shadow_records as _lcsb_resolve,
+                advance_lifecycle as _lcsb_advance,
+            )
+            _lcsb_r = _lcsb_resolve(self.order_manager)
+            _lcsb_a = _lcsb_advance()
+            log.info(
+                "[LateCapSwapBridge] resolved=%s status=%s hit_rate=%s",
+                _lcsb_r.get("resolved"), _lcsb_a.get("status"), _lcsb_a.get("hit_rate"),
+            )
+        except Exception as _lcsb_exc:
+            log.debug("[LateCapSwapBridge] EOD cycle error (non-critical): %s", _lcsb_exc)
 
         # ── Item #10: options health metrics daily snapshot ───────────────
         try:

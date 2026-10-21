@@ -117,6 +117,7 @@ class SandySupervisor:
             self._poll_shm_profile_refinement,
             self._poll_sizing_bounds_refinement,
             self._poll_capital_reserve_readiness,
+            self._poll_late_cap_swap_bridge,
             self._poll_options_health,
             self._poll_debate_agents,
             self._poll_capital_risk_engine,
@@ -433,6 +434,20 @@ class SandySupervisor:
             evidence_count=status.get("classified_samples", 0),
             summary=f"status={stage}, false_negative_pct={status.get('false_negative_pct', 'n/a')}, "
                     f"{status.get('classified_samples', 0)} MAX_POSITIONS_CAP rejection(s) resolved.",
+            raw=status,
+        )
+
+    def _poll_late_cap_swap_bridge(self) -> AgentHealthReport:
+        from learning_system.late_cap_swap_bridge_facade import get_readiness_status
+        status = get_readiness_status()
+        stage = status.get("status", "SHADOW_ACTIVE")
+        return AgentHealthReport(
+            name="Late-Cap Swap Bridge (DTA-LATE-CAP-SWAP-BRIDGE-001)",
+            category=SELF_LEARNING_PHASE, stage=stage,
+            evidence_count=status.get("resolved", 0),
+            summary=f"status={stage}, resolved={status.get('resolved', 0)}, "
+                    f"hit_rate={status.get('hit_rate', 'n/a')}, "
+                    f"shadow_candidates_total={status.get('shadow_candidates_total', 0)}.",
             raw=status,
         )
 

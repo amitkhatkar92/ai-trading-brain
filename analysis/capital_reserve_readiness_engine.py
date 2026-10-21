@@ -56,6 +56,21 @@ closes, modifies, or even reads a live open position. get_readiness_
 status() is a pure read-only accessor over analysis/
 rejection_attribution_monitor.py's own already-computed, already-live
 statistics -- this module cannot affect any trade in any way.
+
+DTA-CAPITAL-RESERVE-READINESS-REASON-FIX-001 (2026-10-21): REJECTION_REASON
+was "MAX_POSITIONS_CAP" -- CapitalRiskEngine's early, PRE-Debate/KDA,
+compute-cost eval-pool cutoff (DTA-CRE-LATE-CAP-001), not a real capital
+constraint at all (confirmed: those candidates are cut before any risk/
+debate evaluation, purely to bound how many candidates the expensive
+downstream stages must score per cycle). The real "all slots full, a
+stronger candidate was approved anyway" population is tagged
+"MAX_POSITIONS_CAP_FINAL" (master_orchestrator.py's [LatePositionCap]
+block, POST-Debate/KDA). Corrected to the real reason -- the "1,869
+samples, 54% false-rejection" figure previously reported was measuring
+the wrong population; the real MAX_POSITIONS_CAP_FINAL population had
+(at time of fix) only 41 rows, none yet resolved. See risk_control/
+late_cap_swap_bridge.py, which was built using this corrected population
+from the start.
 """
 from __future__ import annotations
 
@@ -76,7 +91,7 @@ _STORE_DIR   = os.path.join(_ROOT, "data", "risk_control", "capital_reserve_read
 _STATE_PATH  = os.path.join(_STORE_DIR, "state.json")
 _LEDGER_PATH = os.path.join(_STORE_DIR, "ledger.jsonl")
 
-REJECTION_REASON               = "MAX_POSITIONS_CAP"
+REJECTION_REASON               = "MAX_POSITIONS_CAP_FINAL"
 MIN_SAMPLES_FOR_READINESS      = 30
 FALSE_NEGATIVE_READY_THRESHOLD = 40.0   # percent
 
