@@ -427,21 +427,30 @@ PILOT_DAILY_LOSS_PCT = float(os.getenv("PILOT_DAILY_LOSS_PCT",    0.02))   # 2% 
 # ─────────────────────────────────────────────
 # NSE MARKET HOLIDAYS  (update annually)
 # System skips ALL trading activity on these dates.
+# DTA-NSE-HOLIDAY-CALENDAR-001 (2026-10-21): the prior 2026 list had
+# Diwali-Balipratipada hardcoded on Oct 20/21 -- the real NSE/BSE date is
+# 10-Nov-2026 (confirmed live against nseindia.com/resources/exchange-
+# communication-holidays and bseindia.com/static/markets/marketinfo/
+# listholi.aspx, both pages showing the market open on 21-Oct-2026). This
+# caused the system to silently skip a real trading day. Replaced with the
+# full, verified NSE equities-segment 2026 list from both sources.
 # ─────────────────────────────────────────────
 NSE_HOLIDAYS: frozenset = frozenset({
-    # ── FY 2025-26 (already past — harmless to keep) ──────────────────
+    _dt.date(2026, 1, 15),   # MCGM Election Day (Maharashtra)
     _dt.date(2026, 1, 26),   # Republic Day
-    _dt.date(2026, 2, 19),   # Chhatrapati Shivaji Maharaj Jayanti
-    _dt.date(2026, 3, 31),   # Mahavir Jayanti  ← CONFIRMED closed
-    # ── FY 2026-27 ────────────────────────────────────────────────────
+    _dt.date(2026, 3,  3),   # Holi
+    _dt.date(2026, 3, 26),   # Shri Ram Navami
+    _dt.date(2026, 3, 31),   # Shri Mahavir Jayanti
     _dt.date(2026, 4,  3),   # Good Friday
     _dt.date(2026, 4, 14),   # Dr. Baba Saheb Ambedkar Jayanti
     _dt.date(2026, 5,  1),   # Maharashtra Day
-    _dt.date(2026, 8, 15),   # Independence Day
-    _dt.date(2026, 10,  2),  # Gandhi Jayanti
-    _dt.date(2026, 10, 20),  # Diwali – Laxmi Puja
-    _dt.date(2026, 10, 21),  # Diwali – Balipratipada
-    _dt.date(2026, 11,  5),  # Guru Nanak Jayanti
+    _dt.date(2026, 5, 28),   # Bakri Id
+    _dt.date(2026, 6, 26),   # Muharram
+    _dt.date(2026, 9, 14),   # Ganesh Chaturthi
+    _dt.date(2026, 10,  2),  # Mahatma Gandhi Jayanti
+    _dt.date(2026, 10, 20),  # Dussehra
+    _dt.date(2026, 11, 10),  # Diwali - Balipratipada
+    _dt.date(2026, 11, 24),  # Prakash Gurpurb Sri Guru Nanak Dev
     _dt.date(2026, 12, 25),  # Christmas
 })
 
