@@ -667,36 +667,54 @@ def _sync_hypothesis_confirmation_impl() -> Dict[str, Any]:
     if not sourced:
         return summary
 
+    # A single hypothesis can spawn MULTIPLE shadow candidates over time
+    # (different feature_id attempts against the same underlying research
+    # question) -- confirmed live in production (H2026-10-001 had 2: one
+    # REJECTED, one still SHADOW_ACTIVE). Grouping by hypothesis avoids an
+    # order-dependent, potentially-wrong verdict where whichever candidate
+    # happens to be processed first decides the outcome.
+    by_hypothesis: Dict[str, List[Any]] = {}
+    for c in sourced:
+        by_hypothesis.setdefault(c.source_hypothesis_id, []).append(c)
+
     hr = HypothesisRegistry(knowledge_provider=KnowledgeProvider())
 
-    for c in sourced:
+    for hyp_id, group in by_hypothesis.items():
         summary["checked"] += 1
-        hyp = hr.get(c.source_hypothesis_id)
+        hyp = hr.get(hyp_id)
         if hyp is None or hyp.status != HypothesisStatus.VALIDATED:
             continue   # already confirmed/rejected/archived, or unknown -- nothing to do
 
+        live_success = [c for c in group if c.status in (STATUS_ACTIVE, STATUS_PROVISIONAL_ACTIVE)]
+        all_failed = all(c.status in (STATUS_REJECTED, STATUS_ROLLED_BACK) for c in group)
+
         try:
-            if c.status in (STATUS_ACTIVE, STATUS_PROVISIONAL_ACTIVE):
+            if live_success:
+                c = live_success[0]
                 hr.update_status(
-                    c.source_hypothesis_id, HypothesisStatus.CONFIRMED, actor="RAE-001",
+                    hyp_id, HypothesisStatus.CONFIRMED, actor="RAE-001",
                     reason=f"Independently reconfirmed via shadow-then-live tracking "
-                           f"(candidate={c.candidate_id}, status={c.status}).",
+                           f"(candidate={c.candidate_id}, status={c.status}; "
+                           f"{len(group)} total candidate(s) for this hypothesis).",
                 )
                 summary["confirmed"] += 1
-            elif c.status in (STATUS_REJECTED, STATUS_ROLLED_BACK):
+            elif all_failed:
+                c = group[-1]
                 hr.update_status(
-                    c.source_hypothesis_id, HypothesisStatus.REJECTED, actor="RAE-001",
-                    reason=f"Shadow reconfirmation did not hold up (candidate={c.candidate_id}, "
-                           f"status={c.status}): {c.status_reason}",
+                    hyp_id, HypothesisStatus.REJECTED, actor="RAE-001",
+                    reason=f"Shadow reconfirmation did not hold up ({len(group)} candidate(s), "
+                           f"all REJECTED/ROLLED_BACK; last={c.candidate_id}: {c.status_reason}).",
                 )
                 summary["rejected"] += 1
-            # else: still SHADOW_ELIGIBLE/SHADOW_ACTIVE -- keep waiting, no action yet.
+            # else: at least one candidate still SHADOW_ELIGIBLE/SHADOW_ACTIVE and none
+            # has succeeded yet -- keep waiting, no action.
         except Exception as exc:
             summary["errors"] += 1
             print(f"[RAE-001] sync_hypothesis_confirmation: update failed for "
-                  f"{c.source_hypothesis_id} (non-fatal): {exc}")
+                  f"{hyp_id} (non-fatal): {exc}")
 
     return summary
+
 
 
 # ─────────────────────────────────────────────────────────────────────────────

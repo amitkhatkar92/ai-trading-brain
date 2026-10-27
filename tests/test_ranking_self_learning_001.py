@@ -917,6 +917,59 @@ def test_t063_never_raises_on_internal_error(_isolated_store, monkeypatch):
     assert result.get("status") == "ERROR"
 
 
+def test_t064_multiple_candidates_same_hypothesis_live_success_wins(
+        _isolated_store, _isolated_hypothesis_registry):
+    """Reproduces a real production scenario found during deploy verification:
+    one hypothesis can spawn multiple shadow candidates (different feature_id
+    attempts). If one is REJECTED but another is still live ACTIVE, the
+    hypothesis must be CONFIRMED, not REJECTED just because a REJECTED
+    candidate happened to be processed first (order-independent grouping)."""
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([
+        _candidate_for(hyp, rae.STATUS_REJECTED, candidate_id="RSL-A"),
+        _candidate_for(hyp, rae.STATUS_ACTIVE, candidate_id="RSL-B"),
+    ])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["checked"] == 1   # one hypothesis group, not 2 candidates
+    assert summary["confirmed"] == 1
+    assert summary["rejected"] == 0
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "CONFIRMED"
+
+
+def test_t065_multiple_candidates_same_hypothesis_all_failed_rejects(
+        _isolated_store, _isolated_hypothesis_registry):
+    """All candidates for a hypothesis failed -> REJECTED. No live success
+    anywhere in the group."""
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([
+        _candidate_for(hyp, rae.STATUS_REJECTED, candidate_id="RSL-A"),
+        _candidate_for(hyp, rae.STATUS_ROLLED_BACK, candidate_id="RSL-B"),
+    ])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["rejected"] == 1
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "REJECTED"
+
+
+def test_t066_multiple_candidates_mixed_pending_stays_validated(
+        _isolated_store, _isolated_hypothesis_registry):
+    """One REJECTED + one still SHADOW_ACTIVE (no live success yet) ->
+    hypothesis must stay VALIDATED, not prematurely rejected."""
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([
+        _candidate_for(hyp, rae.STATUS_REJECTED, candidate_id="RSL-A"),
+        _candidate_for(hyp, rae.STATUS_SHADOW_ACTIVE, candidate_id="RSL-B"),
+    ])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["confirmed"] == 0 and summary["rejected"] == 0
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "VALIDATED"
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # T036-T040 — safety: no execution/broker imports
 # ─────────────────────────────────────────────────────────────────────────────
