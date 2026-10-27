@@ -345,18 +345,23 @@ def run_loop(
     try:
         from scripts.knowledge_system.ranking_adjustment_engine_001 import (
             advance_shadow_tracking, check_rollback, run_weekly_rolling_refinement,
+            sync_hypothesis_confirmation,
         )
         shadow_result = advance_shadow_tracking()
         rollback_result = check_rollback()
         weekly_result = run_weekly_rolling_refinement()
+        confirmation_result = sync_hypothesis_confirmation()
         summary["rsl_shadow_tracking"] = shadow_result
         summary["rsl_rollback_check"] = rollback_result
         summary["rsl_weekly_refinement"] = weekly_result
+        summary["rsl_hypothesis_confirmation"] = confirmation_result
         if shadow_result.get("activated_shadow") or shadow_result.get("promoted_live") \
            or rollback_result.get("rolled_back"):
             print(f"[KSL] Stage 11: RAE-001 shadow/rollback — shadow={shadow_result} rollback={rollback_result}")
         if weekly_result.get("refined"):
             print(f"[KSL] Stage 11b: RAE-001 weekly rolling refinement — {weekly_result}")
+        if confirmation_result.get("confirmed") or confirmation_result.get("rejected"):
+            print(f"[KSL] Stage 11c: ARS hypothesis confirmation sync — {confirmation_result}")
     except Exception as _rae_exc:
         print(f"[KSL] RAE-001 shadow tracking failed (non-critical): {_rae_exc}")
 

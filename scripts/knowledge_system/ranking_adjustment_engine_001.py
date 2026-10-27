@@ -255,6 +255,7 @@ def register_shadow_candidate(
         candidate_id=f"RSL-{uuid.uuid4().hex[:12]}",
         research_question_id=finding.research_question_id,
         finding_id=finding.finding_id,
+        source_hypothesis_id=finding.experiment_id,
         created_at=datetime.now(timezone.utc).isoformat(),
         baseline_version="FINAL_TRADING_ARCHITECTURE_SHADOW_001_v1",
         candidate_version=f"FINAL_TRADING_ARCHITECTURE_SHADOW_001_v1+ADJ:{feat_id}",
@@ -608,6 +609,94 @@ def get_active_adjustments_status() -> Dict[str, Any]:
     except Exception as exc:
         print(f"[RAE-001] get_active_adjustments_status failed: {exc}")
         return {"candidates": [], "active_config": {}}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-ARS-HYPOTHESIS-CONFIRMATION-001 — report RAE-001's own shadow-then-
+# live verdict back to the originating ARS Hypothesis Registry entry
+# ─────────────────────────────────────────────────────────────────────────────
+
+def sync_hypothesis_confirmation() -> Dict[str, Any]:
+    """
+    Root cause (found auditing the ARS Hypothesis -> KDA Bridge, 2026-10-27):
+    RHV-001 advances a KSL_AUTO hypothesis PROPOSED -> ... -> VALIDATED,
+    then hands off to THIS module's own, separate, MORE rigorous shadow-
+    then-live lifecycle (SHADOW_ACTIVE -> PROVISIONAL_ACTIVE/ACTIVE ->
+    REJECTED/ROLLED_BACK) -- but nothing ever reported that second,
+    stricter verdict back to the ARS Hypothesis Registry, so a VALIDATED
+    hypothesis sat there forever (confirmed live: 3/3 VALIDATED KSL_AUTO
+    hypotheses, 0 ever CONFIRMED, despite this module's own candidate
+    lifecycle already being exactly the kind of independent
+    reconfirmation-on-new-evidence a VALIDATED->CONFIRMED promotion
+    should require).
+
+    Deliberately does NOT invent a new statistical test -- it reuses this
+    module's own, already-evidence-gated candidate status as the sole
+    source of truth, fully automated, no human step:
+      candidate reached ACTIVE / PROVISIONAL_ACTIVE (this module's own
+        shadow tracking independently reconfirmed the finding on NEW,
+        held-out evidence) -> hypothesis VALIDATED -> CONFIRMED.
+      candidate REJECTED / ROLLED_BACK (shadow evidence turned negative
+        after all) -> hypothesis VALIDATED -> REJECTED.
+      candidate still SHADOW_ELIGIBLE / SHADOW_ACTIVE -> no change yet;
+        same bounded observation window (MAX_OBSERVATION_DAYS) this
+        module already enforces, not a new indefinite wait.
+
+    Only acts on candidates with a known source_hypothesis_id (set at
+    registration time, additive field -- pre-existing candidates from
+    before this fix simply have none and are skipped, not guessed at).
+    Idempotent and safe to re-run: update_status() is a no-op target
+    only reached once (hypothesis status will no longer be VALIDATED
+    after the first successful call). Never raises.
+    """
+    try:
+        return _sync_hypothesis_confirmation_impl()
+    except Exception as exc:
+        print(f"[RAE-001] sync_hypothesis_confirmation failed: {exc}")
+        return {"status": "ERROR", "error": str(exc)}
+
+
+def _sync_hypothesis_confirmation_impl() -> Dict[str, Any]:
+    from autonomous_research.hypothesis_registry import HypothesisRegistry
+    from autonomous_research.hypothesis_models import HypothesisStatus
+    from autonomous_research.knowledge_provider import KnowledgeProvider
+
+    summary = {"checked": 0, "confirmed": 0, "rejected": 0, "errors": 0}
+    candidates = _load_candidates()
+    sourced = [c for c in candidates if c.source_hypothesis_id]
+    if not sourced:
+        return summary
+
+    hr = HypothesisRegistry(knowledge_provider=KnowledgeProvider())
+
+    for c in sourced:
+        summary["checked"] += 1
+        hyp = hr.get(c.source_hypothesis_id)
+        if hyp is None or hyp.status != HypothesisStatus.VALIDATED:
+            continue   # already confirmed/rejected/archived, or unknown -- nothing to do
+
+        try:
+            if c.status in (STATUS_ACTIVE, STATUS_PROVISIONAL_ACTIVE):
+                hr.update_status(
+                    c.source_hypothesis_id, HypothesisStatus.CONFIRMED, actor="RAE-001",
+                    reason=f"Independently reconfirmed via shadow-then-live tracking "
+                           f"(candidate={c.candidate_id}, status={c.status}).",
+                )
+                summary["confirmed"] += 1
+            elif c.status in (STATUS_REJECTED, STATUS_ROLLED_BACK):
+                hr.update_status(
+                    c.source_hypothesis_id, HypothesisStatus.REJECTED, actor="RAE-001",
+                    reason=f"Shadow reconfirmation did not hold up (candidate={c.candidate_id}, "
+                           f"status={c.status}): {c.status_reason}",
+                )
+                summary["rejected"] += 1
+            # else: still SHADOW_ELIGIBLE/SHADOW_ACTIVE -- keep waiting, no action yet.
+        except Exception as exc:
+            summary["errors"] += 1
+            print(f"[RAE-001] sync_hypothesis_confirmation: update failed for "
+                  f"{c.source_hypothesis_id} (non-fatal): {exc}")
+
+    return summary
 
 
 # ─────────────────────────────────────────────────────────────────────────────

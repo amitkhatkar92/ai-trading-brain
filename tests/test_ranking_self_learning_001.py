@@ -778,6 +778,146 @@ def test_t054_full_promotion_still_works_independently_of_weekly_nudge(_isolated
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# T055-T063 — DTA-ARS-HYPOTHESIS-CONFIRMATION-001: hypothesis confirmation sync
+# ─────────────────────────────────────────────────────────────────────────────
+
+@pytest.fixture()
+def _isolated_hypothesis_registry(tmp_path, monkeypatch):
+    import autonomous_research.hypothesis_registry as hr_mod
+    monkeypatch.setattr(hr_mod, "_DEFAULT_REGISTRY_PATH", tmp_path / "test_registry.json")
+    yield
+
+
+def _make_hypothesis_registry():
+    from autonomous_research.knowledge_provider import KnowledgeProvider
+    from autonomous_research.hypothesis_registry import HypothesisRegistry
+    return HypothesisRegistry(knowledge_provider=KnowledgeProvider())
+
+
+def _create_validated_hypothesis(reg, actor="RHV-001"):
+    from autonomous_research.hypothesis_models import (
+        HypothesisPriority, HypothesisClassification, HypothesisStatus, ValidationResult,
+    )
+    from datetime import datetime
+    h = reg.create_hypothesis(
+        title="Test KSL_AUTO ranking hypothesis", research_question="RQ-TEST",
+        description="d", origin="KSL_AUTO", priority=HypothesisPriority.MEDIUM,
+        classification=HypothesisClassification.PERFORMANCE_GAP,
+        knowledge_gap="RQ: RQ-TEST", expected_knowledge_gain="g", validation_method="m",
+    )
+    reg.update_status(h.hypothesis_id, HypothesisStatus.UNDER_REVIEW, actor=actor, reason="r")
+    reg.update_status(h.hypothesis_id, HypothesisStatus.APPROVED, actor=actor, reason="r")
+    reg.update_status(h.hypothesis_id, HypothesisStatus.PLANNED, actor=actor, reason="r")
+    reg.update_status(h.hypothesis_id, HypothesisStatus.RUNNING, actor=actor, reason="r")
+    reg.set_validation_result(
+        h.hypothesis_id,
+        ValidationResult(validated_at=datetime.now(), validated_by=actor, verdict="PASS",
+                          findings=["ok"], study_ids=[], metrics={}, notes=""),
+        actor=actor,
+    )
+    reg.update_status(h.hypothesis_id, HypothesisStatus.VALIDATED, actor=actor, reason="r")
+    return h
+
+
+def _candidate_for(hyp, status, **overrides):
+    kwargs = dict(
+        candidate_id="RSL-TEST01", research_question_id="RQ-TEST", finding_id="RHV-TEST01",
+        created_at="2026-09-01T00:00:00+00:00", baseline_version="v1", candidate_version="v1+ADJ",
+        reason="", evidence="", oos_dir_acc=0.8, oos_ge2_rate=0.5, expected_improvement="",
+        risk="", required_observation_days=10, promotion_requirements="",
+        status=status, feature_id="C2_RANKING|UP|X", source_hypothesis_id=hyp.hypothesis_id,
+        status_reason="test",
+    )
+    kwargs.update(overrides)
+    return KSLShadowCandidate(**kwargs)
+
+
+def test_t055_active_candidate_confirms_the_hypothesis(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_ACTIVE)])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["confirmed"] == 1
+    assert summary["rejected"] == 0
+    updated = _make_hypothesis_registry().get(hyp.hypothesis_id)
+    assert updated.status.value == "CONFIRMED"
+
+
+def test_t056_provisional_active_also_confirms(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_PROVISIONAL_ACTIVE)])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["confirmed"] == 1
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "CONFIRMED"
+
+
+def test_t057_rejected_candidate_rejects_the_hypothesis(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_REJECTED)])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["rejected"] == 1
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "REJECTED"
+
+
+def test_t058_rolled_back_candidate_also_rejects(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_ROLLED_BACK)])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["rejected"] == 1
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "REJECTED"
+
+
+def test_t059_still_shadow_active_leaves_hypothesis_unchanged(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_SHADOW_ACTIVE)])
+
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["confirmed"] == 0 and summary["rejected"] == 0
+    assert reg.get(hyp.hypothesis_id).status.value == "VALIDATED"
+
+
+def test_t060_candidate_with_no_source_hypothesis_id_is_skipped(_isolated_store, _isolated_hypothesis_registry):
+    rae._save_candidates([_candidate_for(
+        type("H", (), {"hypothesis_id": "unused"}), rae.STATUS_ACTIVE, source_hypothesis_id="",
+    )])
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary == {"checked": 0, "confirmed": 0, "rejected": 0, "errors": 0}
+
+
+def test_t061_unknown_hypothesis_id_is_skipped_gracefully(_isolated_store, _isolated_hypothesis_registry):
+    fake = type("H", (), {"hypothesis_id": "H-DOES-NOT-EXIST"})
+    rae._save_candidates([_candidate_for(fake, rae.STATUS_ACTIVE)])
+    summary = rae.sync_hypothesis_confirmation()
+    assert summary["checked"] == 1
+    assert summary["confirmed"] == 0 and summary["rejected"] == 0
+
+
+def test_t062_idempotent_second_run_is_a_safe_noop(_isolated_store, _isolated_hypothesis_registry):
+    reg = _make_hypothesis_registry()
+    hyp = _create_validated_hypothesis(reg)
+    rae._save_candidates([_candidate_for(hyp, rae.STATUS_ACTIVE)])
+
+    rae.sync_hypothesis_confirmation()
+    second = rae.sync_hypothesis_confirmation()
+    assert second["confirmed"] == 0   # already CONFIRMED, not VALIDATED anymore -- no-op
+    assert _make_hypothesis_registry().get(hyp.hypothesis_id).status.value == "CONFIRMED"
+
+
+def test_t063_never_raises_on_internal_error(_isolated_store, monkeypatch):
+    monkeypatch.setattr(rae, "_load_candidates", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    result = rae.sync_hypothesis_confirmation()
+    assert result.get("status") == "ERROR"
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # T036-T040 — safety: no execution/broker imports
 # ─────────────────────────────────────────────────────────────────────────────
 

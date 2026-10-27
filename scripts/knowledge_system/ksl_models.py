@@ -314,6 +314,12 @@ class KSLShadowCandidate:
     # of (and parallel to) the stricter SHADOW->ACTIVE promotion gate above.
     last_weekly_checkpoint_at: Optional[str] = None
     weekly_rolling_weight:     Optional[float] = None
+    # DTA-ARS-HYPOTHESIS-CONFIRMATION-001 — additive only, optional/defaulted.
+    # The ARS Hypothesis Registry hypothesis_id this candidate originated
+    # from (= KnowledgeFinding.experiment_id at registration time). Lets
+    # sync_hypothesis_confirmation() report this candidate's own shadow-
+    # then-live verdict back to the originating hypothesis's status.
+    source_hypothesis_id:     str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__.copy()
