@@ -640,6 +640,144 @@ def test_t045_check_rollback_monitors_provisional_active_at_lower_floor(_isolate
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# T046-T054 — DTA-UNIVERSAL-ROLLING-REFINEMENT-001: weekly rolling refinement
+# ─────────────────────────────────────────────────────────────────────────────
+
+def test_t046_weekly_refinement_applies_bounded_nudge_with_partial_evidence(_isolated_store):
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()  # -> SHADOW_ACTIVE
+
+    # Only 5 real-evidence rows this "week" -- a small, partial sample.
+    recs = []
+    for d in range(5):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": True, "selected_final_5": False, "t1_ret_pct": 3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+
+    summary = rae.run_weekly_rolling_refinement()
+    assert summary["refined"] == 1
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert "UP" in active_config
+    assert active_config["UP"]["source"] == "WEEKLY_ROLLING"
+    # Bounded, and smaller than the full ceiling given only partial evidence.
+    assert 0 < active_config["UP"]["weight"] < rae.MAX_WEIGHT
+
+
+def test_t047_weekly_refinement_not_due_is_skipped(_isolated_store):
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()
+    rae.run_weekly_rolling_refinement()  # first checkpoint, runs
+    second = rae.run_weekly_rolling_refinement()  # same day -- not due yet
+    assert second["skipped_not_due"] == 1
+    assert second["refined"] == 0
+
+
+def test_t048_weekly_refinement_never_overrides_full_active(_isolated_store):
+    cand = KSLShadowCandidate(
+        candidate_id="C1", research_question_id="RQ1", finding_id="F1", created_at="2026-09-01",
+        baseline_version="v1", candidate_version="v1+ADJ", reason="", evidence="",
+        oos_dir_acc=0.9, oos_ge2_rate=0.6, expected_improvement="", risk="",
+        required_observation_days=10, promotion_requirements="",
+        status=rae.STATUS_SHADOW_ACTIVE, feature_id="C2_RANKING|UP|X",
+        shadow_start_date="2026-09-01",
+    )
+    rae._save_candidates([cand])
+    # A DIFFERENT, stricter mechanism already governs UP (e.g. full ACTIVE).
+    rae._save_active_config({"UP": {"candidate_id": "OTHER", "weight": rae.DEFAULT_WEIGHT,
+                                     "source": "FULL_PROMOTION"}})
+    summary = rae.run_weekly_rolling_refinement()
+    assert summary["skipped_superseded"] == 1
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert active_config["UP"]["source"] == "FULL_PROMOTION"   # untouched
+
+
+def test_t049_weak_evidence_produces_zero_weight_and_no_config_entry(_isolated_store):
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()
+    recs = []
+    for d in range(5):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": True, "selected_final_5": False, "t1_ret_pct": -3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    summary = rae.run_weekly_rolling_refinement()
+    assert summary["refined"] == 0
+    active_config = rae._load_active_config()
+    assert "UP" not in active_config
+
+
+def test_t050_more_evidence_produces_larger_bounded_nudge(_isolated_store, monkeypatch):
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()
+    recs = []
+    for d in range(rae.WEEKLY_FULL_CONFIDENCE_N):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": True, "selected_final_5": False, "t1_ret_pct": 3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    rae.run_weekly_rolling_refinement()
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    # Full evidence (n >= WEEKLY_FULL_CONFIDENCE_N) with a perfect hit rate
+    # reaches the full bounded ceiling.
+    assert active_config["UP"]["weight"] == pytest.approx(rae.MAX_WEIGHT)
+
+
+def test_t051_rejection_cleans_up_stale_weekly_config_entry(_isolated_store):
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS", _scorecard())
+    rae.advance_shadow_tracking()
+    recs = []
+    for d in range(5):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": True, "selected_final_5": False, "t1_ret_pct": 3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    rae.run_weekly_rolling_refinement()
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert "UP" in active_config   # weekly entry created
+
+    # Now force rejection via the MAX_OBSERVATION_DAYS fail-safe with no signal.
+    bad_recs = []
+    for d in range(rae.MAX_OBSERVATION_DAYS):
+        bad_recs.append({"trade_date": f"2099-05-{d+1:02d}", "direction": "UP",
+                          "would_select_adjusted": False, "selected_final_5": True, "t1_ret_pct": 1.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], bad_recs)
+    rae.advance_shadow_tracking()
+    candidates = rae._load_candidates()
+    assert candidates[0].status == rae.STATUS_REJECTED
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert "UP" not in active_config   # stale weekly entry cleaned up
+
+
+def test_t052_never_raises_on_internal_error(_isolated_store, monkeypatch):
+    monkeypatch.setattr(rae, "_load_candidates", lambda: (_ for _ in ()).throw(RuntimeError("boom")))
+    result = rae.run_weekly_rolling_refinement()
+    assert result.get("status") == "ERROR"
+
+
+def test_t053_no_eligible_candidates_is_a_safe_noop(_isolated_store):
+    summary = rae.run_weekly_rolling_refinement()
+    assert summary == {"checked": 0, "refined": 0, "skipped_not_due": 0, "skipped_superseded": 0}
+
+
+def test_t054_full_promotion_still_works_independently_of_weekly_nudge(_isolated_store, monkeypatch):
+    """The stricter SHADOW_ACTIVE->ACTIVE gate is completely untouched by
+    the weekly mechanism -- a candidate can still reach full ACTIVE and
+    DEFAULT_WEIGHT exactly as before."""
+    monkeypatch.setattr(rae, "REQUIRED_OBSERVATION_DAYS", 5)
+    monkeypatch.setattr(rae, "MIN_OBS_FOR_ACTIVATION", 5)
+    rae.register_shadow_candidate(_finding(), "C2_RANKING", "UP", "OUTRANKED_BY_STRONGER_OPENERS",
+                                   _scorecard(oos_miss_rate=0.65))
+    rae.advance_shadow_tracking()
+    recs = []
+    for d in range(6):
+        recs.append({"trade_date": f"2099-01-{d+1:02d}", "direction": "UP",
+                      "would_select_adjusted": True, "selected_final_5": False, "t1_ret_pct": 3.0})
+    _write_shadow_jsonl(_isolated_store["shadow"], recs)
+    rae.run_weekly_rolling_refinement()
+    summary = rae.advance_shadow_tracking()
+    assert summary["promoted_live"] == 1
+    active_config = json.loads(_isolated_store["active_config"].read_text())
+    assert active_config["UP"]["weight"] == rae.DEFAULT_WEIGHT
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # T036-T040 — safety: no execution/broker imports
 # ─────────────────────────────────────────────────────────────────────────────
 

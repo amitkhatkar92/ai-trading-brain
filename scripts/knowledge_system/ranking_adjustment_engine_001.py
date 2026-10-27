@@ -127,6 +127,16 @@ PROVISIONAL_WEIGHT            = 0.05 # half of DEFAULT_WEIGHT -- small, bounded,
 MIN_OBS_FOR_ROLLBACK_CHECK_PROVISIONAL = 10  # lower post-promotion monitoring floor, proportional to the smaller weight's smaller downside
 MAX_OBSERVATION_DAYS      = 30       # fail-safe: reject if NEITHER bar is ever met by this many trading dates
 
+# DTA-UNIVERSAL-ROLLING-REFINEMENT-001 (user-directed 2026-10-27): Model A
+# (the live/shadow C2 ranking) previously ran on ZERO accumulated knowledge
+# for however long the strict SHADOW_ACTIVE->ACTIVE bar above takes to
+# clear -- confirmed real: one candidate sat unresolved 21+ days. These
+# govern a SEPARATE, additive, rolling weekly nudge (see
+# run_weekly_rolling_refinement()) that uses whatever evidence exists at
+# each ~7-day checkpoint instead of waiting for the full bar.
+WEEKLY_CHECKPOINT_PERIOD_DAYS = 7
+WEEKLY_FULL_CONFIDENCE_N      = MIN_OBS_FOR_ACTIVATION  # same n that earns full trust under the existing bar
+
 # COOLDOWN_DAYS: was 90 (one quarter) -- sized for a mature system already
 # generating lots of evidence. Recalibrated to this early-stage system's
 # real evidence velocity (confirmed live: ~0.25 new-picks/day system-wide
@@ -336,6 +346,12 @@ def advance_shadow_tracking() -> Dict[str, Any]:
                     f"No usable signal within the maximum observation window "
                     f"({MAX_OBSERVATION_DAYS} trading dates)."
                 )
+                # Clean up any weekly-rolling config entry this candidate created
+                # while it was still accumulating evidence (DTA-UNIVERSAL-ROLLING-
+                # REFINEMENT-001) -- never leave a stale entry behind on rejection.
+                _config = _load_active_config()
+                if _config.get(direction, {}).get("candidate_id") == c.candidate_id:
+                    _deactivate_in_config(direction)
                 summary["rejected"] += 1
                 changed = True
             continue
@@ -388,6 +404,109 @@ def advance_shadow_tracking() -> Dict[str, Any]:
                 changed = True
             # else: still SHADOW_ACTIVE with a weak signal -- let it keep
             # accumulating rather than reject outright (same fail-safe as above).
+
+    if changed:
+        _save_candidates(candidates)
+    return summary
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DTA-UNIVERSAL-ROLLING-REFINEMENT-001 — rolling weekly incremental refinement
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_weekly_rolling_refinement() -> Dict[str, Any]:
+    """
+    Model A (the live/shadow C2 ranking) flagship implementation of the
+    rolling incremental-refinement plan (user-directed 2026-10-27):
+    "1st week 7 days knowledge... after another 7 days 15 days knowledge...
+    so refine itself" -- instead of waiting for the full SHADOW_ACTIVE ->
+    ACTIVE bar (confirmed real: one candidate unresolved 21+ days, zero
+    live influence the whole time), this applies a SMALL, BOUNDED,
+    CONFIDENCE-SCALED nudge every ~7 days using WHATEVER real evidence
+    exists at that checkpoint -- never "blank mode" while waiting.
+
+    Fully additive and parallel to advance_shadow_tracking()/
+    check_rollback(): the stricter promotion gate is completely untouched
+    and keeps running independently; a candidate that later clears that
+    bar still gets its full DEFAULT_WEIGHT/PROVISIONAL_WEIGHT exactly as
+    before (which always supersedes a weekly nudge for the same
+    direction). This only fills the gap while a candidate is still
+    accumulating evidence toward that bar. Never raises.
+    """
+    try:
+        return _weekly_refinement_impl()
+    except Exception as exc:
+        print(f"[RAE-001] run_weekly_rolling_refinement failed: {exc}")
+        return {"status": "ERROR", "error": str(exc)}
+
+
+def _weekly_refinement_impl() -> Dict[str, Any]:
+    from learning_system.rolling_refinement_engine import (
+        compute_confidence_scaled_delta, is_checkpoint_due,
+    )
+
+    summary = {"checked": 0, "refined": 0, "skipped_not_due": 0, "skipped_superseded": 0}
+    candidates = _load_candidates()
+    eligible = [c for c in candidates if c.status == STATUS_SHADOW_ACTIVE and c.shadow_start_date]
+    if not eligible:
+        return summary
+
+    active_config = _load_active_config()
+    changed = False
+
+    for c in eligible:
+        summary["checked"] += 1
+        if not is_checkpoint_due(c.last_weekly_checkpoint_at, period_days=WEEKLY_CHECKPOINT_PERIOD_DAYS):
+            summary["skipped_not_due"] += 1
+            continue
+
+        parts = (c.feature_id.split("|") + [None, None, None])[:3]
+        direction, miss_reason = parts[1], parts[2]
+
+        if direction in active_config and active_config[direction].get("source") != "WEEKLY_ROLLING":
+            # A stricter, higher-confidence adjustment (PROVISIONAL_ACTIVE/
+            # ACTIVE) already governs this direction -- never let a smaller
+            # weekly nudge undercut it.
+            summary["skipped_superseded"] += 1
+            c.last_weekly_checkpoint_at = datetime.now(timezone.utc).isoformat()
+            changed = True
+            continue
+
+        window = _load_raw_shadow_records(since_date=c.shadow_start_date)
+        window = [r for r in window if r.get("direction") == direction]
+        qualifying = [r for r in window if r.get("would_select_adjusted") is not None]
+        would_select_new = [r for r in qualifying
+                             if r.get("would_select_adjusted") and not r.get("selected_final_5")]
+        n = len(would_select_new)
+        hit_rate = (sum(1 for r in would_select_new if _ge2(r)) / n) if n else 0.0
+        effect = (hit_rate - 0.5) * 2.0   # normalize roughly to [-1, 1]
+
+        delta = compute_confidence_scaled_delta(
+            n=n, effect=effect, max_delta=MAX_WEIGHT, full_confidence_n=WEEKLY_FULL_CONFIDENCE_N,
+        )
+        # A weak/negative signal this week simply contributes nothing (0),
+        # never a negative live weight.
+        weekly_weight = max(0.0, delta)
+        c.weekly_rolling_weight = weekly_weight
+        c.last_weekly_checkpoint_at = datetime.now(timezone.utc).isoformat()
+        changed = True
+
+        if weekly_weight > 0.0:
+            active_config[direction] = {
+                "candidate_id": c.candidate_id,
+                "feature_id": c.feature_id,
+                "miss_reason": miss_reason,
+                "weight": weekly_weight,
+                "activated_at": c.last_weekly_checkpoint_at,
+                "baseline_oos_dir_acc": c.oos_dir_acc,
+                "source": "WEEKLY_ROLLING",
+            }
+            _save_active_config(active_config)
+            summary["refined"] += 1
+        elif direction in active_config and active_config[direction].get("candidate_id") == c.candidate_id:
+            # This week's evidence produced zero weight -- remove the stale
+            # entry rather than leaving last week's (now-outdated) weight in place.
+            _deactivate_in_config(direction)
 
     if changed:
         _save_candidates(candidates)

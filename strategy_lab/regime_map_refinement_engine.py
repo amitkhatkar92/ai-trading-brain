@@ -122,6 +122,17 @@ COOLDOWN_DAYS             = 30
 ROLLBACK_RECOVERY         = 0.05  # post-demotion win-rate rising back within 5pp of/above 0.50 triggers rollback
 MIN_POST_DEMOTION_FOR_ROLLBACK_CHECK = 12
 
+
+def _effective_min_sample() -> int:
+    """DTA-UNIVERSAL-ROLLING-REFINEMENT-001: maturity-staged requirement --
+    lenient (10) while the system is young, rising as real live-trading
+    history accumulates. Falls back to the static floor on any error."""
+    try:
+        from learning_system.rolling_refinement_engine import get_staged_requirement
+        return get_staged_requirement(early=MIN_SAMPLE_FOR_VALIDATION, mid=30, mature=45)
+    except Exception:
+        return MIN_SAMPLE_FOR_VALIDATION
+
 STATUS_WAITING     = "WAITING_FOR_EVIDENCE"
 STATUS_SHADOW      = "SHADOW_ACTIVE"
 STATUS_ACTIVE      = "ACTIVE"
@@ -220,7 +231,7 @@ def _scorecard(records: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     n = len(records)
     result: Dict[str, Any] = {"sample_size": n, "passed": False, "checks": {}}
-    if n < MIN_SAMPLE_FOR_VALIDATION:
+    if n < _effective_min_sample():
         result["checks"]["sample_size"] = False
         return result
     result["checks"]["sample_size"] = True

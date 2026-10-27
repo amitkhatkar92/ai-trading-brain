@@ -6029,6 +6029,22 @@ class MasterOrchestrator:
         except Exception as _csv_exc:
             log.warning("[EOD-Learn] Could not recover CSV trades: %s", _csv_exc)
 
+        # DTA-EOD-LIVE-JOURNAL-RECOVERY-001: the CSV recovery above only
+        # covers PAPER-mode trades for today. In LIVE mode, real closes are
+        # in data/live/live_orders.jsonl, not paper_trades.csv -- recover any
+        # CLOSE event (any date) not yet fed into learning, restart-safe via
+        # a persisted processed-id set.
+        try:
+            from learning_system.live_journal_trade_recovery import recover_missed_closed_trades
+            _recovered = recover_missed_closed_trades(_seen_oids)
+            for _rrec in _recovered:
+                _seen_oids.add(_rrec.order_id)
+                trades.append(_rrec)
+            if _recovered:
+                log.info("[EOD-Learn] Recovered %d missed live-journal trade(s).", len(_recovered))
+        except Exception as _live_rec_exc:
+            log.warning("[EOD-Learn] Live-journal recovery failed (non-critical): %s", _live_rec_exc)
+
         if not trades:
             log.info("[EOD-Learn] No closed trades today — learning skipped.")
             # GAP-016: notify even on zero-trade days so user knows system ran

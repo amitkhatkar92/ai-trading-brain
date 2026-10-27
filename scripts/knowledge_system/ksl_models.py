@@ -309,6 +309,11 @@ class KSLShadowCandidate:
     live_activated_at:       Optional[str] = None
     rolled_back_at:          Optional[str] = None
     status_reason:           str = ""
+    # DTA-UNIVERSAL-ROLLING-REFINEMENT-001 — additive only, optional/defaulted.
+    # Tracks the rolling weekly incremental-refinement checkpoint, independent
+    # of (and parallel to) the stricter SHADOW->ACTIVE promotion gate above.
+    last_weekly_checkpoint_at: Optional[str] = None
+    weekly_rolling_weight:     Optional[float] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__.copy()

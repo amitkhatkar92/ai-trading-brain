@@ -103,6 +103,15 @@ STATUS_ACTIVE      = "ACTIVE"
 STATUS_REJECTED    = "REJECTED"
 
 
+def _effective_min_sample() -> int:
+    """DTA-UNIVERSAL-ROLLING-REFINEMENT-001: maturity-staged requirement."""
+    try:
+        from learning_system.rolling_refinement_engine import get_staged_requirement
+        return get_staged_requirement(early=MIN_SAMPLE_FOR_AUTO_APPLY, mid=40, mature=55)
+    except Exception:
+        return MIN_SAMPLE_FOR_AUTO_APPLY
+
+
 def _read_json(path: str, default: Any) -> Any:
     if not os.path.exists(path):
         return default
@@ -262,7 +271,7 @@ def _evaluate_strategy(shm, name: str, trades: int, current_profile: str,
             pass
 
     new_state = {**strat_state, "last_trades": trades, "last_checked_at": datetime.now(timezone.utc).isoformat()}
-    if trades < MIN_SAMPLE_FOR_AUTO_APPLY or suggestion is None or confidence != "HIGH" or suggestion == current_profile:
+    if trades < _effective_min_sample() or suggestion is None or confidence != "HIGH" or suggestion == current_profile:
         new_state["status"] = STATUS_WAITING
         return {"state": new_state, "detail": f"waiting, trades={trades}"}
 

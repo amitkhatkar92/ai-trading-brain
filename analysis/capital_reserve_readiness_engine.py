@@ -161,13 +161,18 @@ def get_readiness_status() -> Dict[str, Any]:
     """
     try:
         from analysis.rejection_attribution_monitor import get_rejection_attribution_monitor
+        try:
+            from learning_system.rolling_refinement_engine import get_staged_requirement
+            _min_samples = get_staged_requirement(early=MIN_SAMPLES_FOR_READINESS, mid=45, mature=60)
+        except Exception:
+            _min_samples = MIN_SAMPLES_FOR_READINESS
         stats = get_rejection_attribution_monitor().get_reason_reliability(
-            REJECTION_REASON, min_samples=MIN_SAMPLES_FOR_READINESS,
+            REJECTION_REASON, min_samples=_min_samples,
         )
         if stats is None:
             return {
                 "status": STATUS_WAITING, "reason": REJECTION_REASON,
-                "min_samples_required": MIN_SAMPLES_FOR_READINESS,
+                "min_samples_required": _min_samples,
                 "classified_samples": 0,
             }
         false_negative_pct = stats.get("false_negative_pct", 0.0)
