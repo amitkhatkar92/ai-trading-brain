@@ -6045,6 +6045,20 @@ class MasterOrchestrator:
         except Exception as _live_rec_exc:
             log.warning("[EOD-Learn] Live-journal recovery failed (non-critical): %s", _live_rec_exc)
 
+        # DTA-EOD-TRADE-REPROCESS-001: TradeMonitor._closed_orders is never
+        # pruned, so get_closed_trades() keeps returning every trade ever
+        # closed since the process last restarted -- without this filter,
+        # every consumer below (learning_engine.learn(), perf_tracker,
+        # regime_map_evidence_log, sizing_bounds_refinement_engine) would
+        # silently re-process the same real trade on every subsequent day's
+        # EOD cycle. Confirmed live: CASTROLIND order_id 221261028295303 was
+        # written into regime_map_evidence_log on 3 separate days.
+        try:
+            from learning_system.eod_trade_dedup import filter_unprocessed
+            trades = filter_unprocessed(trades)
+        except Exception as _dedup_exc:
+            log.warning("[EOD-Learn] Trade dedup filter failed (non-critical, proceeding unfiltered): %s", _dedup_exc)
+
         if not trades:
             log.info("[EOD-Learn] No closed trades today — learning skipped.")
             # GAP-016: notify even on zero-trade days so user knows system ran
@@ -6144,6 +6158,16 @@ class MasterOrchestrator:
                     record_regime_trade(regime, strategy, r_multiple=r_multiple, won=won, order_id=_oid)
                 except Exception as _rme_exc:
                     log.debug("[RegimeMapEvidence] record error (non-critical): %s", _rme_exc)
+        # DTA-EOD-TRADE-REPROCESS-001: mark every trade in this run as fed
+        # into EOD learning, so tomorrow's cycle (and any cycle while this
+        # process keeps running without a restart) never re-feeds the same
+        # real trade into learning_engine.learn()/perf_tracker/regime_map_
+        # evidence_log/sizing_bounds_refinement_engine again.
+        try:
+            from learning_system.eod_trade_dedup import mark_processed
+            mark_processed(trades)
+        except Exception as _dedup_mark_exc:
+            log.debug("[EOD-Learn] Trade dedup mark_processed failed (non-critical): %s", _dedup_mark_exc)
         if trades:
             report = self.performance_evaluator.evaluate()
             self.performance_evaluator.print_full_report(report)

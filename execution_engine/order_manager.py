@@ -597,6 +597,47 @@ class OrderManager:
         self.last_rejection_detail = detail
         return None
 
+    def _check_available_funds(self, symbol: str, direction: str, qty: int, price: float) -> Optional[str]:
+        """DTA-EQUITY-MARGIN-PREFLIGHT-001: pre-flight real-funds check,
+        reusing the exact get_fund_limits() field names (availabelBalance/
+        availableBalance) options_order_manager.py's live execution path
+        already uses. Returns a human-readable rejection detail string if
+        the trade should be blocked, or None if it's fine to proceed.
+
+        Fails OPEN (returns None, i.e. proceed) on any error or when the
+        broker doesn't support get_fund_limits() or in paper mode -- a
+        simple available-funds lookup failing should never itself block
+        an otherwise-good trade; the real broker order-placement call
+        remains the final, authoritative safety check either way."""
+        if self._paper_mode or not hasattr(self._broker, "get_fund_limits"):
+            return None
+        try:
+            funds_response = self._broker.get_fund_limits()
+            funds_data = funds_response.get("data", funds_response) if isinstance(funds_response, dict) else {}
+            available_funds = float(
+                funds_data.get("availabelBalance", funds_data.get("availableBalance"))
+            )
+            if available_funds < 0:
+                raise ValueError("Dhan returned a negative available-funds value")
+        except Exception as exc:
+            log.debug(
+                "[OrderManager] Margin pre-flight unavailable for %s (%s) — "
+                "proceeding without it (broker's own real-time check remains "
+                "the final authority).", symbol, exc,
+            )
+            return None
+
+        required_funds = qty * price
+        if available_funds < required_funds:
+            log.warning(
+                "[OrderManager] [InsufficientFunds] %s %s blocked pre-flight: "
+                "required=\u20b9%.2f available=\u20b9%.2f shortfall=\u20b9%.2f.",
+                direction, symbol, required_funds, available_funds,
+                required_funds - available_funds,
+            )
+            return f"required=\u20b9{required_funds:.2f} available=\u20b9{available_funds:.2f}"
+        return None
+
     def execute(self, signal: TradeSignal,
                 decision: DecisionResult,
                 signal_context: Optional[dict] = None) -> Optional[OrderRecord]:
@@ -996,6 +1037,19 @@ class OrderManager:
                 max_wait      = AET_MAX_WAIT_CANDLES,
             )
             return self._reject("DEFERRED_AET_CONFIRMATION")   # order will be placed by attempt_aet_confirmations()
+
+        # DTA-EQUITY-MARGIN-PREFLIGHT-001: real, live BROKER_REJECTED_ORDER
+        # "insufficient funds" failures (confirmed: 16 in one 10-day window --
+        # GAIL/SBIN/BAJAJFINSV/TATACONSUM/PETRONET/COALINDIA/CASTROLIND) --
+        # root cause: CapitalRiskEngine/PortfolioAllocationAI size trades off
+        # a STATIC TOTAL_CAPITAL constant and never subtract capital already
+        # locked in currently-open positions, so approved orders can exceed
+        # real available margin. Reuses the exact, already-proven
+        # get_fund_limits() field names options_order_manager.py's live
+        # execution path already uses.
+        _funds_rejection = self._check_available_funds(signal.symbol, signal.direction.value, qty, _final_px)
+        if _funds_rejection is not None:
+            return self._reject("INSUFFICIENT_REAL_MARGIN", detail=_funds_rejection)
 
         order_id = self._place_entry_with_retry(signal, qty, zone_price=_final_px)
         if not order_id:

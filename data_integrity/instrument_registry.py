@@ -64,7 +64,13 @@ _BANDS: Dict[str, Tuple[float, float]] = {
     "ICICIBANK":     (  900.0,  1_800.0),
     "KOTAKBANK":     (1_500.0,  2_800.0),
     "HINDUNILVR":    (2_200.0,  3_200.0),
-    "ITC":           (  300.0,    600.0),
+    # DTA-ITC-STALE-BAND-001: ITC Hotels demerger (completed Jan 2026) permanently
+    # reduced ITC's per-share price (hotel-business value spun off into a separate
+    # listed entity) — the old (300,600) band predated that and was never updated,
+    # so every real post-demerger quote (confirmed live ~260-266 as of 2026-11-02)
+    # was wrongly flagged PRICE_INTEGRITY_SANITY_FAILURE. Mirrors the same
+    # post-demerger band-update already done for TATAMOTORS above.
+    "ITC":           (  180.0,    400.0),
     "SBIN":          (  500.0,  1_100.0),
     "AXISBANK":      (  900.0,  1_600.0),
     "LT":            (3_000.0,  4_500.0),
