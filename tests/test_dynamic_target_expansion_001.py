@@ -184,6 +184,27 @@ def test_t11_restore_from_live_journal_restores_adaptive_target(tmp_path):
     assert om._orders["O1"].adaptive_target == pytest.approx(150.0)
 
 
+def test_t13_trigger_r_has_real_headroom_below_rr_default(monitor):
+    """DTA-TARGET-EXPANSION-TRIGGER-FIX-001 regression guard: the trigger
+    was 2.50, IDENTICAL to equity_scanner_ai.RR_DEFAULT=2.5 -- a target set
+    at the system's own default R:R is reached at the SAME r_multiple the
+    gate requires, leaving ZERO "well before the target" headroom (confirmed
+    live: 0/44 real closed trades ever reached 2.5R). A trade at a target
+    R-multiple matching RR_DEFAULT=2.5, sitting at r_multiple=1.5 (which the
+    OLD trigger=2.5 could never fire for, since 1.5 < 2.5), must now
+    correctly expand under the fixed, lower trigger."""
+    import config as _cfg
+    order = _make_order(direction="BUY", entry=100.0, sl=90.0, target=125.0)  # target = 2.5R
+    with patch(
+        "learning_system.target_expansion_refinement_engine.get_effective_expansion_multiplier",
+        return_value=5.0,
+    ):
+        monitor._maybe_expand_target(order, r_multiple=1.5)
+    assert order.adaptive_target is not None
+    assert order.adaptive_target > order.target
+    assert _cfg.ADAPTIVE_TARGET_EXPANSION_TRIGGER_R < 2.5  # real headroom below RR_DEFAULT
+
+
 def test_t12_close_position_records_only_when_expanded():
     """Source-inspection guard: close_position() gates the evidence-log
     call on `rec.adaptive_target is not None` (never unconditional)."""

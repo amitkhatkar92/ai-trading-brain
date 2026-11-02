@@ -235,7 +235,17 @@ ADAPTIVE_EXTENSION_TIME_CAP_MIN = 90     # extended trade still going after this
 # step, exactly like every other self-learning module in this system.
 # ─────────────────────────────────────────────
 ENABLE_ADAPTIVE_TARGET_EXPANSION       = True
-ADAPTIVE_TARGET_EXPANSION_TRIGGER_R    = 2.50   # fire well before the original target
+# DTA-TARGET-EXPANSION-TRIGGER-FIX-001: was 2.50, IDENTICAL to this system's
+# own RR_DEFAULT=2.5 (equity_scanner_ai.py) -- the trigger and the original
+# target were reached at the SAME r_multiple for the majority of trades,
+# leaving ZERO "well before the original target" headroom this gate's own
+# docstring promises (a 2.5R target is typically hit via TARGET_HIT before
+# r_multiple can ever reach 2.5R to trigger expansion). Confirmed live:
+# 0/44 real closed trades ever reached 2.5R; the single highest (a real
+# TARGET_HIT) closed at exactly 1.51R. Lowered to 1.5 -- genuine headroom
+# below the 2.5R default target (and even more below RR_TREND_PULLBACK=3.0),
+# grounded in the real observed r_multiple ceiling.
+ADAPTIVE_TARGET_EXPANSION_TRIGGER_R    = 1.50   # fire well before the original target
 ADAPTIVE_TARGET_EXPANSION_MAX_VIX      = 15.0   # tighter than Adaptive Extension — bigger commitment
 ADAPTIVE_TARGET_EXPANSION_MULTIPLIER   = 5.0    # default: new target = entry + risk * 5.0
 

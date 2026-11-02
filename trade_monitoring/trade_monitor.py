@@ -40,7 +40,7 @@ try:
     _EXT_TIME_CAP_MIN      = getattr(_cfg, "ADAPTIVE_EXTENSION_TIME_CAP_MIN",     90)
     # ── Dynamic Target Expansion (self-learning #29) ────────────────────
     _TGT_ENABLED           = getattr(_cfg, "ENABLE_ADAPTIVE_TARGET_EXPANSION",      True)
-    _TGT_TRIGGER_R         = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_TRIGGER_R",    2.50)
+    _TGT_TRIGGER_R         = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_TRIGGER_R",    1.50)
     _TGT_MAX_VIX           = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_MAX_VIX",      15.0)
     _TGT_MULTIPLIER        = getattr(_cfg, "ADAPTIVE_TARGET_EXPANSION_MULTIPLIER",   5.0)
 except Exception:
@@ -60,7 +60,7 @@ except Exception:
     _EXT_TARGET_PCT        = 0.10
     _EXT_TIME_CAP_MIN      = 90
     _TGT_ENABLED           = True
-    _TGT_TRIGGER_R         = 2.50
+    _TGT_TRIGGER_R         = 1.50
     _TGT_MAX_VIX           = 15.0
     _TGT_MULTIPLIER        = 5.0
 
