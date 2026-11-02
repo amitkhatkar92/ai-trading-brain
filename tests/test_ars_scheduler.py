@@ -52,6 +52,15 @@ def _stub_ikn_sync():
         yield m
 
 
+@pytest.fixture(autouse=True)
+def _stub_lifecycle_sync():
+    with patch("autonomous_research.hypothesis_lifecycle_bridge.sync_hypothesis_lifecycle",
+               return_value={"checked": 0, "advanced_to_running": 0, "validated": 0,
+                              "rejected": 0, "confirmed": 0, "reconfirm_rejected": 0,
+                              "errors": 0}) as m:
+        yield m
+
+
 def _patch_all_components():
     """Patch every autonomous_research/market_learning class ars_scheduler
     constructs, returning MagicMock instances wired to sane defaults."""
@@ -168,6 +177,7 @@ def test_t04_full_wiring_and_summary_shape(_isolated_history):
     assert result["decisions"] == 3
     assert result["decision_types"] == ["CREATE_HYPOTHESIS", "CREATE_HYPOTHESIS", "CREATE_HYPOTHESIS"]
     assert result["ikn_sync"]["status"] == "OK"
+    assert result["hypothesis_lifecycle_sync"]["checked"] == 0
 
     # Verify RC was wired with the SAME planner/registry/etc instances SD got
     MockRC = patches["autonomous_research.research_coordinator.ResearchCoordinator"]
@@ -265,3 +275,36 @@ def test_t09_ikn_sync_called_and_fail_open(_isolated_history, _stub_ikn_sync):
             c.stop()
     assert result2["status"] == "OK"
     assert result2["ikn_sync"]["status"] == "ERROR"
+
+
+def test_t10_hypothesis_lifecycle_sync_called_and_fail_open(_isolated_history, _stub_lifecycle_sync):
+    patches = _patch_all_components()
+    ctxs = [patch(k, v) for k, v in patches.items()]
+    for c in ctxs:
+        c.start()
+    try:
+        patches["autonomous_research.roadmap_manager.RoadmapManager"].return_value.build.return_value = \
+            SimpleNamespace(entries=[])
+        patches["autonomous_research.roadmap_manager.RoadmapManager"].return_value.top_priorities.return_value = []
+        patches["autonomous_research.study_planner.StudyPlanner"].return_value.list_plans.return_value = []
+        patches["autonomous_research.scientific_director.ScientificDirector"].return_value.weekly_review.return_value = \
+            _fake_review()
+        result = sched.run_autonomous_research_cycle(force=True)
+    finally:
+        for c in ctxs:
+            c.stop()
+    assert result["hypothesis_lifecycle_sync"]["checked"] == 0
+    _stub_lifecycle_sync.assert_called_once()
+
+    # now make it raise -- the overall cycle must still succeed
+    _stub_lifecycle_sync.side_effect = RuntimeError("lifecycle boom")
+    ctxs = [patch(k, v) for k, v in patches.items()]
+    for c in ctxs:
+        c.start()
+    try:
+        result2 = sched.run_autonomous_research_cycle(force=True)
+    finally:
+        for c in ctxs:
+            c.stop()
+    assert result2["status"] == "OK"
+    assert result2["hypothesis_lifecycle_sync"]["status"] == "ERROR"

@@ -701,14 +701,26 @@ class ResearchCoordinator:
                 from .hypothesis_models import EvidenceReference, EvidenceType  # noqa: PLC0415
                 plan_id    = getattr(study_plan, "plan_id", "unknown")
                 study_title = getattr(study_plan, "title", "Research study")
+                # DTA-ARS-HYPOTHESIS-LIFECYCLE-001 root-cause fix: this call was
+                # previously dead code on every real invocation -- it constructed
+                # EvidenceReference with field names (source_study_id/strength/
+                # direction/recorded_at) that don't exist on the real dataclass,
+                # and EvidenceType.STUDY_RESULT, which doesn't exist on the real
+                # enum (only STUDY/FINDING/EDGE/METRIC/CERTIFICATION/STRATEGY/
+                # EXTERNAL) -- always raised, always silently caught by this
+                # stage's own except-clause as a FAILED stage. Never reached in
+                # production anyway since source_hypothesis_id was always None
+                # until the StudyPlanner fix above; fixing both together.
+                # EvidenceType.EXTERNAL (not STUDY) -- this plan_id is an RC-
+                # internal identifier, not a KnowledgeProvider-tracked study_id,
+                # and EXTERNAL is the only type that skips the (correct) internal
+                # resolvability check in _validate_evidence_reference().
                 ev = EvidenceReference(
                     evidence_id=f"ev-rc-{plan_id}",
-                    evidence_type=EvidenceType.STUDY_RESULT,
-                    source_study_id=plan_id,
+                    evidence_type=EvidenceType.EXTERNAL,
                     description=f"ResearchCoordinator completed execution of: {study_title}",
-                    strength=0.7,
-                    direction="SUPPORTING",
-                    recorded_at=datetime.now().isoformat(),
+                    added_at=datetime.now(),
+                    added_by="ResearchCoordinator",
                 )
                 self._hypothesis_registry.add_evidence(hyp_id, ev)
 

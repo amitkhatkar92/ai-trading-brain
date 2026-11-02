@@ -461,6 +461,12 @@ class StudyPlanner:
             f"'{gap.title}' produce actionable research insights?"
         )
         background = f"{gap.severity_rationale}\n\n{gap.description}".strip()
+        # DTA-ARS-HYPOTHESIS-LIFECYCLE-001: only set when the gap maps to exactly
+        # ONE hypothesis (unambiguous) -- activates RC's already-built hypothesis-
+        # specific validation/evidence_integration stages, which otherwise always
+        # skip with "no source_hypothesis_id on plan". Left None for 0 or 2+
+        # related hypotheses rather than guessing which one this study addresses.
+        _single_hyp = gap.related_hypotheses[0] if len(gap.related_hypotheses) == 1 else None
         return self.create_plan(
             title=title,
             study_type=study_type,
@@ -472,6 +478,7 @@ class StudyPlanner:
             related_gaps=[gap.gap_id] + list(gap.related_findings),
             estimated_knowledge_gain=gap.estimated_knowledge_gain,
             source_gap_id=gap.gap_id,
+            source_hypothesis_id=_single_hyp,
         )
 
     def create_from_hypothesis(self, hypothesis_id: str) -> StudyPlan:
@@ -520,6 +527,9 @@ class StudyPlanner:
             f"{gap.severity_rationale}\n\n{gap.description}"
         ).strip()
 
+        # DTA-ARS-HYPOTHESIS-LIFECYCLE-001: same unambiguous-only rule as
+        # create_from_gap() -- see comment there.
+        _single_hyp = gap.related_hypotheses[0] if len(gap.related_hypotheses) == 1 else None
         return self.create_plan(
             title=title,
             study_type=study_type,
@@ -532,6 +542,7 @@ class StudyPlanner:
             estimated_knowledge_gain=entry.knowledge_gain_estimate.total_gain,
             source_gap_id=gap.gap_id,
             source_entry_id=entry.entry_id,
+            source_hypothesis_id=_single_hyp,
         )
 
     def list_plans(

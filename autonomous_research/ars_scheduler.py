@@ -159,6 +159,17 @@ def _run_impl(force: bool) -> Dict[str, Any]:
         log.debug("[ARSScheduler] IKN sync skipped: %s", exc)
         ikn_sync = {"status": "ERROR", "error": str(exc)}
 
+    # DTA-ARS-HYPOTHESIS-LIFECYCLE-001: advances scientific_director/SFR_AUTO
+    # origin hypotheses through PROPOSED->...->VALIDATED/CONFIRMED/REJECTED
+    # using real evidence RC just attached above -- same automation level as
+    # the already-live KSL_AUTO path (RAE-001's sync_hypothesis_confirmation()).
+    try:
+        from autonomous_research.hypothesis_lifecycle_bridge import sync_hypothesis_lifecycle
+        lifecycle_sync = sync_hypothesis_lifecycle()
+    except Exception as exc:
+        log.debug("[ARSScheduler] Hypothesis lifecycle sync skipped: %s", exc)
+        lifecycle_sync = {"status": "ERROR", "error": str(exc)}
+
     summary = {
         "status":            "OK",
         "generated_at":      datetime.now(timezone.utc).isoformat(),
@@ -170,6 +181,7 @@ def _run_impl(force: bool) -> Dict[str, Any]:
         "decisions":         len(review.decisions),
         "decision_types":    [d.decision_type.value for d in review.decisions],
         "ikn_sync":          ikn_sync,
+        "hypothesis_lifecycle_sync": lifecycle_sync,
     }
     _record_run(summary)
     return summary
