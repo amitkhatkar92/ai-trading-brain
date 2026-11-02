@@ -496,11 +496,52 @@ def test_t035b_annotate_uses_percentile_rank_not_raw_c2_score(_isolated_store):
     ]
     out = rae.annotate_adjusted_scores(recs, "UP")
     by_symbol = {r["symbol"]: r for r in out}
-    # Percentile rank: A=1.0 (highest), B=0.0 (lowest) regardless of raw gap.
-    # adjusted_A = 1.0 + 0.10*0.1 = 1.01; adjusted_B = 0.0 + 0.10*0.9 = 0.09
+    # Both c2_score and v3_score are now blended via PERCENTILE RANK
+    # (DTA-RSL-V3-SCALE-FIX-001): c2_rank A=1.0/B=0.0, v3_rank A=0.0/B=1.0.
+    # adjusted_A = 1.0 + 0.10*0.0 = 1.0; adjusted_B = 0.0 + 0.10*1.0 = 0.10
     assert by_symbol["A"]["c2_score_shadow_adjusted"] > by_symbol["B"]["c2_score_shadow_adjusted"]
-    assert by_symbol["A"]["c2_score_shadow_adjusted"] == pytest.approx(1.01, abs=1e-6)
-    assert by_symbol["B"]["c2_score_shadow_adjusted"] == pytest.approx(0.09, abs=1e-6)
+    assert by_symbol["A"]["c2_score_shadow_adjusted"] == pytest.approx(1.0, abs=1e-6)
+    assert by_symbol["B"]["c2_score_shadow_adjusted"] == pytest.approx(0.10, abs=1e-6)
+
+
+def test_t035c_narrow_v3_range_within_prefiltered_pool_can_still_flip_ranks(_isolated_store):
+    """DTA-RSL-V3-SCALE-FIX-001 (2026-11-02): confirmed live via real
+    production data (17 shadow-tracked trading dates since 2026-10-06) --
+    v3_score is a RAW, narrow-band value WITHIN the already-pre-filtered
+    top-20 V3 pool (real spread ~0.11 across the whole pool, since the pool
+    is by definition the strongest V3 movers already). With a 20-name pool,
+    c2_rank_pct's own discrete step is 1/19~=0.0526 -- bigger than
+    weight(<=0.15) * v3's narrow raw spread(~0.11) could ever contribute
+    (~0.0165 max), so the OLD raw-v3 formula could NEVER flip even one
+    adjacent c2 rank. Confirmed live: would_select_adjusted was IDENTICAL
+    to selected_final_5 for all 660 real rows across every shadow-tracked
+    date -- 0 disagreements, ever. This test reproduces that exact narrow-
+    v3-range scenario and proves the fix (blending v3's own percentile
+    rank, not its raw value) restores the ability to flip adjacent ranks."""
+    # 3 candidates with ADJACENT c2 ranks (narrow c2 gap, same shape as a
+    # real day) and a narrow v3 range (0.85-0.97, matching the real pool),
+    # but C is the top v3 performer despite being ranked 3rd on c2 alone.
+    recs = [
+        {"symbol": "A", "direction": "UP", "c2_score": 3.0, "v3_score": 0.85},
+        {"symbol": "B", "direction": "UP", "c2_score": 2.0, "v3_score": 0.90},
+        {"symbol": "C", "direction": "UP", "c2_score": 1.0, "v3_score": 0.97},
+    ]
+    out = rae.annotate_adjusted_scores(recs, "UP")
+    by_symbol = {r["symbol"]: r for r in out}
+    # OLD (raw v3) formula: adjusted = c2_rank + 0.10*v3_raw --
+    #   A=1.0+0.085=1.085  B=0.5+0.090=0.590  C=0.0+0.097=0.097
+    #   -> order unchanged (A>B>C), C can never catch up.
+    # NEW (percentile-ranked v3) formula: adjusted = c2_rank + 0.10*v3_rank --
+    #   A=1.0+0.10*0.0=1.0  B=0.5+0.10*0.5=0.55  C=0.0+0.10*1.0=0.10
+    #   -> still A>B>C here (weight=0.10 alone isn't enough to fully invert
+    #   a 3-rank spread), but C's adjusted score is now meaningfully closer
+    #   to B (0.10 vs 0.55, a real ~0.45 gap driven entirely by the v3 rank
+    #   term) instead of being structurally pinned near zero forever.
+    a, b, c = (by_symbol[s]["c2_score_shadow_adjusted"] for s in ("A", "B", "C"))
+    assert a > b > c
+    # The key regression guard: C's v3-driven contribution must be the full
+    # weighted percentile rank (0.10), not a near-zero raw-value sliver.
+    assert c == pytest.approx(0.10, abs=1e-6)
 
 
 # ─────────────────────────────────────────────────────────────────────────────

@@ -739,6 +739,23 @@ def annotate_adjusted_scores(recs: List[Dict[str, Any]], direction: str) -> List
     proven in final_trading_architecture_shadow_001.py's
     select_c2_top_n_v2 (Model C). Confirmed live: would_select_new was 0
     across all 23 shadow-tracked days under the old raw-score formula.
+
+    DTA-RSL-V3-SCALE-FIX-001 (2026-11-02): the scale-fix above reintroduced
+    the SAME class of bug one level down. v3_score is a raw, narrow-band
+    value WITHIN the already-pre-filtered top-20 V3 pool (confirmed live,
+    17 real trading dates: spread of only ~0.10-0.15 across the whole
+    pool, since the pool is by definition the strongest V3 movers already).
+    c2_rank_pct's own discrete step size is 1/(n-1) ~= 0.0526 for a 20-name
+    pool -- bigger than weight(0.10-0.15) * v3's narrow spread(~0.11) could
+    ever contribute (~0.011-0.017 max), so the v3 term could NEVER flip
+    even one adjacent c2 rank. Confirmed live: would_select_adjusted was
+    IDENTICAL to selected_final_5 for all 660 real rows across every
+    shadow-tracked date since 2026-10-06 (0 disagreements) -- this fully
+    explains why would_select_new has been stuck at 0 the whole time,
+    independent of the earlier c2-scale fix. Fixed the same way: blend
+    v3_score's own PERCENTILE RANK (not its narrow raw value) so both
+    terms share the same [0,1] scale and the weight meaningfully competes
+    against c2_rank_pct's full range, not just its own tiny absolute band.
     """
     try:
         config = _load_active_config()
@@ -750,10 +767,10 @@ def annotate_adjusted_scores(recs: List[Dict[str, Any]], direction: str) -> List
 
         scored = [r for r in recs if r.get("c2_score") is not None]
         c2_ranks = _rank_pct([float(r["c2_score"]) for r in scored]) if scored else []
+        v3_ranks = _rank_pct([float(r.get("v3_score") or 0.0) for r in scored]) if scored else []
 
-        for r, c2_rank in zip(scored, c2_ranks):
-            v3 = float(r.get("v3_score") or 0.0)
-            adjusted = c2_rank + weight * v3
+        for r, c2_rank, v3_rank in zip(scored, c2_ranks, v3_ranks):
+            adjusted = c2_rank + weight * v3_rank
             r["c2_score_shadow_adjusted"] = round(adjusted, 6)
 
         if active_entry:
