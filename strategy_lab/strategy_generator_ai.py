@@ -55,6 +55,9 @@ STRATEGY_PARAMS = {
     # StrategyLab instead of being silently relabeled by auto-assign (same
     # precedent as Bear_Put_Spread's prior missing-entry fix).
     "Gap_Continuation":       {"min_rr": 2.0, "max_loss_pct": 0.015},
+    # V3 Mover Discovery live bridge (opportunity_engine/v3_live_bridge.py) —
+    # registered for the same reason as Gap_Continuation/Bear_Put_Spread above.
+    "V3_Mover_Discovery":     {"min_rr": 2.0, "max_loss_pct": 0.015},
 }
 
 # Minimum confidence (0–10) required for equity signals in volatile regime.

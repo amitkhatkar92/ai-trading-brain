@@ -50,9 +50,15 @@ class V3UpWeights:
     rs_pct_5d:     float = 0.20
     vol_ratio:     float = 0.20
     mom_accel:     float = 0.15
+    # Cross-sectional sector-strength rank (opportunity_engine.sector_rotation_momentum).
+    # Distinct from down_weights.sector_down (already tested, lift_delta -0.013).
+    # Disabled (0.0) by default -- must be explicitly configured and validated
+    # before use, same evidence-gated pattern as every other weight in this file.
+    sector_rotation: float = 0.0
 
     def validate(self) -> None:
-        total = self.atr_pct + self.mom_5d + self.rs_pct_5d + self.vol_ratio + self.mom_accel
+        total = (self.atr_pct + self.mom_5d + self.rs_pct_5d + self.vol_ratio +
+                 self.mom_accel + self.sector_rotation)
         if not (0.98 <= total <= 1.02):
             raise ValueError(f"V3UpWeights must sum to 1.0, got {total:.4f}")
 
@@ -66,10 +72,13 @@ class V3DownWeights:
     atr_pct:        float = 0.15
     rsi_overbought: float = 0.10
     sector_down:    float = 0.00   # disabled by default (AUDIT_002: sector lift_delta −0.013)
+    # Cross-sectional sector-strength rank -- see V3UpWeights.sector_rotation.
+    # Disabled (0.0) by default.
+    sector_rotation: float = 0.0
 
     def validate(self) -> None:
         total = (self.neg_mom_5d + self.neg_mom_accel + self.vol_expansion +
-                 self.atr_pct + self.rsi_overbought + self.sector_down)
+                 self.atr_pct + self.rsi_overbought + self.sector_down + self.sector_rotation)
         if not (0.98 <= total <= 1.02):
             raise ValueError(f"V3DownWeights must sum to 1.0, got {total:.4f}")
 
@@ -354,6 +363,12 @@ def score_universe(
     # Relative strength within universe (5d momentum percentile)
     rs_pct_5d_ranks = mom_5d_ranks  # by definition, rs_pct_5d = pct rank of mom_5d
 
+    # Sector rotation rank -- already a 0-1 rank (opportunity_engine.
+    # sector_rotation_momentum.attach_sector_rotation_ranks()), not re-ranked
+    # here. Neutral 0.5 (zero net effect while weight=0.0) when absent.
+    sector_rot_vals = [float(f.get("sector_rotation_rank")) if f.get("sector_rotation_rank") is not None
+                        else 0.5 for f in features]
+
     uw = cfg.up_weights
     dw = cfg.down_weights
     results = []
@@ -364,13 +379,19 @@ def score_universe(
             uw.mom_5d    * mom_5d_ranks[i] +
             uw.rs_pct_5d * rs_pct_5d_ranks[i] +
             uw.vol_ratio * vol_ratio_ranks[i] +
-            uw.mom_accel * mom_accel_ranks[i]
+            uw.mom_accel * mom_accel_ranks[i] +
+            uw.sector_rotation * sector_rot_vals[i]
         )
 
         # ── DOWN score ────────────────────────────────────────────────────────
         neg_mom_rank  = 1.0 - mom_5d_ranks[i]
         neg_accel_rank = 1.0 - mom_accel_ranks[i]
         sector_down_rank = (1.0 - sec_ret_ranks[i]) if cfg.use_sector_for_down else 0.5
+
+        # Sector rotation rank is independent of the already-tested/rejected
+        # sector_down toggle above -- worse sector (low rank) = higher DOWN
+        # score. No-op while dw.sector_rotation == 0.0 (default).
+        sector_rotation_down_term = dw.sector_rotation * (1.0 - sector_rot_vals[i])
 
         # Normalise sector contribution if enabled
         if cfg.use_sector_for_down:
@@ -380,22 +401,30 @@ def score_universe(
                 dw.vol_expansion  * vol_exp_ranks[i] +
                 dw.atr_pct        * atr_pct_ranks[i] +
                 dw.rsi_overbought * rsi_down_vals[i] +
-                dw.sector_down    * sector_down_rank
+                dw.sector_down    * sector_down_rank +
+                sector_rotation_down_term
             )
         else:
-            # Sector weight redistributed proportionally to other features
+            # Sector-down weight redistributed proportionally to the other 5
+            # features; sector_rotation is a separate, non-redistributed term
+            # kept out of this split -- the remaining_share scale-down keeps
+            # the overall sum matching V3DownWeights.validate()'s 1.0 total.
+            # Byte-identical to the pre-sector_rotation formula whenever
+            # dw.sector_rotation == 0.0 (the default for every existing caller).
             total_no_sector = (dw.neg_mom_5d + dw.neg_mom_accel + dw.vol_expansion +
                                dw.atr_pct + dw.rsi_overbought)
+            remaining_share = max(0.0, 1.0 - dw.sector_rotation)
             if total_no_sector > 0:
-                down_score = (
-                    (dw.neg_mom_5d    / total_no_sector) * neg_mom_rank +
-                    (dw.neg_mom_accel / total_no_sector) * neg_accel_rank +
-                    (dw.vol_expansion / total_no_sector) * vol_exp_ranks[i] +
-                    (dw.atr_pct       / total_no_sector) * atr_pct_ranks[i] +
-                    (dw.rsi_overbought / total_no_sector) * rsi_down_vals[i]
+                scale = remaining_share / total_no_sector
+                down_score = sector_rotation_down_term + scale * (
+                    dw.neg_mom_5d    * neg_mom_rank +
+                    dw.neg_mom_accel * neg_accel_rank +
+                    dw.vol_expansion * vol_exp_ranks[i] +
+                    dw.atr_pct       * atr_pct_ranks[i] +
+                    dw.rsi_overbought * rsi_down_vals[i]
                 )
             else:
-                down_score = 0.5
+                down_score = sector_rotation_down_term + remaining_share * 0.5
 
         updated = dict(feat)
         updated["v3_up_score"]   = round(float(up_score),   4)

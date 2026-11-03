@@ -2554,10 +2554,24 @@ class MasterOrchestrator:
         arb_signals     = self.arbitrage_ai.scan(snapshot)
         _t3 = _t.monotonic()
 
-        log.info("[OE-timing] equity=%.0fms  options=%.0fms  arb=%.0fms",
-                 (_t1 - _t0) * 1000, (_t2 - _t1) * 1000, (_t3 - _t2) * 1000)
+        # V3 Mover Discovery live bridge -- additive signal source, bounded
+        # and quality-gated (opportunity_engine/v3_live_bridge.py). Flows
+        # through the identical downstream risk/debate/KDA pipeline as every
+        # other equity signal. Non-fatal: any failure yields zero signals.
+        v3_signals: List[TradeSignal] = []
+        try:
+            from opportunity_engine.v3_live_bridge import run_v3_live_bridge
+            v3_signals = run_v3_live_bridge(snapshot)
+            if v3_signals:
+                log.info("[V3LiveBridge] %d signal(s) added to this cycle.", len(v3_signals))
+        except Exception as _v3_exc:
+            log.debug("[V3LiveBridge] skipped: %s", _v3_exc)
+        _t4 = _t.monotonic()
 
-        all_signals     = (equity_signals + options_signals + arb_signals)
+        log.info("[OE-timing] equity=%.0fms  options=%.0fms  arb=%.0fms  v3=%.0fms",
+                 (_t1 - _t0) * 1000, (_t2 - _t1) * 1000, (_t3 - _t2) * 1000, (_t4 - _t3) * 1000)
+
+        all_signals     = (equity_signals + options_signals + arb_signals + v3_signals)
         log.info("  Found %d raw opportunities", len(all_signals))
 
         # Publish one event per signal found
@@ -2579,6 +2593,7 @@ class MasterOrchestrator:
                 "equity":  len(equity_signals),
                 "options": len(options_signals),
                 "arb":     len(arb_signals),
+                "v3":      len(v3_signals),
                 "total":   len(all_signals),
             },
         ))

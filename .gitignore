@@ -178,6 +178,8 @@ data/risk_control/
 data/data_feeds/
 # Dynamic target expansion evidence + calibration (self-learning module #29)
 data/learning_system/
+# V3 Mover Discovery live bridge once-per-day state
+data/opportunity_engine/
 
 # ── Per-session monitoring / rebuild runtime state ────────────────────────────
 data/monitor_state.json
