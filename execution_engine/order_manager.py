@@ -98,11 +98,18 @@ REENTRY_PRICE_BAND_PCT = 0.50 # ±% band from entry_price to accept re-entry
                                # set to 0.0 to skip the price-proximity check
 
 # ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────────────
-# Block fresh entries into the same symbol for this many hours after an
-# EARLY_LOSS adaptive exit.  Prevents same-session re-entry on a proven
-# losing setup (ASIANPAINT/DRREDDY pattern seen Jun–Jul 2026).
-# Genuine SL hits, targets, SESSION_EXPIRED do NOT trigger this cooldown.
-_EARLY_LOSS_COOLDOWN_H = 24.0  # hours
+# Block fresh entries into the same symbol for this many hours after a LOSING
+# close.  Prevents same-session re-entry on a proven losing setup
+# (ASIANPAINT/DRREDDY pattern seen Jun–Jul 2026).
+# DTA-REENTRY-COOLDOWN-GAP-001 (2026-11-03): originally gated on the specific
+# reason string "EARLY_LOSS" only -- confirmed live that LATE_CAP_SWAP closes
+# (e.g. BAJAJFINSV closed at a loss then re-opened 1 SECOND later) were never
+# covered at all, and the raw 24h window let a CASTROLIND EARLY_LOSS re-entry
+# slip through 6 minutes early (23.9h gap) purely from day-to-day scan-time
+# drift. Widened to 30h (safe margin past a full trading day) and the trigger
+# condition broadened from reason-string matching to "was this close a real
+# loss" (r < 0), so it applies uniformly regardless of WHY the position closed.
+_EARLY_LOSS_COOLDOWN_H = 30.0  # hours
 
 # ── Entry Zone ─────────────────────────────────────────────────────────────────
 # Instead of placing at the exact signal price, the zone-adjusted price is
@@ -852,22 +859,33 @@ class OrderManager:
                 return self._reject("MAX_OPEN_POSITIONS")
 
         # ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────
-        # After an EARLY_LOSS adaptive exit, block fresh entries for the same
-        # symbol for _EARLY_LOSS_COOLDOWN_H hours.  This prevents the pattern
-        # where the scanner re-identifies the same setup the next morning on a
-        # stock that already proved it wasn't working (e.g. ASIANPAINT Jun 30
+        # After ANY losing close, block fresh entries for the same symbol for
+        # _EARLY_LOSS_COOLDOWN_H hours.  This prevents the pattern where the
+        # scanner re-identifies the same setup the next morning on a stock
+        # that already proved it wasn't working (e.g. ASIANPAINT Jun 30
         # EARLY_LOSS → re-entry Jul 1 09:45, DRREDDY Jun 24 → Jun 25).
+        # DTA-REENTRY-COOLDOWN-GAP-001: broadened from matching the single
+        # reason string "EARLY_LOSS" to "was the close a real loss" (r < 0) --
+        # confirmed live that a LATE_CAP_SWAP close at a loss (BAJAJFINSV,
+        # -₹6.47) was immediately followed by a brand-new BAJAJFINSV entry
+        # 1 SECOND later, since LATE_CAP_SWAP/STOP_HIT/etc. were never covered
+        # by this gate at all -- only the administrative reason differs, the
+        # losing outcome is identical. A winning LATE_CAP_SWAP close (r >= 0)
+        # still does NOT trigger this cooldown -- consistent with the original
+        # intent (don't penalize a position closed for capital-rotation
+        # reasons while it was profitable).
         # Exempt: same-symbol swap replacements (position management, not new thesis)
         if not _is_same_symbol_swap:
             _prev_close = _RECENT_CLOSE_TIMES.get(signal.symbol.strip())
             if _prev_close is not None:
-                _prev_reason = _prev_close.get("reason", "")
+                _prev_r = _prev_close.get("r", 0.0)
                 _gap_h = (datetime.now() - _prev_close["time"]).total_seconds() / 3600
-                if _prev_reason == "EARLY_LOSS" and _gap_h < _EARLY_LOSS_COOLDOWN_H:
+                if _prev_r < 0 and _gap_h < _EARLY_LOSS_COOLDOWN_H:
                     log.info(
-                        "[EarlyLossCooldown] BLOCKED %s — EARLY_LOSS exit %.1fh ago "
-                        "(cooldown=%.0fh). Suppressing re-entry on losing setup.",
-                        signal.symbol.strip(), _gap_h, _EARLY_LOSS_COOLDOWN_H,
+                        "[EarlyLossCooldown] BLOCKED %s — losing close (reason=%s, r=%.2f) "
+                        "%.1fh ago (cooldown=%.0fh). Suppressing re-entry on losing setup.",
+                        signal.symbol.strip(), _prev_close.get("reason", "?"), _prev_r,
+                        _gap_h, _EARLY_LOSS_COOLDOWN_H,
                     )
                     return self._reject("EARLY_LOSS_COOLDOWN")
 
