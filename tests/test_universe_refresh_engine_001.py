@@ -203,5 +203,39 @@ class TestCombinedCycle(unittest.TestCase):
         self.assertIn("reconciliation", result)
 
 
+class TestHistoryPersistence(unittest.TestCase):
+
+    def test_t12_record_and_read_back(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            history_path = Path(td) / "universe_refresh_history.jsonl"
+            with patch.object(ure, "_HISTORY_PATH", history_path):
+                ure.record_refresh_cycle_result("2026-11-03", {"broad_refresh": {"ok": True}})
+                ure.record_refresh_cycle_result("2026-11-04", {"broad_refresh": {"ok": True}})
+                records = ure.get_refresh_cycle_history(n=10)
+        self.assertEqual(len(records), 2)
+        self.assertEqual(records[0]["trading_date"], "2026-11-03")
+        self.assertEqual(records[1]["trading_date"], "2026-11-04")
+
+    def test_t13_read_missing_file_returns_empty(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as td:
+            history_path = Path(td) / "does_not_exist.jsonl"
+            with patch.object(ure, "_HISTORY_PATH", history_path):
+                records = ure.get_refresh_cycle_history()
+        self.assertEqual(records, [])
+
+    def test_t14_record_never_raises_on_write_failure(self):
+        with patch.object(ure, "_HISTORY_PATH", Path("/nonexistent_root/x/y.jsonl")):
+            ure.record_refresh_cycle_result("2026-11-03", {"ok": True})  # must not raise
+
+    def test_t15_daily_cycle_calls_record(self):
+        with patch.object(ure, "run_bounded_broad_refresh", return_value={"ok": True}), \
+             patch.object(ure, "reconcile_universe_stocks", return_value={"ok": True}), \
+             patch.object(ure, "record_refresh_cycle_result") as mock_record:
+            ure.run_daily_universe_refresh_cycle()
+        mock_record.assert_called_once()
+
+
 if __name__ == "__main__":
     unittest.main()

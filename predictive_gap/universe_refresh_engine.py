@@ -43,8 +43,41 @@ ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_DB_PATH = ROOT / "data" / "market_behavior.db"
 UNIVERSE_JSON_PATH = ROOT / "data" / "nifty500_universe.json"
 _STATE_PATH = ROOT / "data" / "predictive_gap" / "universe_refresh_state.json"
+_HISTORY_PATH = ROOT / "data" / "predictive_gap" / "universe_refresh_history.jsonl"
 
 UNIVERSE_REFRESH_BATCH_SIZE = 100   # excluded symbols refreshed per day
+
+
+def record_refresh_cycle_result(trading_date: str, result: Dict[str, Any]) -> None:
+    """Append-only daily history so a later audit (e.g. a weekly review) can
+    verify real activity/effect without depending on container log retention.
+    Never raises."""
+    try:
+        _HISTORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        record = {"trading_date": trading_date, **result}
+        with open(_HISTORY_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
+    except Exception as exc:
+        log.warning("[UniverseRefresh] history write failed (non-fatal): %s", exc)
+
+
+def get_refresh_cycle_history(n: int = 20) -> List[Dict[str, Any]]:
+    """Read-only accessor: last n recorded daily cycle results, oldest-first
+    within the returned slice. Returns [] on any failure."""
+    try:
+        if not _HISTORY_PATH.exists():
+            return []
+        lines = _HISTORY_PATH.read_text(encoding="utf-8").strip().splitlines()
+        records = []
+        for line in lines:
+            try:
+                records.append(json.loads(line))
+            except Exception:
+                continue
+        return records[-n:]
+    except Exception as exc:
+        log.warning("[UniverseRefresh] history read failed: %s", exc)
+        return []
 
 
 def _load_state() -> Dict[str, Any]:
@@ -233,4 +266,6 @@ def run_daily_universe_refresh_cycle(
     """
     refresh_result = run_bounded_broad_refresh(batch_size=batch_size)
     reconcile_result = reconcile_universe_stocks()
-    return {"broad_refresh": refresh_result, "reconciliation": reconcile_result}
+    cycle_result = {"broad_refresh": refresh_result, "reconciliation": reconcile_result}
+    record_refresh_cycle_result(date.today().isoformat(), cycle_result)
+    return cycle_result
