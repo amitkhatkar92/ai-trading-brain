@@ -49,6 +49,14 @@ ADV_LOOKBACK_DAYS = 20
 # fail safe rather than silently ship a much-smaller-than-intended universe.
 _MIN_ACCEPTABLE_FRACTION = 0.5
 
+# DTA-UNIVERSE-FRESHNESS-001: a symbol's ADV must be computed from data no
+# older than this many calendar days behind the table's own latest known
+# trade_date, or it is excluded from ranking entirely. Prevents a stale
+# (e.g. weeks-old) ADV snapshot from a since-excluded symbol silently
+# outranking a genuinely fresh, currently-tracked candidate. 10 days gives
+# a safety margin over normal weekend/holiday gaps (max ~4 calendar days).
+MAX_ADV_STALENESS_DAYS = 10
+
 
 def _load_existing_sector_map() -> Dict[str, str]:
     """Reuse sector labels already curated in the embedded 230-symbol
@@ -79,16 +87,27 @@ def _compute_adv_crore(db_path: Path) -> Dict[str, float]:
     ohlcv_daily itself stores symbols WITH the .NS suffix (e.g.
     "ADANIPORTS.NS"), confirmed via live production data. Returns {} on
     any failure -- callers must treat this as "no ADV data available this
-    run", not "zero-liquidity market"."""
+    run", not "zero-liquidity market".
+
+    DTA-UNIVERSE-FRESHNESS-001: a symbol whose most recent row is more than
+    MAX_ADV_STALENESS_DAYS behind the table's own latest trade_date is
+    excluded -- its ADV value cannot be trusted to reflect current
+    liquidity (verified live: ~20% of the universe was being selected off
+    ADV snapshots ~7 weeks stale before this fix)."""
     result: Dict[str, float] = {}
     try:
         conn = sqlite3.connect(str(db_path))
         try:
+            latest_row = conn.execute(
+                "SELECT MAX(trade_date) FROM ohlcv_daily WHERE symbol NOT LIKE '^%'"
+            ).fetchone()
+            latest_date = latest_row[0] if latest_row else None
+
             rows = conn.execute(
                 """
-                SELECT symbol, AVG(close * volume) / 1e7 AS adv_crore
+                SELECT symbol, AVG(close * volume) / 1e7 AS adv_crore, MAX(trade_date) AS last_dt
                 FROM (
-                    SELECT symbol, close, volume,
+                    SELECT symbol, close, volume, trade_date,
                            ROW_NUMBER() OVER (
                                PARTITION BY symbol ORDER BY trade_date DESC
                            ) AS rn
@@ -102,13 +121,34 @@ def _compute_adv_crore(db_path: Path) -> Dict[str, float]:
             ).fetchall()
         finally:
             conn.close()
-        for symbol, adv in rows:
-            if adv is not None:
-                bare_symbol = symbol.replace(".NS", "").replace(".BO", "")
-                result[bare_symbol] = round(float(adv), 2)
+
+        stale_excluded = 0
+        for symbol, adv, last_dt in rows:
+            if adv is None:
+                continue
+            if latest_date and last_dt and _days_between(last_dt, latest_date) > MAX_ADV_STALENESS_DAYS:
+                stale_excluded += 1
+                continue
+            bare_symbol = symbol.replace(".NS", "").replace(".BO", "")
+            result[bare_symbol] = round(float(adv), 2)
+        if stale_excluded:
+            log.info("[LiquidUniverse] Excluded %d symbol(s) with ADV data >%d days stale "
+                      "(latest table date=%s).", stale_excluded, MAX_ADV_STALENESS_DAYS, latest_date)
     except Exception as exc:
         log.warning("[LiquidUniverse] ADV computation failed: %s", exc)
     return result
+
+
+def _days_between(earlier: str, later: str) -> int:
+    """Calendar days between two ISO date strings. Returns a large number
+    (always "stale") on any parse failure, never raises."""
+    try:
+        from datetime import date as _date
+        d1 = _date.fromisoformat(str(earlier)[:10])
+        d2 = _date.fromisoformat(str(later)[:10])
+        return (d2 - d1).days
+    except Exception:
+        return 10_000
 
 
 def build_liquid_universe(

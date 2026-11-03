@@ -5799,6 +5799,20 @@ class MasterOrchestrator:
                 log.info("[UniverseRebuild] Universe rebuild complete — nifty500_universe.json written.")
             else:
                 log.warning("[UniverseRebuild] Universe write failed — previous file retained.")
+
+            # DTA-UNIVERSE-FRESHNESS-001: bounded rotating refresh of currently-
+            # excluded broad-market symbols (so a stale/invisible symbol can be
+            # rediscovered) + sync universe_stocks.is_active to this file's
+            # membership (removes stale/legacy/ETF entries). Non-fatal, runs
+            # only after a successful rebuild so reconciliation reflects
+            # today's real file, not a stale one.
+            if success:
+                try:
+                    from predictive_gap.universe_refresh_engine import run_daily_universe_refresh_cycle
+                    _refresh_result = run_daily_universe_refresh_cycle()
+                    log.info("[UniverseRefresh] cycle result: %s", _refresh_result)
+                except Exception as _ur_exc:
+                    log.warning("[UniverseRefresh] cycle failed, non-fatal: %s", _ur_exc)
         except Exception as exc:
             log.error("[UniverseRebuild] Crashed: %s", exc, exc_info=True)
 

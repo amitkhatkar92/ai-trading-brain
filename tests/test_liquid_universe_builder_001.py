@@ -98,6 +98,34 @@ def test_compute_adv_crore_fails_open_on_missing_db(tmp_path):
     assert adv == {}
 
 
+def test_compute_adv_crore_excludes_stale_symbol(tmp_path):
+    """DTA-UNIVERSE-FRESHNESS-001: a symbol whose last row is far behind the
+    table's own latest trade_date must be excluded from the ADV map, even
+    though its own 20-row average is computed normally."""
+    rows = (
+        [("FRESH", "2026-11-02", 100.0, 1_000_000)]
+        + [("STALE", "2026-09-11", 500.0, 1_000_000)]
+    )
+    db_path = _make_ohlcv_db(tmp_path, rows)
+    adv = _compute_adv_crore(db_path)
+    assert "FRESH" in adv
+    assert "STALE" not in adv
+
+
+def test_compute_adv_crore_within_tolerance_is_kept(tmp_path):
+    """A symbol only a few days behind the latest date (e.g. a weekend/
+    holiday gap) must still be included -- the floor is for genuinely
+    stale (weeks-old) data, not ordinary non-trading-day gaps."""
+    rows = [
+        ("A", "2026-11-02", 100.0, 1_000_000),
+        ("B", "2026-10-28", 100.0, 1_000_000),  # 5 calendar days behind
+    ]
+    db_path = _make_ohlcv_db(tmp_path, rows)
+    adv = _compute_adv_crore(db_path)
+    assert "A" in adv
+    assert "B" in adv
+
+
 # ── build_liquid_universe ────────────────────────────────────────────────────
 
 def test_build_liquid_universe_ranks_by_adv_and_respects_target_size(tmp_path):
