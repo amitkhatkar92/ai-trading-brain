@@ -264,3 +264,4 @@ analysis_temp.py
 
 # ── Broker token files (contain live JWTs — never commit) ─────────────────────
 config/api_tokens.json
+data/option_research/

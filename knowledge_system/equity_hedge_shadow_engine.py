@@ -191,12 +191,13 @@ class EquityHedgeShadowEngine:
             if not symbol:
                 return
             direction = str(p.get("direction", "BUY"))
+            qty = int(p.get("quantity", 0) or 0)
             self.register_equity_trade(
                 symbol=symbol,
                 order_id=str(p.get("order_id", "")),
                 direction=direction,
                 entry_price=float(p.get("entry_price", 0.0) or 0.0),
-                qty=int(p.get("quantity", 0) or 0),
+                qty=qty,
             )
             # Live execution only ever fires for symbols that have already
             # passed all 5 automated EQH-Ready checks (self._ready_symbols).
@@ -468,11 +469,18 @@ class EquityHedgeShadowEngine:
                 "is_live":       chain.is_live,
                 "spot":          chain.spot,
                 "equity_order_qty": equity_qty,
+                "_research_contract": {
+                    "expiry": chain.expiry.isoformat(),
+                    "fetched_at": chain.fetched_at.isoformat(),
+                    "is_live": chain.is_live,
+                    "source": chain.data_source,
+                },
                 "legs": [{
                     "type": option_type, "direction": "BUY",
                     "strike": leg.strike, "premium": premium,
                     "iv": leg.iv, "delta": leg.delta,
                     "open_interest": leg.open_interest, "volume": leg.volume,
+                    "bid": leg.bid, "ask": leg.ask,
                 }],
             }
 
@@ -502,6 +510,8 @@ class EquityHedgeShadowEngine:
                 open_exposure_rs=order_mgr.get_total_options_exposure_rs(),
             )
             if not approved:
+                from knowledge_system.option_research_observer import observe_rejection
+                observe_rejection(signal, risk_engine.last_rejection_detail or "COMPANION_RISK_REJECTED")
                 log.info("[EquityHedgeShadow] %s: OptionsRiskEngine rejected "
                         "companion order.", symbol)
                 return
@@ -530,6 +540,8 @@ class EquityHedgeShadowEngine:
                 except Exception:
                     pass
             else:
+                from knowledge_system.option_research_observer import observe_rejection
+                observe_rejection(signal, order_mgr.last_rejection_detail or "COMPANION_EXECUTION_REJECTED")
                 log.info("[EquityHedgeShadow] %s: OptionsOrderManager did not "
                         "place the companion order (see its own logs).", symbol)
         except Exception as exc:

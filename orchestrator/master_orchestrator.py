@@ -605,6 +605,13 @@ class MasterOrchestrator:
         except Exception as _ehs_exc:
             log.warning("[EDA] Equity-hedge shadow engine not loaded: %s", _ehs_exc)
 
+        try:
+            from knowledge_system.option_research_observer import start_option_research
+            start_option_research()
+            log.info("[OptionResearch] Isolated observation worker started.")
+        except Exception:
+            log.warning("[OptionResearch] Observer startup failed", exc_info=True)
+
         log.info("[EDA] Communication layer wired. Bus ready. Workers started.")
 
     def _on_system_halt(self, event):
@@ -2849,6 +2856,11 @@ class MasterOrchestrator:
         rejection_reason: str,
     ) -> None:
         """Persist a no-order candidate for hypothetical options learning."""
+        try:
+            from knowledge_system.option_research_observer import observe_rejection
+            observe_rejection(signal, rejection_reason)
+        except Exception:
+            log.warning("[OptionResearch] Rejection hook failed", exc_info=True)
         try:
             import json as _json
             meta = _json.loads(signal.notes or "{}")
@@ -9438,6 +9450,11 @@ class MasterOrchestrator:
     def shutdown(self):
         """Gracefully shut down the task queue and publish SYSTEM_SHUTDOWN event."""
         log.info("Shutting down AI Trading Brain…")
+        try:
+            from knowledge_system.option_research_observer import stop_option_research
+            stop_option_research()
+        except Exception:
+            log.warning("[OptionResearch] Observer shutdown failed", exc_info=True)
         self.bus.publish(SystemEvent(
             event_type=EventType.SYSTEM_SHUTDOWN,
             source_agent="MasterOrchestrator",

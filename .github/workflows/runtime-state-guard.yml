@@ -37,6 +37,7 @@ jobs:
             'data/kda_cre/*' 'data/hkap/*' 'data/kde/*' 'data/sandy/*'
             'data/rejection_attribution/*'
             'data/universe_selection_learning/*'
+            'data/option_research/*'
             # Narrower patterns for the NEW subdirectories added this
             # session under otherwise partially-tracked parents -- do NOT
             # widen these to 'data/ars/*' / 'data/dta/*' / 'data/prr/*',

@@ -362,6 +362,12 @@ class OptionsOpportunityAI:
             meta["is_live"]        = chain.is_live
             meta["opportunity_id"] = opportunity_id   # stable lifecycle ID
             meta["data_source"]    = getattr(chain, "data_source", "")
+            meta["_research_contract"] = {
+                "expiry": chain.expiry.isoformat(),
+                "fetched_at": chain.fetched_at.isoformat(),
+                "is_live": chain.is_live,
+                "source": chain.data_source,
+            }
             meta["iv_source"]      = (
                 "LIVE_MARKET" if getattr(chain, "data_source", "") == "YFINANCE"
                 else "MODEL_ESTIMATE" if getattr(chain, "data_source", "") == "ANGEL_ONE"

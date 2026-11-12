@@ -71,3 +71,4 @@ readiness_suite.py
 system_validation.py
 calibrate.py
 run_live.py
+data/option_research/

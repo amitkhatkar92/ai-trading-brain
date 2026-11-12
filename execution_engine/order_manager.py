@@ -1302,6 +1302,11 @@ class OrderManager:
         rec.closed_at    = datetime.now()
         rec.close_reason = reason          # stamp exit reason for downstream classification
         self._portfolio.realised_pnl += pnl
+        try:
+            from knowledge_system.option_research_observer import observe_equity_exit
+            observe_equity_exit(rec, exit_price, reason)
+        except Exception:
+            log.warning("[OptionResearch] Equity close hook failed", exc_info=True)
 
         # Phase 7 — record close for [ReEntryAudit] at next order creation
         _isl  = rec.initial_stop_loss if rec.initial_stop_loss > 0 else rec.stop_loss
@@ -3050,6 +3055,11 @@ class OrderManager:
             # D8-004: escalate to ERROR — silent broker failures are invisible at DEBUG
             log.error("[FillReconcile] broker reconcile FAILED for %s: %s",
                       rec.order_id, exc, exc_info=True)
+        try:
+            from knowledge_system.option_research_observer import observe_equity_entry
+            observe_equity_entry(rec)
+        except Exception:
+            log.warning("[OptionResearch] Equity fill hook failed", exc_info=True)
 
     def _update_portfolio(self, sig: TradeSignal, qty: int):
         pos = Position(
@@ -3467,6 +3477,11 @@ class OrderManager:
                         rec.status = "closed"
                         rec.governance_state = "CLOSED"  # no longer exposure-active
                         rec.closed_at = now              # timestamp for GovernanceScoreAudit
+                        try:
+                            from knowledge_system.option_research_observer import observe_equity_exit
+                            observe_equity_exit(rec, exit_price, "SESSION_EXPIRED")
+                        except Exception:
+                            log.warning("[OptionResearch] Carry close hook failed", exc_info=True)
                         rec._last_retry_ts = None   # clear backoff on success
                         self._closed_ids_today.add(oid)
                         self._portfolio.positions.pop(rec.symbol, None)

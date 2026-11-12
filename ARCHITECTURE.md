@@ -30,6 +30,31 @@ The system never trades blindly: every signal must survive regime detection, bac
   of weekly retraining, so restarting the daemon cannot discard the intervening
   training observations.
 
+### Observation-only option comparisons
+
+- `knowledge_system.option_research_observer` stores separate research evidence
+  under `data/option_research/`. Confirmed live equity fills capture a same-direction
+  ATM CALL (long equity) or PUT (short equity). The original expiry/strike is
+  repriced at the stock's recorded close, including carry expiry; contracts never
+  roll silently. Stock returns use the confirmed entry price. Option returns and
+  hypothetical one-lot P/L use executable-side ask/bid and estimated option costs.
+- Rejected option structures retain all BUY/SELL legs, quantities, original expiry,
+  reasons and entry quotes, independently of affordability. The bounded background
+  worker marks all legs together, and uses the existing setup stop/target and
+  DTE-exit threshold. It records per-leg and combined gross/net virtual P/L.
+  Repeated same-day identical structures share one trial and accumulate reasons.
+- Entry/exit events must be processed within 60 seconds; quote snapshots may be
+  at most 5 minutes old (the existing feed cache interval), with their actual quote
+  timestamps retained. These are sampled hypothetical returns, not broker fills
+  or exact-tick reconstructions. Missing, synthetic, stale or wrong-expiry quotes
+  remain explicitly unpriced; old trades cannot be retroactively given entries.
+  Missing rejected-position marks retry until expiry, then become unpriced exits.
+- The worker handles at most 20 structures per refresh, with round-robin fairness.
+  Network calls never run in equity entry/exit hooks. Pending equity events and
+  observations survive restarts. These results have NO knowledge-promotion,
+  KDA, confidence, sizing, capital-reservation or real-order consumer. The older
+  counterfactual learning path remains unchanged and separate.
+
 ### Complete-universe selection learning
 
 - The daily eligible-universe benchmark covers the full configured universe,
