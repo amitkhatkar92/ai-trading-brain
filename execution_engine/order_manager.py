@@ -351,6 +351,7 @@ class OrderRecord:
     # score at signal time (None = no data). Observational -- feeds
     # corporate_event_evidence_log.py.
     corporate_event_score: Optional[float] = None
+    r_multiple: float = 0.0
 
 
 @dataclass
@@ -706,6 +707,10 @@ class OrderManager:
             return self._reject("BEFORE_EXECUTION_WINDOW")
         # ── end ExecutionWindowBlock ──────────────────────────────────────────
 
+        _cooldown = self._entry_cooldown_reason(signal.symbol)
+        if _cooldown:
+            return self._reject(_cooldown)
+
         # ── FIX 1: Guard against duplicate trades on same symbol ──────
         _new_score = float(getattr(decision, "confidence_score", 5.0))
         _is_same_symbol_swap = False  # True when we replace the *same* symbol (exempt from late-entry guard)
@@ -857,37 +862,6 @@ class OrderManager:
                     open_count, MAX_OPEN_POSITIONS, signal.symbol
                 )
                 return self._reject("MAX_OPEN_POSITIONS")
-
-        # ── EARLY_LOSS re-entry cooldown ──────────────────────────────────────
-        # After ANY losing close, block fresh entries for the same symbol for
-        # _EARLY_LOSS_COOLDOWN_H hours.  This prevents the pattern where the
-        # scanner re-identifies the same setup the next morning on a stock
-        # that already proved it wasn't working (e.g. ASIANPAINT Jun 30
-        # EARLY_LOSS → re-entry Jul 1 09:45, DRREDDY Jun 24 → Jun 25).
-        # DTA-REENTRY-COOLDOWN-GAP-001: broadened from matching the single
-        # reason string "EARLY_LOSS" to "was the close a real loss" (r < 0) --
-        # confirmed live that a LATE_CAP_SWAP close at a loss (BAJAJFINSV,
-        # -₹6.47) was immediately followed by a brand-new BAJAJFINSV entry
-        # 1 SECOND later, since LATE_CAP_SWAP/STOP_HIT/etc. were never covered
-        # by this gate at all -- only the administrative reason differs, the
-        # losing outcome is identical. A winning LATE_CAP_SWAP close (r >= 0)
-        # still does NOT trigger this cooldown -- consistent with the original
-        # intent (don't penalize a position closed for capital-rotation
-        # reasons while it was profitable).
-        # Exempt: same-symbol swap replacements (position management, not new thesis)
-        if not _is_same_symbol_swap:
-            _prev_close = _RECENT_CLOSE_TIMES.get(signal.symbol.strip())
-            if _prev_close is not None:
-                _prev_r = _prev_close.get("r", 0.0)
-                _gap_h = (datetime.now() - _prev_close["time"]).total_seconds() / 3600
-                if _prev_r < 0 and _gap_h < _EARLY_LOSS_COOLDOWN_H:
-                    log.info(
-                        "[EarlyLossCooldown] BLOCKED %s — losing close (reason=%s, r=%.2f) "
-                        "%.1fh ago (cooldown=%.0fh). Suppressing re-entry on losing setup.",
-                        signal.symbol.strip(), _prev_close.get("reason", "?"), _prev_r,
-                        _gap_h, _EARLY_LOSS_COOLDOWN_H,
-                    )
-                    return self._reject("EARLY_LOSS_COOLDOWN")
 
         # ── Late-day entry control (institutional rule) ───────────────────────
         # Before 13:30         → normal (6.5 floor enforced by DecisionEngine)
@@ -1333,6 +1307,7 @@ class OrderManager:
         _isl  = rec.initial_stop_loss if rec.initial_stop_loss > 0 else rec.stop_loss
         _risk = abs(rec.entry_price - _isl) * rec.quantity
         _r    = round(pnl / _risk, 3) if _risk > 0 else 0.0
+        rec.r_multiple = _r
         _RECENT_CLOSE_TIMES[rec.symbol.strip()] = {
             "time":      rec.closed_at,
             "r":         _r,
@@ -1427,7 +1402,7 @@ class OrderManager:
         # (REPLACEMENT).  Without this, TradeMonitor keeps the order in its
         # _open_orders dict and produces phantom SL/target hits on dead positions,
         # polluting analytics with impossible R values (e.g. -25R).
-        if reason == "REPLACEMENT" and self._trade_monitor is not None:
+        if reason in ("REPLACEMENT", "LATE_CAP_SWAP") and self._trade_monitor is not None:
             try:
                 self._trade_monitor.deregister(order_id)
             except Exception as _tm_exc:
@@ -1453,8 +1428,7 @@ class OrderManager:
             )
         try:
             from notifications.notifier_manager import get_notifier
-            _r_risk = abs(rec.entry_price - rec.stop_loss)
-            _r_mult = (pnl / rec.quantity / _r_risk) if _r_risk > 0 and rec.quantity > 0 else 0.0
+            _r_mult = rec.r_multiple
             _mode = "paper" if self._paper_mode else "live"
             get_notifier().trade_closed(
                 symbol=rec.symbol, pnl=pnl, r_multiple=_r_mult,
@@ -1946,6 +1920,9 @@ class OrderManager:
                 continue
 
             # ── All conditions met — place the order now ───────────────
+            if self._entry_cooldown_reason(slot.signal.symbol):
+                to_remove.append(sid)
+                continue
             # Re-evaluate the zone at current (now-calmer) VIX for best price
             _confirmed_zone = self._calc_entry_zone_price(
                 slot.signal.entry_price, slot.signal.direction.value, current_vix,
@@ -2325,6 +2302,9 @@ class OrderManager:
                     continue   # wait for price to come back
 
             # ── All checks passed — re-place the limit order ──────────
+            if self._entry_cooldown_reason(slot.symbol):
+                slots_to_remove.append(slot_key)
+                continue
             _reentry_zone_px = self._calc_entry_zone_price(
                 slot.entry_price, slot.direction, slot.signal_vix)
             _entry_pt = self._entry_product_type(slot.direction)
@@ -3668,6 +3648,10 @@ class OrderManager:
         for rec in self._orders.values():
             if rec.status != "open":
                 continue
+            if rec.confidence_score <= 0:
+                log.info("[SmartSwap] %s lacks an entry score; cannot establish score improvement.",
+                         rec.symbol)
+                continue
 
             # Safety: never touch fresh trades
             age_min = (
@@ -3679,8 +3663,8 @@ class OrderManager:
 
             # Compute current R from live LTP when available
             risk = (
-                abs(rec.entry_price - rec.stop_loss)
-                if rec.stop_loss and rec.stop_loss != rec.entry_price
+                abs(rec.entry_price - (rec.initial_stop_loss or rec.stop_loss))
+                if rec.initial_stop_loss or rec.stop_loss
                 else 0.0
             )
             pos    = self._portfolio.positions.get(rec.symbol)
@@ -3772,6 +3756,26 @@ class OrderManager:
         )
         return None
 
+    def _entry_cooldown_reason(self, symbol: str) -> Optional[str]:
+        previous = _RECENT_CLOSE_TIMES.get(symbol.strip())
+        if previous is None:
+            return None
+        now = datetime.now()
+        closed_at = previous["time"]
+        if closed_at.tzinfo is not None:
+            closed_at = closed_at.astimezone().replace(tzinfo=None)
+        reason = None
+        if previous.get("reason") == "LATE_CAP_SWAP" and closed_at.date() == now.date():
+            reason = "ROTATION_REENTRY_COOLDOWN"
+        elif previous.get("r", 0.0) < 0 and (
+            now - closed_at
+        ).total_seconds() < _EARLY_LOSS_COOLDOWN_H * 3600:
+            reason = "EARLY_LOSS_COOLDOWN"
+        if reason:
+            log.info("[EntryCooldown] %s blocked: %s (last close=%s).",
+                     symbol, reason, previous.get("reason", ""))
+        return reason
+
     def execute_late_cap_swap(
         self, new_symbol: str, new_signal_score: float,
         new_entry: float, new_stop: float, new_target: float,
@@ -3798,6 +3802,25 @@ class OrderManager:
         the new order); False if no swap happened (caller keeps the
         existing LatePositionCap rejection).
         """
+        if self._entry_cooldown_reason(new_symbol):
+            return False
+        if self._symbol_has_open_position(new_symbol):
+            log.info("[LateCapSwapBridge] %s already held; no position will be evicted.",
+                     new_symbol)
+            return False
+        now = datetime.now()
+        if (now.hour, now.minute) < (_EXEC_WIN_OPEN_H, _EXEC_WIN_OPEN_M) or (
+            now.hour, now.minute
+        ) >= (_LATE_ENTRY_CUTOFF_H, _LATE_ENTRY_CUTOFF_M):
+            log.info("[LateCapSwapBridge] %s outside fresh-entry window; no eviction.",
+                     new_symbol)
+            return False
+        if (now.hour, now.minute) >= (_LATE_ENTRY_ELEVATED_H, _LATE_ENTRY_ELEVATED_M) and (
+            new_signal_score < _LATE_ENTRY_MIN_SCORE
+        ):
+            log.info("[LateCapSwapBridge] %s below late-entry score floor; no eviction.",
+                     new_symbol)
+            return False
         _swap = self._smart_swap_check(
             new_symbol, new_signal_score,
             new_entry=new_entry, new_stop=new_stop, new_target=new_target,
@@ -4844,6 +4867,10 @@ class OrderManager:
                 "fill_status":       rec.fill_status,
                 "actual_fill_price": rec.actual_fill_price,
                 "product_type":      getattr(rec, "product_type", "INTRADAY"),
+                "signal_regime":     rec.signal_regime,
+                "confidence_score":  rec.confidence_score,
+                "initial_stop_loss": rec.initial_stop_loss,
+                "r_multiple":        rec.r_multiple,
             }
             if extra:
                 entry.update(extra)
@@ -4891,7 +4918,9 @@ class OrderManager:
                     ts_str = row.get("timestamp", "")
                     try:
                         ts = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                        if ts.replace(tzinfo=None) < cutoff:
+                        if ts.tzinfo is not None:
+                            ts = ts.astimezone().replace(tzinfo=None)
+                        if ts < cutoff:
                             continue
                     except Exception:
                         pass
@@ -4920,22 +4949,29 @@ class OrderManager:
             try:
                 reason = row.get("reason", "")
                 symbol = row.get("symbol", "")
-                if not symbol or not reason:
+                if not symbol or not reason or row.get("event") not in ("CLOSE", "SESSION_EXPIRED"):
                     continue
                 ts_str = row.get("timestamp", "")
                 close_dt = datetime.fromisoformat(ts_str.replace("Z", "+00:00"))
-                close_dt = close_dt.replace(tzinfo=None)  # normalize to naive local
+                if close_dt.tzinfo is not None:
+                    close_dt = close_dt.astimezone().replace(tzinfo=None)
                 direction = row.get("direction", "")
                 _r = 0.0
                 try:
                     entry_p = float(row.get("entry_price") or 0)
-                    stop_p  = float(row.get("stop_loss") or 0)
+                    stop_p  = float(row.get("initial_stop_loss") or
+                                    opened.get(oid, {}).get("initial_stop_loss") or
+                                    opened.get(oid, {}).get("stop_loss") or
+                                    row.get("stop_loss") or 0)
                     pnl_v   = float(row.get("pnl") or 0)
                     qty_v   = int(row.get("quantity") or 1)
                     risk    = abs(entry_p - stop_p) * qty_v
-                    _r = round(pnl_v / risk, 3) if risk > 0 else 0.0
+                    _r = round(pnl_v / risk, 3) if risk > 0 else (-1.0 if pnl_v < 0 else 0.0)
                 except Exception:
                     pass
+                previous = _RECENT_CLOSE_TIMES.get(symbol.strip())
+                if previous is not None and previous["time"] > close_dt:
+                    continue
                 _RECENT_CLOSE_TIMES[symbol.strip()] = {
                     "time":      close_dt,
                     "r":         _r,
@@ -4974,7 +5010,9 @@ class OrderManager:
                     _ts_raw = row.get("timestamp", "")
                     _placed_at = datetime.fromisoformat(
                         _ts_raw.replace("Z", "+00:00")
-                    ).replace(tzinfo=None)
+                    )
+                    if _placed_at.tzinfo is not None:
+                        _placed_at = _placed_at.astimezone().replace(tzinfo=None)
                 except Exception:
                     _placed_at = None
                 rec = OrderRecord(
@@ -4992,6 +5030,10 @@ class OrderManager:
                                               row.get("entry_price") or 0),
                     opportunity_id    = row.get("opportunity_id") or "",
                     placed_at         = _placed_at,
+                    signal_regime     = row.get("signal_regime") or "",
+                    confidence_score  = float(row.get("confidence_score") or 0),
+                    initial_stop_loss = float(row.get("initial_stop_loss") or
+                                              row.get("stop_loss") or 0),
                     product_type      = row.get("product_type") or "INTRADAY",
                     adaptive_target   = expanded_targets.get(oid),
                 )
@@ -5105,4 +5147,3 @@ class OrderManager:
                 reconciled,
             )
         return reconciled
-

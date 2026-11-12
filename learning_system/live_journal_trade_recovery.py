@@ -103,6 +103,7 @@ def _recover_impl(already_seen_order_ids: Set[str]) -> List[Any]:
     processed = _load_processed_ids()
     recovered: List[Any] = []
     newly_processed: Set[str] = set()
+    opened = {}
 
     with open(_LIVE_JOURNAL_PATH, encoding="utf-8") as fh:
         for line in fh:
@@ -113,11 +114,15 @@ def _recover_impl(already_seen_order_ids: Set[str]) -> List[Any]:
                 row = json.loads(line)
             except Exception:
                 continue
+            oid = str(row.get("order_id", "")).strip()
+            if row.get("event") == "OPEN":
+                opened[oid] = row
+                continue
             if row.get("event") != "CLOSE":
                 continue
-            oid = str(row.get("order_id", "")).strip()
             if not oid or oid in already_seen_order_ids or oid in processed:
                 continue
+            row = {**opened.get(oid, {}), **row}
             reason = str(row.get("reason", ""))
             if reason in _SKIP_REASONS:
                 continue
@@ -134,8 +139,18 @@ def _recover_impl(already_seen_order_ids: Set[str]) -> List[Any]:
                 entry = float(row.get("entry_price", 0) or 0)
                 qty = int(float(row.get("quantity", 1) or 1))
                 sl = float(row.get("stop_loss", 0) or 0)
-                r_risk = abs(entry - sl) if sl else 1.0
+                initial_sl = float(row.get("initial_stop_loss") or
+                                   opened.get(oid, {}).get("stop_loss") or sl)
+                r_risk = abs(entry - initial_sl) if initial_sl else 1.0
                 r_mult = pnl / (r_risk * qty) if r_risk * qty else 0.0
+                placed_at = datetime.fromisoformat(
+                    opened.get(oid, row).get("timestamp", "").replace("Z", "+00:00")
+                )
+                closed_at = datetime.fromisoformat(row["timestamp"].replace("Z", "+00:00"))
+                if placed_at.tzinfo is not None:
+                    placed_at = placed_at.astimezone().replace(tzinfo=None)
+                if closed_at.tzinfo is not None:
+                    closed_at = closed_at.astimezone().replace(tzinfo=None)
 
                 rec = OrderRecord(
                     order_id=oid,
@@ -148,7 +163,13 @@ def _recover_impl(already_seen_order_ids: Set[str]) -> List[Any]:
                     strategy=str(row.get("strategy", "")),
                     status="closed",
                     order_type="MARKET",
-                    placed_at=datetime.now(),
+                    placed_at=placed_at,
+                    initial_stop_loss=initial_sl,
+                    signal_regime=str(row.get("signal_regime") or ""),
+                    confidence_score=float(row.get("confidence_score") or 0),
+                    product_type=str(row.get("product_type") or "INTRADAY"),
+                    close_reason=reason,
+                    closed_at=closed_at,
                 )
                 rec.pnl = pnl
                 rec.r_multiple = r_mult

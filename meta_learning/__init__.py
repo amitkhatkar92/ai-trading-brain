@@ -142,6 +142,7 @@ class MetaLearningEngine:
             won        = won,
             trade_date = trade_date,
         )
+        self._dataset.save()
 
         # Incremental model update (same record added to live model)
         features = self._extractor.extract(snap)

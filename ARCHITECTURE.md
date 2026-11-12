@@ -13,6 +13,23 @@ The system never trades blindly: every signal must survive regime detection, bac
 
 **Current mode:** Live trading (2026-09-14 — deliberate operator decision; `PAPER_TRADING=false`, `LIVE_TRADING_AUTHORIZED=true`, real orders route through Dhan). `main.py --paper` remains available to force paper mode for local dev/testing.
 
+### Rotation and learning continuity
+
+- A `LATE_CAP_SWAP` close suppresses re-entry into the evicted symbol for the
+  rest of that local trading date, including profitable closes. Losing closes
+  retain the existing 30-hour protection. Normal, deferred, and re-entry paths
+  share the guard; a late-cap swap checks the incoming symbol's eligibility
+  before evicting a holding.
+- Live journal rows retain entry regime, confidence, initial stop, and realized
+  R. Restart/recovery keeps those immutable entry anchors; timestamps are
+  converted to local time before comparison with the execution clock.
+- Legacy missing regime/confidence remains unknown, never reconstructed from
+  today's market. Quality-based swaps skip holdings without a known entry score.
+  Journal learning recovery uses original entry risk, not a later trailing stop.
+- Meta-learning persists each recorded trade outcome immediately, independently
+  of weekly retraining, so restarting the daemon cannot discard the intervening
+  training observations.
+
 ---
 
 ## 2. Entry Points
@@ -562,4 +579,3 @@ the safe fix: it removes the ambiguity without touching a single import.
 **Phase 4 completed (2026-09-14):** the `iios/` package itself was renamed to `enterprise_ai_platform/`, which permanently resolves the OIOS/IIOS package-path collision at the source rather than just documenting around it. Any remaining lowercase `iios` you see anywhere in the repo is either (a) inside a pre-2026-09-14 historical `.md` report (intentionally untouched), or (b) uppercase "IIOS" prose/env-var-prefix usage (`IIOS_ENV`, `IIOS-FCR-001`, `IIOSError`), which was deliberately out of scope for this phase (see rule above).
 
 **If you want the actual rename/merge project:** it needs to be scoped and approved per-subsystem (one rename at a time, each verified with a full test run and, for `oios/`, a full orchestrator smoke-test) — not done as a single bulk pass. Ask explicitly when ready and name which subsystem to start with.
-
