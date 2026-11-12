@@ -123,6 +123,7 @@ class SandySupervisor:
             self._poll_capital_risk_engine,
             self._poll_cle_fingerprint_refinement,
             self._poll_validation_engine,
+            self._poll_universe_selection_learning,
         ]
         self._last_snapshot = self._load_last_snapshot()
         reports: Dict[str, AgentHealthReport] = {}
@@ -519,6 +520,20 @@ class SandySupervisor:
             evidence_count=total_evidence,
             summary=f"{len(active)} fingerprint(s) preferred, {len(shadow)} in SHADOW, "
                     f"{total_evidence} DNA candidate(s) tracked total.",
+            raw=status,
+        )
+
+    def _poll_universe_selection_learning(self) -> AgentHealthReport:
+        from scripts.knowledge_system.universe_selection_learning import get_learning_status
+        status = get_learning_status()
+        return AgentHealthReport(
+            name="Universe Selection Learning (20/20 and 5/5 research)",
+            category=SELF_LEARNING_PHASE, stage=status["status"],
+            evidence_count=status.get("outcome_dates", 0),
+            summary=f"{status.get('feature_count', 0)}/{status.get('eligible_count', 0)} "
+                    f"features; {status.get('outcome_dates', 0)} resolved dates; "
+                    f"latest outcome={status.get('latest_outcome')}. "
+                    "Research challenger only; evidence activity is not proven improvement.",
             raw=status,
         )
 

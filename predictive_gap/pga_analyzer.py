@@ -167,12 +167,12 @@ def _classify_was_predictable(
     scanned = symbol in data.scanned_today
     move_abs = abs(move.daily_return_pct)
 
-    # Large moves with no data are external events
+    # Move size alone cannot establish an external event or news cause.
     if move_abs > 10.0 and dna == 0 and not scanned:
         return (
             PRED_NO,
-            f"No DNA, not scanned, {move_abs:.1f}% move — likely ExternalEvent "
-            "(earnings surprise / news / corporate action)",
+            f"No DNA, not scanned, {move_abs:.1f}% move — cause UNKNOWN; "
+            "no timestamped event evidence verified (coverage attribution only)",
         )
 
     if dna >= cfg.dna_coverage_min and scanned:

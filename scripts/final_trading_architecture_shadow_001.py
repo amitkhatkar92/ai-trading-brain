@@ -596,12 +596,19 @@ def _run_v3_pool(conn: sqlite3.Connection,
         if feat is not None:
             features.append(feat)
 
+    scored    = score_universe(features, cfg)
+    up_cands, down_cands = select_candidates(scored, cfg, pool_size=pool_size)
+
+    try:
+        from scripts.knowledge_system.universe_selection_learning import capture_universe_snapshot
+        _capture = capture_universe_snapshot(conn, trade_date, symbols, scored)
+        log.info("[UniverseLearning] Snapshot: %s", _capture)
+    except Exception:
+        log.warning("[UniverseLearning] Snapshot capture failed", exc_info=True)
+
     if len(features) < 10:
         log.warning("[Shadow] Insufficient features: %d", len(features))
         return [], []
-
-    scored    = score_universe(features, cfg)
-    up_cands, down_cands = select_candidates(scored, cfg, pool_size=pool_size)
 
     # Attach previous_close (last close in OHLCV) for each candidate
     prev_closes = {sym: bars["closes"][-1] for sym, bars in ohlcv.items()}

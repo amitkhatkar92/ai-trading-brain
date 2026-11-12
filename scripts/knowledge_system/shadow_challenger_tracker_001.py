@@ -120,8 +120,9 @@ def compute_daily_shadow_entry(records: List[Dict[str, Any]], fingerprint: Dict[
     if not day_records:
         return None
 
-    thresholds = _build_band_thresholds(prior_records, direction) if prior_records else \
-        _build_band_thresholds(dir_records, direction)
+    if not prior_records:
+        return None
+    thresholds = _build_band_thresholds(prior_records, direction)
 
     champion, challenger, added, added_fp = _split_champion_challenger(
         day_records, fingerprint, thresholds

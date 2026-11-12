@@ -54,6 +54,8 @@ data/ars/rc/history.json
 data/mover_discovery_v3_shadow.jsonl
 data/mover_discovery_v3_shadow_raw.jsonl
 data/klp/knowledge_fusion/source_inventory.jsonl
+data/universe_selection_learning/
+data/market_benchmark/universe_snapshots/
 docs/
 tests/
 *.md

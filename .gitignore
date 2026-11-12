@@ -233,6 +233,7 @@ data/kde/
 data/validation_engine/
 data/sandy/
 data/sector_enrichment_cache.json
+data/universe_selection_learning/
 
 # ── Docker ────────────────────────────────────────────────────────────────────
 .docker-data/

@@ -213,12 +213,22 @@ def run_phase_d_v3_shadow(trading_date: Optional[str] = None) -> Dict[str, Any]:
         return _abort("leakage_detected", violations=violations[:5])
 
     log.info("[V3ShadowRunner] Features: %d symbols pass quality gates.", len(features))
-    if len(features) < 10:
-        return _abort("insufficient_features", feature_count=len(features))
-
     # ── 4. Score + select ─────────────────────────────────────────────────────
     scored = score_universe(features, cfg)
     up_cands, down_cands = select_candidates(scored, cfg, pool_size=cfg.discovery_pool_size)
+
+    try:
+        from contextlib import closing
+        from oios.db.connection import get_connection
+        from scripts.knowledge_system.universe_selection_learning import capture_universe_snapshot
+        with closing(get_connection()) as conn:
+            captured = capture_universe_snapshot(conn, td, symbols, scored)
+        log.info("[UniverseLearning] Post-refresh snapshot: %s", captured)
+    except Exception:
+        log.warning("[UniverseLearning] Post-refresh capture failed", exc_info=True)
+
+    if len(features) < 10:
+        return _abort("insufficient_features", feature_count=len(features))
 
     # ── 5. Existing scanner overlap (read-only) ───────────────────────────────
     existing_candidates = CandidateStore.read() or []

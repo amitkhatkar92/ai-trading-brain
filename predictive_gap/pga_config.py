@@ -13,6 +13,7 @@ DNA_DB           = DATA / "mls" / "institutional_dna.db"
 EDE_FEATURES     = DATA / "ede_feature_db.json"
 EDGES_FILE       = DATA / "discovered_edges.json"
 UNIVERSE_FILE    = DATA / "nifty500_universe.json"
+MARKET_BEHAVIOR_DB = DATA / "market_behavior.db"
 PAPER_TRADES_CSV = DATA / "paper_trade_log.csv"
 HYP_REGISTRY     = DATA / "ars_hypothesis_registry.json"
 STRATEGY_PERF    = DATA / "strategy_performance.json"
@@ -62,4 +63,8 @@ class PGAConfig:
     predicted_threshold: float = 6.5 # IIOS confidence threshold for "predicted"
     dna_coverage_min: int = 3        # minimum DNA patterns for PREDICTABLE
     dry_run: bool = False            # if True, write no files
-    max_symbols_for_price_fetch: int = 80  # limit yfinance batch size
+    # Zero means use the complete configured universe. Callers that need a
+    # deliberate cap (for example ILC's bounded analysis sample) can still
+    # pass a positive value.
+    max_symbols_for_price_fetch: int = 0
+    price_fetch_batch_size: int = 150

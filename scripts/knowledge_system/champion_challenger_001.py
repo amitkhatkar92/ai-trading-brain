@@ -104,13 +104,20 @@ def load_registry_history(fingerprint_name: str, direction: str,
     return sorted(out, key=lambda r: r.get("checked_at", ""))
 
 
-def _consecutive_validated_pass_streak(history: List[Dict[str, Any]], current_verdict: str) -> int:
+def _consecutive_validated_pass_streak(history: List[Dict[str, Any]], current_verdict: str,
+                                     as_of_date: Optional[str] = None) -> int:
     """Counts consecutive VALIDATED_PASS entries ending with (and including)
     the current check, walking backwards through registry history."""
     streak = 1 if current_verdict == "VALIDATED_PASS" else 0
     if streak == 0:
         return 0
+    seen = {as_of_date} if as_of_date else set()
     for entry in reversed(history):
+        if as_of_date:
+            evidence_date = entry.get("as_of_date") or str(entry.get("checked_at", ""))[:10]
+            if not evidence_date or evidence_date in seen:
+                continue
+            seen.add(evidence_date)
         if entry.get("validation_verdict") == "VALIDATED_PASS":
             streak += 1
         else:
@@ -185,7 +192,13 @@ def run_promotion_check(ledger_path=None) -> List[Dict[str, Any]]:
         phase2e_confidence = phase2e_trend.get("confidence")
 
         registry_history = load_registry_history(fingerprint["name"], direction)
-        streak = _consecutive_validated_pass_streak(registry_history, validation_report.get("verdict"))
+        as_of_date = max(
+            (r["trade_date"] for r in records if r.get("direction") == direction),
+            default=None,
+        )
+        streak = _consecutive_validated_pass_streak(
+            registry_history, validation_report.get("verdict"), as_of_date
+        )
 
         status, reason = determine_status(validation_report, phase2e_confidence, streak)
 
@@ -193,6 +206,7 @@ def run_promotion_check(ledger_path=None) -> List[Dict[str, Any]]:
             "fingerprint_name": fingerprint["name"],
             "direction": direction,
             "checked_at": datetime.now(timezone.utc).isoformat(),
+            "as_of_date": as_of_date,
             "validation_verdict": validation_report.get("verdict"),
             "n_days": validation_report.get("n_days"),
             "validation_note": validation_report.get("validation_note"),

@@ -92,6 +92,7 @@ def test_compute_daily_shadow_entry_no_lookahead():
     from scripts.knowledge_system.shadow_challenger_tracker_001 import compute_daily_shadow_entry
 
     records = [
+        _rec("PRIOR", "2026-08-01", False, 1.0, rsi=40.0),
         _rec("TODAY", "2026-08-02", False, 3.0, rsi=50.0),
         # A future day with extreme RSI values that would shift tertile
         # thresholds if wrongly included:

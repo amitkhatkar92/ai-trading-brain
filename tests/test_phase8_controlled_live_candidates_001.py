@@ -10,7 +10,7 @@ any trading path.
 Verifies:
   - evaluate_live_candidacy() only returns controlled_live_candidate=True
     when ALL of: base lifecycle == PASS, shadow days >= 10, cumulative
-    win-rate >= 0.6, and zero FAIL/RETIRED occurrences ever.
+    win-rate >= 0.6, with fresh distinct dates after any FAIL/RETIRED event.
   - _ever_regressed() detects both a REJECTED verdict anywhere in history
     and a broken consecutive-validated-pass streak anywhere in history.
   - run_live_candidate_check_silent() rebuilds the export file fresh
@@ -31,6 +31,7 @@ from __future__ import annotations
 import json
 import re
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
@@ -89,6 +90,10 @@ def test_ever_regressed_true_for_broken_streak():
 # ── evaluate_live_candidacy() ─────────────────────────────────────────
 
 def _patch_all(base_status, registry_history, shadow_history):
+    shadow_history = [
+        {"trade_date": (date(2026, 1, 1) + timedelta(days=i)).isoformat(), **row}
+        for i, row in enumerate(shadow_history)
+    ]
     return (
         patch(
             "scripts.knowledge_system.controlled_live_candidates_001.compute_lifecycle_status",
@@ -149,7 +154,7 @@ def test_not_candidate_when_ever_regressed():
     with p1, p2, p3:
         result = evaluate_live_candidacy("FP", "UP")
     assert result["controlled_live_candidate"] is False
-    assert "FAIL or RETIRED" in result["live_entry_reason"]
+    assert "no verifiable evidence date" in result["live_entry_reason"]
 
 
 def test_qualifies_as_controlled_live_candidate_when_all_criteria_met():
@@ -194,6 +199,7 @@ def test_export_rebuilt_fresh_each_run_rollback(tmp_path):
          patch.object(clc, "evaluate_live_candidacy", return_value={
              "name": "FP1", "direction": "UP", "lifecycle_status": "CONTROLLED_LIVE_CANDIDATE",
              "controlled_live_candidate": True, "live_entry_reason": "qualifies",
+             "experiment_id": "test-epoch", "evidence_epoch_after": None,
          }):
         clc.run_live_candidate_check_silent()
 

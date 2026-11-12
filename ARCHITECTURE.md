@@ -30,6 +30,48 @@ The system never trades blindly: every signal must survive regime detection, bac
   of weekly retraining, so restarting the daemon cannot discard the intervening
   training observations.
 
+### Complete-universe selection learning
+
+- The daily eligible-universe benchmark covers the full configured universe,
+  preferring exact-date local OHLCV and fetching only missing prices. Diagnostic
+  scanned/decided extras cannot enter its winner/loser ranking. Coverage reports
+  eligible, priced and missing symbols. The legacy `NIFTY500` benchmark key is
+  retained for compatibility; membership is explicitly liquidity-selected, not
+  certified official Nifty 500 membership.
+- Dated membership snapshots preserve future point-in-time comparisons.
+  Historical reports without a snapshot disclose non-PIT membership; today's
+  members are never presented as verified historical constituents.
+- `universe_selection_learning` freezes all eligible names, available V3
+  features and explicit quality exclusions at the completed session's close.
+  Post-market V3 refresh captures the snapshot even when EOD runs before the
+  OHLCV refresh. Historical backfills cannot create a prospective snapshot.
+  T+1 outcomes are resolved separately, after the next session closes, in bounded
+  batches. Missing outcomes retry for seven days, then receive a data-quality
+  verdict rather than an invented price or indefinite wait.
+- Full-universe evidence remains separate from the existing 20-pool fingerprint
+  ledger. Pre-specified feature combinations are tested against both movers and
+  non-movers with chronological train/OOS evidence. Only prior resolved dates
+  may influence a research challenger; selection uses no same-session outcome.
+  Comparisons keep the same 20/20 and 5/5 counts. Bounded research weights never
+  exceed 0.15; they are not consumed by live V3/C2, KDA or order placement.
+- Research reports include gross and estimated net directional returns using
+  the existing transaction-cost/slippage model with a disclosed Rs10,000
+  reference notional. These are simulated comparisons, not broker fills.
+  Technical reason cards explicitly distinguish associations from verified
+  causes; absent timestamped event evidence remains `UNKNOWN_NOT_VERIFIED`.
+- Research experiments have 30-evidence-date epochs with explicit rejection
+  or research-only validation verdicts. A new epoch uses independent dates.
+  Sandy surfaces coverage, latest evidence, experiment status and pending work,
+  not a claim that more observations imply improved performance.
+- Fingerprints are no longer permanently barred by any historical failure.
+  Recovery requires the unchanged PASS plus 10 distinct prospective shadow
+  dates and 60% challenger-day win rate after the latest regression. Old
+  failures remain in the ledger; unverified failure dates cannot qualify.
+  Failed recovery epochs close after 30 evidence dates. Repeat runs on the same
+  evidence date cannot manufacture validation streaks or shadow votes.
+  Qualification feeds only the pre-existing bounded scanner evidence bridge;
+  KDA authority, risk gates and scanner boost limits are unchanged.
+
 ---
 
 ## 2. Entry Points

@@ -8,9 +8,10 @@ Gainers/Losers benchmarks:
   1. BROAD_MARKET  — the broadest reliable NSE equity universe available
                      (SEM_SERIES='EQ' from the Dhan security master,
                      ~2,460 symbols — NOT restricted to NIFTY500).
-  2. NIFTY500      — the standardized large/liquid benchmark, reusing
-                     predictive_gap.pga_collector's proven yfinance
-                     collection path (no duplicate fetch logic).
+  2. NIFTY500      — the legacy-compatible benchmark_type for the current
+                     liquidity-selected eligible universe. Membership is
+                     snapshotted daily, but is NOT asserted to be verified
+                     official NIFTY 500 membership.
 
 For every mover in both benchmarks, classifies exactly where the
 opportunity was lost using the taxonomy the user specified:
@@ -58,6 +59,7 @@ No new promotion/threshold-change mechanism is introduced here.
 READ-ONLY with respect to trading state. Only writes to:
   - data/market_benchmark/MARKET_BENCHMARK_{date}.jsonl  (new, append-only)
   - data/market_benchmark/MARKET_BENCHMARK_{date}.md      (new, human summary)
+  - data/market_benchmark/universe_snapshots/            (dated membership)
   - data/rejection_audit.db (existing rejection_tracker, additive rows only)
 
 Never touches: universe composition, V3/C2 scoring, StrategyLab, CRE, Risk,
@@ -111,6 +113,11 @@ class MoverRecord:
     methodology:     str
     universe_size:   int
     collected_at:    str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    universe_identity: str = "UNKNOWN"
+    membership_is_pit: bool = False
+    eligible_count: int = 0
+    priced_count: int = 0
+    missing_count: int = 0
 
 
 @dataclass
@@ -126,49 +133,217 @@ class ClassifiedMover:
         return d
 
 
+def _finite_return(value: Any) -> bool:
+    import math
+    try:
+        return value is not None and math.isfinite(float(value))
+    except (TypeError, ValueError):
+        return False
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Collection
 # ─────────────────────────────────────────────────────────────────────────────
 
-def collect_nifty500_movers(trade_date: str, top_n: int = TOP_N_DEFAULT
-                             ) -> Tuple[List[MoverRecord], List[MoverRecord]]:
-    """Standardized large/liquid benchmark. Reuses
-    predictive_gap.pga_collector.collect_daily() (proven yfinance path,
-    dry_run=True so nothing is written by PGA itself). No duplicate fetch
-    logic. Returns ([], []) on any failure — never raises."""
+def _read_membership_snapshot(trade_date: str) -> Tuple[Optional[List[str]], Dict[str, Any]]:
+    snapshot_path = BENCHMARK_DIR / "universe_snapshots" / f"eligible_universe_{trade_date}.json"
+    if snapshot_path.exists():
+        try:
+            snapshot = json.loads(snapshot_path.read_text(encoding="utf-8"))
+            from predictive_gap.pga_collector import _clean_symbols
+            symbols = _clean_symbols(snapshot.get("symbols", []))
+            if (symbols and snapshot.get("trade_date") == trade_date
+                    and snapshot.get("membership_is_pit") is True):
+                metadata = {
+                    "universe_identity": snapshot.get(
+                        "universe_identity", "LIQUIDITY_SELECTED_ELIGIBLE_UNIVERSE"),
+                    "membership_type": snapshot.get(
+                        "membership_type",
+                        "LIQUIDITY_SELECTED_NOT_VERIFIED_OFFICIAL_INDEX"),
+                    "membership_is_pit": True,
+                    "membership_status": "FROZEN_DATE_SNAPSHOT",
+                    "snapshot_path": str(snapshot_path),
+                    "snapshot_created_at": snapshot.get("snapshot_created_at"),
+                    "official_index_constituents_verified": False,
+                    "eligible_symbols": len(symbols),
+                }
+                return symbols, metadata
+        except Exception as exc:
+            log.warning("[MarketBenchmark] Invalid membership snapshot %s: %s",
+                        snapshot_path, exc)
+    return None, {
+        "universe_identity": "CURRENT_CONFIGURED_MEMBERSHIP_NON_PIT",
+        "membership_type": "CURRENT_CONFIGURED_MEMBERSHIP_NOT_HISTORICAL",
+        "membership_is_pit": False,
+        "membership_status": "NON_PIT_NO_HISTORICAL_SNAPSHOT",
+        "snapshot_path": None,
+        "official_index_constituents_verified": False,
+    }
+
+
+def _load_or_freeze_eligible_universe(trade_date: str) -> Tuple[List[str], Dict[str, Any]]:
+    """Load this date's frozen eligible membership, or snapshot today's list.
+
+    Historical dates without a prior snapshot use the current membership only
+    as a clearly-labelled non-PIT fallback; historical membership is never
+    reconstructed or represented as known.
+    """
+    frozen_symbols, frozen_metadata = _read_membership_snapshot(trade_date)
+    if frozen_symbols is not None:
+        return frozen_symbols, frozen_metadata
+
+    from predictive_gap.pga_collector import _load_universe_membership
+    symbols, identity = _load_universe_membership()
+    snapshot_path = BENCHMARK_DIR / "universe_snapshots" / f"eligible_universe_{trade_date}.json"
+    membership_type = (
+        "LIQUIDITY_SELECTED_NOT_VERIFIED_OFFICIAL_INDEX"
+        if identity == "LIQUIDITY_SELECTED_ELIGIBLE_UNIVERSE"
+        else "FALLBACK_NIFTY50_NOT_VERIFIED_OFFICIAL_INDEX"
+    )
+    is_current_date = trade_date == datetime.now().date().isoformat()
+    membership_is_pit = False
+    status = "NON_PIT_NO_HISTORICAL_SNAPSHOT"
+    snapshot_created_at = None
+    if is_current_date and symbols:
+        snapshot_created_at = datetime.now(timezone.utc).isoformat()
+        snapshot = {
+            "trade_date": trade_date,
+            "snapshot_created_at": snapshot_created_at,
+            "universe_identity": identity,
+            "membership_type": membership_type,
+            "official_index_constituents_verified": False,
+            "membership_is_pit": True,
+            "source_file": "data/nifty500_universe.json",
+            "symbol_count": len(symbols),
+            "symbols": symbols,
+        }
+        try:
+            snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+            snapshot_path.write_text(json.dumps(snapshot, indent=2) + "\n", encoding="utf-8")
+            membership_is_pit = True
+            status = "FROZEN_DATE_SNAPSHOT"
+        except Exception as exc:
+            log.warning("[MarketBenchmark] Membership snapshot write failed: %s", exc)
+            status = "SNAPSHOT_WRITE_FAILED_NON_PIT"
+
+    metadata = {
+        "universe_identity": identity,
+        "membership_type": membership_type,
+        "membership_is_pit": membership_is_pit,
+        "membership_status": status,
+        "snapshot_path": str(snapshot_path) if membership_is_pit else None,
+        "snapshot_created_at": snapshot_created_at,
+        "official_index_constituents_verified": False,
+        "eligible_symbols": len(symbols),
+    }
+    return symbols, metadata
+
+
+def _collect_nifty500_movers(
+    trade_date: str,
+    top_n: int,
+    universe_symbols: List[str],
+    membership: Dict[str, Any],
+) -> Tuple[List[MoverRecord], List[MoverRecord], Dict[str, Any]]:
+    """Collect and return mover lists plus exact eligible-universe coverage."""
+    coverage: Dict[str, Any] = {
+        "universe_identity": membership.get("universe_identity", "UNKNOWN"),
+        "membership_is_pit": bool(membership.get("membership_is_pit", False)),
+        "membership_status": membership.get("membership_status", "UNKNOWN"),
+        "membership_type": membership.get("membership_type", "UNKNOWN"),
+        "eligible_symbols": len(universe_symbols),
+        "priced_symbols": 0,
+        "missing_symbols": len(universe_symbols),
+        "missing_symbol_list": list(universe_symbols),
+        "price_coverage_pct": 0.0,
+        "official_index_constituents_verified": False,
+        "snapshot_path": membership.get("snapshot_path"),
+    }
     try:
         from predictive_gap.pga_collector import collect_daily
         from predictive_gap.pga_config import PGAConfig
-        cfg = PGAConfig(top_n=top_n, dry_run=True)
-        daily = collect_daily(trade_date, cfg)
+        cfg = PGAConfig(top_n=top_n, dry_run=True, max_symbols_for_price_fetch=0)
+        daily = collect_daily(trade_date, cfg, universe_symbols=universe_symbols)
     except Exception as exc:
         log.warning("[MarketBenchmark] NIFTY500 collection failed: %s", exc)
-        return [], []
+        return [], [], coverage
 
-    universe_size = len(daily.universe_symbols) if getattr(daily, "universe_symbols", None) else 230
-    methodology = ("yfinance daily OHLCV over nifty500_universe.json symbols "
-                   "(reused from predictive_gap.pga_collector.collect_daily)")
-    # Defensive: exclude any NaN returns (e.g. delisted/no-data symbols) at
-    # this boundary. Does not modify pga_collector.py itself.
+    actual_universe = list(getattr(daily, "universe_symbols", None) or universe_symbols or [])
+    universe_size = len(actual_universe)
+    all_moves = getattr(daily, "all_moves", {}) or {}
     import math
-    valid_gainers = [m for m in daily.gainers
-                     if m.daily_return_pct is not None and not math.isnan(m.daily_return_pct)]
-    valid_losers = [m for m in daily.losers
-                    if m.daily_return_pct is not None and not math.isnan(m.daily_return_pct)]
+
+    def _has_finite_return(symbol: str) -> bool:
+        try:
+            return (symbol in all_moves
+                    and all_moves[symbol].daily_return_pct is not None
+                    and math.isfinite(float(all_moves[symbol].daily_return_pct)))
+        except (TypeError, ValueError, AttributeError):
+            return False
+
+    priced_symbols = [
+        symbol for symbol in actual_universe
+        if _has_finite_return(symbol)
+    ]
+    priced_count = len(priced_symbols)
+    missing_symbols = [symbol for symbol in actual_universe if symbol not in priced_symbols]
+    missing_count = len(missing_symbols)
+    if membership.get("membership_is_pit"):
+        membership["eligible_symbols"] = universe_size
+    coverage.update({
+        "eligible_symbols": universe_size,
+        "priced_symbols": priced_count,
+        "missing_symbols": missing_count,
+        "missing_symbol_list": missing_symbols,
+        "price_coverage_pct": round(priced_count / universe_size * 100, 2) if universe_size else 0.0,
+    })
+    methodology = (
+        "daily OHLCV over the dated configured eligible-universe membership "
+        "(not verified official NIFTY 500 constituents; local exact-date first, "
+        "batched network fallback for missing symbols)"
+    )
+    valid_gainers = [m for m in daily.gainers if _finite_return(m.daily_return_pct)]
+    valid_losers = [m for m in daily.losers if _finite_return(m.daily_return_pct)]
     gainers = [
         MoverRecord(trade_date=trade_date, symbol=m.symbol, benchmark_type="NIFTY500",
                     move_type="GAINER", daily_return_pct=m.daily_return_pct,
                     direction="UP", source=m.data_source, methodology=methodology,
-                    universe_size=universe_size)
+                    universe_size=universe_size,
+                    universe_identity=membership["universe_identity"],
+                    membership_is_pit=membership["membership_is_pit"],
+                    eligible_count=universe_size, priced_count=priced_count,
+                    missing_count=missing_count)
         for m in valid_gainers
     ]
     losers = [
         MoverRecord(trade_date=trade_date, symbol=m.symbol, benchmark_type="NIFTY500",
                     move_type="LOSER", daily_return_pct=m.daily_return_pct,
                     direction="DOWN", source=m.data_source, methodology=methodology,
-                    universe_size=universe_size)
+                    universe_size=universe_size,
+                    universe_identity=membership["universe_identity"],
+                    membership_is_pit=membership["membership_is_pit"],
+                    eligible_count=universe_size, priced_count=priced_count,
+                    missing_count=missing_count)
         for m in valid_losers
     ]
+    return gainers, losers, coverage
+
+
+def collect_nifty500_movers(trade_date: str, top_n: int = TOP_N_DEFAULT,
+                            universe_symbols: Optional[List[str]] = None
+                             ) -> Tuple[List[MoverRecord], List[MoverRecord]]:
+    """Backward-compatible standardized eligible-universe mover collector.
+
+    The historical benchmark_type label remains ``NIFTY500`` for existing
+    consumers, although membership comes from the current liquidity-selected
+    universe and is not asserted to be official index membership.
+    """
+    symbols, membership = _load_or_freeze_eligible_universe(trade_date)
+    if universe_symbols is not None:
+        from predictive_gap.pga_collector import _clean_symbols
+        symbols = _clean_symbols(universe_symbols)
+    gainers, losers, _ = _collect_nifty500_movers(
+        trade_date, top_n, symbols, membership)
     return gainers, losers
 
 
@@ -208,15 +383,12 @@ def collect_broad_market_movers(
 
     all_moves: Dict[str, Any] = {}
     failures = 0
-    for i in range(0, len(universe), batch_size):
-        chunk = universe[i:i + batch_size]
-        try:
-            moves = _fetch_price_data(chunk, trade_date)
-            all_moves.update(moves)
-        except Exception as exc:
-            failures += 1
-            log.debug("[MarketBenchmark] Broad-market batch %d-%d failed: %s",
-                      i, i + len(chunk), exc)
+    try:
+        from predictive_gap.pga_collector import _fetch_prices_local_then_network
+        all_moves = _fetch_prices_local_then_network(universe, trade_date, batch_size=batch_size)
+    except Exception as exc:
+        failures = 1
+        log.warning("[MarketBenchmark] Broad-market price collection failed: %s", exc)
 
     log.info(
         "[MarketBenchmark] Broad-market: %d/%d symbols priced (%d batch failures, "
@@ -243,23 +415,29 @@ def collect_broad_market_movers(
     losers_raw = sorted_moves[-top_n:][::-1]
 
     methodology = (
-        f"yfinance daily OHLCV over {len(universe)} NSE equities "
+        f"exact-date daily OHLCV over {len(universe)} NSE equities "
         f"(SEM_SERIES='EQ' from Dhan security master, capped from "
-        f"{total_universe_size} total; batch_size={batch_size}, "
+        f"{total_universe_size} total; local-first, network batch_size={batch_size}, "
         f"{failures} batch failures)"
     )
     gainers = [
         MoverRecord(trade_date=trade_date, symbol=m.symbol, benchmark_type="BROAD_MARKET",
                     move_type="GAINER", daily_return_pct=m.daily_return_pct,
                     direction="UP", source=m.data_source, methodology=methodology,
-                    universe_size=total_universe_size)
+                    universe_size=total_universe_size,
+                    universe_identity="DYNAMIC_NSE_SECURITY_MASTER",
+                    membership_is_pit=False, eligible_count=len(universe),
+                    priced_count=len(all_moves), missing_count=max(0, len(universe) - len(all_moves)))
         for m in gainers_raw
     ]
     losers = [
         MoverRecord(trade_date=trade_date, symbol=m.symbol, benchmark_type="BROAD_MARKET",
                     move_type="LOSER", daily_return_pct=m.daily_return_pct,
                     direction="DOWN", source=m.data_source, methodology=methodology,
-                    universe_size=total_universe_size)
+                    universe_size=total_universe_size,
+                    universe_identity="DYNAMIC_NSE_SECURITY_MASTER",
+                    membership_is_pit=False, eligible_count=len(universe),
+                    priced_count=len(all_moves), missing_count=max(0, len(universe) - len(all_moves)))
         for m in losers_raw
     ]
     return gainers, losers
@@ -469,7 +647,11 @@ def _feed_miss_into_rejection_tracker(cm: ClassifiedMover) -> None:
                   cm.mover.symbol, exc)
 
 
-def _write_outputs(trade_date: str, classified: List[ClassifiedMover]) -> Dict[str, int]:
+def _write_outputs(
+    trade_date: str,
+    classified: List[ClassifiedMover],
+    report_metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, int]:
     BENCHMARK_DIR.mkdir(parents=True, exist_ok=True)
     jsonl_path = BENCHMARK_DIR / f"MARKET_BENCHMARK_{trade_date}.jsonl"
     with open(jsonl_path, "w", encoding="utf-8") as fh:
@@ -482,6 +664,23 @@ def _write_outputs(trade_date: str, classified: List[ClassifiedMover]) -> Dict[s
 
     md_path = BENCHMARK_DIR / f"MARKET_BENCHMARK_{trade_date}.md"
     lines = [f"# Daily Market Opportunity Benchmark — {trade_date}", ""]
+    if report_metadata:
+        eligible = report_metadata.get("eligible_universe", {})
+        lines.extend([
+            "## Eligible-universe coverage",
+            f"- Universe: {eligible.get('universe_identity', 'UNKNOWN')}",
+            f"- Membership: {eligible.get('membership_status', 'UNKNOWN')} "
+            f"(point-in-time={bool(eligible.get('membership_is_pit', False))})",
+            f"- Eligible/priced/missing: {eligible.get('eligible_symbols', 0)}/"
+            f"{eligible.get('priced_symbols', 0)}/{eligible.get('missing_symbols', 0)} "
+            f"({eligible.get('price_coverage_pct', 0.0)}% priced)",
+            "- Official index constituents independently verified: "
+            f"{bool(eligible.get('official_index_constituents_verified', False))}",
+            "",
+        ])
+        metadata_path = BENCHMARK_DIR / f"MARKET_BENCHMARK_{trade_date}_metadata.json"
+        metadata_path.write_text(
+            json.dumps(report_metadata, indent=2, default=str) + "\n", encoding="utf-8")
     for bt in ("BROAD_MARKET", "NIFTY500"):
         lines.append(f"## {bt}")
         subset = [cm for cm in classified if cm.mover.benchmark_type == bt]
@@ -516,11 +715,13 @@ def run_daily_market_benchmark(
         trade_date = datetime.now().strftime("%Y-%m-%d")
 
     try:
-        universe_symbols = _load_universe_symbols()
+        eligible_symbols, membership = _load_or_freeze_eligible_universe(trade_date)
+        universe_symbols = set(eligible_symbols)
         shadow_records = _load_shadow_records_for_date(trade_date)
         scanned_today, decided_today = _scanned_and_decided_today(trade_date)
 
-        nifty_gainers, nifty_losers = collect_nifty500_movers(trade_date, top_n)
+        nifty_gainers, nifty_losers, eligible_coverage = _collect_nifty500_movers(
+            trade_date, top_n, eligible_symbols, membership)
         broad_gainers, broad_losers = collect_broad_market_movers(
             trade_date, top_n, max_symbols=broad_max_symbols)
 
@@ -535,7 +736,17 @@ def run_daily_market_benchmark(
             classified.append(cm)
             _feed_miss_into_rejection_tracker(cm)
 
-        counts = _write_outputs(trade_date, classified)
+        report_metadata = {
+            "trade_date": trade_date,
+            "eligible_universe": eligible_coverage,
+            "universe_snapshot": membership,
+            "nifty500_label_note": (
+                "benchmark_type remains NIFTY500 for compatibility; actual membership "
+                "identity/type are recorded above and are not asserted to be verified "
+                "official index constituents"
+            ),
+        }
+        counts = _write_outputs(trade_date, classified, report_metadata=report_metadata)
 
         summary = {
             "trade_date": trade_date,
@@ -543,6 +754,8 @@ def run_daily_market_benchmark(
             "broad_market_gainers": len(broad_gainers), "broad_market_losers": len(broad_losers),
             "total_classified": len(classified),
             "category_counts": counts,
+            "eligible_universe": eligible_coverage,
+            "universe_snapshot": membership,
         }
         log.info("[MarketBenchmark] %s: %s", trade_date, summary)
         return summary
@@ -593,11 +806,12 @@ def reclassify_stale_benchmarks(lookback_days: int = 5) -> Dict[str, Any]:
         if not BENCHMARK_DIR.exists():
             return results
         files = sorted(BENCHMARK_DIR.glob("MARKET_BENCHMARK_2*.jsonl"))[-lookback_days:]
-        universe_symbols = _load_universe_symbols()
-
         for f in files:
             trade_date = f.stem.replace("MARKET_BENCHMARK_", "")
             results["dates_checked"] += 1
+            frozen_symbols, membership = _read_membership_snapshot(trade_date)
+            universe_symbols = (set(frozen_symbols) if frozen_symbols is not None
+                                else _load_universe_symbols())
 
             shadow_records = _load_shadow_records_for_date(trade_date)
             if not shadow_records:
@@ -633,6 +847,13 @@ def reclassify_stale_benchmarks(lookback_days: int = 5) -> Dict[str, Any]:
                 out_rec = {
                     "record_type": "RECLASSIFICATION",
                     "trade_date": trade_date,
+                    "universe_identity": membership.get(
+                        "universe_identity", "CURRENT_CONFIGURED_MEMBERSHIP_NON_PIT"),
+                    "membership_is_pit": bool(membership.get("membership_is_pit", False)),
+                    "membership_status": membership.get(
+                        "membership_status", "NON_PIT_NO_HISTORICAL_SNAPSHOT"),
+                    "membership_type": membership.get(
+                        "membership_type", "CURRENT_CONFIGURED_MEMBERSHIP_NOT_HISTORICAL"),
                     "symbol": sym,
                     "direction": direction,
                     "original_category": old_cat,
@@ -681,4 +902,3 @@ def reclassify_stale_benchmarks_silent(lookback_days: int = 5) -> Dict[str, Any]
     except Exception as exc:
         log.error("[MarketBenchmark] Unexpected failure in reclassify wrapper: %s", exc)
         return {"error": str(exc)}
-

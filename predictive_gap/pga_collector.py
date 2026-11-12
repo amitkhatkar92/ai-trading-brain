@@ -4,6 +4,7 @@ from __future__ import annotations
 import csv
 import json
 import logging
+import math
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -11,7 +12,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
 from .pga_config import (
-    CT_DB, DNA_DB, EDGES_FILE, UNIVERSE_FILE, PAPER_TRADES_CSV, PGAConfig,
+    CT_DB, DNA_DB, EDGES_FILE, UNIVERSE_FILE, MARKET_BEHAVIOR_DB,
+    PAPER_TRADES_CSV, PGAConfig,
 )
 
 log = logging.getLogger(__name__)
@@ -69,31 +71,12 @@ class DailyData:
     dna_coverage: Dict[str, int] = field(default_factory=dict)       # symbol → count
     edge_coverage: Dict[str, int] = field(default_factory=dict)      # symbol → count
     scan_attrition_records: list = field(default_factory=list)        # ScanAttritionRecord list
+    eligible_priced_count: int = 0
+    eligible_missing_symbols: List[str] = field(default_factory=list)
 
 
-def _load_universe(max_symbols: int) -> List[str]:
-    """Load NSE symbols from nifty500_universe.json."""
-    try:
-        with open(UNIVERSE_FILE, encoding="utf-8") as f:
-            data = json.load(f)
-        symbols = data.get("symbols", data) if isinstance(data, dict) else data
-        if isinstance(symbols, list):
-            # Strip .NS suffix if present; handle both str items and dict items
-            cleaned = []
-            for s in symbols:
-                if isinstance(s, dict):
-                    raw = s.get("symbol") or s.get("yahoo_ticker") or ""
-                elif isinstance(s, str):
-                    raw = s
-                else:
-                    continue
-                bare = str(raw).replace(".NS", "").strip()
-                if bare:
-                    cleaned.append(bare)
-            return cleaned[:max_symbols]
-    except Exception as e:
-        log.warning("[PGA] Universe load failed: %s", e)
-    # Fallback: NIFTY50 baseline
+def _fallback_universe() -> List[str]:
+    """Return the legacy NIFTY50 fallback when no eligible-universe file loads."""
     return [
         "RELIANCE", "TCS", "HDFCBANK", "INFY", "ICICIBANK",
         "HINDUNILVR", "ITC", "KOTAKBANK", "LT", "SBIN",
@@ -106,6 +89,127 @@ def _load_universe(max_symbols: int) -> List[str]:
         "GRASIM", "HINDALCO", "INDUSINDBK", "TATACONSUM", "VEDL",
         "BPCL", "IOC", "SHRIRAMFIN", "HDFCLIFE", "SBILIFE",
     ]
+
+
+def _clean_symbols(symbols: Any) -> List[str]:
+    cleaned: List[str] = []
+    seen: Set[str] = set()
+    if not isinstance(symbols, list):
+        return cleaned
+    for item in symbols:
+        if isinstance(item, dict):
+            raw = item.get("symbol") or item.get("yahoo_ticker") or ""
+        elif isinstance(item, str):
+            raw = item
+        else:
+            continue
+        bare = str(raw).strip().upper()
+        if bare.endswith(".NS"):
+            bare = bare[:-3]
+        if bare and bare not in seen:
+            cleaned.append(bare)
+            seen.add(bare)
+    return cleaned
+
+
+def _load_universe_membership() -> tuple[List[str], str]:
+    """Load the current configured eligible universe and identify its source.
+
+    The configured file is liquidity-selected membership; it is not an
+    independently verified official index constituent list.
+    """
+    try:
+        with open(UNIVERSE_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        symbols = data.get("symbols", data) if isinstance(data, dict) else data
+        cleaned = _clean_symbols(symbols)
+        if cleaned:
+            return cleaned, "LIQUIDITY_SELECTED_ELIGIBLE_UNIVERSE"
+    except Exception as e:
+        log.warning("[PGA] Universe load failed: %s", e)
+    return _fallback_universe(), "PGA_FALLBACK_NIFTY50"
+
+
+def _load_universe(max_symbols: Optional[int] = None) -> List[str]:
+    """Load configured NSE symbols; ``None`` or nonpositive means no cap."""
+    symbols, _ = _load_universe_membership()
+    if max_symbols is not None and max_symbols > 0:
+        return symbols[:max_symbols]
+    return symbols
+
+
+def _load_local_price_data(
+    symbols: List[str], report_date: str, db_path: Optional[Path] = None,
+) -> Dict[str, StockMove]:
+    """Read exact-date OHLCV rows from the local database without writing."""
+    if not symbols:
+        return {}
+    db_path = Path(db_path or MARKET_BEHAVIOR_DB)
+    if not db_path.exists():
+        return {}
+
+    result: Dict[str, StockMove] = {}
+    try:
+        uri = db_path.resolve().as_uri() + "?mode=ro"
+        conn = sqlite3.connect(uri, uri=True)
+        try:
+            conn.execute("PRAGMA query_only=ON")
+            for start in range(0, len(symbols), 900):
+                chunk = symbols[start:start + 900]
+                db_symbols = [f"{symbol}.NS" for symbol in chunk]
+                placeholders = ",".join("?" for _ in db_symbols)
+                rows = conn.execute(
+                    "SELECT symbol, open, close, volume FROM ohlcv_daily "
+                    f"WHERE trade_date = ? AND symbol IN ({placeholders})",
+                    [report_date, *db_symbols],
+                ).fetchall()
+                for db_symbol, open_price, close_price, volume in rows:
+                    symbol = str(db_symbol).upper()
+                    if symbol.endswith(".NS"):
+                        symbol = symbol[:-3]
+                    try:
+                        o, c = float(open_price), float(close_price)
+                        v = float(volume or 0)
+                    except (TypeError, ValueError):
+                        continue
+                    if not math.isfinite(o) or not math.isfinite(c) or o <= 0 or c <= 0:
+                        continue
+                    if not math.isfinite(v):
+                        v = 0.0
+                    ret = (c - o) / o * 100
+                    result[symbol] = StockMove(
+                        symbol=symbol, open_price=round(o, 2),
+                        close_price=round(c, 2), daily_return_pct=round(ret, 2),
+                        volume=v, move_type="NEUTRAL",
+                        actual_direction="UP" if ret > 0.1 else ("DOWN" if ret < -0.1 else "FLAT"),
+                        data_source="local_ohlcv",
+                    )
+        finally:
+            conn.close()
+    except Exception as exc:
+        log.warning("[PGA] Local exact-date OHLCV read failed: %s", exc)
+    return result
+
+
+def _fetch_prices_local_then_network(
+    symbols: List[str], report_date: str, batch_size: int = 150,
+) -> Dict[str, StockMove]:
+    """Use exact-date local OHLCV first; batch-fetch only symbols still missing."""
+    ordered_symbols = list(dict.fromkeys(symbols))
+    result = _load_local_price_data(ordered_symbols, report_date)
+    missing = [symbol for symbol in ordered_symbols if symbol not in result]
+    safe_batch_size = max(1, int(batch_size or 150))
+    for start in range(0, len(missing), safe_batch_size):
+        chunk = missing[start:start + safe_batch_size]
+        try:
+            fetched = _fetch_price_data(chunk, report_date)
+        except Exception as exc:
+            log.warning("[PGA] Price batch %d-%d failed: %s",
+                        start, start + len(chunk), exc)
+            continue
+        # A fetcher must not introduce symbols outside the requested universe.
+        result.update({symbol: move for symbol, move in fetched.items() if symbol in chunk})
+    return result
 
 
 def _fetch_price_data(symbols: List[str], report_date: str) -> Dict[str, StockMove]:
@@ -162,9 +266,9 @@ def _fetch_price_data(symbols: List[str], report_date: str) -> Dict[str, StockMo
             if df is None or df.empty:
                 continue
 
-            # Find the row for report_date (or the most recent trading day <= report_date)
+            # A benchmark is date-specific: never substitute the prior session.
             df.index = _pd.to_datetime(df.index)
-            mask = df.index.date <= target_dt
+            mask = df.index.date == target_dt
             if not mask.any():
                 continue
             row = df[mask].iloc[-1]
@@ -172,8 +276,10 @@ def _fetch_price_data(symbols: List[str], report_date: str) -> Dict[str, StockMo
             o = float(row.get("Open", 0) or 0)
             c = float(row.get("Close", 0) or 0)
             v = float(row.get("Volume", 0) or 0)
-            if o <= 0 or c <= 0:
+            if not math.isfinite(o) or not math.isfinite(c) or o <= 0 or c <= 0:
                 continue
+            if not math.isfinite(v):
+                v = 0.0
 
             ret = (c - o) / o * 100
             result[sym] = StockMove(
@@ -388,7 +494,11 @@ def _load_market_stats(report_date: str) -> Dict[str, Any]:
     return stats
 
 
-def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
+def collect_daily(
+    report_date: str,
+    cfg: PGAConfig,
+    universe_symbols: Optional[List[str]] = None,
+) -> DailyData:
     """
     Collect all data needed for PGA analysis for a given date.
 
@@ -403,7 +513,10 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
     log.info("[PGA] Collecting daily data for %s", report_date)
 
     # ── 1. Load universe symbols ───────────────────────────────────────
-    universe = _load_universe(cfg.max_symbols_for_price_fetch)
+    if universe_symbols is None:
+        universe = _load_universe(cfg.max_symbols_for_price_fetch)
+    else:
+        universe = _clean_symbols(universe_symbols)
     log.info("[PGA] Universe: %d symbols", len(universe))
 
     # ── 2. Load market stats ───────────────────────────────────────────
@@ -431,10 +544,12 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
 
     # ── 5. Fetch price data ────────────────────────────────────────────
     # Include universe + any scanned/decided symbols not in universe
-    extra_syms = (scanned_today | decided_symbols) - set(universe)
-    all_symbols = universe + [s for s in extra_syms][:20]  # cap extra
+    extra_syms = sorted((scanned_today | decided_symbols) - set(universe))
+    all_symbols = universe + extra_syms[:20]  # bounded diagnostic extras
     log.info("[PGA] Fetching prices for %d symbols...", len(all_symbols))
-    all_moves = _fetch_price_data(all_symbols, report_date)
+    all_moves = _fetch_prices_local_then_network(
+        all_symbols, report_date, batch_size=cfg.price_fetch_batch_size,
+    )
     log.info("[PGA] Got price data for %d symbols", len(all_moves))
 
     # ── 6. Classify gainers / losers ───────────────────────────────────
@@ -446,7 +561,13 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
         else:
             move.move_type = "NEUTRAL"
 
-    sorted_moves = sorted(all_moves.values(), key=lambda m: m.daily_return_pct, reverse=True)
+    # Scanned/decided extras remain available in all_moves for PGA diagnostics,
+    # but never participate in eligible-universe benchmark rankings.
+    universe_moves = [
+        all_moves[sym] for sym in universe
+        if sym in all_moves and math.isfinite(all_moves[sym].daily_return_pct)
+    ]
+    sorted_moves = sorted(universe_moves, key=lambda m: m.daily_return_pct, reverse=True)
     gainers = sorted_moves[:cfg.top_n]
     losers = sorted_moves[-cfg.top_n:][::-1]   # bottom N, worst first
 
@@ -481,4 +602,6 @@ def collect_daily(report_date: str, cfg: PGAConfig) -> DailyData:
         dna_coverage=dna_coverage,
         edge_coverage=edge_coverage,
         scan_attrition_records=attrition_records,
+        eligible_priced_count=len(universe_moves),
+        eligible_missing_symbols=[sym for sym in universe if sym not in all_moves],
     )

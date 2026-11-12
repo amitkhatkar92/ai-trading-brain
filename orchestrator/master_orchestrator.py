@@ -7730,6 +7730,13 @@ class MasterOrchestrator:
         except Exception as _klp_ksl_exc:
             log.warning("[KLP-KSL] Knowledge bridge failed (non-critical): %s", _klp_ksl_exc)
 
+        try:
+            from scripts.knowledge_system.universe_selection_learning import run_universe_learning
+            _universe_learning = run_universe_learning()
+            log.info("[UniverseLearning] Outcomes/research: %s", _universe_learning)
+        except Exception:
+            log.warning("[UniverseLearning] EOD research failed (non-critical)", exc_info=True)
+
         # ── DTA-PHASE7-DISCOVERY-001: automatic fingerprint discovery + promotion ──
         # READ-ONLY, OBSERVATIONAL. Runs BEFORE Phase 2E so any fingerprint newly
         # promoted today is immediately trackable/scorable/validatable in this same
@@ -7840,12 +7847,11 @@ class MasterOrchestrator:
         # READ-ONLY, OBSERVATIONAL, DORMANT MECHANISM. Runs after Phase 6 so it
         # sees that day's freshest shadow history. For every fingerprint at
         # PASS (Phase 7), additionally checks a stricter live-entry safety bar
-        # (>=10 shadow days, >=60% cumulative win-rate, zero FAIL/RETIRED ever)
+        # (>=10 distinct shadow dates, >=60% day-win rate; fresh evidence after failure)
         # and refreshes data/controlled_live_candidates.json — recomputed fresh
         # every run, so any regression immediately withdraws a candidate.
-        # NOTHING reads this file: mover_discovery_v3.py, final_c2_selector.py,
-        # KDA, DecisionEngine, Risk, and Execution are untouched, and
-        # config.ENABLE_CONTROLLED_LIVE_CANDIDATES defaults False. A failure
+        # Phase 9 reads this export for the existing bounded scanner evidence
+        # bridge. KDA authority and all risk/execution gates are unchanged. A failure
         # here is logged and never aborts EOD learning or trading.
         try:
             from scripts.knowledge_system.controlled_live_candidates_001 import (
