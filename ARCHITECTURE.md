@@ -69,6 +69,8 @@ The system never trades blindly: every signal must survive regime detection, bac
   failures remain in the ledger; unverified failure dates cannot qualify.
   Failed recovery epochs close after 30 evidence dates. Repeat runs on the same
   evidence date cannot manufacture validation streaks or shadow votes.
+  Exchange holidays and weekend rows cannot count as recovery observations or
+  next-session universe outcomes, even if a legacy store contains such dates.
   Qualification feeds only the pre-existing bounded scanner evidence bridge;
   KDA authority, risk gates and scanner boost limits are unchanged.
 

@@ -53,6 +53,7 @@ import hashlib
 from pathlib import Path
 from typing import Any, Dict, List
 
+from config import is_nse_holiday
 from scripts.knowledge_system.fingerprint_discovery_001 import (
     LIFECYCLE_PASS,
     compute_lifecycle_status,
@@ -92,6 +93,8 @@ def _requalification_history(
         try:
             trading_date = date.fromisoformat(entry["trade_date"])
         except (KeyError, TypeError, ValueError):
+            continue
+        if is_nse_holiday(trading_date):
             continue
         if cutoff is None or trading_date > cutoff:
             # First persisted observation wins; reruns cannot manufacture votes.

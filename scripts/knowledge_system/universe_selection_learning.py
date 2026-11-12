@@ -15,6 +15,7 @@ from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from config import is_nse_holiday
 from opportunity_engine.mover_discovery_v3 import _rank_pct
 from scripts.knowledge_system.selection_characteristic_analyzer_001 import (
     COMBINATIONS, FEATURES, _band_of, _build_band_thresholds,
@@ -52,7 +53,8 @@ def capture_universe_snapshot(
 ) -> dict[str, Any]:
     """Only capture today's completed session; never backdate a PIT claim."""
     now = _now()
-    if trade_date != now.date().isoformat() or now.time() < time(15, 30):
+    if (trade_date != now.date().isoformat() or now.time() < time(15, 30)
+            or is_nse_holiday(now.date())):
         return {"status": "SKIPPED_NOT_PROSPECTIVE"}
     destination = (store or STORE) / "snapshots" / f"{trade_date}.json"
     if destination.exists():
@@ -230,10 +232,13 @@ def run_universe_learning(
                 if summary["examined_dates"] >= max(0, max_dates):
                     break
                 summary["examined_dates"] += 1
-                next_date = conn.execute(
-                    "SELECT MIN(trade_date) FROM ohlcv_daily "
-                    "WHERE trade_date > ? AND symbol NOT LIKE '^%'", (td,)
-                ).fetchone()[0]
+                later_dates = conn.execute(
+                    "SELECT DISTINCT trade_date FROM ohlcv_daily "
+                    "WHERE trade_date > ? AND symbol NOT LIKE '^%' "
+                    "ORDER BY trade_date LIMIT 10", (td,)
+                ).fetchall()
+                next_date = next((r[0] for r in later_dates
+                                  if not is_nse_holiday(date.fromisoformat(r[0]))), None)
                 if not next_date or next_date > now.date().isoformat() or (
                     next_date == now.date().isoformat() and now.time() < time(15, 30)
                 ):

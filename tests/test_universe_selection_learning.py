@@ -264,6 +264,25 @@ def test_future_resolutions_cannot_train_an_earlier_selection(tmp_path):
     assert evaluate.call_args.args[2] == []
 
 
+def test_weekend_rows_cannot_be_used_as_next_session_outcomes(tmp_path):
+    db = tmp_path / "db"
+    conn = _database(db, 2)
+    for symbol in ("S000.NS", "S001.NS"):
+        for day, close in (("2026-11-13", 100), ("2026-11-14", 999), ("2026-11-16", 102)):
+            conn.execute("INSERT INTO ohlcv_daily VALUES(?,?,?,?)", (symbol, day, 100, close))
+    conn.commit()
+    with patch.object(learning, "_now", return_value=datetime(2026, 11, 13, 17, tzinfo=learning.IST)):
+        learning.capture_universe_snapshot(
+            conn, "2026-11-13", ["S000.NS", "S001.NS"], [_row(0), _row(1)], tmp_path
+        )
+    conn.close()
+    with patch.object(learning, "_now", return_value=datetime(2026, 11, 16, 17, tzinfo=learning.IST)):
+        learning.run_universe_learning(db, tmp_path)
+    result = json.loads((tmp_path / "resolved" / "2026-11-13.json").read_text())
+    assert result["outcome_date"] == "2026-11-16"
+    assert all(r["t1_ret_pct"] == pytest.approx(2.0) for r in result["rows"])
+
+
 def test_eod_wiring_and_capture_are_present():
     root = learning.ROOT
     source = (root / "orchestrator" / "master_orchestrator.py").read_text(encoding="utf-8")

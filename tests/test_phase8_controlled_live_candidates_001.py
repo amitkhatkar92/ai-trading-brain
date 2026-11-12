@@ -90,8 +90,15 @@ def test_ever_regressed_true_for_broken_streak():
 # ── evaluate_live_candidacy() ─────────────────────────────────────────
 
 def _patch_all(base_status, registry_history, shadow_history):
+    from config import is_nse_holiday
+    dates = []
+    current = date(2026, 1, 1)
+    while len(dates) < len(shadow_history):
+        if not is_nse_holiday(current):
+            dates.append(current.isoformat())
+        current += timedelta(days=1)
     shadow_history = [
-        {"trade_date": (date(2026, 1, 1) + timedelta(days=i)).isoformat(), **row}
+        {"trade_date": dates[i], **row}
         for i, row in enumerate(shadow_history)
     ]
     return (

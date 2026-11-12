@@ -7,8 +7,15 @@ from scripts.knowledge_system.shadow_challenger_tracker_001 import compute_daily
 
 
 def _days(n, start=date(2026, 1, 2), wins=True):
-    return [{"trade_date": (start + timedelta(days=i)).isoformat(),
-             "challenger_at_least_as_good": wins} for i in range(n)]
+    from config import is_nse_holiday
+    rows = []
+    current = start
+    while len(rows) < n:
+        if not is_nse_holiday(current):
+            rows.append({"trade_date": current.isoformat(),
+                         "challenger_at_least_as_good": wins})
+        current += timedelta(days=1)
+    return rows
 
 
 def _evaluate(history, days):
@@ -27,8 +34,9 @@ def test_failure_does_not_permanently_veto_fresh_evidence():
 
 
 def test_old_and_same_day_observations_do_not_requalify():
-    history = [{"status": "REJECTED", "checked_at": "2026-01-10T18:00:00"}]
-    result = _evaluate(history, _days(10))
+    days = _days(10)
+    history = [{"status": "REJECTED", "checked_at": days[-2]["trade_date"] + "T18:00:00"}]
+    result = _evaluate(history, days)
     assert not result["controlled_live_candidate"]
     assert result["shadow_days"] == 1
 
@@ -40,19 +48,32 @@ def test_duplicate_trading_date_cannot_manufacture_ten_votes():
 
 
 def test_later_regression_resets_epoch():
+    days = _days(20)
     history = [{"status": "REJECTED", "checked_at": "2026-01-01"},
-               {"status": "REJECTED", "checked_at": "2026-01-15"}]
-    assert not _evaluate(history, _days(20))["controlled_live_candidate"]
+               {"status": "REJECTED", "checked_at": days[-4]["trade_date"]}]
+    assert not _evaluate(history, days)["controlled_live_candidate"]
 
 
 def test_epoch_with_negative_evidence_never_qualifies():
     history = [{"status": "REJECTED", "checked_at": "2026-01-01"}]
-    result = _evaluate(history, _days(30, wins=False))
+    old_days = _days(30, wins=False)
+    result = _evaluate(history, old_days)
     assert not result["controlled_live_candidate"]
     assert result["review_status"] == "REJECTED_EPOCH"
-    fresh = _evaluate(history, _days(30, wins=False) + _days(10, date(2026, 2, 1)))
+    fresh_start = date.fromisoformat(old_days[-1]["trade_date"]) + timedelta(days=1)
+    fresh = _evaluate(history, old_days + _days(10, fresh_start))
     assert fresh["controlled_live_candidate"]
     assert fresh["experiment_id"] != result["experiment_id"]
+
+
+def test_weekends_and_exchange_holidays_do_not_manufacture_evidence():
+    history = _days(9) + [
+        {"trade_date": "2026-01-03", "challenger_at_least_as_good": True},
+        {"trade_date": "2026-01-15", "challenger_at_least_as_good": True},
+    ]
+    result = _evaluate([], history)
+    assert not result["controlled_live_candidate"]
+    assert result["shadow_days"] == 9
 
 
 def test_repeat_validation_same_data_does_not_inflate_streak():
