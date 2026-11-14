@@ -67,6 +67,36 @@ def test_no_backdated_or_intraday_snapshot(tmp_path, hour, day):
         conn.close()
 
 
+@pytest.mark.parametrize("now,expected", [
+    (datetime(2026, 11, 16, 8, 5), "CAPTURED"),      # Mon pre-open, Friday's bars
+    (datetime(2026, 11, 14, 13, 0), "CAPTURED"),     # weekend, still before Monday
+    (datetime(2026, 11, 16, 9, 15), "SKIPPED_NOT_PROSPECTIVE"),  # next session open
+    (datetime(2026, 11, 16, 17, 0), "SKIPPED_NOT_PROSPECTIVE"),
+])
+def test_next_morning_capture_is_prospective_until_next_open(tmp_path, now, expected):
+    conn = _database(tmp_path / "db", 1)
+    try:
+        conn.execute("UPDATE ohlcv_daily SET trade_date = '2026-11-13'")
+        with patch.object(learning, "_now", return_value=now.replace(tzinfo=learning.IST)):
+            assert learning.capture_universe_snapshot(
+                conn, "2026-11-13", ["S000.NS"], [_row(0)], tmp_path
+            )["status"] == expected
+    finally:
+        conn.close()
+
+
+def test_weekend_trade_date_is_never_captured(tmp_path):
+    conn = _database(tmp_path / "db", 1)
+    try:
+        with patch.object(learning, "_now",
+                          return_value=datetime(2026, 11, 15, 12, tzinfo=learning.IST)):
+            assert learning.capture_universe_snapshot(
+                conn, "2026-11-14", ["S000.NS"], [_row(0)], tmp_path
+            )["status"] == "SKIPPED_NOT_PROSPECTIVE"
+    finally:
+        conn.close()
+
+
 def test_exclusions_include_missing_bars_and_features(tmp_path):
     conn = _database(tmp_path / "db", 2)
     conn.execute("DELETE FROM ohlcv_daily WHERE symbol='S000.NS'")

@@ -68,8 +68,10 @@ The system never trades blindly: every signal must survive regime detection, bac
   members are never presented as verified historical constituents.
 - `universe_selection_learning` freezes all eligible names, available V3
   features and explicit quality exclusions at the completed session's close.
-  Post-market V3 refresh captures the snapshot even when EOD runs before the
-  OHLCV refresh. Historical backfills cannot create a prospective snapshot.
+  The OIOS OHLCV refresh uses an exclusive end date, so a session's bars arrive
+  the next trading morning. A snapshot is therefore prospective for a completed
+  session only until the next regular session opens (09:15 IST); the pre-open
+  V3 run captures it. Later captures are skipped, never backdated.
   T+1 outcomes are resolved separately, after the next session closes, in bounded
   batches. Missing outcomes retry for seven days, then receive a data-quality
   verdict rather than an invented price or indefinite wait.

@@ -47,14 +47,36 @@ def _write_json(path: Path, payload: Any) -> None:
     tmp.replace(path)
 
 
+def _is_prospective(trade_date: str, now: datetime) -> bool:
+    """True while T's features are known but T+1 has not yet opened.
+
+    The OIOS refresh fetches with an exclusive end date, so a session's bars
+    normally arrive the next morning (pre-open). That is still prospective;
+    anything captured at or after the next session's open is not.
+    """
+    try:
+        session = date.fromisoformat(trade_date)
+    except ValueError:
+        return False
+    if is_nse_holiday(session):
+        return False
+    if session > now.date() or (session == now.date() and now.time() < time(15, 30)):
+        return False
+    following = session + timedelta(days=1)
+    for _ in range(10):
+        if not is_nse_holiday(following):
+            return now < datetime.combine(following, time(9, 15), tzinfo=IST)
+        following += timedelta(days=1)
+    return False
+
+
 def capture_universe_snapshot(
     conn: sqlite3.Connection, trade_date: str, symbols: list[str],
     scored: list[dict[str, Any]], store: Path | None = None,
 ) -> dict[str, Any]:
-    """Only capture today's completed session; never backdate a PIT claim."""
+    """Capture a completed session before the next one opens; never backdate."""
     now = _now()
-    if (trade_date != now.date().isoformat() or now.time() < time(15, 30)
-            or is_nse_holiday(now.date())):
+    if not _is_prospective(trade_date, now):
         return {"status": "SKIPPED_NOT_PROSPECTIVE"}
     destination = (store or STORE) / "snapshots" / f"{trade_date}.json"
     if destination.exists():
