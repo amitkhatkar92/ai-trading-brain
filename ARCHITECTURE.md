@@ -115,6 +115,10 @@ The system never trades blindly: every signal must survive regime detection, bac
   the next trading morning. A snapshot is therefore prospective for a completed
   session only until the next regular session opens (09:15 IST); the pre-open
   V3 run captures it. Later captures are skipped, never backdated.
+  The daily universe rebuild drops and adds names while the price refresh covers only
+  active symbols, so the refresh also fetches every symbol of a still-unresolved snapshot
+  (`pending_symbols`); otherwise a dropped name never receives its outcome bars and the
+  cohort stays incomplete until the retry window expires.
   T+1 outcomes are resolved separately, after the next session closes, in bounded
   batches. Missing outcomes retry for seven days, then receive a data-quality
   verdict rather than an invented price or indefinite wait.

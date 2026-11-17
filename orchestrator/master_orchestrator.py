@@ -5126,6 +5126,16 @@ class MasterOrchestrator:
                         "SELECT symbol FROM universe_stocks WHERE is_active=1"
                     ).fetchall()
                 ]
+                # Names dropped from the active universe after a snapshot still
+                # need their later bars to resolve that snapshot's outcomes.
+                try:
+                    from scripts.knowledge_system.universe_selection_learning import (
+                        pending_symbols as _usl_pending,
+                    )
+                    _dr_known = set(_dr_symbols)
+                    _dr_extra = [s for s in _usl_pending() if s not in _dr_known]
+                except Exception:
+                    _dr_extra = []
                 if _dr_symbols:
                     # OHLCV — incremental fetch; lookback_days=90 ensures new
                     # symbols get enough history for the 30-row scanner minimum.
@@ -5136,10 +5146,13 @@ class MasterOrchestrator:
                     # scripts/final_trading_architecture_shadow_001.py need it kept
                     # current — appended here, never touches universe_stocks itself.
                     _ohlcv_res = _run_ohlcv(
-                        _dr_conn, _dr_symbols + ["^NSEI"], _dr_today,
+                        _dr_conn, _dr_symbols + _dr_extra + ["^NSEI"], _dr_today,
                         lookback_days=90,
                         inter_symbol_delay_s=0.1,
                     )
+                    if _dr_extra:
+                        log.info("[OIOS] refreshed %d extra symbol(s) still needed by "
+                                 "unresolved universe-learning snapshots.", len(_dr_extra))
                     log.info(
                         "[OIOS] ohlcv_daily refresh: ok=%d failed=%d rows_new=%d gaps=%d",
                         len(_ohlcv_res.symbols_ok),

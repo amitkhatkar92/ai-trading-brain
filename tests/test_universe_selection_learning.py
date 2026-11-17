@@ -313,6 +313,36 @@ def test_weekend_rows_cannot_be_used_as_next_session_outcomes(tmp_path):
     assert all(r["t1_ret_pct"] == pytest.approx(2.0) for r in result["rows"])
 
 
+def _snapshot_file(store, date, symbols):
+    (store / "snapshots").mkdir(parents=True, exist_ok=True)
+    (store / "snapshots" / f"{date}.json").write_text(
+        json.dumps({"rows": [{"symbol": s} for s in symbols]}))
+
+
+def test_pending_symbols_covers_only_unresolved_recent_snapshots(tmp_path):
+    _snapshot_file(tmp_path, "2026-11-13", ["DROPPED.NS", "KEPT.NS"])
+    _snapshot_file(tmp_path, "2026-11-12", ["RESOLVED.NS"])
+    _snapshot_file(tmp_path, "2026-10-01", ["ANCIENT.NS"])
+    (tmp_path / "resolved").mkdir()
+    (tmp_path / "resolved" / "2026-11-12.json").write_text("{}")
+    with patch.object(learning, "_now", return_value=datetime(2026, 11, 17, 16, tzinfo=learning.IST)):
+        assert learning.pending_symbols(tmp_path) == ["DROPPED.NS", "KEPT.NS"]
+
+
+def test_pending_symbols_fails_open_on_missing_or_corrupt_store(tmp_path):
+    assert learning.pending_symbols(tmp_path / "absent") == []
+    (tmp_path / "snapshots").mkdir()
+    (tmp_path / "snapshots" / "2026-11-16.json").write_text("{not json")
+    with patch.object(learning, "_now", return_value=datetime(2026, 11, 17, 16, tzinfo=learning.IST)):
+        assert learning.pending_symbols(tmp_path) == []
+
+
+def test_price_refresh_also_fetches_symbols_pending_in_unresolved_snapshots():
+    source = (learning.ROOT / "orchestrator" / "master_orchestrator.py").read_text(encoding="utf-8")
+    assert "_dr_symbols + _dr_extra" in source
+    assert source.index("_usl_pending()") < source.index("_dr_symbols + _dr_extra")
+
+
 def test_eod_wiring_and_capture_are_present():
     root = learning.ROOT
     source = (root / "orchestrator" / "master_orchestrator.py").read_text(encoding="utf-8")

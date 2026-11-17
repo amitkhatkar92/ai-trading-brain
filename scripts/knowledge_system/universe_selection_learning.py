@@ -350,6 +350,28 @@ def run_universe_learning(
     return summary
 
 
+def pending_symbols(store: Path | None = None) -> list[str]:
+    """Symbols whose next-session prices still gate an unresolved snapshot.
+
+    The daily universe rebuild drops and adds names, and the price refresh only
+    covers active symbols, so a name dropped after a snapshot would never get
+    the later bars its outcome needs and the whole cohort would sit incomplete
+    until the retry window expired. The refresh also fetches these.
+    """
+    directory = store or STORE
+    cutoff = (_now().date() - timedelta(days=MAX_MISSING_OUTCOME_DAYS + 3)).isoformat()
+    symbols: set[str] = set()
+    try:
+        for file in (directory / "snapshots").glob("*.json"):
+            if file.stem < cutoff or (directory / "resolved" / file.name).exists():
+                continue
+            snapshot = json.loads(file.read_text(encoding="utf-8"))
+            symbols.update(row["symbol"] for row in snapshot.get("rows", []))
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        log.warning("[UniverseLearning] Pending-symbol lookup failed: %s", exc)
+    return sorted(symbols)
+
+
 def get_learning_status(store: Path | None = None) -> dict[str, Any]:
     """Read-only health surface; counts evidence, never claims profit improvement."""
     directory = store or STORE
