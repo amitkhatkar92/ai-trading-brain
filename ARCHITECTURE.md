@@ -56,6 +56,22 @@ The system never trades blindly: every signal must survive regime detection, bac
   untouched. The scanner's original price is kept on
   `TradeSignal.original_entry_price` and `OrderRecord.signal_entry_price`. The
   re-entry path keeps its own 1.5% guard.
+- Stale price bands: the hand-maintained `_BANDS` table in
+  `data_integrity.instrument_registry` rejects any price outside a fixed range,
+  and 31 of 88 bands no longer matched the market in 2026-11 (splits, bonuses
+  and demergers: RELIANCE, HDFCBANK, BAJFINANCE, NESTLEIND and others), which
+  blocked real orders (40 since Oct 20, plus SBIN about to cross its cap).
+  `check_price()` now accepts a price that fails its static band when it is
+  within the previous session's close +/- `max(7%, 4 x ATR%)`, reported once per
+  symbol per day as `STATIC_BAND_STALE`. Prices outside both are still rejected,
+  and with no market history the static band decides as before.
+- Same-day bars: `oios.data.ohlcv_fetcher.run_daily_fetch` passed today as
+  yfinance's exclusive end date, so a session's bar only arrived the next
+  morning (the 16:45 refresh failed about 486 of 501 symbols daily) and the
+  08:00 scan, which runs before the 08:03 refresh, built each day's candidates
+  from data two sessions old. Today is now included once the session is final
+  (from 16:00 IST on a trading day), never intraday, because rows are written
+  with INSERT OR IGNORE and a partial bar could not be corrected.
 
 ### Observation-only option comparisons
 

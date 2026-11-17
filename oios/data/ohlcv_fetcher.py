@@ -21,10 +21,38 @@ from __future__ import annotations
 import logging
 import sqlite3
 import time
-from datetime import date, timedelta
+from datetime import date, datetime, time as dtime, timedelta, timezone
 from typing import Optional
 
 log = logging.getLogger(__name__)
+
+_IST = timezone(timedelta(hours=5, minutes=30))
+SESSION_FINAL_FROM = dtime(16, 0)   # daily bars are final well after the 15:30 close
+
+
+def _now_ist() -> datetime:
+    return datetime.now(_IST)
+
+
+def _fetch_end_date(today: str) -> str:
+    """Exclusive end date to pass to yfinance.
+
+    yfinance treats ``end`` as exclusive, so ending at ``today`` can never
+    return today's bar and every session reached the database a day late.
+    Today is included only once its session is final, never intraday, because
+    rows are written with INSERT OR IGNORE and a partial bar could not be
+    corrected afterwards.
+    """
+    now = _now_ist()
+    day = date.fromisoformat(today)
+    try:
+        from config import is_nse_holiday
+        trading_day = not is_nse_holiday(day)
+    except Exception:
+        trading_day = day.weekday() < 5
+    if day == now.date() and trading_day and now.time() >= SESSION_FINAL_FROM:
+        return (day + timedelta(days=1)).isoformat()
+    return today
 
 # ---------------------------------------------------------------------------
 # Repository layer (all DB writes go through here)
@@ -166,6 +194,7 @@ def run_daily_fetch(
     """
     result = OHLCVFetchResult()
     lookback_start = (date.fromisoformat(today) - timedelta(days=lookback_days)).isoformat()
+    fetch_end = _fetch_end_date(today)
 
     for symbol in symbols:
         latest = get_latest_date(conn, symbol)
@@ -180,7 +209,7 @@ def run_daily_fetch(
             result.symbols_ok.append(symbol)
             continue
 
-        rows = fetch_symbol_ohlcv(symbol, from_date, today)
+        rows = fetch_symbol_ohlcv(symbol, from_date, fetch_end)
         if not rows:
             result.symbols_failed.append(symbol)
             log.warning("[OHLCV] No data fetched for %s from %s to %s", symbol, from_date, today)

@@ -170,6 +170,7 @@ _ITYPE: Dict[str, str] = {
 }
 # Default itype for anything not explicitly listed
 _DEFAULT_ITYPE = "EQUITY"
+_STALE_BAND_LOGGED: set = set()   # (symbol, date) pairs already reported, to avoid log spam
 
 
 @dataclass
@@ -219,6 +220,27 @@ class InstrumentRegistry:
             f"price {price:.2f} outside sanity band [{low:.0f}, {high:.0f}] "
             f"for {sym} (itype={itype})"
         )
+        # The static band is hand-maintained and goes stale after splits, bonuses
+        # and demergers (31 of 88 bands were wrong in 2026-11, blocking real
+        # orders). If the market's own recent history says this price is normal,
+        # the band is the problem, not the price.
+        try:
+            from data_integrity.session_close_reference import plausible_band
+            dynamic = plausible_band(sym)
+        except Exception:
+            dynamic = None
+        if dynamic is not None and dynamic[1] <= price <= dynamic[2]:
+            key = (sym, datetime.now().date().isoformat())
+            if key not in _STALE_BAND_LOGGED:
+                _STALE_BAND_LOGGED.add(key)
+                log.warning("[InstrumentRegistry] STATIC_BAND_STALE %s: %s, but it is within "
+                            "the recent-session band [%.2f, %.2f] — accepted.",
+                            sym, reason, dynamic[1], dynamic[2])
+            return PriceCheckResult(
+                ok=True, symbol=sym, price=price,
+                band_low=dynamic[1], band_high=dynamic[2], itype=itype,
+                reason="STATIC_BAND_STALE_OVERRIDDEN",
+            )
         log.warning("[InstrumentRegistry] PRICE_INTEGRITY_FAILURE %s", reason)
         return PriceCheckResult(
             ok=False, symbol=sym, price=price,
