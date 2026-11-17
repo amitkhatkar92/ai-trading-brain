@@ -5533,6 +5533,17 @@ class MasterOrchestrator:
                 "[V3Shadow] Phase D shadow failed — production unaffected: %s", _v3_exc
             )
 
+        # Pipeline health: detect silently broken data/learning links, repair
+        # missing price bars, alert on change. Runs after the OHLCV refresh and
+        # V3 shadow above, so it judges the state this scan just produced.
+        try:
+            from analysis.pipeline_health_monitor import run_pipeline_health_check
+            _ph = run_pipeline_health_check()
+            log.info("[PipelineHealth] overall=%s issues=%s repaired_rows=%s",
+                     _ph.get("overall"), _ph.get("issues"), _ph.get("repaired_rows"))
+        except Exception as _ph_exc:
+            log.warning("[PipelineHealth] check failed (non-critical): %s", _ph_exc)
+
     def _run_premarket_refiner(self) -> None:
         """
         Phase G — Pre-market refinement.  Scheduled at 08:45 IST.

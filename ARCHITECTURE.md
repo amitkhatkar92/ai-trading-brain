@@ -72,6 +72,17 @@ The system never trades blindly: every signal must survive regime detection, bac
   from data two sessions old. Today is now included once the session is final
   (from 16:00 IST on a trading day), never intraday, because rows are written
   with INSERT OR IGNORE and a partial bar could not be corrected.
+- Pipeline health: most breaks above were silent for weeks.
+  `analysis.pipeline_health_monitor` runs at the end of the 16:45 post-market
+  scan (and the 08:00 pre-market re-run) and checks: active-universe coverage of
+  the last session's bar, universe-learning snapshot/cohort age, order gates
+  repeatedly blocking one symbol, stale static price bands (informational),
+  recent exits at prices the market never traded, EOD completion and evidence
+  file freshness. Its only automatic repair is re-fetching missing price bars
+  through the existing `run_daily_fetch` (bounded to 600 symbols, then
+  re-measured). Alerts go out only when an issue is new, changes severity, or
+  recovers. State and history live in `data/pipeline_health/`. It is read-only
+  for everything else and never raises.
 
 ### Observation-only option comparisons
 
