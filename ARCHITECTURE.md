@@ -42,6 +42,20 @@ The system never trades blindly: every signal must survive regime detection, bac
   matching sighting, so one bad open-time quote cannot close a position while
   a genuine gap still exits one cycle later. Missing or stale reference data
   fails open.
+- Entry anchoring (phase 2): a signal carries the scanner's last price, so
+  stops and targets measured from it left fresh positions already at a fraction
+  of their stop distance (all 28 recent BUY fills were at or below the signal
+  price, worst -4.2%, and six trades were stopped within minutes on about a
+  0.1% real move). `OrderManager._anchor_entry_to_market()` runs in `execute()`
+  and the AET-deferred placement path, before any broker call. It shifts entry,
+  stop, target and zone bounds to the live price, preserving their distances
+  (and so the position size); the broker-side stop is then placed at the
+  anchored level. A signal whose live price differs by more than
+  `max(1.5%, 1 signal-ATR)` is rejected as `STALE_SIGNAL_PRICE_DRIFT`. No usable
+  live price, paper mode, or a failed integrity check leaves the signal
+  untouched. The scanner's original price is kept on
+  `TradeSignal.original_entry_price` and `OrderRecord.signal_entry_price`. The
+  re-entry path keeps its own 1.5% guard.
 
 ### Observation-only option comparisons
 

@@ -231,6 +231,16 @@ _DUP_GUARD_LTP_CONF_TICKS   =   2  # minimum consecutive fresh ticks for full R 
 # value (15) is unchanged for the current ₹1Cr/MAX_POSITIONS=8 tier.
 MAX_OPEN_POSITIONS = max(15, _cfg.MAX_POSITIONS + 5)   # maximum concurrent positions
 MAX_CAPITAL_PER_TRADE_PCT = 15.0  # max % of capital per single trade
+
+# Entry anchoring: a signal's price is whatever the scanner last saw, so by the
+# time it executes the market can have moved. Stops and targets are measured
+# from that price, so a stale one leaves a fresh position already at a fraction
+# of its stop distance. Execution therefore re-anchors the geometry to the live
+# price, and refuses a signal whose price has moved more than this far.
+ENTRY_ANCHOR_MIN_DRIFT_PCT = 1.5   # same floor the re-entry stale-signal guard uses
+ENTRY_ANCHOR_ATR_MULTIPLE  = 1.0   # ...or one signal-ATR, whichever is larger
+ENTRY_ANCHOR_BAD_QUOTE_PCT = 25.0  # a live price this far from the signal is a bad quote, ignored
+ENTRY_ANCHOR_NOISE_PCT     = 0.05  # moves below this are not worth re-anchoring
 MAX_TOTAL_OPEN_EXPOSURE_PCT = 85.0  # max % of total capital in open positions (INCREASED 65→85)
 
 # ── Late-Day Entry Control (institutional time-based rules) ────────────────
@@ -328,6 +338,10 @@ class OrderRecord:
     # fill_status=="REJECTED" so it can be surfaced via the BROKER_REJECTED_
     # ORDER event instead of always logging detail=None.
     broker_reject_detail:  str   = ""
+    # Scanner price at signal creation when execution re-anchored entry/stop/
+    # target to the live price (0.0 = not re-anchored). `entry_price` is then
+    # the live reference price that R and the stop distances are measured from.
+    signal_entry_price:    float = 0.0
     # ── Universal opportunity lineage ID ──────────────────────────────────
     # Set from signal.opportunity_id at execute() time so every downstream
     # store (live journal, outcome, KEL) can join on this single key.
@@ -646,6 +660,83 @@ class OrderManager:
             return f"required=\u20b9{required_funds:.2f} available=\u20b9{available_funds:.2f}"
         return None
 
+    def _live_reference_price(self, symbol: str) -> Optional[float]:
+        """Current market price used to anchor an entry, or None when unavailable.
+
+        An injected ``_entry_quote_provider`` takes precedence (used by tests).
+        Under pytest without one, no network quote is attempted.
+        """
+        import math as _math
+        provider = getattr(self, "_entry_quote_provider", None)
+        try:
+            if provider is not None:
+                price = provider(symbol)
+            elif os.environ.get("PYTEST_CURRENT_TEST"):
+                return None
+            else:
+                from data_feeds import get_feed_manager
+                quote = get_feed_manager().get_quote(symbol.upper().replace(".NS", ""))
+                price = getattr(quote, "ltp", None)
+            price = float(price)
+        except Exception:
+            return None
+        return price if _math.isfinite(price) and price > 0 else None
+
+    def _anchor_entry_to_market(self, signal: TradeSignal) -> Optional[tuple]:
+        """Re-anchor a signal's entry, stop, target and zone to the live price.
+
+        Returns ``(reason, detail)`` when the signal is too stale to trade, else
+        None. Distances between entry, stop and target are preserved, so the
+        position sizing already computed from them stays valid. Fails open
+        (leaves the signal untouched) whenever no trustworthy live price exists.
+        """
+        if self._paper_mode or not self._broker:
+            return None
+        original = float(signal.entry_price or 0.0)
+        if original <= 0:
+            return None
+        live = self._live_reference_price(signal.symbol)
+        if live is None:
+            return None
+        drift_pct = (live / original - 1.0) * 100.0
+        if abs(drift_pct) > ENTRY_ANCHOR_BAD_QUOTE_PCT:
+            log.warning("[EntryAnchor] %s live quote %.2f is %.1f%% from signal %.2f — "
+                        "treated as a bad quote and ignored.",
+                        signal.symbol, live, drift_pct, original)
+            return None
+        try:
+            from data_integrity.price_integrity_validator import get_price_validator
+            if not get_price_validator().validate(signal.symbol, live).ok:
+                return None
+        except Exception:
+            pass
+        atr_pct = float(getattr(signal, "atr", 0.0) or 0.0) / original * 100.0
+        limit_pct = max(ENTRY_ANCHOR_MIN_DRIFT_PCT, ENTRY_ANCHOR_ATR_MULTIPLE * atr_pct)
+        if abs(drift_pct) > limit_pct:
+            log.warning("[EntryAnchor] %s %s REJECTED — live %.2f is %+.2f%% from signal "
+                        "%.2f (limit %.2f%%); the signal price is stale.",
+                        signal.direction.value, signal.symbol, live, drift_pct,
+                        original, limit_pct)
+            return ("STALE_SIGNAL_PRICE_DRIFT",
+                    f"signal={original:.2f} live={live:.2f} drift={drift_pct:+.2f}% "
+                    f"limit={limit_pct:.2f}%")
+        if abs(drift_pct) < ENTRY_ANCHOR_NOISE_PCT:
+            return None
+        delta = live - original
+        if signal.original_entry_price is None:
+            signal.original_entry_price = original
+        signal.entry_price = live
+        signal.stop_loss = signal.stop_loss + delta
+        if signal.target_price:
+            signal.target_price = signal.target_price + delta
+        for bound in ("entry_zone_low", "entry_zone_high"):
+            if getattr(signal, bound, 0.0) > 0:
+                setattr(signal, bound, getattr(signal, bound) + delta)
+        log.info("[EntryAnchor] %s %s re-anchored to live %.2f (signal %.2f, %+.2f%%): "
+                 "SL=%.2f TGT=%.2f", signal.direction.value, signal.symbol, live,
+                 original, drift_pct, signal.stop_loss, signal.target_price or 0.0)
+        return None
+
     def execute(self, signal: TradeSignal,
                 decision: DecisionResult,
                 signal_context: Optional[dict] = None) -> Optional[OrderRecord]:
@@ -958,6 +1049,10 @@ class OrderManager:
             log.debug("[OrderManager] Pre-order price guard skipped: %s", _pv_exc)
         # ─────────────────────────────────────────────────────────────
 
+        _stale = self._anchor_entry_to_market(signal)
+        if _stale:
+            return self._reject(_stale[0], detail=_stale[1])
+
         log.info("[OrderManager] ➡  Executing LIMIT %s %s qty=%d  signal=%.2f  "
                  "trade_type=%s  zone=%.2f  SL=%.2f  TGT=%.2f",
                  signal.direction.value, signal.symbol,
@@ -1090,6 +1185,7 @@ class OrderManager:
             initial_stop_loss = signal.stop_loss,   # immutable — never overwrite
             broker_order_id   = order_id,
             requested_price   = signal.entry_price,
+            signal_entry_price = signal.original_entry_price or 0.0,
             opportunity_id    = getattr(signal, "opportunity_id", "") or "",
             institutional_flow_score = getattr(signal, "institutional_flow_score", None),
             company_growth_score = getattr(signal, "company_growth_score", None),
@@ -1928,6 +2024,14 @@ class OrderManager:
             if self._entry_cooldown_reason(slot.signal.symbol):
                 to_remove.append(sid)
                 continue
+            # The slot may have waited several candles: re-anchor to the live
+            # price now, or drop it if the signal has gone stale.
+            _stale = self._anchor_entry_to_market(slot.signal)
+            if _stale:
+                log.info("[OrderManager] AET slot %s dropped — %s (%s).",
+                         sid, _stale[0], _stale[1])
+                to_remove.append(sid)
+                continue
             # Re-evaluate the zone at current (now-calmer) VIX for best price
             _confirmed_zone = self._calc_entry_zone_price(
                 slot.signal.entry_price, slot.signal.direction.value, current_vix,
@@ -1969,6 +2073,7 @@ class OrderManager:
                 initial_stop_loss = slot.signal.stop_loss,   # immutable
                 broker_order_id   = order_id,
                 requested_price   = slot.signal.entry_price,
+                signal_entry_price = slot.signal.original_entry_price or 0.0,
                 opportunity_id    = getattr(slot.signal, "opportunity_id", "") or "",  # D10-001
             )
             # Reconcile fill with broker before registering position
@@ -4886,6 +4991,7 @@ class OrderManager:
                 "confidence_score":  rec.confidence_score,
                 "initial_stop_loss": rec.initial_stop_loss,
                 "r_multiple":        rec.r_multiple,
+                "signal_entry_price": getattr(rec, "signal_entry_price", 0.0),
             }
             if extra:
                 entry.update(extra)

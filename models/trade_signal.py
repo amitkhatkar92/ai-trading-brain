@@ -147,6 +147,11 @@ class TradeSignal:
     # every other setup/strategy — observational, never gates any decision.
     gap_pct: Optional[float] = None
 
+    # Phase 2 (entry anchoring): the scanner's price when the signal was created,
+    # recorded only when execution re-anchors entry/stop/target to the live
+    # price. None = never re-anchored. Observational.
+    original_entry_price: Optional[float] = None
+
 
     @property
     def risk_reward_ratio(self) -> float:
