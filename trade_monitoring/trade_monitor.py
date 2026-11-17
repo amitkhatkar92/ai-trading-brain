@@ -122,6 +122,8 @@ class TradeMonitor:
         # Feed-degraded tracking: count consecutive cycles a symbol has no live feed.
         # SL monitoring and adaptive exits are suppressed while degraded.
         self._feed_degraded_cycles: Dict[str, int] = {}   # order_id → cycle count
+        # Abnormal-price confirmation: order_id → (last implausible price, consecutive sightings)
+        self._abnormal_seen: Dict[str, tuple] = {}
         log.info("[TradeMonitor] Initialised.")
 
     # ─────────────────────────────────────────────────────────────────
@@ -165,6 +167,7 @@ class TradeMonitor:
             self._dg_stale_count.pop(order_id, None)
             self._stale_alerted.pop(order_id, None)
             self._close_failed.pop(order_id, None)  # D8-001: clean up suppression state
+            self._abnormal_seen.pop(order_id, None)
             log.info("[TradeMonitor] Deregistered (swap-replaced): %s %s",
                      rec.symbol, order_id)
 
@@ -274,6 +277,8 @@ class TradeMonitor:
                 log.debug("[ExecutionIntegrity] gate check error %s: %s",
                           order.symbol, _gate_exc)
             # Gate passed — update confirmed-LTP baseline
+            if not self._price_confirmed(oid, order, ltp):
+                continue
             self._last_good_ltp[oid] = ltp
 
             # ── Paper LIMIT fill simulation ────────────────────────────
@@ -332,6 +337,7 @@ class TradeMonitor:
             self._r_at_extension.pop(oid, None)    # clean up extension baseline
             self._dg_last_price.pop(oid, None)    # clean up DataGuard state
             self._dg_stale_count.pop(oid, None)   # clean up DataGuard state
+            self._abnormal_seen.pop(oid, None)
         # Append current LTP to rolling history for all still-open orders.
         # Keep only the last 3 entries (enough for 2-step direction check).
         for oid, order in self._open_orders.items():
@@ -919,6 +925,8 @@ class TradeMonitor:
 
     # ── LTPGuard threshold ────────────────────────────────────────────
     _LTP_GUARD_MAX_DEVIATION   = 0.20  # flag prices that deviate >20% from last known
+    _ABNORMAL_CONFIRM_CYCLES   = 2     # sightings needed before an out-of-band price may trigger an exit
+    _ABNORMAL_MATCH_TOLERANCE  = 0.015 # sightings must agree within 1.5% to count as the same price
     # ── DataGuard stale-price detection ──────────────────────────────
     _DATAGAURD_STALE_CYCLES    = 6     # consecutive identical prices before warning
     _DATAGAURD_REPEAT_CYCLES   = 12    # repeat the warning every N more identical cycles
@@ -943,6 +951,35 @@ class TradeMonitor:
             # Price changed — reset counter
             self._dg_stale_count[order_id] = 0
         self._dg_last_price[order_id] = resolved
+
+    def _price_confirmed(self, oid: str, order: OrderRecord, ltp: float) -> bool:
+        """Hold a price outside its session-close band until it repeats.
+
+        A bad quote is usually transient and a real gap persists, so requiring
+        two matching sightings delays a genuine exit by one cycle while
+        preventing a single wrong tick from closing a position.
+        """
+        try:
+            from data_integrity.session_close_reference import is_implausible_price
+            if not is_implausible_price(order.symbol, ltp):
+                self._abnormal_seen.pop(oid, None)
+                return True
+        except Exception as exc:
+            log.debug("[PriceConfirm] reference unavailable for %s: %s", order.symbol, exc)
+            return True
+        previous = self._abnormal_seen.get(oid)
+        if previous and abs(ltp / previous[0] - 1.0) <= self._ABNORMAL_MATCH_TOLERANCE:
+            count = previous[1] + 1
+        else:
+            count = 1
+        self._abnormal_seen[oid] = (ltp, count)
+        if count >= self._ABNORMAL_CONFIRM_CYCLES:
+            log.warning("[PriceConfirm] %s price %.2f outside session-close band but "
+                        "confirmed over %d cycles — accepting.", order.symbol, ltp, count)
+            return True
+        log.warning("[PriceConfirm] %s price %.2f is outside the session-close band — "
+                    "holding SL/target/adaptive exits until it repeats.", order.symbol, ltp)
+        return False
 
     @staticmethod
     def _fetch_from_scanner_cache(symbol: str) -> Optional[float]:

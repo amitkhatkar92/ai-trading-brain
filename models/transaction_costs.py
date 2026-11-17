@@ -4,7 +4,9 @@ Transaction Cost Model
 Realistic Indian market trading cost calculator.
 
 Indian market costs (approx, as of 2025-26):
-  Brokerage:       ₹20/order (flat, Zerodha/Dhan) or 0.03% for delivery
+  Brokerage:       Rs0 for equity delivery; lower of Rs20 or 0.03% per order for
+                   intraday; flat Rs20 per order for F&O (Dhan, verified 2026-11)
+  DP charge:       Rs14.75 per delivery-sell instruction (Rs12.5 + GST)
   STT:             0.025% on sell side (equity delivery), 0.1% on F&O
   Exchange charges: 0.00322% (NSE equity), 0.05% (F&O)
   GST:             18% on brokerage + exchange charges
@@ -58,6 +60,7 @@ class CostBreakdown:
     total_cost:      float = 0.0
     cost_pct:        float = 0.0    # as % of trade value
     net_pnl:         float = 0.0    # pnl after all costs
+    dp_charges:      float = 0.0    # depository charge on a delivery sell (GST included)
 
     def summary(self) -> str:
         return (
@@ -90,9 +93,15 @@ class TransactionCostModel:
     """
 
     # ── Brokerage ──────────────────────────────────────────────────────────
-    FLAT_BROKERAGE   = 20.0    # ₹20 per order (Zerodha/Dhan flat)
-    DELIVERY_BROK_PCT = 0.0    # free for delivery at Zerodha
+    # Dhan pricing (dhan.co/pricing, verified 2026-11-17): equity delivery has no
+    # brokerage; intraday is the lower of 0.03% or FLAT_BROKERAGE per executed
+    # order; options/futures are FLAT_BROKERAGE per order.
+    FLAT_BROKERAGE   = 20.0
+    DELIVERY_BROK_PCT = 0.0
+    INTRADAY_BROK_PCT = 0.0003
     MAX_BROKERAGE    = 40.0    # round trip cap for flat model
+    # Depository charge per delivery-sell instruction: Rs12.5 + 18% GST.
+    DP_CHARGE_DELIVERY_SELL = 14.75
 
     # ── STT rates ──────────────────────────────────────────────────────────
     STT_EQ_INTRADAY  = 0.00025  # 0.025% on sell side
@@ -142,8 +151,17 @@ class TransactionCostModel:
         total_turn= buy_turn + sell_turn
         raw_pnl   = sell_turn - buy_turn
 
-        # Brokerage (₹20/order each side = ₹40 round trip)
-        brokerage = self.FLAT_BROKERAGE * 2  # entry + exit
+        # Brokerage per executed order, entry and exit
+        if itype == InstrumentType.EQUITY_DELIVERY:
+            brokerage = self.DELIVERY_BROK_PCT * total_turn
+        elif itype == InstrumentType.EQUITY_INTRADAY:
+            brokerage = (min(self.FLAT_BROKERAGE, self.INTRADAY_BROK_PCT * buy_turn)
+                         + min(self.FLAT_BROKERAGE, self.INTRADAY_BROK_PCT * sell_turn))
+        else:
+            brokerage = self.FLAT_BROKERAGE * 2
+
+        dp_charges = (self.DP_CHARGE_DELIVERY_SELL
+                      if itype == InstrumentType.EQUITY_DELIVERY else 0.0)
 
         # STT
         if itype == InstrumentType.EQUITY_INTRADAY:
@@ -179,7 +197,7 @@ class TransactionCostModel:
         slippage = total_turn * self._slippage_pct
 
         total_cost = (brokerage + stt + exchange_charges + gst
-                      + sebi_charges + stamp_duty + slippage)
+                      + sebi_charges + stamp_duty + slippage + dp_charges)
         cost_pct   = total_cost / total_turn * 100 if total_turn else 0.0
         net_pnl    = raw_pnl - total_cost
 
@@ -194,6 +212,7 @@ class TransactionCostModel:
             sebi_charges=round(sebi_charges, 4),
             stamp_duty=round(stamp_duty, 4),
             slippage=round(slippage, 2),
+            dp_charges=round(dp_charges, 2),
             total_cost=round(total_cost, 2),
             cost_pct=round(cost_pct, 4),
             net_pnl=round(net_pnl, 2),

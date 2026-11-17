@@ -30,6 +30,19 @@ The system never trades blindly: every signal must survive regime detection, bac
   of weekly retraining, so restarting the daemon cannot discard the intervening
   training observations.
 
+### Measurement integrity (profitability roadmap, phase 1)
+
+- Costs: `models.transaction_costs` charges brokerage per product (delivery Rs0,
+  intraday the lower of Rs20 or 0.03% per order, F&O flat Rs20) and adds the
+  Rs14.75 depository charge on delivery sells, per Dhan's published pricing.
+  Recorded net P&L feeds every learning store, so cost errors contaminate them.
+- Exit prices: `data_integrity.session_close_reference` gives a read-only band
+  around the previous session's close (`max(7%, 4 x ATR%)`). `TradeMonitor`
+  holds SL/target/adaptive exits on an out-of-band price until a second
+  matching sighting, so one bad open-time quote cannot close a position while
+  a genuine gap still exits one cycle later. Missing or stale reference data
+  fails open.
+
 ### Observation-only option comparisons
 
 - `knowledge_system.option_research_observer` stores separate research evidence
