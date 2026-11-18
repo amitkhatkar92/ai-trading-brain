@@ -48,15 +48,20 @@ MISS_REASON_UNIFORM    = 1.0 / 3  # uniform baseline: 3 miss reason categories
 
 
 def load_evidence(ledger_path: Path = LEDGER_PATH) -> List[Dict]:
+    """Load ledger rows, excluding index symbols and returns no session can produce
+    (split/bonus/demerger on unadjusted prices). Unresolved rows pass through."""
+    from data_integrity.return_validity import validate_outcome_record
     if not ledger_path.exists():
         return []
     records = []
     with open(ledger_path) as f:
         for line in f:
             try:
-                records.append(json.loads(line))
+                record = json.loads(line)
             except json.JSONDecodeError:
-                pass
+                continue
+            if validate_outcome_record(record) is None:
+                records.append(record)
     return records
 
 

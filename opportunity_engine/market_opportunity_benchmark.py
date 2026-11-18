@@ -76,6 +76,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from data_integrity.return_validity import is_implausible_return
+
 log = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -304,6 +306,20 @@ def _collect_nifty500_movers(
     )
     valid_gainers = [m for m in daily.gainers if _finite_return(m.daily_return_pct)]
     valid_losers = [m for m in daily.losers if _finite_return(m.daily_return_pct)]
+    # A split/bonus/demerger shows up as a 35-90% "move" on unadjusted prices. Rank real
+    # movers only, refilling to top_n from the full priced set rather than coming up short.
+    suspects = sorted(
+        m.symbol for m in all_moves.values()
+        if _finite_return(m.daily_return_pct) and is_implausible_return(m.daily_return_pct))
+    coverage["corporate_action_suspects"] = suspects
+    if suspects and all_moves:
+        plausible = [m for m in all_moves.values()
+                     if _finite_return(m.daily_return_pct)
+                     and not is_implausible_return(m.daily_return_pct)]
+        valid_gainers = sorted(plausible, key=lambda m: m.daily_return_pct, reverse=True)[:top_n]
+        valid_losers = sorted(plausible, key=lambda m: m.daily_return_pct)[:top_n]
+        log.info("[MarketBenchmark] excluded %d suspected corporate-action move(s): %s",
+                 len(suspects), ", ".join(suspects[:10]))
     gainers = [
         MoverRecord(trade_date=trade_date, symbol=m.symbol, benchmark_type="NIFTY500",
                     move_type="GAINER", daily_return_pct=m.daily_return_pct,
@@ -406,6 +422,7 @@ def collect_broad_market_movers(
     valid_moves = [
         m for m in all_moves.values()
         if m.daily_return_pct is not None and not math.isnan(m.daily_return_pct)
+        and not is_implausible_return(m.daily_return_pct)
     ]
     if not valid_moves:
         return [], []

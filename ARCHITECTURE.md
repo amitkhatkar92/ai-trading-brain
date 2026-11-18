@@ -72,6 +72,23 @@ The system never trades blindly: every signal must survive regime detection, bac
   from data two sessions old. Today is now included once the session is final
   (from 16:00 IST on a trading day), never intraday, because rows are written
   with INSERT OR IGNORE and a partial bar could not be corrected.
+- Return validity: raw `ohlcv_daily` prices are unadjusted and index symbols share
+  the tables with stocks, so a split, bonus or demerger looks like a 35-90% one-day
+  move and an index stored in points looks like +55,000%. 30 such corporate-action
+  steps exist in the price history, and 194 index rows plus 38 implausible stock rows
+  (mostly the 14 September holiday run) sit in the shadow evidence ledger.
+  `data_integrity.return_validity` classifies, never edits: index symbols are
+  excluded, a one-day return beyond 30% (3-day 40%, 5-day 50%, above the 20% NSE
+  band) is an implausible measurement, and zero-volume holiday placeholder bars are
+  skipped when detecting corporate actions. It is applied where returns are consumed:
+  the evidence-ledger loaders (analyzer `load_records`, pattern miner, adjustment
+  engine), the universe-learning store (symbols with a corporate action inside the
+  60-day feature window are excluded at capture; outcome-day bad bars are excluded
+  and kept out of the winners list, counted as `invalid_outcome_count`), and the
+  daily mover benchmark (suspects are listed in `corporate_action_suspects` and the
+  top-N is refilled from real movers). The feature-bearing ledger rows used by the
+  fingerprint analyzers were already clean; the guard protects the raw readers and
+  all future data.
 - Pipeline health: most breaks above were silent for weeks.
   `analysis.pipeline_health_monitor` runs at the end of the 16:45 post-market
   scan (and the 08:00 pre-market re-run) and checks: active-universe coverage of

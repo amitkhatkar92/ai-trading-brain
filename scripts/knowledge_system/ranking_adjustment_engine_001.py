@@ -191,7 +191,11 @@ def _save_active_config(config: Dict[str, Any]) -> None:
 
 
 def _load_raw_shadow_records(since_date: Optional[str] = None) -> List[Dict[str, Any]]:
-    """Read SHADOW_CANDIDATE rows from the raw shadow JSONL (has RSL-001 fields)."""
+    """Read SHADOW_CANDIDATE rows from the raw shadow JSONL (has RSL-001 fields).
+
+    Rows that are not valid stock outcomes (index points, split/bonus/demerger
+    returns) are skipped so they cannot decide a shadow experiment."""
+    from data_integrity.return_validity import validate_outcome_record
     if not SHADOW_JSONL_PATH.exists():
         return []
     out = []
@@ -204,6 +208,8 @@ def _load_raw_shadow_records(since_date: Optional[str] = None) -> List[Dict[str,
             if r.get("record_type") != "SHADOW_CANDIDATE":
                 continue
             if since_date and r.get("trade_date", "") < since_date:
+                continue
+            if validate_outcome_record(r) is not None:
                 continue
             out.append(r)
     return out

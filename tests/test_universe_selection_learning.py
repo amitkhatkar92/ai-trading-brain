@@ -259,7 +259,7 @@ def test_validated_prior_knowledge_actually_changes_research_selection():
 def test_quality_excluded_winner_still_counts_in_full_universe_leaderboard(tmp_path):
     db = tmp_path / "db"
     conn = _database(db, 25)
-    conn.execute("UPDATE ohlcv_daily SET close=150 WHERE symbol='S024.NS' AND trade_date='2026-11-12'")
+    conn.execute("UPDATE ohlcv_daily SET close=125 WHERE symbol='S024.NS' AND trade_date='2026-11-12'")
     conn.commit()
     now = datetime(2026, 11, 11, 17, tzinfo=learning.IST)
     with patch.object(learning, "_now", return_value=now):

@@ -16,6 +16,10 @@ from pathlib import Path
 from typing import Any
 
 from config import is_nse_holiday
+from data_integrity.return_validity import (
+    REASON_CORP_ACTION_WINDOW, REASON_IMPLAUSIBLE, feature_window_start,
+    is_implausible_return, symbols_with_corporate_action,
+)
 from opportunity_engine.mover_discovery_v3 import _rank_pct
 from scripts.knowledge_system.selection_characteristic_analyzer_001 import (
     COMBINATIONS, FEATURES, _band_of, _build_band_thresholds,
@@ -84,19 +88,28 @@ def capture_universe_snapshot(
     exact = {r[0] for r in conn.execute(
         "SELECT symbol FROM ohlcv_daily WHERE trade_date = ?", (trade_date,)
     )}
+    # Features are computed from unadjusted closes, so a split/bonus/demerger inside the
+    # lookback would fake momentum and volatility. Flag those names rather than learn from them.
+    suspect = symbols_with_corporate_action(
+        conn, symbols, feature_window_start(trade_date), trade_date)
     by_symbol = {r["symbol"]: r for r in scored}
     rows = []
     for symbol in sorted(set(symbols)):
         features = by_symbol.get(symbol)
-        usable = symbol in exact and features is not None and all(
+        usable = symbol in exact and symbol not in suspect and features is not None and all(
             isinstance(features.get(f), (int, float))
             and math.isfinite(features[f]) for f in FEATURES + ["v3_up_score", "v3_down_score"]
         )
+        if symbol not in exact:
+            reason = "MISSING_EXACT_DATE_BAR"
+        elif symbol in suspect:
+            reason = REASON_CORP_ACTION_WINDOW
+        else:
+            reason = "FEATURE_QUALITY_GATE"
         rows.append({
             "symbol": symbol,
-            "exclusion": None if usable else (
-                "MISSING_EXACT_DATE_BAR" if symbol not in exact else "FEATURE_QUALITY_GATE"
-            ),
+            "exclusion": None if usable else reason,
+            **({"corporate_action_dates": suspect[symbol]} if symbol in suspect else {}),
             **({k: features.get(k) for k in FEATURES + ["v3_up_score", "v3_down_score"]}
                if usable else {}),
         })
@@ -199,7 +212,8 @@ def _evaluate_snapshot(snapshot, outcome_rows, prior, epoch_complete=False):
             ranked = [(gap + (r["research_nudge"] * v3 if adjusted else 0), r)
                       for gap, v3, r in zip(gap_ranks, v3_ranks, pool)]
             return [r for _, r in sorted(ranked, key=lambda p: (-p[0], p[1]["symbol"]))[:5]]
-        winners = sorted(outcome_rows, key=lambda r: (-sign * r["t1_ret_pct"], r["symbol"]))[:20]
+        winners = sorted((r for r in outcome_rows if r.get("outcome_exclusion") is None),
+                         key=lambda r: (-sign * r["t1_ret_pct"], r["symbol"]))[:20]
         top = {r["symbol"] for r in winners}
         def metrics(pool):
             return {"symbols": [r["symbol"] for r in pool], "n": len(pool),
@@ -282,6 +296,10 @@ def run_universe_learning(
                         missing.append(row["symbol"])
                         continue
                     gross = (bar[1] / bar[0] - 1) * 100
+                    gap = (bar[0] / close - 1) * 100
+                    # A split/bonus/demerger on the outcome day makes the gap or the move
+                    # unmeasurable; keep the row for coverage but never rank or learn from it.
+                    bad_outcome = is_implausible_return(gross) or is_implausible_return(gap)
                     qty = max(1, int(RESEARCH_NOTIONAL / bar[0]))
                     long_cost = costs.compute(
                         row["symbol"], qty, bar[0], bar[1], InstrumentType.EQUITY_DELIVERY
@@ -290,7 +308,10 @@ def run_universe_learning(
                         row["symbol"], qty, bar[1], bar[0], InstrumentType.EQUITY_INTRADAY
                     ).total_cost
                     rows.append({**row, "trade_date": td, "outcome_date": next_date,
-                                 "t1_ret_pct": gross, "gap_pct": (bar[0] / close - 1) * 100,
+                                 "exclusion": row["exclusion"] or (
+                                     REASON_IMPLAUSIBLE if bad_outcome else None),
+                                 "outcome_exclusion": REASON_IMPLAUSIBLE if bad_outcome else None,
+                                 "t1_ret_pct": gross, "gap_pct": gap,
                                  "net_up_ret_pct": gross - long_cost / (bar[0] * qty) * 100,
                                  "net_down_ret_pct": -gross - short_cost / (bar[0] * qty) * 100,
                                  "simulated_quantity": qty})
@@ -324,6 +345,7 @@ def run_universe_learning(
                     "cohort_complete": True,
                     "captured_at": snapshot["captured_at"], "rows": rows,
                     "eligible_count": snapshot["eligible_count"], "evaluated_count": len(rows),
+                    "invalid_outcome_count": sum(1 for r in rows if r.get("outcome_exclusion")),
                     "feature_count": snapshot["feature_count"],
                     "excluded": [r for r in snapshot["rows"] if r["exclusion"]],
                     "comparisons": _evaluate_snapshot(

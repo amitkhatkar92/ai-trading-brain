@@ -66,11 +66,21 @@ GROUP_REJECTED_WON = "REJECTED_WON"       # missed winner
 GROUP_REJECTED_FAILED = "REJECTED_FAILED"  # correct rejection
 
 
+LAST_LOAD_EXCLUSIONS: Dict[str, int] = {}
+
+
 def load_records(ledger_path: Path = LEDGER_PATH) -> List[Dict[str, Any]]:
     """Load evidence records, keeping only Phase-1-complete rows (atr_pct
     present), deduplicated by (trade_date, symbol, direction) keeping the
-    most recently processed record (handles force=True regeneration)."""
+    most recently processed record (handles force=True regeneration).
+
+    Rows that are not valid stock outcomes (index symbols stored in points, or a
+    return no market session can produce, i.e. a split/bonus/demerger measured on
+    unadjusted prices) are excluded after deduplication. They are left in the
+    ledger and counted in ``LAST_LOAD_EXCLUSIONS``."""
+    from data_integrity.return_validity import filter_valid_records
     latest: Dict[str, Dict[str, Any]] = {}
+    LAST_LOAD_EXCLUSIONS.clear()
     if not ledger_path.exists():
         return []
     for line in ledger_path.read_text(encoding="utf-8", errors="replace").splitlines():
@@ -86,7 +96,9 @@ def load_records(ledger_path: Path = LEDGER_PATH) -> List[Dict[str, Any]]:
         existing = latest.get(key)
         if existing is None or rec.get("processed_at", "") > existing.get("processed_at", ""):
             latest[key] = rec
-    return list(latest.values())
+    usable, excluded = filter_valid_records(latest.values())
+    LAST_LOAD_EXCLUSIONS.update(excluded)
+    return usable
 
 
 def _direction_correct(direction: str, t1: float) -> bool:
