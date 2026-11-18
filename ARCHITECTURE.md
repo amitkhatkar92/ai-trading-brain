@@ -89,6 +89,17 @@ The system never trades blindly: every signal must survive regime detection, bac
   top-N is refilled from real movers). The feature-bearing ledger rows used by the
   fingerprint analyzers were already clean; the guard protects the raw readers and
   all future data.
+- Mover cause attribution: `scripts.knowledge_system.mover_cause_attribution` runs
+  right after the universe-learning step at EOD and tags each resolved day's top 20
+  gainers and losers by observable cause (opening gap, intraday trend, volume
+  surge, market-led, sector-led, otherwise stock-specific) and by when the move
+  first becomes visible. It ranks twice: by open-to-close return (the pools' own
+  measure, which can never contain gap-driven names) and by the full day move.
+  Company events and institutional flow are not inferred: their tables
+  (`daily_events`, `bulk_block_deals`) are empty in production, so every mover is
+  marked `UNVERIFIED_NO_EVENT_DATA` and the roll-up reports the empty tables.
+  Output stays under `data/universe_selection_learning/causes/`; nothing in
+  trading or risk reads it.
 - Pipeline health: most breaks above were silent for weeks.
   `analysis.pipeline_health_monitor` runs at the end of the 16:45 post-market
   scan (and the 08:00 pre-market re-run) and checks: active-universe coverage of

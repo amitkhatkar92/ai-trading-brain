@@ -7773,6 +7773,15 @@ class MasterOrchestrator:
         except Exception:
             log.warning("[UniverseLearning] EOD research failed (non-critical)", exc_info=True)
 
+        # Tag each resolved cohort's top movers by observable cause (gap, intraday trend,
+        # volume surge, market/sector). Research only; no trading or risk gate reads it.
+        try:
+            from scripts.knowledge_system.mover_cause_attribution import run_mover_cause_attribution
+            _cause_run = run_mover_cause_attribution()
+            log.info("[CauseAttribution] %s", _cause_run)
+        except Exception:
+            log.warning("[CauseAttribution] failed (non-critical)", exc_info=True)
+
         # ── DTA-PHASE7-DISCOVERY-001: automatic fingerprint discovery + promotion ──
         # READ-ONLY, OBSERVATIONAL. Runs BEFORE Phase 2E so any fingerprint newly
         # promoted today is immediately trackable/scorable/validatable in this same
