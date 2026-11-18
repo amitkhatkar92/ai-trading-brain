@@ -32,7 +32,7 @@ import csv
 import os
 import sqlite3
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -334,3 +334,119 @@ def ingest_from_csv(
         "errors":    errors,
         "error_details": error_details,
     }
+
+
+# ── Live journal ingestor ─────────────────────────────────────────────────────
+# The ingest above only reads paper_trades.csv. Since 2026-09-14 the system trades
+# live and its real orders are journaled to data/live/live_orders.jsonl instead, so
+# live_observations.db stayed empty (and every report/scorecard built on it with it).
+
+LIVE_JOURNAL = os.path.join(_ROOT, "data", "live", "live_orders.jsonl")
+
+
+def _ist_date(timestamp: str) -> str:
+    """Journal timestamps are UTC; the trading date is the IST date."""
+    try:
+        moment = datetime.fromisoformat(timestamp)
+        if moment.tzinfo is None:
+            moment = moment.replace(tzinfo=timezone.utc)
+        return (moment.astimezone(timezone(timedelta(hours=5, minutes=30)))).strftime("%Y-%m-%d")
+    except (TypeError, ValueError):
+        return str(timestamp)[:10]
+
+
+def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
+    """
+    One CSV-shaped row per real order that was actually filled.
+
+    Entry data comes from the last FILLED OPEN event (fill price, initial stop,
+    confidence); the outcome from the order's CLOSE event. Orders that never filled
+    (PENDING, API_ERROR, cancelled) are not trades and are skipped.
+    """
+    import json
+    if not os.path.exists(journal_path):
+        return []
+    opened: Dict[str, dict] = {}
+    closed: Dict[str, dict] = {}
+    with open(journal_path, "r", encoding="utf-8") as handle:
+        for line in handle:
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            order_id = str(event.get("order_id") or "")
+            if not order_id:
+                continue
+            if event.get("event") == "OPEN" and event.get("fill_status") in ("FILLED", "PARTIALLY_FILLED"):
+                opened[order_id] = event
+            elif event.get("event") == "CLOSE":
+                closed[order_id] = event
+    rows = []
+    for order_id, event in opened.items():
+        entry = float(event.get("actual_fill_price") or event.get("entry_price") or 0)
+        stop = float(event.get("initial_stop_loss") or event.get("stop_loss") or 0)
+        target = float(event.get("target_price") or 0)
+        rr = (target - entry) / (entry - stop) if entry > stop > 0 and target > entry else 1.5
+        close = closed.get(order_id, {})
+        rows.append({
+            "timestamp": event.get("timestamp", ""), "trade_date": _ist_date(event.get("timestamp", "")),
+            "order_id": order_id, "symbol": event.get("symbol", "UNKNOWN"),
+            "strategy": event.get("strategy", "UNKNOWN"), "direction": event.get("direction", ""),
+            "entry_price": entry, "stop_loss": stop, "target": target,
+            "confidence": event.get("confidence_score") or 0, "rr": round(rr, 3),
+            "exit_price": close.get("exit_price"), "pnl": close.get("pnl"),
+            "reason": close.get("reason", ""), "signal_regime": event.get("signal_regime"),
+        })
+    return sorted(rows, key=lambda r: r["timestamp"])
+
+
+def ingest_from_live_journal(
+    journal_path: str = LIVE_JOURNAL,
+    tracker:      Optional[LiveObservationTracker] = None,
+) -> dict:
+    """
+    Ingest real filled orders from the live journal into live_observations.db
+    (data_source 'LIVE') and record outcomes for ones that have since closed.
+    Idempotent. The regime is the one the signal carried; VIX is not looked up
+    (the enrichment's historical lookup falls back to a made-up 15.0/MEDIUM), so it is
+    stored as 0.0/UNKNOWN rather than as a fact.
+    """
+    tracker = tracker or get_live_tracker()
+    new = skipped = errors = 0
+    error_details: List[str] = []
+    rows = live_journal_rows(journal_path)
+    for row in rows:
+        try:
+            enriched = enrich_csv_row({**row, "timestamp": row["timestamp"]})
+            enriched["trade_date"] = row["trade_date"]
+            row_id = tracker.ingest(
+                order_id=enriched["order_id"], symbol=enriched["symbol"], strategy=enriched["strategy"],
+                direction=enriched["direction"], trade_date=row["trade_date"],
+                entry_price=enriched["entry_price"], stop_loss=enriched["stop_loss"],
+                target=enriched["target"], confidence=enriched["confidence"], rr=enriched["rr"],
+                quality_score=enriched["quality_score"], quality_tier=enriched["quality_tier"],
+                is_high_conviction=enriched["is_high_conviction"], sft_class=enriched["sft_class"],
+                sft_score=enriched["sft_score"],
+                market_regime=str(row.get("signal_regime") or enriched["market_regime"]),
+                vix=0.0, vix_bucket="UNKNOWN", news_type=enriched["news_type"],
+                news_sentiment=enriched["news_sentiment"],
+                transition_probability=enriched["transition_probability"],
+                transition_alert=enriched["transition_alert"], data_source="LIVE", notes="",
+            )
+            new += 1 if row_id is not None else 0
+            skipped += 1 if row_id is None else 0
+            if enriched["outcome"] != "OPEN" and enriched["exit_price"]:
+                with sqlite3.connect(tracker.db_path) as conn:
+                    recorded = conn.execute(
+                        "SELECT outcome FROM live_observations WHERE order_id=?", (enriched["order_id"],)
+                    ).fetchone()
+                if recorded is not None and recorded[0] in (None, "", "OPEN"):
+                    tracker.mark_outcome(
+                        order_id=enriched["order_id"], outcome=enriched["outcome"],
+                        exit_price=enriched["exit_price"] or 0, pnl=enriched["pnl"] or 0,
+                        close_reason=enriched["close_reason"])
+        except Exception as exc:
+            errors += 1
+            error_details.append(f"order_id={row.get('order_id', '?')}: {exc}")
+    return {"processed": len(rows), "new": new, "skipped": skipped, "errors": errors,
+            "error_details": error_details}

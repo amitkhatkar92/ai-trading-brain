@@ -6207,12 +6207,22 @@ class MasterOrchestrator:
         # Runs every EOD after learning so enrichment can use today's outcomes.
         # Non-critical: failure does not affect learning, risk, or notifications.
         try:
-            from analysis.live_observation_collector import ingest_from_csv as _ingest_live_obs
+            from analysis.live_observation_collector import (
+                ingest_from_csv as _ingest_live_obs,
+                ingest_from_live_journal as _ingest_live_journal,
+            )
             _obs_result = _ingest_live_obs()
             log.info(
                 "[OIOS] live_observations: new=%d processed=%d skipped=%d errors=%d",
                 _obs_result["new"], _obs_result["processed"],
                 _obs_result["skipped"], _obs_result["errors"],
+            )
+            # Real orders live in the live journal, not in paper_trades.csv.
+            _obs_live = _ingest_live_journal()
+            log.info(
+                "[OIOS] live_observations (live journal): new=%d processed=%d skipped=%d errors=%d",
+                _obs_live["new"], _obs_live["processed"],
+                _obs_live["skipped"], _obs_live["errors"],
             )
         except Exception as _live_obs_exc:
             log.warning("[OIOS] live_observation ingest failed (non-critical): %s", _live_obs_exc)
