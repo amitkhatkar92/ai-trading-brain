@@ -59,6 +59,7 @@ from .re_calculator import (
     compute_ec_path,
     compute_actual_move_pct,
     compute_crowding,
+    compute_volume_burst,
     compute_effective_ttl,
     get_half_life,
 )
@@ -175,7 +176,7 @@ def _compute_conviction_re_weighted(
         SELECT os.signal_id, os.signal_direction, os.evidence_weight,
                sb.base_score, sb.signal_type, sb.birth_price,
                sb.expected_move_pct, sb.expected_move_direction,
-               sb.detected_at
+               sb.detected_at, sb.archetype_id
         FROM opportunity_signals os
         JOIN signal_births sb ON sb.signal_id = os.signal_id
         WHERE os.opportunity_id = ?
@@ -198,8 +199,14 @@ def _compute_conviction_re_weighted(
     ).fetchone()
     direction = direction_row["direction"] if direction_row else "LONG"
 
-    confirming_re  = 0.0
-    conflicting_re = 0.0
+    # One reading per (archetype, direction): the strongest. The scanner re-detects the same
+    # archetype on the same stock every day while its condition holds, and each detection was
+    # attached as a new signal and summed, so a single persisting pattern counted 4-5 times
+    # (production: 239 of 255 live opportunities had more signals than distinct archetypes,
+    # 175 sat at the conviction cap of 10). A repeat of the same evidence refreshes it; only a
+    # different archetype is independent evidence.
+    confirming: dict[str, float] = {}
+    conflicting: dict[str, float] = {}
 
     for sig in signals:
         # Age of this specific signal (not opportunity age)
@@ -227,13 +234,11 @@ def _compute_conviction_re_weighted(
             c_crowding        = c_crowd,
         )
         weight = sig["evidence_weight"] or 1.0
+        key = sig["archetype_id"] or sig["signal_id"]
+        bucket = confirming if sig["signal_direction"] == "CONFIRMING" else conflicting
+        bucket[key] = max(bucket.get(key, 0.0), weight * re_i)
 
-        if sig["signal_direction"] == "CONFIRMING":
-            confirming_re += weight * re_i
-        else:
-            conflicting_re += weight * re_i
-
-    conviction = confirming_re - conflicting_re
+    conviction = sum(confirming.values()) - sum(conflicting.values())
     return max(0.0, min(10.0, conviction))
 
 
@@ -372,7 +377,14 @@ def run_ele_cycle_for_opportunity(
 
     # ACTIVE / WATCHING: terminal conditions first
     elif opp.current_state in (OpportunityState.ACTIVE, OpportunityState.WATCHING):
-        opp, transitions, _ = check_terminal_conditions(opp, today, signal_id=sig_id, regime=regime)
+        # MAS volume-burst terminal condition: was never computed, so THESIS_INVALID
+        # could not occur. Direction-aware (adverse close only); see compute_volume_burst.
+        try:
+            burst = compute_volume_burst(conn, opp.symbol, today, birth_direction)
+        except Exception:
+            burst = False
+        opp, transitions, _ = check_terminal_conditions(
+            opp, today, signal_id=sig_id, regime=regime, volume_burst=burst)
         for t in transitions:
             R.append_transition(conn, t)
         if opp.current_state == OpportunityState.INVALID:

@@ -228,6 +228,44 @@ def compute_crowding(
 
 
 # ---------------------------------------------------------------------------
+# Volume burst (MAS "Volume burst": single-day volume > 3x the 20-day average)
+# ---------------------------------------------------------------------------
+
+VOLUME_BURST_MULTIPLE = 3.0
+VOLUME_BURST_LOOKBACK = 20
+
+
+def compute_volume_burst(
+    conn: sqlite3.Connection,
+    symbol: str,
+    as_of_date: str,
+    direction: str = "LONG",
+) -> bool:
+    """
+    True when the latest session's volume exceeds VOLUME_BURST_MULTIPLE x the prior
+    20-session average AND the session closed against the thesis (down for LONG, up for SHORT).
+
+    The MAS invalidates a thesis on a volume burst but never defines the direction. A
+    spike on a day that confirms the thesis is not an invalidation (and the research layer
+    finds burst days to be leading indicators), so only an adverse close counts. Zero-volume
+    holiday placeholder bars are ignored. Returns False when data for as_of_date is missing.
+    """
+    rows = conn.execute("""
+        SELECT trade_date, close, volume FROM ohlcv_daily
+        WHERE symbol = ? AND trade_date <= ? AND volume > 0
+        ORDER BY trade_date DESC LIMIT ?
+    """, (symbol, as_of_date, VOLUME_BURST_LOOKBACK + 1)).fetchall()
+    if len(rows) < 6 or rows[0][0] != as_of_date:
+        return False
+    prior = [r[2] for r in rows[1:]]
+    average = sum(prior) / len(prior)
+    if average <= 0 or rows[0][2] <= VOLUME_BURST_MULTIPLE * average:
+        return False
+    previous_close, close = rows[1][1], rows[0][1]
+    return close < previous_close if (direction or "LONG").upper() == "LONG" else close > previous_close
+
+
+# ---------------------------------------------------------------------------
 # RE formula
 # ---------------------------------------------------------------------------
 

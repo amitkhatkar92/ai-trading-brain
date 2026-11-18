@@ -433,11 +433,16 @@ def scan_symbol(
     detected_at: str,
     regime: str,
     sector_return_5d: Optional[float] = None,
+    sector_required: bool = False,
 ) -> list[RawSignal]:
     """
     Run all Layer 1A archetypes on a single symbol.
     Returns only signals with base_score > MIN_WRITE_THRESHOLD (4.0).
     Does NOT write to the database.
+
+    sector_required: when True the Sector Breakout Accelerator only applies if
+    sector_return_5d is known. Without a sector peer group it would just repeat the
+    momentum archetype, so run_scan sets this once sector returns are available.
     """
     pw = _load_price_window(conn, symbol, detected_at)
     if pw is None:
@@ -450,6 +455,8 @@ def scan_symbol(
         lambda: _detect_sector_breakout_accelerator(pw, detected_at, regime, sector_return_5d),
         lambda: _detect_results_followthrough(pw, detected_at, regime),
     ]
+    if sector_required and sector_return_5d is None:
+        del detectors[2]
 
     signals = []
     for detector in detectors:
@@ -484,6 +491,49 @@ class ScanResult:
         return [s for s in self.signals_raw if s.qualifies]
 
 
+UNCLASSIFIED_SECTORS = frozenset({"", "UNKNOWN"})
+MIN_SECTOR_PEERS = 4
+
+
+def _sector_returns_5d(conn: sqlite3.Connection, as_of_date: str) -> dict[str, float]:
+    """
+    Per-symbol 5-day return of the symbol's own sector peers (purity-weighted, symbol
+    excluded). A symbol gets no entry when its sector is unclassified or has fewer than
+    MIN_SECTOR_PEERS peers with data, so a made-up peer group is never used.
+    """
+    from datetime import date, timedelta
+    start = (date.fromisoformat(as_of_date) - timedelta(days=21)).isoformat()
+    closes: dict[str, dict[int, float]] = {}
+    for symbol, close, rank in conn.execute("""
+        SELECT symbol, close, rn FROM (
+            SELECT symbol, close,
+                   ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY trade_date DESC) AS rn
+            FROM ohlcv_daily WHERE trade_date <= ? AND trade_date >= ?
+        ) WHERE rn IN (1, 6)
+    """, (as_of_date, start)):
+        closes.setdefault(symbol, {})[rank] = close
+
+    members: dict[str, list[tuple[str, float, float]]] = {}
+    for symbol, sector, purity in conn.execute(
+        "SELECT symbol, sector, COALESCE(sector_purity_score, 1.0) "
+        "FROM universe_stocks WHERE is_active = 1"
+    ):
+        pair = closes.get(symbol, {})
+        if sector in UNCLASSIFIED_SECTORS or sector is None or 1 not in pair or 6 not in pair or pair[6] <= 0:
+            continue
+        members.setdefault(sector, []).append((symbol, (pair[1] / pair[6] - 1.0) * 100, purity))
+
+    result: dict[str, float] = {}
+    for group in members.values():
+        total_weight = sum(w for _, _, w in group)
+        weighted_return = sum(r * w for _, r, w in group)
+        for symbol, ret, weight in group:
+            if len(group) - 1 < MIN_SECTOR_PEERS or total_weight - weight <= 0:
+                continue
+            result[symbol] = (weighted_return - ret * weight) / (total_weight - weight)
+    return result
+
+
 def run_scan(
     conn: sqlite3.Connection,
     symbols: list[str],
@@ -494,12 +544,26 @@ def run_scan(
     Run Layer 1A scanner across all symbols.
     Returns ScanResult — signals are not written to DB here.
     The caller passes qualifying signals to the Opportunity Service.
+
+    The Sector Breakout Accelerator needs the symbol's sector 5-day return; run_scan
+    previously never supplied it, so that archetype ignored sectors entirely and fired
+    on plain 10-day momentum (about 30 signals a day).
     """
     result = ScanResult(scan_date=scan_date, regime=regime)
 
+    try:
+        sector_returns = _sector_returns_5d(conn, scan_date)
+    except Exception as exc:
+        log.warning("[Layer1A] sector returns unavailable, legacy sector rule used: %s", exc)
+        sector_returns = {}
+
     for symbol in symbols:
         result.symbols_scanned += 1
-        signals = scan_symbol(conn, symbol, scan_date, regime)
+        signals = scan_symbol(
+            conn, symbol, scan_date, regime,
+            sector_return_5d=sector_returns.get(symbol),
+            sector_required=bool(sector_returns),
+        )
         result.signals_raw.extend(signals)
         if not signals:
             # Check if we even have data for this symbol

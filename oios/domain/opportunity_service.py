@@ -209,3 +209,50 @@ def _create_new(
         opp_id, signal.symbol, signal.expected_move_direction,
     )
     return opp
+
+
+# ---------------------------------------------------------------------------
+# Repair: expiries created while the trading calendar was empty
+# ---------------------------------------------------------------------------
+
+SENTINEL_EXPIRY_DAYS = 365   # a real expiry is at most a few weeks out; anything beyond is the sentinel
+
+
+def repair_unset_discovered_expiry(conn: sqlite3.Connection) -> dict:
+    """
+    Recompute discovered_expires_at for DISCOVERED opportunities that still carry the
+    999-calendar-day sentinel written when the trading calendar was empty.
+
+    With the sentinel, MAS "DISCOVERED Expiry" (floor(birth_ttl x 0.5) trading days, then
+    NEVER_MATURED) could never fire: production DISCOVERED opportunities were up to 42 days
+    old and expired in 2029. Rows with a real expiry are never touched. Skips (and reports)
+    rows the calendar cannot yet resolve. Returns {"repaired", "skipped"}.
+    """
+    from datetime import date
+    repaired = skipped = 0
+    rows = conn.execute(
+        "SELECT opportunity_id, created_at, birth_ttl_days, discovered_expires_at "
+        "FROM opportunities WHERE current_state = 'DISCOVERED'"
+    ).fetchall()
+    for opportunity_id, created_at, birth_ttl_days, expires_at in rows:
+        try:
+            gap = (date.fromisoformat(str(expires_at)[:10]) - date.fromisoformat(str(created_at)[:10])).days
+        except (TypeError, ValueError):
+            skipped += 1
+            continue
+        if gap <= SENTINEL_EXPIRY_DAYS:
+            continue
+        try:
+            new_expiry = add_trading_days(conn, str(created_at)[:10], int((birth_ttl_days or 10) * 0.5))
+        except ValueError:
+            skipped += 1
+            continue
+        conn.execute(
+            "UPDATE opportunities SET discovered_expires_at = ? WHERE opportunity_id = ?",
+            (new_expiry, opportunity_id),
+        )
+        repaired += 1
+    if repaired:
+        conn.commit()
+        log.info("[OpportunityService] Repaired %d sentinel DISCOVERED expiries", repaired)
+    return {"repaired": repaired, "skipped": skipped}

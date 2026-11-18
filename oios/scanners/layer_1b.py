@@ -43,6 +43,21 @@ EXPECTED_TTL_DAYS   = 18    # Phase B default — 1B signals have longer TTL tha
 SIGNAL_TYPE         = "1B"
 ARCHETYPE_VERSION   = 1
 
+# Cross-sectional calibration used by run_scan (see _cross_sectional_cutoffs).
+# The original absolute cutoffs (delivery trend >= 5pp, ATR < 1.5%, no 3% day) were
+# written before any bhav data existed and for a calmer market. Measured on production
+# (2026-11-17, 498 stocks): 36% of stocks gained >= 5pp of delivery in 5 days, so the
+# delivery archetype fired on ~20% of the universe (88-98 a day, design band 1-12);
+# the median 14-day ATR was 3.5% and only 1 stock was below 1.5%, so the low-noise
+# archetype could not fire at all. Relative cutoffs keep each archetype selective
+# whatever the volatility regime or universe size. Direct detector calls keep the
+# original absolute defaults, which the unit tests pin.
+DELIVERY_TREND_TOP_QUANTILE = 0.95   # delivery must be in the top 5% of 5-day expansions
+DELIVERY_TREND_FLOOR        = 0.05   # ...and never below the original absolute floor
+LOW_NOISE_ATR_QUANTILE      = 0.20   # ATR must be in the calmest 20% of the universe
+LOW_NOISE_MAX_DAY_RANGE_X   = 2.0    # no day in 10 with a range > 2x the stock's own ATR
+MIN_CROSS_SECTION           = 30     # fewer symbols than this: keep the absolute cutoffs
+
 
 # ---------------------------------------------------------------------------
 # Raw detection result — imported from layer_1a to avoid duplication
@@ -243,6 +258,8 @@ def _sector_breadth(
         return None
 
     sector = sector_row[0]
+    if sector is None or sector in ("", "UNKNOWN"):
+        return None        # an unclassified bucket is not a peer group
 
     peers = conn.execute("""
         SELECT u.symbol, u.sector_purity_score
@@ -365,6 +382,7 @@ def _detect_delivery_expansion(
     bw: Optional[BhavWindow],
     detected_at: str,
     regime: str,
+    min_trend: float = DELIVERY_TREND_FLOOR,
 ) -> Optional[RawSignal]:
     """
     DNA_1B_DELIVERY_EXPANSION — Delivery percentage rising (genuine holders accumulating)
@@ -397,7 +415,7 @@ def _detect_delivery_expansion(
         return None
 
     trend_5d = bw.trend(5)
-    if trend_5d < 0.05:
+    if trend_5d < min_trend:
         return None
 
     delivery_5d_ago = bw.ago(5)
@@ -436,6 +454,7 @@ def _detect_low_noise_strength(
     pw: PriceWindow,
     detected_at: str,
     regime: str,
+    atr_cutoff: Optional[float] = None,
 ) -> Optional[RawSignal]:
     """
     DNA_1B_LOW_NOISE_STRENGTH — Tight range with gradual upward drift
@@ -458,8 +477,12 @@ def _detect_low_noise_strength(
     if pw.n < 22:
         return None
 
+    # run_scan passes the universe's calmest-quintile ATR as atr_cutoff, so "ATR below
+    # normal" holds in any volatility regime; direct calls keep the original 1.5% / 3% rules.
+    relative = atr_cutoff is not None
+    cutoff = atr_cutoff if relative else 1.5
     atr_pct = pw.atr_pct(14)
-    if atr_pct >= 1.5:
+    if atr_pct >= cutoff:
         return None
 
     sma_5  = pw.sma(5)
@@ -480,10 +503,10 @@ def _detect_low_noise_strength(
         for i in range(-10, 0)
         if pw.closes[i - 1] > 0
     )
-    if max_range_10d >= 3.0:
+    if max_range_10d >= (LOW_NOISE_MAX_DAY_RANGE_X * atr_pct if relative else 3.0):
         return None
 
-    noise_reduction = min(2.0, (1.5 - atr_pct) / 1.5 * 2.0)
+    noise_reduction = min(2.0, (cutoff - atr_pct) / cutoff * 2.0)
     drift_quality   = min(2.0, (change_5d - 1.0) / 5.0 * 2.0)
 
     base_score = 4.0 + noise_reduction + drift_quality
@@ -649,6 +672,32 @@ class ScanResult:
         return [s for s in self.signals_raw if s.qualifies]
 
 
+def _quantile(values: list[float], q: float) -> float:
+    """Linear-interpolated quantile of a non-empty list."""
+    ordered = sorted(values)
+    position = q * (len(ordered) - 1)
+    low = int(position)
+    high = min(low + 1, len(ordered) - 1)
+    return ordered[low] + (ordered[high] - ordered[low]) * (position - low)
+
+
+def _cross_sectional_cutoffs(
+    windows: list[tuple[PriceWindow, Optional[BhavWindow]]],
+) -> tuple[float, Optional[float]]:
+    """(min_delivery_trend, low_noise_atr_cutoff) from the scanned universe itself.
+
+    Returns the original absolute cutoffs when the cross-section is too small to rank.
+    """
+    atrs = [pw.atr_pct(14) for pw, _ in windows if pw.n >= 22 and pw.atr_pct(14) > 0]
+    trends = [bw.trend(5) for _, bw in windows if bw is not None and bw.n >= 10]
+    atr_cutoff = (_quantile(atrs, LOW_NOISE_ATR_QUANTILE)
+                  if len(atrs) >= MIN_CROSS_SECTION else None)
+    min_trend = DELIVERY_TREND_FLOOR
+    if len(trends) >= MIN_CROSS_SECTION:
+        min_trend = max(DELIVERY_TREND_FLOOR, _quantile(trends, DELIVERY_TREND_TOP_QUANTILE))
+    return min_trend, atr_cutoff
+
+
 def run_scan(
     conn: sqlite3.Connection,
     symbols: list[str],
@@ -659,9 +708,13 @@ def run_scan(
     Run Layer 1B scanner across all symbols.
     Returns ScanResult — signals are NOT written to DB here.
     The caller passes qualifying signals to the Opportunity Service.
+
+    Two passes: load every symbol's windows, derive the delivery-trend and ATR cutoffs
+    from that cross-section, then run the detectors with those cutoffs.
     """
     result = ScanResult(scan_date=scan_date, regime=regime)
 
+    loaded: list[tuple[PriceWindow, Optional[BhavWindow]]] = []
     for symbol in symbols:
         result.symbols_scanned += 1
         pw = _load_price_window(conn, symbol, scan_date)
@@ -672,13 +725,19 @@ def run_scan(
         bw = _load_bhav_window(conn, symbol, scan_date)
         if bw is None:
             result.symbols_no_bhav += 1
+        loaded.append((pw, bw))
 
-        breadth = _sector_breadth(conn, symbol, scan_date)
+    min_trend, atr_cutoff = _cross_sectional_cutoffs(loaded)
+    log.info("[Layer1B] cross-sectional cutoffs: delivery_trend>=%.3f atr_cutoff=%s",
+             min_trend, "absolute" if atr_cutoff is None else f"{atr_cutoff:.2f}%")
+
+    for pw, bw in loaded:
+        breadth = _sector_breadth(conn, pw.symbol, scan_date)
 
         detectors = [
             lambda: _detect_quiet_accumulation(pw, scan_date, regime),
-            lambda: _detect_delivery_expansion(pw, bw, scan_date, regime),
-            lambda: _detect_low_noise_strength(pw, scan_date, regime),
+            lambda: _detect_delivery_expansion(pw, bw, scan_date, regime, min_trend=min_trend),
+            lambda: _detect_low_noise_strength(pw, scan_date, regime, atr_cutoff=atr_cutoff),
             lambda: _detect_sector_pre_breakout(pw, breadth, scan_date, regime),
         ]
 

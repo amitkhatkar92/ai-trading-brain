@@ -309,6 +309,34 @@ def check_event_data(ctx: HealthContext) -> Dict[str, Any]:
         f"and {counts['bulk_block_deals']} bulk/block deals ({published})"), **counts)
 
 
+CALENDAR_LOOKAHEAD_DAYS = 21
+
+
+def check_trading_calendar(ctx: HealthContext) -> Dict[str, Any]:
+    """Does trading_calendar exist and reach far enough ahead?
+
+    It was empty for months (signal ages 0, 999-day expiries) and now ends with the last
+    year in config.NSE_HOLIDAYS. Warn weeks before it runs out so the next year's verified
+    holidays are added instead of discovering a silent fallback afterwards.
+    """
+    if not os.path.exists(ctx.market_db):
+        return _result("trading_calendar", INFO, "market database not present")
+    try:
+        with closing(_readonly(ctx.market_db)) as conn:
+            count, last = conn.execute(
+                "SELECT COUNT(*), MAX(calendar_date) FROM trading_calendar").fetchone()
+    except sqlite3.Error as exc:
+        return _result("trading_calendar", ERROR, f"could not read trading_calendar: {exc}")
+    if not count:
+        return _result("trading_calendar", WARN, "trading_calendar is empty", rows=0)
+    needed = (ctx.now.date() + timedelta(days=CALENDAR_LOOKAHEAD_DAYS)).isoformat()
+    if last < needed:
+        return _result("trading_calendar", WARN,
+                       f"trading_calendar ends {last}; add the next year's verified NSE holidays "
+                       f"to config.NSE_HOLIDAYS", rows=count, ends=last)
+    return _result("trading_calendar", OK, f"{count} days, through {last}", rows=count, ends=last)
+
+
 def check_stores(ctx: HealthContext) -> Dict[str, Any]:
     """Has EOD completed for the last session, and are the evidence files still growing?"""
     session = expected_session(ctx.now).isoformat()
@@ -431,6 +459,7 @@ def run_pipeline_health_check(
                             ("price_bands", check_price_bands),
                             ("exit_prices", check_exit_prices),
                             ("event_data", check_event_data),
+                            ("trading_calendar", check_trading_calendar),
                             ("learning_stores", check_stores)):
             results.append(_safe(name, lambda check=check: check(ctx)))
 

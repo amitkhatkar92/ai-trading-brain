@@ -121,6 +121,35 @@ def populate_trading_calendar(
     return len(rows)
 
 
+def ensure_trading_calendar(conn: sqlite3.Connection) -> dict:
+    """
+    Idempotently populate trading_calendar from the verified NSE holiday list in config.
+
+    The MAS requires the calendar to be populated before any age or TTL computation, but
+    nothing in production ever did it: ELE's per-signal age was always 0 (so conviction never
+    decayed) and every DISCOVERED opportunity got a 999-day expiry sentinel (so NEVER_MATURED
+    could not fire). Covers every calendar year present in config.NSE_HOLIDAYS, so adding a
+    new year's holidays there extends the calendar on the next run. Weekends are non-trading.
+
+    Returns {"rows", "from", "to"}; never raises.
+    """
+    try:
+        from config import NSE_HOLIDAYS
+        years = sorted({d.year for d in NSE_HOLIDAYS})
+        if not years:
+            return {"rows": 0, "from": None, "to": None}
+        first, last = f"{years[0]}-01-01", f"{years[-1]}-12-31"
+        with conn:
+            rows = populate_trading_calendar_with_names(
+                conn, first, last, {d.isoformat(): "NSE_HOLIDAY" for d in NSE_HOLIDAYS},
+            )
+        return {"rows": rows, "from": first, "to": last}
+    except Exception as exc:                      # a calendar problem must never stop a scan
+        import logging
+        logging.getLogger(__name__).warning("[Calendar] ensure_trading_calendar failed: %s", exc)
+        return {"rows": 0, "from": None, "to": None, "error": str(exc)}
+
+
 def populate_trading_calendar_with_names(
     conn: sqlite3.Connection,
     from_date: str,

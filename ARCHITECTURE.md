@@ -89,6 +89,23 @@ The system never trades blindly: every signal must survive regime detection, bac
   top-N is refilled from real movers). The feature-bearing ledger rows used by the
   fingerprint analyzers were already clean; the guard protects the raw readers and
   all future data.
+- OIOS idle-output audit (2026-11-18): an empty or saturated output is a defect to
+  trace, not a market fact. Found and fixed, each rehearsed on a production copy:
+  the trading calendar was never populated (signal age always 0; every DISCOVERED
+  expiry a 999-day sentinel, so `NEVER_MATURED` never fired), conviction summed every
+  daily re-detection of the same archetype (now one strongest reading per
+  archetype), the MAS volume-burst terminal rule was never computed (now computed,
+  adverse close only), `run_sector_conviction` had no caller (now runs daily after the
+  signal scan with a 35-session point-in-time backfill), Layer 1A never passed the
+  sector return to the Sector Breakout Accelerator, 48% of the universe had sector
+  `UNKNOWN` (now classified from yfinance industry, bounded and cached, curated
+  labels never overwritten; `UNKNOWN` and sectors under 5 stocks are never treated as
+  peer groups), and Layer 1B's absolute delivery/ATR cutoffs, which only showed once
+  bhav data existed, are now cross-sectional. `check_trading_calendar` warns when the
+  calendar has under 21 days of cover (it ends 2026-12-31: add next year's verified
+  holidays to `config.NSE_HOLIDAYS`). Open design gaps, not changed: no bearish
+  archetypes (so `CONTRADICTED` is unreachable), `decision_log` and
+  `archetype_versions` unpopulated, Phase E engines have no caller.
 - Mover cause attribution: `scripts.knowledge_system.mover_cause_attribution` runs
   right after the universe-learning step at EOD and tags each resolved day's top 20
   gainers and losers by observable cause (opening gap, intraday trend, volume

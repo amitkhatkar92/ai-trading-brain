@@ -37,6 +37,7 @@ log = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 MIN_SECTOR_COVERAGE         = 0.80   # stocks_with_data / stocks_total threshold
+MIN_SECTOR_MEMBERS          = 5      # fewer active stocks than this: no meaningful sector breadth
 CAPITAL_FLOW_NEUTRAL        = 0.50   # when data quality UNAVAILABLE
 CAPITAL_FLOW_WEIGHT         = 0.40
 CONSENSUS_WEIGHT            = 0.60
@@ -536,8 +537,13 @@ def run_sector_conviction(
     Returns a dict {sector: {"data_quality": ..., "theme_phase": ...}} for logging.
     """
     if sectors is None:
+        # UNKNOWN is "no sector", not a peer group, and a sector with fewer than
+        # MIN_SECTOR_MEMBERS stocks has no meaningful breadth (one stock is always 0% or
+        # 100% "participation"); same minimum the Layer 1B sector breadth uses.
         rows = conn.execute(
-            "SELECT DISTINCT sector FROM universe_stocks WHERE is_active = 1"
+            "SELECT sector FROM universe_stocks "
+            "WHERE is_active = 1 AND sector IS NOT NULL AND sector NOT IN ('', 'UNKNOWN') "
+            "GROUP BY sector HAVING COUNT(*) >= ?", (MIN_SECTOR_MEMBERS,)
         ).fetchall()
         sectors = [r[0] for r in rows]
 
@@ -548,6 +554,40 @@ def run_sector_conviction(
             _process_sector(conn, sector, trade_date, regime, summary)
 
     return summary
+
+
+def backfill_sector_conviction(
+    conn: sqlite3.Connection,
+    end_date: str,
+    days: int = 35,
+    regime: str = "BACKFILL",
+) -> dict:
+    """
+    Fill sector_conviction_daily for recent trading dates that have no row yet.
+
+    Every input is point-in-time (prices and deals up to each date), so this is the same
+    computation the daily run would have produced. The Theme Phase Engine needs 30 rows of
+    history before it activates; without a backfill it would wait a month after the writer
+    is first scheduled. Skips weekends and NSE holidays. Returns {"dates", "skipped_existing"}.
+    """
+    from datetime import date as _date
+    try:
+        from config import is_nse_holiday
+    except Exception:
+        def is_nse_holiday(_d):   # type: ignore[misc]
+            return _d.weekday() >= 5
+    candidates = [r[0] for r in conn.execute(
+        "SELECT DISTINCT trade_date FROM ohlcv_daily "
+        "WHERE trade_date <= ? AND symbol NOT LIKE '^%' ORDER BY trade_date DESC LIMIT ?",
+        (end_date, days),
+    ).fetchall()]
+    existing = {r[0] for r in conn.execute(
+        "SELECT DISTINCT record_date FROM sector_conviction_daily").fetchall()}
+    todo = sorted(d for d in candidates
+                  if d not in existing and not is_nse_holiday(_date.fromisoformat(d)))
+    for day in todo:
+        run_sector_conviction(conn, day, regime)
+    return {"dates": len(todo), "skipped_existing": len(candidates) - len(todo)}
 
 
 def _process_sector(

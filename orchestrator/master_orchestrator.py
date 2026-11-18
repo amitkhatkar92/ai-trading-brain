@@ -5185,6 +5185,17 @@ class MasterOrchestrator:
                                  _bulk_res, _ann_res)
                     except Exception as _ev_exc:
                         log.warning("[OIOS] event/deal refresh failed (non-critical): %s", _ev_exc)
+
+                    # Real sectors for symbols still labelled UNKNOWN (48% of the active
+                    # universe): the label was written once at insert time and never updated.
+                    # Bounded per run; curated labels are never overwritten.
+                    try:
+                        from oios.data.sector_classifier import run_sector_classification as _run_sc
+                        _sc_res = _run_sc(_dr_conn)
+                        if _sc_res.get("fetched") or _sc_res.get("classified") or _sc_res.get("aliased"):
+                            log.info("[OIOS] sector classification: %s", _sc_res)
+                    except Exception as _sc_exc:
+                        log.warning("[OIOS] sector classification failed (non-critical): %s", _sc_exc)
                 else:
                     log.info("[OIOS] universe_stocks empty — data refresh skipped.")
         except Exception as _oios_dr_exc:
@@ -5443,6 +5454,26 @@ class MasterOrchestrator:
         except Exception as _oios_scan_exc:
             log.warning("[OIOS] Signal scan failed (non-critical): %s", _oios_scan_exc)
 
+        # ── OIOS Layer 1.5 sector conviction (consensus / capital flow / theme phase) ──
+        # run_sector_conviction() was fully built but had no caller, so
+        # sector_conviction_daily and theme_phase_history were permanently empty and the
+        # Phase C readiness gates C-Ready-2/3 could never pass. Point-in-time backfill of
+        # the last 35 sessions runs once (skips dates already present) so the Theme Phase
+        # Engine's 30-row history guard is met; then one row per sector per day.
+        try:
+            from oios.db.connection import get_connection as _sc15_conn
+            from oios.data.sector_conviction_writer import (
+                backfill_sector_conviction as _sc15_backfill,
+                run_sector_conviction as _sc15_run,
+            )
+            with _sc15_conn() as _sc15:
+                _sc15_bf = _sc15_backfill(_sc15, _oios_scan_date, days=35)
+                _sc15_res = _sc15_run(_sc15, _oios_scan_date, _oios_regime)
+                log.info("[OIOS] sector conviction: backfilled_dates=%d sectors_today=%d",
+                         _sc15_bf.get("dates", 0), len(_sc15_res))
+        except Exception as _sc15_exc:
+            log.warning("[OIOS] sector conviction failed (non-critical): %s", _sc15_exc)
+
         # ── OIOS ELE (Edge Lifecycle Engine) daily cycle ──────────────────────
         # Root-cause fix: run_ele_daily() (oios/engine/ele.py) was fully built,
         # tested, and already computes RE score + conviction + drives the
@@ -5466,6 +5497,18 @@ class MasterOrchestrator:
                 except (OSError, ValueError):
                     _ele_last_advanced = None
             with _ele_get_conn() as _ele_conn:
+                # The MAS requires the trading calendar before any age/TTL math; it was
+                # never populated, so signal ages were always 0 and DISCOVERED expiries
+                # were a 999-day sentinel. Idempotent; repair only touches sentinel rows.
+                from oios.db.calendar import ensure_trading_calendar as _ele_cal
+                from oios.domain.opportunity_service import (
+                    repair_unset_discovered_expiry as _ele_repair_expiry,
+                )
+                _ele_cal_res = _ele_cal(_ele_conn)
+                _ele_fix = _ele_repair_expiry(_ele_conn)
+                if _ele_fix.get("repaired") or _ele_fix.get("skipped"):
+                    log.info("[OIOS][ELE] calendar=%s discovered-expiry repair=%s",
+                             _ele_cal_res, _ele_fix)
                 if _ele_last_advanced != _oios_scan_date:
                     # run_ele_daily() deliberately does NOT advance
                     # age_trading_days (its own docstring: "that is the

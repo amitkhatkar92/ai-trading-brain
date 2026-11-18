@@ -38,6 +38,7 @@ jobs:
             'data/rejection_attribution/*'
             'data/universe_selection_learning/*'
             'data/pipeline_health/*'
+            'data/sector_classification_cache.json'
             'data/option_research/*'
             # Narrower patterns for the NEW subdirectories added this
             # session under otherwise partially-tracked parents -- do NOT
