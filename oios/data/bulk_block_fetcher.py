@@ -19,10 +19,10 @@ have to insert only new records.
 
 from __future__ import annotations
 import csv
+import hashlib
 import io
 import logging
 import sqlite3
-import uuid
 
 log = logging.getLogger(__name__)
 
@@ -83,30 +83,42 @@ def _normalise_date(raw: str) -> str | None:
 
 def _parse_deals(content: str, deal_type: str, conn: sqlite3.Connection) -> list[tuple]:
     reader = csv.DictReader(io.StringIO(content))
+    sectors: dict[str, str | None] = {}
     rows = []
-    for rec in reader:
-        raw_date = rec.get("Date", rec.get("DATE", "")).strip()
-        trade_date = _normalise_date(raw_date)
+    for raw in reader:
+        # The real files put spaces around some headers/values and name the price column
+        # "Trade Price / Wght. Avg. Price" (with a dot); normalise before lookup.
+        rec = {str(k).strip().upper(): (v or "").strip() for k, v in raw.items() if k}
+        trade_date = _normalise_date(rec.get("DATE", ""))
         if not trade_date:
             continue
 
-        symbol_raw = rec.get("Symbol", rec.get("SYMBOL", "")).strip()
+        symbol_raw = rec.get("SYMBOL", "")
         symbol = symbol_raw + ".NS" if symbol_raw and not symbol_raw.endswith(".NS") else symbol_raw
+        if not symbol:
+            continue
 
-        client = rec.get("Client Name", rec.get("CLIENT NAME", "")).strip()
-        buy_sell = rec.get("Buy/Sell", rec.get("BUY/SELL", "")).strip().upper()
+        client = rec.get("CLIENT NAME", "")
+        buy_sell = rec.get("BUY/SELL", "").upper()
         buy_sell = "B" if buy_sell.startswith("B") else ("S" if buy_sell.startswith("S") else None)
 
+        price_key = next((k for k in rec if k.startswith("TRADE PRICE")), "PRICE")
         try:
-            qty   = float(str(rec.get("Quantity Traded", rec.get("QUANTITY", 0))).replace(",", "") or 0)
-            price = float(str(rec.get("Trade Price / Wght Avg Price", rec.get("PRICE", 0))).replace(",", "") or 0)
+            qty = float((rec.get("QUANTITY TRADED") or rec.get("QUANTITY") or "0").replace(",", "") or 0)
+            price = float((rec.get(price_key) or "0").replace(",", "") or 0)
         except ValueError:
             qty, price = 0.0, 0.0
 
-        sector = _get_sector(conn, symbol)
+        if symbol not in sectors:
+            sectors[symbol] = _get_sector(conn, symbol)
 
+        # Deterministic id from the deal's own fields, so re-fetching the same file (or
+        # the same day twice) is a no-op instead of inserting duplicates.
+        deal_id = hashlib.sha1(
+            f"{trade_date}|{symbol}|{deal_type}|{client}|{buy_sell}|{qty}|{price}".encode()
+        ).hexdigest()
         rows.append((
-            str(uuid.uuid4()),
+            deal_id,
             trade_date,
             symbol,
             deal_type,
@@ -114,7 +126,7 @@ def _parse_deals(content: str, deal_type: str, conn: sqlite3.Connection) -> list
             buy_sell,
             qty,
             price,
-            sector,
+            sectors[symbol],
             f"NSE_{deal_type}",
         ))
     return rows
@@ -142,8 +154,11 @@ def _fetch_csv(url: str) -> str | None:
 def run_bulk_block_fetch(conn: sqlite3.Connection) -> dict[str, int]:
     """
     Fetch and store bulk and block deal records.
-    Skips records already in the database (INSERT OR IGNORE on deal_id — UUIDs are per-insert,
-    so we use (symbol, trade_date, client_name, deal_type) to detect duplicates instead).
+
+    NSE's CSV holds only the most recent session (its historical API is blocked from this
+    environment), so a day that is never fetched cannot be recovered; the scheduled refresh
+    therefore runs it twice a day. Rows carry a deterministic id (see ``_parse_deals``), so
+    INSERT OR IGNORE makes repeated fetches of the same file safe.
     Returns {"bulk": n_inserted, "block": n_inserted}.
     """
     result = {"bulk": 0, "block": 0}
@@ -154,19 +169,14 @@ def run_bulk_block_fetch(conn: sqlite3.Connection) -> dict[str, int]:
             continue
 
         rows = _parse_deals(content, deal_type, conn)
-        # Dedup: only insert rows for dates we don't already have (coarse filter)
-        latest = _latest_date(conn, deal_type)
-        if latest:
-            rows = [r for r in rows if r[1] > latest]
-
         if not rows:
-            log.info("[BulkBlock] %s: no new records", deal_type)
+            log.info("[BulkBlock] %s: no records in file", deal_type)
             continue
 
         with conn:
             n = _insert_rows(conn, rows)
-        result[deal_type.lower()] = n
-        log.info("[BulkBlock] %s: inserted %d rows", deal_type, n)
+        result[deal_type.lower()] = max(0, n)
+        log.info("[BulkBlock] %s: inserted %d new of %d rows", deal_type, max(0, n), len(rows))
 
     return result
 

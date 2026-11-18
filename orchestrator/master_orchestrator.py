@@ -5167,6 +5167,24 @@ class MasterOrchestrator:
                         if not _has_bhav(_dr_conn, _bhav_td):
                             _bhav_rows += _run_bhav(_dr_conn, _bhav_td)
                     log.info("[OIOS] bhav_daily refresh: rows_inserted=%d", _bhav_rows)
+
+                    # Bulk/block deals and corporate announcements. Both tables
+                    # had no scheduled writer (events were only ever ingested by
+                    # tests), so every consumer and the mover cause attribution
+                    # read empty tables. NSE's bulk CSV holds only the latest
+                    # session, hence the twice-daily run; announcements are
+                    # re-fetched for the last 3 days and are idempotent.
+                    try:
+                        from oios.data.bulk_block_fetcher import run_bulk_block_fetch as _run_bulk
+                        from oios.data.corporate_announcement_fetcher import (
+                            run_announcement_fetch as _run_ann,
+                        )
+                        _bulk_res = _run_bulk(_dr_conn)
+                        _ann_res = _run_ann(_dr_conn)
+                        log.info("[OIOS] bulk/block deals: %s | announcements: %s",
+                                 _bulk_res, _ann_res)
+                    except Exception as _ev_exc:
+                        log.warning("[OIOS] event/deal refresh failed (non-critical): %s", _ev_exc)
                 else:
                     log.info("[OIOS] universe_stocks empty — data refresh skipped.")
         except Exception as _oios_dr_exc:

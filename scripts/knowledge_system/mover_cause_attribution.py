@@ -5,13 +5,16 @@ For every resolved full-universe cohort, each of the day's top gainers and loser
 observable drivers of its move, using only data the system holds: the opening gap,
 the intraday trend, the volume surge, the market move and the sector move.
 
-Company events and institutional flow are NOT inferred. Their tables
-(``daily_events``, ``bulk_block_deals``) are empty in production, so every mover
-carries ``event_cause = UNVERIFIED_NO_EVENT_DATA`` and the summary reports the row
-counts, so the gap stays visible instead of being papered over.
+Company events and bulk/block deals come from ``daily_events`` and ``bulk_block_deals``
+(NSE announcements and the daily deal files, loaded by the OIOS data refresh). Where those
+tables hold no data for the window, the mover says so explicitly
+(``UNVERIFIED_NO_EVENT_DATA`` / ``UNVERIFIED_NO_DEAL_DATA``) instead of implying "no news";
+where they do, a mover with nothing in the window is ``NO_MATERIAL_EVENT``. Only filings
+made between the prior session's close and the outcome session's close count, and a filing
+public before the 09:15 open is flagged ``PRE_OPEN_EVENT``: visible the evening before.
 
-The tags also say where in the day a move first becomes observable (the 09:15 gap,
-or intraday), which shows how much of the movement an evening pool can ever see.
+The tags also say where in the day a move first becomes observable (a pre-open filing, the
+09:15 gap, or intraday), which shows how much of the movement an evening pool can ever see.
 Research only: nothing here is read by a trading or risk gate.
 """
 from __future__ import annotations
@@ -45,7 +48,15 @@ MAX_ATTRIBUTE_DATES = 10
 TOP_N = 20
 
 EVENT_CAUSE_UNVERIFIED = "UNVERIFIED_NO_EVENT_DATA"
-TAGS = ("OPENING_GAP", "INTRADAY_TREND", "VOLUME_SURGE", "MARKET_LED", "SECTOR_LED", "STOCK_SPECIFIC")
+EVENT_CAUSE_NONE = "NO_MATERIAL_EVENT"
+DEAL_CAUSE_UNVERIFIED = "UNVERIFIED_NO_DEAL_DATA"
+DEAL_CAUSE_NONE = "NO_BULK_BLOCK_DEAL"
+TAGS = ("OPENING_GAP", "INTRADAY_TREND", "VOLUME_SURGE", "MARKET_LED", "SECTOR_LED",
+        "STOCK_SPECIFIC", "EVENT_ANNOUNCED", "BULK_BLOCK_DEAL")
+OBSERVABLE_KEYS = ("PRE_OPEN_EVENT", "OPEN_0915", "INTRADAY", "UNCLEAR")
+# A move is attributed to news filed between the prior session's close and this one's.
+SESSION_CLOSE_TIME = "15:30:00"
+SESSION_OPEN_TIME = "09:15:00"
 
 
 def classify_mover(
@@ -89,7 +100,81 @@ def classify_mover(
         "market_ret_pct": None if market_ret_pct is None else round(market_ret_pct, 4),
         "sector_median_ret_pct": None if sector_median_ret_pct is None else round(sector_median_ret_pct, 4),
         "sector_peers": sector_peers, "event_cause": EVENT_CAUSE_UNVERIFIED,
+        "bulk_block_cause": DEAL_CAUSE_UNVERIFIED, "events": [],
     }
+
+
+def apply_event_context(
+    tagged: dict[str, Any], events: list[dict[str, Any]], events_covered: bool,
+    deals: list[dict[str, Any]], deals_covered: bool, outcome_date: str,
+) -> dict[str, Any]:
+    """Add announcement and bulk/block-deal evidence to a tagged mover. Pure.
+
+    ``events`` are material filings already restricted to the attribution window.
+    ``*_covered`` says whether the underlying table holds data for that window at all, so
+    a mover with no events is only called ``NO_MATERIAL_EVENT`` when absence is checkable.
+    """
+    tags = list(tagged["tags"])
+    out = dict(tagged)
+    if events:
+        tags.append("EVENT_ANNOUNCED")
+        categories = sorted({e["category"] for e in events})
+        out["event_cause"] = "EVENT:" + "; ".join(categories)[:200]
+        out["events"] = [{k: e.get(k) for k in ("category", "event_type", "direction", "announced_at")}
+                         for e in events[:5]]
+        if any(e["announced_at"] < f"{outcome_date}T{SESSION_OPEN_TIME}" for e in events):
+            out["observable_at"] = "PRE_OPEN_EVENT"
+    else:
+        out["event_cause"] = EVENT_CAUSE_NONE if events_covered else EVENT_CAUSE_UNVERIFIED
+    if deals:
+        tags.append("BULK_BLOCK_DEAL")
+        buy = sum(d["quantity"] for d in deals if d["buy_sell"] == "B")
+        sell = sum(d["quantity"] for d in deals if d["buy_sell"] == "S")
+        net = "NET_BUY" if buy > sell else ("NET_SELL" if sell > buy else "BALANCED")
+        out["bulk_block_cause"] = f"{len(deals)} deal(s) {net}"
+    else:
+        out["bulk_block_cause"] = DEAL_CAUSE_NONE if deals_covered else DEAL_CAUSE_UNVERIFIED
+    out["tags"] = tags
+    return out
+
+
+def _load_event_context(
+    conn: sqlite3.Connection, symbols: list[str], trade_date: str, outcome_date: str,
+) -> dict[str, Any]:
+    """Events filed in (prior close, outcome close] and deals on the outcome date, by symbol."""
+    window_start = f"{trade_date}T{SESSION_CLOSE_TIME}"
+    window_end = f"{outcome_date}T{SESSION_CLOSE_TIME}"
+    context: dict[str, Any] = {"events": {}, "deals": {}, "events_in_window": 0,
+                               "deals_on_outcome_date": 0}
+    try:
+        for symbol, event_type, direction, raw in conn.execute(
+            "SELECT symbol, event_type, direction, raw_data FROM daily_events "
+            "WHERE event_date >= ? AND event_date <= ?", (trade_date, outcome_date)
+        ):
+            try:
+                detail = json.loads(raw) if raw else {}
+            except (TypeError, json.JSONDecodeError):
+                detail = {}
+            announced = detail.get("announced_at")
+            if not announced or not (window_start < announced <= window_end):
+                continue
+            context["events_in_window"] += 1
+            context["events"].setdefault(symbol, []).append({
+                "category": detail.get("category") or event_type, "event_type": event_type,
+                "direction": direction, "announced_at": announced})
+    except sqlite3.Error:
+        log.debug("[CauseAttribution] daily_events unavailable", exc_info=True)
+    try:
+        for symbol, buy_sell, quantity in conn.execute(
+            "SELECT symbol, buy_sell, quantity FROM bulk_block_deals WHERE trade_date = ?",
+            (outcome_date,)
+        ):
+            context["deals_on_outcome_date"] += 1
+            context["deals"].setdefault(symbol, []).append(
+                {"buy_sell": buy_sell, "quantity": float(quantity or 0)})
+    except sqlite3.Error:
+        log.debug("[CauseAttribution] bulk_block_deals unavailable", exc_info=True)
+    return context
 
 
 def _sector_map() -> dict[str, str]:
@@ -173,6 +258,9 @@ def attribute_report(conn: sqlite3.Connection, report: dict[str, Any],
     medians = _median_volumes(
         conn, sorted({c["symbol"] for cs in cards.values() for c in cs}
                      | {s for ss in total_ranked.values() for s in ss}), outcome_date)
+    context = _load_event_context(conn, universe, trade_date, outcome_date)
+    events_covered = context["events_in_window"] > 0
+    deals_covered = context["deals_on_outcome_date"] > 0
 
     def tag_symbol(direction: str, symbol: str) -> dict[str, Any] | None:
         prev, cur = previous.get(symbol), current.get(symbol)
@@ -180,9 +268,12 @@ def attribute_report(conn: sqlite3.Connection, report: dict[str, Any],
             return None
         sector = sectors.get(symbol.removesuffix(".NS"))
         peers = [m for s, m in by_sector.get(sector, []) if s != symbol] if sector else []
-        return {"symbol": symbol, "sector": sector, **classify_mover(
+        tagged = {"symbol": symbol, "sector": sector, **classify_mover(
             direction, prev[1], cur[0], cur[1], cur[2], medians.get(symbol),
             market_ret, statistics.median(peers) if peers else None, len(peers))}
+        return apply_event_context(
+            tagged, context["events"].get(symbol, []), events_covered,
+            context["deals"].get(symbol, []), deals_covered, outcome_date)
 
     directions: dict[str, Any] = {}
     for direction in ("UP", "DOWN"):
@@ -207,6 +298,8 @@ def attribute_report(conn: sqlite3.Connection, report: dict[str, Any],
         "market_ret_pct": None if market_ret is None else round(market_ret, 4),
         "event_data_rows": {"daily_events": _table_rows(conn, "daily_events"),
                             "bulk_block_deals": _table_rows(conn, "bulk_block_deals")},
+        "event_coverage": {"events_in_window": context["events_in_window"],
+                           "deals_on_outcome_date": context["deals_on_outcome_date"]},
         "directions": directions, "research_only": True,
         "generated_at": datetime.now(timezone(timedelta(hours=5, minutes=30))).isoformat(),
     }
@@ -261,12 +354,15 @@ def get_cause_summary(store: Path | None = None) -> dict[str, Any]:
         return out
     latest_events = days[-1].get("event_data_rows", {})
     out["event_data_rows"] = latest_events
-    out["event_causes_verifiable"] = any(latest_events.values())
+    coverage = days[-1].get("event_coverage", {})
+    out["event_coverage_latest_day"] = coverage
+    out["event_causes_verifiable"] = bool(coverage.get("events_in_window"))
+    out["bulk_block_causes_verifiable"] = bool(coverage.get("deals_on_outcome_date"))
+
     def block(movers: list[dict[str, Any]]) -> dict[str, Any]:
         total = len(movers)
         counts = {tag: sum(tag in m["tags"] for m in movers) for tag in TAGS}
-        observable = {key: sum(m["observable_at"] == key for m in movers)
-                      for key in ("OPEN_0915", "INTRADAY", "UNCLEAR")}
+        observable = {key: sum(m["observable_at"] == key for m in movers) for key in OBSERVABLE_KEYS}
         in_pool = sum(1 for m in movers if m.get("in_baseline20"))
         return {
             "movers": total,

@@ -194,3 +194,82 @@ def test_eod_runs_attribution_right_after_universe_learning():
     learning = source.index("run_universe_learning()")
     attribution = source.index("run_mover_cause_attribution()")
     assert 0 < attribution - learning < 1500
+
+
+def _tagged(**over):
+    base = {"symbol": "X.NS", "tags": ["INTRADAY_TREND", "STOCK_SPECIFIC"], "observable_at": "INTRADAY"}
+    return {**base, **over}
+
+
+def _event(category="Bagging/Receiving of orders/contracts", at="2026-11-10T18:00:00"):
+    return {"category": category, "event_type": "ORDER_WIN", "direction": "POSITIVE", "announced_at": at}
+
+
+def test_event_context_adds_tag_cause_and_pre_open_visibility():
+    out = cause.apply_event_context(_tagged(), [_event()], True, [], True, "2026-11-11")
+    assert "EVENT_ANNOUNCED" in out["tags"] and out["event_cause"].startswith("EVENT:Bagging")
+    assert out["observable_at"] == "PRE_OPEN_EVENT" and out["events"][0]["direction"] == "POSITIVE"
+    intraday = cause.apply_event_context(_tagged(), [_event(at="2026-11-11T11:00:00")], True, [], True, "2026-11-11")
+    assert "EVENT_ANNOUNCED" in intraday["tags"] and intraday["observable_at"] == "INTRADAY"
+
+
+def test_missing_data_is_never_reported_as_no_news():
+    assert cause.apply_event_context(_tagged(), [], True, [], True, "2026-11-11")["event_cause"] == cause.EVENT_CAUSE_NONE
+    unverified = cause.apply_event_context(_tagged(), [], False, [], False, "2026-11-11")
+    assert unverified["event_cause"] == cause.EVENT_CAUSE_UNVERIFIED
+    assert unverified["bulk_block_cause"] == cause.DEAL_CAUSE_UNVERIFIED
+    assert "EVENT_ANNOUNCED" not in unverified["tags"] and "BULK_BLOCK_DEAL" not in unverified["tags"]
+
+
+def test_deal_context_summarises_net_direction():
+    deals = [{"buy_sell": "B", "quantity": 100.0}, {"buy_sell": "S", "quantity": 400.0}]
+    out = cause.apply_event_context(_tagged(), [], True, deals, True, "2026-11-11")
+    assert "BULK_BLOCK_DEAL" in out["tags"] and out["bulk_block_cause"] == "2 deal(s) NET_SELL"
+
+
+def _with_event_tables(db):
+    conn = sqlite3.connect(db)
+    for table in ("daily_events", "bulk_block_deals"):
+        conn.execute(f"DROP TABLE {table}")
+    conn.execute("CREATE TABLE daily_events (symbol TEXT, event_date TEXT, event_type TEXT, direction TEXT, raw_data TEXT)")
+    conn.execute("CREATE TABLE bulk_block_deals (symbol TEXT, trade_date TEXT, buy_sell TEXT, quantity REAL)")
+
+    def event(symbol, day, at, category="Acquisition"):
+        conn.execute("INSERT INTO daily_events VALUES (?,?,?,?,?)", (
+            symbol, day, "OTHER", "NEUTRAL", json.dumps({"announced_at": at, "category": category})))
+    event("GAPPER.NS", "2026-11-10", "2026-11-10T18:00:00", "Bagging/Receiving of orders/contracts")  # after T close
+    event("TRENDER.NS", "2026-11-11", "2026-11-11T11:00:00")                                          # intraday
+    event("LONER.NS", "2026-11-10", "2026-11-10T14:00:00")                                            # before T close
+    event("LONER.NS", "2026-11-11", "2026-11-11T16:00:00")                                            # after outcome close
+    conn.execute("INSERT INTO bulk_block_deals VALUES ('LONER.NS','2026-11-11','B',5000)")
+    conn.commit()
+    conn.close()
+
+
+def test_attribution_links_only_in_window_events_and_same_day_deals(setup):
+    db, store = setup
+    _with_event_tables(db)
+    with patch.object(cause, "_sector_map", return_value=SECTORS):
+        cause.run_mover_cause_attribution(db, store)
+    result = json.loads((store / "causes" / "2026-11-10.json").read_text())
+    movers = {m["symbol"]: m for m in result["directions"]["UP"]["movers"]}
+    assert movers["GAPPER.NS"]["event_cause"].startswith("EVENT:Bagging")
+    assert movers["GAPPER.NS"]["observable_at"] == "PRE_OPEN_EVENT"
+    assert "EVENT_ANNOUNCED" in movers["TRENDER.NS"]["tags"] and movers["TRENDER.NS"]["observable_at"] == "INTRADAY"
+    loner = movers["LONER.NS"]                      # both of its filings fall outside the window
+    assert loner["event_cause"] == cause.EVENT_CAUSE_NONE and "EVENT_ANNOUNCED" not in loner["tags"]
+    assert "BULK_BLOCK_DEAL" in loner["tags"] and loner["bulk_block_cause"] == "1 deal(s) NET_BUY"
+    assert result["event_coverage"] == {"events_in_window": 2, "deals_on_outcome_date": 1}
+    summary = cause.get_cause_summary(store)
+    assert summary["event_causes_verifiable"] and summary["bulk_block_causes_verifiable"]
+    assert summary["directions"]["UP"]["intraday_ranked"]["observable_at_share"]["PRE_OPEN_EVENT"] == pytest.approx(1 / 3, abs=0.001)
+
+
+def test_attribution_with_empty_event_tables_stays_unverified(setup):
+    db, store = setup
+    with patch.object(cause, "_sector_map", return_value=SECTORS):
+        cause.run_mover_cause_attribution(db, store)
+    movers = json.loads((store / "causes" / "2026-11-10.json").read_text())["directions"]["UP"]["movers"]
+    assert {m["event_cause"] for m in movers} == {cause.EVENT_CAUSE_UNVERIFIED}
+    assert {m["bulk_block_cause"] for m in movers} == {cause.DEAL_CAUSE_UNVERIFIED}
+    assert cause.get_cause_summary(store)["event_causes_verifiable"] is False

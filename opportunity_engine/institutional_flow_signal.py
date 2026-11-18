@@ -60,13 +60,20 @@ def _strip_suffix(symbol: str) -> str:
     return symbol[:-3] if symbol.endswith(".NS") else symbol
 
 
+def _symbol_forms(symbol: str) -> tuple[str, str]:
+    """OIOS tables store Yahoo-style ``X.NS`` symbols, while callers pass bare ``X``;
+    match either form so a populated table is never silently invisible."""
+    bare = _strip_suffix(symbol)
+    return bare, bare + ".NS"
+
+
 def _bulk_signal(conn, symbol: str) -> Optional[float]:
     cutoff = (date.today() - timedelta(days=BULK_LOOKBACK_DAYS)).isoformat()
     try:
         rows = conn.execute(
             "SELECT buy_sell, quantity FROM bulk_block_deals "
-            "WHERE symbol = ? AND trade_date >= ?",
-            (symbol, cutoff),
+            "WHERE symbol IN (?, ?) AND trade_date >= ?",
+            (*_symbol_forms(symbol), cutoff),
         ).fetchall()
     except Exception as exc:
         log.debug("[InstitutionalFlow] bulk_block_deals query failed for %s: %s", symbol, exc)
@@ -93,13 +100,13 @@ def _delivery_signal(conn, symbol: str) -> Optional[float]:
     try:
         recent_rows = conn.execute(
             "SELECT delivery_pct FROM bhav_daily "
-            "WHERE symbol = ? AND trade_date >= ? AND delivery_pct IS NOT NULL",
-            (symbol, recent_cutoff),
+            "WHERE symbol IN (?, ?) AND trade_date >= ? AND delivery_pct IS NOT NULL",
+            (*_symbol_forms(symbol), recent_cutoff),
         ).fetchall()
         baseline_rows = conn.execute(
             "SELECT delivery_pct FROM bhav_daily "
-            "WHERE symbol = ? AND trade_date >= ? AND trade_date < ? AND delivery_pct IS NOT NULL",
-            (symbol, baseline_cutoff, recent_cutoff),
+            "WHERE symbol IN (?, ?) AND trade_date >= ? AND trade_date < ? AND delivery_pct IS NOT NULL",
+            (*_symbol_forms(symbol), baseline_cutoff, recent_cutoff),
         ).fetchall()
     except Exception as exc:
         log.debug("[InstitutionalFlow] bhav_daily query failed for %s: %s", symbol, exc)

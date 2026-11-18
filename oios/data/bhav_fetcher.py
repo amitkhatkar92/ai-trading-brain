@@ -9,12 +9,17 @@ the Layer 1B "Delivery Expansion" archetype (Phase B).
 We store this data from Day 1 so history accumulates even before Layer 1B
 is implemented. Missing one day of BHAV data cannot be back-filled from yfinance.
 
-NSE BHAV URL pattern (CM segment):
-  https://archives.nseindia.com/products/content/sec_bhavdata_full_{DDMONYYYY}.csv
-  Example: sec_bhavdata_full_16JUN2026.csv
+NSE BHAV URL pattern (CM segment), verified against the live archive:
+  https://archives.nseindia.com/products/content/sec_bhavdata_full_{DDMMYYYY}.csv
+  Example: sec_bhavdata_full_17112026.csv
+  (An earlier DDMONYYYY template returned 404 for every date, so no row was ever stored.)
+
+The real file has a space after every comma in its header (" SERIES", " DELIV_PER"), values
+carry leading spaces, traded quantity is TTL_TRD_QNTY, and DELIV_PER is "-" when NSE
+publishes no delivery data. Keys and values are normalised before use.
 
 Fields used:
-  SYMBOL, SERIES, DELIV_QTY, DELIV_PER, TRDQTY
+  SYMBOL, SERIES, DELIV_QTY, DELIV_PER, TTL_TRD_QNTY
 
 On any network failure, the fetch is logged and skipped — no exception propagates.
 """
@@ -30,21 +35,13 @@ log = logging.getLogger(__name__)
 
 # NSE BHAV URL template
 _BHAV_URL = (
-    "https://archives.nseindia.com/products/content/sec_bhavdata_full_{ddmonyyyy}.csv"
+    "https://archives.nseindia.com/products/content/sec_bhavdata_full_{ddmmyyyy}.csv"
 )
-
-_MONTH_MAP = {
-    1: "JAN", 2: "FEB",  3: "MAR",  4: "APR",
-    5: "MAY", 6: "JUN",  7: "JUL",  8: "AUG",
-    9: "SEP", 10: "OCT", 11: "NOV", 12: "DEC",
-}
 
 
 def _bhav_url(trade_date: str) -> str:
     d = date.fromisoformat(trade_date)
-    return _BHAV_URL.format(
-        ddmonyyyy=f"{d.day:02d}{_MONTH_MAP[d.month]}{d.year}"
-    )
+    return _BHAV_URL.format(ddmmyyyy=f"{d.day:02d}{d.month:02d}{d.year}")
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +72,38 @@ def has_bhav_for_date(conn: sqlite3.Connection, trade_date: str) -> bool:
 # Fetch + parse
 # ---------------------------------------------------------------------------
 
+def parse_bhav_csv(content: str, trade_date: str) -> list[tuple]:
+    """Parse a BHAV CSV body into (symbol, date, series, traded, deliverable, pct, source)."""
+    import csv
+    reader = csv.DictReader(io.StringIO(content))
+    rows = []
+    for raw in reader:
+        rec = {str(k).strip().upper(): (v or "").strip() for k, v in raw.items() if k}
+        symbol = rec.get("SYMBOL", "")
+        series = rec.get("SERIES", "")
+        if not symbol or series not in ("EQ", "BE", "BL", "MF"):
+            continue
+        try:
+            traded_qty = float(rec.get("TTL_TRD_QNTY") or rec.get("TRDQTY") or 0)
+        except ValueError:
+            continue
+        # NSE writes "-" in both delivery columns when it publishes no delivery figure;
+        # keep the row (its traded volume is real) with the delivery fields empty.
+        try:
+            deliverable = float(rec["DELIV_QTY"]) if rec.get("DELIV_QTY") else None
+        except ValueError:
+            deliverable = None
+        try:
+            delivery_pct = float(rec["DELIV_PER"]) / 100.0 if rec.get("DELIV_PER") else None
+        except ValueError:
+            delivery_pct = None
+        rows.append((
+            symbol + ".NS",   # normalise to Yahoo Finance format
+            trade_date, series, traded_qty, deliverable, delivery_pct, "NSE_BHAV",
+        ))
+    return rows
+
+
 def fetch_bhav(trade_date: str) -> list[tuple]:
     """
     Download and parse NSE BHAV copy for trade_date.
@@ -94,30 +123,7 @@ def fetch_bhav(trade_date: str) -> list[tuple]:
         return []
 
     try:
-        import csv
-        reader = csv.DictReader(io.StringIO(content))
-        rows = []
-        for rec in reader:
-            symbol = rec.get("SYMBOL", "").strip()
-            series = rec.get("SERIES", "").strip()
-            if not symbol or series not in ("EQ", "BE", "BL", "MF"):
-                continue
-            try:
-                traded_qty    = float(rec.get("TRDQTY", 0) or 0)
-                deliverable   = float(rec.get("DELIV_QTY", 0) or 0)
-                delivery_pct_raw = rec.get("DELIV_PER", "").strip()
-                delivery_pct  = float(delivery_pct_raw) / 100.0 if delivery_pct_raw else None
-                rows.append((
-                    symbol + ".NS",   # normalise to Yahoo Finance format
-                    trade_date,
-                    series,
-                    traded_qty,
-                    deliverable,
-                    delivery_pct,
-                    "NSE_BHAV",
-                ))
-            except (ValueError, TypeError) as exc:
-                log.debug("[BHAV] Parse error on row %s: %s", rec, exc)
+        rows = parse_bhav_csv(content, trade_date)
         log.info("[BHAV] Parsed %d rows for %s", len(rows), trade_date)
         return rows
     except Exception as exc:

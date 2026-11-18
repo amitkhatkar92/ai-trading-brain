@@ -95,11 +95,34 @@ The system never trades blindly: every signal must survive regime detection, bac
   surge, market-led, sector-led, otherwise stock-specific) and by when the move
   first becomes visible. It ranks twice: by open-to-close return (the pools' own
   measure, which can never contain gap-driven names) and by the full day move.
-  Company events and institutional flow are not inferred: their tables
-  (`daily_events`, `bulk_block_deals`) are empty in production, so every mover is
-  marked `UNVERIFIED_NO_EVENT_DATA` and the roll-up reports the empty tables.
+  Company announcements and bulk/block deals come from `daily_events` and
+  `bulk_block_deals`: a mover carries the material filings made between the prior
+  close and the outcome close (`EVENT_ANNOUNCED`, or `PRE_OPEN_EVENT` when public
+  before the 09:15 open, i.e. visible the evening before) and any deal on the
+  outcome date. Where a table has no data for the window the mover says
+  `UNVERIFIED_NO_EVENT_DATA` / `UNVERIFIED_NO_DEAL_DATA`, never "no news".
   Output stays under `data/universe_selection_learning/causes/`; nothing in
   trading or risk reads it.
+- Event and flow data loaders: `daily_events`, `bhav_daily` and `bulk_block_deals`
+  were all empty in production, each for its own reason. Events had no writer at
+  all (`ingest_event` was only called from tests). Bhav requested a URL that
+  returns 404 (`DDMONYYYY`; the archive uses `DDMMYYYY`) and, even with the right
+  URL, would have dropped every row (real headers have a space after each comma,
+  traded quantity is `TTL_TRD_QNTY`, `-` means no delivery figure). Bulk/block was
+  never scheduled, read the price under the wrong header (stored 0.0), and used a
+  random id so its dedup never worked. The flow signal also queried bare symbols
+  while both tables store `X.NS`, so a populated table would still have matched
+  nothing. Now: `oios.data.corporate_announcement_fetcher` (NSE announcements API,
+  fixed category lookup, routine filings and move-triggered exchange queries
+  skipped, deterministic ids), the repaired bhav and bulk/block loaders, all run
+  from the existing OIOS refresh at 08:03 and 16:47 (NSE's bulk file holds only
+  the latest session, so it is fetched twice a day; its history API is blocked),
+  and `check_event_data` in the pipeline health monitor warns when any of the
+  three tables misses the last published session. This activates the dormant
+  institutional-flow path: `institutional_flow_signal` now returns real values,
+  which feed its existing evidence log and the bounded (+/-0.05),
+  validation-gated KDA nudge; it changes nothing until that refinement engine
+  validates the signal on real outcomes.
 - Pipeline health: most breaks above were silent for weeks.
   `analysis.pipeline_health_monitor` runs at the end of the 16:45 post-market
   scan (and the 08:00 pre-market re-run) and checks: active-universe coverage of

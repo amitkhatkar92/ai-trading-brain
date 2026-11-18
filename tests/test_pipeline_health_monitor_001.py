@@ -249,7 +249,7 @@ def test_one_failing_check_does_not_stop_the_others(tmp_path):
         summary = health.run_pipeline_health_check(ctx=_ctx(tmp_path), notifier=MagicMock())
     by_name = {r["name"]: r for r in summary["results"]}
     assert by_name["order_gates"]["status"] == "ERROR"
-    assert len(summary["results"]) == 6
+    assert len(summary["results"]) == 7
     assert "order_gates" in summary["issues"]
 
 

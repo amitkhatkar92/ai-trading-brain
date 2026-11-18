@@ -18,6 +18,7 @@ import json
 import os
 import sqlite3
 from collections import Counter
+from contextlib import closing
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta, timezone
 from pathlib import Path
@@ -259,6 +260,55 @@ def check_exit_prices(ctx: HealthContext) -> Dict[str, Any]:
     return _result("exit_prices", OK, f"{checked} recent exit(s) within the market's range")
 
 
+def published_session(now: datetime) -> date:
+    """Latest trading session whose end-of-day files (bhav copy, bulk/block deals) NSE has
+    published: they appear in the evening, so a session counts once 21:00 IST has passed."""
+    day = now.date()
+    while True:
+        if _trading_day(day) and now >= datetime.combine(day, time(21, 0), tzinfo=IST):
+            return day
+        day -= timedelta(days=1)
+
+
+def check_event_data(ctx: HealthContext) -> Dict[str, Any]:
+    """Are announcements, bhav copies and bulk/block deals actually being stored?
+
+    These tables sat empty because their loaders were never wired or were broken
+    (wrong URL, unparsable headers), with no signal anywhere. Absence is the failure here.
+    """
+    if not os.path.exists(ctx.market_db):
+        return _result("event_data", INFO, "market database not present")
+    announced = expected_session(ctx.now).isoformat()
+    published = published_session(ctx.now).isoformat()
+    try:
+        with closing(_readonly(ctx.market_db)) as conn:
+            counts = {
+                "announcements": conn.execute(
+                    "SELECT COUNT(*) FROM daily_events WHERE event_date = ?", (announced,)
+                ).fetchone()[0],
+                "bhav_rows": conn.execute(
+                    "SELECT COUNT(*) FROM bhav_daily WHERE trade_date = ?", (published,)
+                ).fetchone()[0],
+                "bulk_block_deals": conn.execute(
+                    "SELECT COUNT(*) FROM bulk_block_deals WHERE trade_date = ?", (published,)
+                ).fetchone()[0],
+            }
+    except sqlite3.Error as exc:
+        return _result("event_data", ERROR, f"could not read event tables: {exc}")
+    missing = []
+    if not counts["announcements"]:
+        missing.append(f"no announcements stored for {announced}")
+    if not counts["bhav_rows"]:
+        missing.append(f"no bhav copy stored for {published}")
+    if not counts["bulk_block_deals"]:
+        missing.append(f"no bulk/block deals stored for {published}")
+    if missing:
+        return _result("event_data", WARN, "; ".join(missing), **counts)
+    return _result("event_data", OK, (
+        f"{counts['announcements']} announcements ({announced}), {counts['bhav_rows']} bhav rows "
+        f"and {counts['bulk_block_deals']} bulk/block deals ({published})"), **counts)
+
+
 def check_stores(ctx: HealthContext) -> Dict[str, Any]:
     """Has EOD completed for the last session, and are the evidence files still growing?"""
     session = expected_session(ctx.now).isoformat()
@@ -380,6 +430,7 @@ def run_pipeline_health_check(
                             ("order_gates", check_order_gates),
                             ("price_bands", check_price_bands),
                             ("exit_prices", check_exit_prices),
+                            ("event_data", check_event_data),
                             ("learning_stores", check_stores)):
             results.append(_safe(name, lambda check=check: check(ctx)))
 
