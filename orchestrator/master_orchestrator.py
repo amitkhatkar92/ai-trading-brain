@@ -5418,6 +5418,13 @@ class MasterOrchestrator:
                         "SELECT symbol FROM universe_stocks WHERE is_active=1"
                     ).fetchall()
                 ]
+                try:
+                    from oios.engine.archetype_registry import seed_archetype_versions as _oios_seed_av
+                    _oios_av = _oios_seed_av(_oios_conn, _oios_scan_date)
+                    if _oios_av:
+                        log.info("[OIOS] archetype_versions seeded: %d", _oios_av)
+                except Exception as _oios_av_exc:
+                    log.warning("[OIOS] archetype_versions seed failed (non-critical): %s", _oios_av_exc)
                 if _oios_symbols:
                     _oios_sector_map = dict(
                         _oios_conn.execute(
@@ -5525,6 +5532,14 @@ class MasterOrchestrator:
                     with open(_ele_state_path, "w", encoding="utf-8") as _ele_f:
                         _ele_json.dump({"last_advanced_date": _oios_scan_date}, _ele_f)
                 _ele_result = _ele_run_daily(_ele_conn, _oios_scan_date, _oios_regime)
+                # MAS Table 7 nightly retroactive job: later prices / excursions / counterfactual class
+                try:
+                    from oios.engine.counterfactual_engine import run_nightly_retroactive_job as _ele_retro
+                    _ele_dl = _ele_retro(_ele_conn, _oios_scan_date)
+                    _ele_conn.commit()
+                    log.info("[OIOS][decision_log] retroactive job: %s", _ele_dl)
+                except Exception as _ele_dl_exc:
+                    log.warning("[OIOS][decision_log] retroactive job failed (non-critical): %s", _ele_dl_exc)
                 log.info(
                     "[OIOS][ELE] processed=%d activated=%d watching=%d invalidated=%d audit=%d",
                     _ele_result.opps_processed, _ele_result.opps_activated,
@@ -5563,6 +5578,39 @@ class MasterOrchestrator:
             _sor_cnt = self._oios_fail_counts.get("signal_outcome_resolver", 0) + 1
             self._oios_fail_counts["signal_outcome_resolver"] = _sor_cnt
 
+        # ── OIOS Phase E1 shadow engines + weekly Layer 4/6 analytics ─────────
+        # cause_intelligence, propagation_engine, shadow_scorer, outcome_distributor and
+        # adaptive_intelligence were fully built and tested but had no caller, so their
+        # tables stayed empty. Their inputs (daily_events, signal outcomes, conviction)
+        # now exist. All are shadow-only by contract: they write only their own tables
+        # (cause_scores, propagation_*, shadow_cause_outcomes, archetype_outcome_distributions,
+        # pending_adjustments) and never touch opportunities' scores, state, execution or risk.
+        # Proposals in pending_adjustments stay PENDING for human approval (MAS governance).
+        try:
+            from oios.db.connection import get_connection as _e1_get_conn
+            from oios.engine.cause_intelligence import run_cause_cycle as _e1_cause
+            from oios.engine.propagation_engine import run_propagation_cycle as _e1_prop
+            from oios.engine.shadow_scorer import run_shadow_scoring_cycle as _e1_shadow
+            with _e1_get_conn() as _e1:
+                _e1_c = _e1_cause(_e1, _oios_scan_date)
+                _e1_p = _e1_prop(_e1, _oios_scan_date)
+                _e1_s = _e1_shadow(_e1, _oios_scan_date)
+                _e1.commit()
+                log.info("[OIOS][E1] causes=%s propagation=%s shadow=%s", _e1_c, _e1_p, _e1_s)
+                _e1_dist_empty = _e1.execute(
+                    "SELECT COUNT(*) FROM archetype_outcome_distributions").fetchone()[0] == 0
+                if _e1_dist_empty or _oios_date.fromisoformat(_oios_scan_date).weekday() == 4:
+                    from oios.engine.outcome_distributor import run_weekly_distribution_update as _e1_dist
+                    from oios.engine.adaptive_intelligence import run_adaptive_cycle as _e1_adapt
+                    _e1_d = _e1_dist(_e1, _oios_scan_date)
+                    _e1_a = _e1_adapt(_e1, _oios_scan_date)
+                    _e1.commit()
+                    log.info("[OIOS][L4/L6] distributions_updated=%s adaptive=%s", _e1_d, _e1_a)
+            self._oios_fail_counts["e1_shadow_cycle"] = 0
+        except Exception as _e1_exc:
+            log.warning("[OIOS][E1] shadow cycle failed (non-critical): %s", _e1_exc)
+            self._oios_fail_counts["e1_shadow_cycle"] = self._oios_fail_counts.get("e1_shadow_cycle", 0) + 1
+
         # ── Mover Discovery V3 — read-only shadow (observation layer) ─────────
         # Runs AFTER existing Phase D scanner and OIOS refresh complete.
         # NEVER modifies CandidateStore, DecisionEngine, RiskControl, or
@@ -5593,6 +5641,16 @@ class MasterOrchestrator:
             log.warning(
                 "[V3Shadow] Phase D shadow failed — production unaffected: %s", _v3_exc
             )
+
+        # NSE publishes next year's trading holidays late in the year; pick them up
+        # automatically (no-op until October, and once the next year is covered).
+        try:
+            from data_integrity.nse_holiday_sync import sync_nse_holidays
+            _nh = sync_nse_holidays()
+            if _nh.get("status") not in ("NOT_NEEDED", "NOTHING_NEW"):
+                log.info("[NSEHolidays] %s", _nh)
+        except Exception as _nh_exc:
+            log.warning("[NSEHolidays] sync failed (non-critical): %s", _nh_exc)
 
         # Pipeline health: detect silently broken data/learning links, repair
         # missing price bars, alert on change. Runs after the OHLCV refresh and
@@ -6281,6 +6339,13 @@ class MasterOrchestrator:
                 record_sizing_outcome(strategy, perf_weight=_pw, r_multiple=r_multiple, won=won)
             except Exception as _sbre_exc:
                 log.debug("[SizingBoundsRE] record error (non-critical): %s", _sbre_exc)
+            # Symbol follow-through (best/worst excursion while held) -- only for trades
+            # whose price extremes TradeMonitor actually tracked.
+            try:
+                from learning_system.sft_ingest import record_trade_excursion
+                record_trade_excursion(trade)
+            except Exception as _sft_exc:
+                log.debug("[SFT] record error (non-critical): %s", _sft_exc)
             # ── Q3: Regime → Strategy best-fit map ─────────────────────
             if regime and regime != "unknown":
                 self.regime_strategy_map.record(regime, strategy, pnl_r=r_multiple)

@@ -89,6 +89,50 @@ def test_missing_or_corrupt_journal_is_harmless(tmp_path, tracker):
     assert collector.ingest_from_live_journal(str(bad), tracker)["new"] == 1
 
 
+def test_repair_duplicates_are_not_trades(tmp_path, tracker):
+    journal = tmp_path / "j.jsonl"
+    _write(journal, [_open("A"), _open("REPAIR-A-1234")])
+    assert [r["order_id"] for r in collector.live_journal_rows(str(journal))] == ["A"]
+
+
+def test_filled_then_system_cancelled_is_cancelled_not_open_and_has_no_made_up_exit(tmp_path, tracker):
+    journal = tmp_path / "j.jsonl"
+    cancel = {"event": "CANCELLED", "order_id": "A", "timestamp": "2026-11-18T09:00:00+00:00",
+              "fill_status": "BROKER_NO_POSITION_FOUND"}
+    _write(journal, [_open("A"), cancel, _open("B")])
+    collector.ingest_from_live_journal(str(journal), tracker)
+    by_id = {r["order_id"]: r for r in _rows(tracker)}
+    assert by_id["A"]["outcome"] == "CANCELLED" and by_id["A"]["close_reason"] == "BROKER_NO_POSITION_FOUND"
+    assert by_id["A"]["exit_price"] is None and by_id["A"]["r_multiple"] is None
+    assert by_id["B"]["outcome"] == "OPEN"
+    assert tracker.summary()["open"] == 1
+    collector.ingest_from_live_journal(str(journal), tracker)
+    assert {r["order_id"]: r["outcome"] for r in _rows(tracker)} == {"A": "CANCELLED", "B": "OPEN"}
+
+
+def test_a_close_after_a_cancel_wins_and_a_refill_supersedes_the_cancel(tmp_path, tracker):
+    journal = tmp_path / "j.jsonl"
+    cancel = {"event": "CANCELLED", "order_id": "A", "timestamp": "2026-11-18T08:00:00+00:00",
+              "fill_status": "FILLED"}
+    _write(journal, [_open("A"), cancel, _close("A"), _open("B"), dict(cancel, order_id="B"), _open("B")])
+    collector.ingest_from_live_journal(str(journal), tracker)
+    by_id = {r["order_id"]: r["outcome"] for r in _rows(tracker)}
+    assert by_id == {"A": "LOSS", "B": "OPEN"}
+
+
+def test_close_recorded_only_in_the_paper_csv_is_used(tmp_path, tracker):
+    journal = tmp_path / "j.jsonl"
+    _write(journal, [_open("A")])
+    paper = tmp_path / "paper.csv"
+    paper.write_text(
+        "2026-11-19 09:20:39,A,SBIN,BUY,8,1113.4,1081.04,1180.24,KDA_AUTHORITY,,,CLOSE,1100.0,-105.6,SESSION_EXPIRED\n"
+        "2026-11-19 11:20:27,A,SBIN,BUY,8,1113.4,1081.04,1180.24,KDA_AUTHORITY,,,CLOSE,1120.0,54.4,SESSION_EXPIRED\n",
+        encoding="utf-8")
+    collector.ingest_from_live_journal(str(journal), tracker, csv_path=str(paper))
+    row = _rows(tracker)[0]
+    assert row["outcome"] == "LOSS" and row["exit_price"] == 1100.0 and row["close_reason"] == "SESSION_EXPIRED"
+
+
 def test_eod_calls_the_live_journal_ingest_next_to_the_paper_one():
     from pathlib import Path
     source = (Path(__file__).resolve().parents[1] / "orchestrator" / "master_orchestrator.py"

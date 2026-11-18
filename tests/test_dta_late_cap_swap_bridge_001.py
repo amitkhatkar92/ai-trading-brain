@@ -470,20 +470,22 @@ class TestD_Lifecycle:
         assert result["status"] == "ERROR"
 
     def test_d07_rolled_back_stays_rolled_back_on_insufficient_post_rollback_evidence(self):
-        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK,
-                           "rolled_back_at": "2026-10-10T00:00:00+00:00"})
-        lcsb._save_records(self._resolved_records(1, 1, resolved_at="2026-10-15T00:00:00+00:00"))
+        rolled = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        resolved = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK, "rolled_back_at": rolled})
+        lcsb._save_records(self._resolved_records(1, 1, resolved_at=resolved))
         result = lcsb.advance_lifecycle()
         assert result["status"] == lcsb.STATUS_ROLLED_BACK
         assert lcsb.get_status() == lcsb.STATUS_ROLLED_BACK
 
     def test_d08_rolled_back_reactivates_on_sufficient_post_rollback_evidence(self):
-        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK,
-                           "rolled_back_at": "2026-10-10T00:00:00+00:00"})
+        rolled = (datetime.now(timezone.utc) - timedelta(days=10)).isoformat()
+        resolved = (datetime.now(timezone.utc) - timedelta(days=5)).isoformat()
+        lcsb._save_state({"status": lcsb.STATUS_ROLLED_BACK, "rolled_back_at": rolled})
         n_correct = int(lcsb.MIN_SAMPLES_FOR_ACTIVATION * 0.7) or 1
         n_incorrect = max(lcsb.MIN_SAMPLES_FOR_ACTIVATION - n_correct, 1)
         lcsb._save_records(self._resolved_records(
-            n_correct, n_incorrect, resolved_at="2026-10-15T00:00:00+00:00",
+            n_correct, n_incorrect, resolved_at=resolved,
         ))
         result = lcsb.advance_lifecycle()
         assert result["status"] == lcsb.STATUS_ACTIVE

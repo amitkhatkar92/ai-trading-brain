@@ -280,7 +280,7 @@ class TradeMonitor:
             if not self._price_confirmed(oid, order, ltp):
                 continue
             self._last_good_ltp[oid] = ltp
-
+            self._track_excursion(order, ltp)
             # ── Paper LIMIT fill simulation ────────────────────────────
             # A LIMIT order was placed but is not filled until LTP crosses
             # the zone_price.  Skip SL/target evaluation until then.
@@ -529,6 +529,17 @@ class TradeMonitor:
                 feed_state, feed_deg_cycles,
                 governance_state, oid,
             )
+
+    @staticmethod
+    def _track_excursion(order: OrderRecord, ltp: float) -> None:
+        """Record the highest/lowest validated price since entry (best/worst excursion)."""
+        try:
+            if ltp <= 0 or getattr(order, "fill_status", "") == "PENDING":
+                return
+            order.mfe_price = max(order.mfe_price, ltp) if order.mfe_price > 0 else ltp
+            order.mae_price = min(order.mae_price, ltp) if order.mae_price > 0 else ltp
+        except Exception:
+            pass
 
     def _evaluate(self, order: OrderRecord, ltp: float) -> Optional[str]:
         entry  = order.entry_price

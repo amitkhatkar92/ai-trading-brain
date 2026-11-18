@@ -132,14 +132,16 @@ def test_pe05_ingest_event_invalid_type(conn):
 
 
 def test_pe06_get_events_for_symbol(conn):
+    from datetime import date, timedelta
     from oios.engine.event_ingestion import ingest_event, get_events_for_symbol
 
+    recent = (date.today() - timedelta(days=5)).isoformat()      # inside the days_back window whenever it runs
     with conn:
-        ingest_event(conn, "HAL.NS", "2026-06-14", "ORDER_WIN",
+        ingest_event(conn, "HAL.NS", recent, "ORDER_WIN",
                      magnitude="HIGH", direction="POSITIVE", confidence=0.9)
-        ingest_event(conn, "HAL.NS", "2026-06-15", "GUIDANCE",
+        ingest_event(conn, "HAL.NS", recent, "GUIDANCE",
                      magnitude="MEDIUM", direction="POSITIVE")
-        ingest_event(conn, "BEL.NS", "2026-06-15", "EARNINGS",
+        ingest_event(conn, "BEL.NS", recent, "EARNINGS",
                      magnitude="MEDIUM", direction="POSITIVE")
 
     events = get_events_for_symbol(conn, "HAL.NS", days_back=60)

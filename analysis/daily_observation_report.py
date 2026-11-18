@@ -197,18 +197,18 @@ def _section_sft_leaderboard(sft_db: str) -> List[str]:
     try:
         top_rows = _rows(
             sft_db,
-            """SELECT symbol, sft_class, sft_score, recorded_at
-               FROM sft_records
-               WHERE sft_score IS NOT NULL
-               ORDER BY sft_score DESC
+            """SELECT symbol, sft_class, follow_through_score AS sft_score, last_updated AS recorded_at
+               FROM symbol_follow_through_metrics
+               WHERE trade_count >= 3
+               ORDER BY follow_through_score DESC
                LIMIT 5""",
         )
         bot_rows = _rows(
             sft_db,
-            """SELECT symbol, sft_class, sft_score, recorded_at
-               FROM sft_records
-               WHERE sft_score IS NOT NULL
-               ORDER BY sft_score ASC
+            """SELECT symbol, sft_class, follow_through_score AS sft_score, last_updated AS recorded_at
+               FROM symbol_follow_through_metrics
+               WHERE trade_count >= 3
+               ORDER BY follow_through_score ASC
                LIMIT 5""",
         )
     except Exception:

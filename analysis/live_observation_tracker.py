@@ -192,6 +192,16 @@ class LiveObservationTracker:
             return False
 
         entry, sl = entry_row
+        if outcome == "CANCELLED":
+            # removed by the system without a measured exit: store no exit price or R
+            with sqlite3.connect(self.db_path) as conn:
+                n = conn.execute(
+                    "UPDATE live_observations SET outcome='CANCELLED', exit_price=NULL, pnl=NULL, "
+                    "r_multiple=NULL, closed_at=?, close_reason=? WHERE order_id=?",
+                    (_NOW(), close_reason, order_id),
+                ).rowcount
+                conn.commit()
+            return n > 0
         risk       = abs(entry - sl) if sl and sl != entry else 1.0
         r_multiple = (exit_price - entry) / risk if risk else 0.0
 

@@ -64,6 +64,7 @@ from .re_calculator import (
     get_half_life,
 )
 from .maturity_engine import compute_maturity
+from .decision_logger import log_cycle_decision
 
 # ---------------------------------------------------------------------------
 # Phase D instrumentation — graceful degradation when Phase D tables absent
@@ -511,6 +512,13 @@ def run_ele_daily(
 
         if cycle is None:
             continue
+
+        # MAS Table 7: one decision_log row per opportunity per cycle (observation only)
+        try:
+            with conn:
+                log_cycle_decision(conn, opp_id, today, regime, RE_THRESHOLD)
+        except Exception as exc:
+            log.debug("[ELE] decision_log write skipped for %s: %s", opp_id, exc)
 
         result.opps_processed += 1
 

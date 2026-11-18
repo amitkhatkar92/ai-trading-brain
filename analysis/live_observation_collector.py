@@ -84,7 +84,8 @@ def _sft_for_symbol(symbol: str) -> tuple:
     try:
         with sqlite3.connect(SFT_DB) as conn:
             row = conn.execute(
-                "SELECT sft_class, sft_score FROM sft_records WHERE symbol=? ORDER BY recorded_at DESC LIMIT 1",
+                "SELECT sft_class, follow_through_score FROM symbol_follow_through_metrics "
+                "WHERE symbol=? AND trade_count >= 3",
                 (symbol,),
             ).fetchone()
         if row:
@@ -355,7 +356,7 @@ def _ist_date(timestamp: str) -> str:
         return str(timestamp)[:10]
 
 
-def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
+def live_journal_rows(journal_path: str = LIVE_JOURNAL, csv_path: Optional[str] = None) -> List[dict]:
     """
     One CSV-shaped row per real order that was actually filled.
 
@@ -368,6 +369,7 @@ def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
         return []
     opened: Dict[str, dict] = {}
     closed: Dict[str, dict] = {}
+    cancelled: Dict[str, dict] = {}
     with open(journal_path, "r", encoding="utf-8") as handle:
         for line in handle:
             try:
@@ -375,12 +377,29 @@ def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
             except ValueError:
                 continue
             order_id = str(event.get("order_id") or "")
-            if not order_id:
+            # REPAIR- ids are synthetic re-creations of an order already in the journal
+            if not order_id or order_id.startswith("REPAIR-"):
                 continue
             if event.get("event") == "OPEN" and event.get("fill_status") in ("FILLED", "PARTIALLY_FILLED"):
                 opened[order_id] = event
+                cancelled.pop(order_id, None)     # a later fill supersedes an earlier cancel
             elif event.get("event") == "CLOSE":
                 closed[order_id] = event
+            elif event.get("event") == "CANCELLED" and order_id in opened:
+                cancelled[order_id] = event
+    # Carry expiry recorded SESSION_EXPIRED only in the paper CSV before the live-journal fix;
+    # use that (first) close for orders the journal never closed.
+    csv_file = PAPER_TRADES_CSV if journal_path == LIVE_JOURNAL else csv_path
+    if csv_file and opened and os.path.exists(csv_file):
+        with open(csv_file, "r", encoding="utf-8", newline="") as handle:
+            for parts in csv.reader(handle):
+                if len(parts) > 14 and parts[1] in opened and parts[1] not in closed \
+                        and parts[11].strip().upper() == "CLOSE":
+                    try:
+                        closed[parts[1]] = {"exit_price": float(parts[12]), "pnl": float(parts[13]),
+                                            "reason": parts[14].strip()}
+                    except ValueError:
+                        continue
     rows = []
     for order_id, event in opened.items():
         entry = float(event.get("actual_fill_price") or event.get("entry_price") or 0)
@@ -388,7 +407,11 @@ def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
         target = float(event.get("target_price") or 0)
         rr = (target - entry) / (entry - stop) if entry > stop > 0 and target > entry else 1.5
         close = closed.get(order_id, {})
+        # filled, then removed by the system (no broker position / reconciliation): no measured result
+        removed = cancelled.get(order_id) if not close else None
         rows.append({
+            "cancelled_reason": ((removed or {}).get("reason") or (removed or {}).get("fill_status") or "CANCELLED")
+            if removed else "",
             "timestamp": event.get("timestamp", ""), "trade_date": _ist_date(event.get("timestamp", "")),
             "order_id": order_id, "symbol": event.get("symbol", "UNKNOWN"),
             "strategy": event.get("strategy", "UNKNOWN"), "direction": event.get("direction", ""),
@@ -403,6 +426,7 @@ def live_journal_rows(journal_path: str = LIVE_JOURNAL) -> List[dict]:
 def ingest_from_live_journal(
     journal_path: str = LIVE_JOURNAL,
     tracker:      Optional[LiveObservationTracker] = None,
+    csv_path:     Optional[str] = None,
 ) -> dict:
     """
     Ingest real filled orders from the live journal into live_observations.db
@@ -414,7 +438,7 @@ def ingest_from_live_journal(
     tracker = tracker or get_live_tracker()
     new = skipped = errors = 0
     error_details: List[str] = []
-    rows = live_journal_rows(journal_path)
+    rows = live_journal_rows(journal_path, csv_path)
     for row in rows:
         try:
             enriched = enrich_csv_row({**row, "timestamp": row["timestamp"]})
@@ -445,6 +469,14 @@ def ingest_from_live_journal(
                         order_id=enriched["order_id"], outcome=enriched["outcome"],
                         exit_price=enriched["exit_price"] or 0, pnl=enriched["pnl"] or 0,
                         close_reason=enriched["close_reason"])
+            elif row.get("cancelled_reason"):
+                with sqlite3.connect(tracker.db_path) as conn:
+                    recorded = conn.execute(
+                        "SELECT outcome FROM live_observations WHERE order_id=?", (row["order_id"],)
+                    ).fetchone()
+                if recorded is not None and recorded[0] in (None, "", "OPEN"):
+                    tracker.mark_outcome(order_id=row["order_id"], outcome="CANCELLED", exit_price=0,
+                                         pnl=0, close_reason=str(row["cancelled_reason"]))
         except Exception as exc:
             errors += 1
             error_details.append(f"order_id={row.get('order_id', '?')}: {exc}")

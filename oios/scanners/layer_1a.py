@@ -13,6 +13,8 @@ Phase A archetypes implemented:
   DNA_1A_52W_HIGH_EXPAND   — 52-Week High Expansion
   DNA_1A_SECTOR_BKT        — Sector Breakout Accelerator
   DNA_1A_RESULTS_FOLLOWTHR — Results Follow-Through
+  DNA_1A_MOMENTUM_BREAKDOWN — Momentum Breakdown (SHORT; bearish mirror of Momentum Continuation)
+  DNA_1A_52W_LOW_EXPAND    — 52-Week Low Expansion (SHORT; bearish mirror of 52-Week High Expansion)
 
 Signal type: "1A"
 Minimum write threshold: base_score > 4.0
@@ -105,6 +107,10 @@ class PriceWindow:
     def high_52w(self) -> float:
         window = self.highs[-252:] if len(self.highs) >= 252 else self.highs
         return max(window) if window else 0.0
+
+    def low_52w(self) -> float:
+        window = self.lows[-252:] if len(self.lows) >= 252 else self.lows
+        return min(window) if window else 0.0
 
     def price_change_pct(self, lookback: int = 20) -> float:
         """% change over last `lookback` trading sessions."""
@@ -264,6 +270,112 @@ def _detect_52w_high_expansion(
         archetype_id = "DNA_1A_52W_HIGH_EXPAND",
         base_score   = round(base_score, 3),
         direction    = "LONG",
+        detected_at  = detected_at,
+        birth_price  = pw.close(),
+        regime       = regime,
+    )
+
+
+def _detect_momentum_breakdown(
+    pw: PriceWindow,
+    detected_at: str,
+    regime: str,
+) -> Optional[RawSignal]:
+    """
+    DNA_1A_MOMENTUM_BREAKDOWN — Momentum Breakdown (bearish mirror of Momentum Continuation)
+
+    Conditions:
+    - 20-day return < -5%
+    - Close below 20-day SMA
+    - Volume on last session >= 1.2x 20-day average
+    - Not already within 2% of the 52-week low (not yet capitulated)
+
+    Scoring mirrors DNA_1A_MOMENTUM_CONT: 4.0 + momentum (0-3.0) + volume (0-2.0).
+    Its purpose is the SHORT direction, so a LONG opportunity on the same symbol receives
+    CONFLICTING evidence (the only way CONTRADICTED can be reached).
+    """
+    if pw.n < 22:
+        return None
+
+    change_20d = pw.price_change_pct(20)
+    if change_20d > -5.0:
+        return None
+
+    sma_20 = sum(pw.closes[-20:]) / 20
+    if pw.close() >= sma_20:
+        return None
+
+    avg_vol = pw.avg_volume(20)
+    vol_ratio = pw.volume() / avg_vol if avg_vol > 0 else 0
+    if vol_ratio < 1.2:
+        return None
+
+    low_52 = pw.low_52w()
+    if low_52 > 0 and pw.close() / low_52 < 1.02:
+        return None
+
+    momentum_component = min(3.0, max(0.0, (-change_20d - 5.0) / 15.0 * 3.0))
+    volume_component = min(2.0, max(0.0, (vol_ratio - 1.2) / 1.8 * 2.0))
+
+    return RawSignal(
+        symbol       = pw.symbol,
+        archetype_id = "DNA_1A_MOMENTUM_BREAKDOWN",
+        base_score   = round(4.0 + momentum_component + volume_component, 3),
+        direction    = "SHORT",
+        detected_at  = detected_at,
+        birth_price  = pw.close(),
+        regime       = regime,
+    )
+
+
+def _detect_52w_low_expansion(
+    pw: PriceWindow,
+    detected_at: str,
+    regime: str,
+) -> Optional[RawSignal]:
+    """
+    DNA_1A_52W_LOW_EXPAND — 52-Week Low Expansion (bearish mirror of 52-Week High Expansion)
+
+    Conditions:
+    - Close within 2% above the 52-week low
+    - Close below the previous 5-session average
+    - Volume >= 1.5x 20-day average
+    - The 52-week low was not already touched in the last 5 sessions (fresh approach)
+
+    Scoring mirrors DNA_1A_52W_HIGH_EXPAND: 4.0 + proximity (0-3.0) + volume (0-2.0).
+    """
+    if pw.n < 22:
+        return None
+
+    low_52 = pw.low_52w()
+    if low_52 <= 0 or pw.close() <= 0:
+        return None
+
+    proximity = low_52 / pw.close()
+    if proximity < 0.98:
+        return None
+
+    avg_vol = pw.avg_volume(20)
+    vol_ratio = pw.volume() / avg_vol if avg_vol > 0 else 0
+    if vol_ratio < 1.5:
+        return None
+
+    recent_lows = pw.lows[-6:-1]
+    if recent_lows and min(recent_lows) <= low_52 * 1.005:
+        return None
+
+    avg_close_5 = sum(pw.closes[-6:-1]) / 5
+    if pw.close() >= avg_close_5:
+        return None
+
+    proximity_score = (proximity - 0.98) / 0.02 * 3.0
+    volume_score = min(2.0, (vol_ratio - 1.5) / 1.5 * 2.0)
+
+    return RawSignal(
+        symbol       = pw.symbol,
+        archetype_id = "DNA_1A_52W_LOW_EXPAND",
+        base_score   = round(4.0 + proximity_score + volume_score, 3),
+        direction    = "SHORT",
         detected_at  = detected_at,
         birth_price  = pw.close(),
         regime       = regime,
@@ -454,6 +566,9 @@ def scan_symbol(
         lambda: _detect_52w_high_expansion(pw, detected_at, regime),
         lambda: _detect_sector_breakout_accelerator(pw, detected_at, regime, sector_return_5d),
         lambda: _detect_results_followthrough(pw, detected_at, regime),
+        # bearish mirrors are appended so the sector-breakout index above stays valid
+        lambda: _detect_momentum_breakdown(pw, detected_at, regime),
+        lambda: _detect_52w_low_expansion(pw, detected_at, regime),
     ]
     if sector_required and sector_return_5d is None:
         del detectors[2]

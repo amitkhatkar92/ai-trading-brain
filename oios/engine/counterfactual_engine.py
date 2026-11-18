@@ -99,6 +99,26 @@ def _max_min_price_window(
     return (row[0], row[1]) if row else (None, None)
 
 
+def _window_has_corporate_action(
+    conn: sqlite3.Connection,
+    symbol: str,
+    from_date: str,
+    to_date: str,
+    reference_price: Optional[float],
+) -> bool:
+    """True when consecutive closes in the window contain an implausible step (split/demerger)."""
+    try:
+        from data_integrity.return_validity import is_corporate_action_step
+    except Exception:
+        return False
+    closes = [r[0] for r in conn.execute(
+        "SELECT close FROM ohlcv_daily WHERE symbol = ? AND trade_date > ? AND trade_date <= ? "
+        "ORDER BY trade_date", (symbol, from_date, to_date)).fetchall()]
+    if reference_price:
+        closes.insert(0, reference_price)
+    return any(is_corporate_action_step(closes[i], closes[i + 1]) for i in range(len(closes) - 1))
+
+
 # ---------------------------------------------------------------------------
 # Nightly retroactive job
 # ---------------------------------------------------------------------------
@@ -127,11 +147,12 @@ def populate_outcome_prices(
     cutoff = cutoff_row[0]
 
     records = conn.execute("""
-        SELECT decision_id, symbol, decided_at, price_at_decision
-        FROM decision_log
-        WHERE price_5d_later IS NULL
-          AND DATE(decided_at) <= ?
-        ORDER BY decided_at
+        SELECT d.decision_id, d.symbol, d.decided_at, d.price_at_decision, o.direction
+        FROM decision_log d
+        LEFT JOIN opportunities o ON o.opportunity_id = d.opportunity_id
+        WHERE d.price_5d_later IS NULL
+          AND DATE(d.decided_at) <= ?
+        ORDER BY d.decided_at
         LIMIT ?
     """, (cutoff, max_batch)).fetchall()
 
@@ -144,6 +165,12 @@ def populate_outcome_prices(
         d10 = _nth_trading_day_after(conn, dec_date, 10)
         d20 = _nth_trading_day_after(conn, dec_date, 20)
 
+        if d20 and _window_has_corporate_action(conn, symbol, dec_date, d20, rec["price_at_decision"]):
+            # price history is unadjusted: a split/demerger step is not a return
+            conn.execute("UPDATE decision_log SET outcome_populated_at = datetime('now') "
+                         "WHERE decision_id = ?", (rec["decision_id"],))
+            continue
+
         p5  = _close_price(conn, symbol, d5)  if d5  else None
         p10 = _close_price(conn, symbol, d10) if d10 else None
         p20 = _close_price(conn, symbol, d20) if d20 else None
@@ -151,10 +178,18 @@ def populate_outcome_prices(
         if d20:
             max_close, min_close = _max_min_price_window(conn, symbol, dec_date, d20)
             ref = rec["price_at_decision"]
-            max_fav = (max_close - ref) / ref * 100 if max_close and ref else None
-            max_adv = (min_close - ref) / ref * 100 if min_close and ref else None
+            if rec["direction"] == "SHORT":
+                # a falling price is favourable for a SHORT
+                max_fav = (ref - min_close) / ref * 100 if min_close and ref else None
+                max_adv = (ref - max_close) / ref * 100 if max_close and ref else None
+            else:
+                max_fav = (max_close - ref) / ref * 100 if max_close and ref else None
+                max_adv = (min_close - ref) / ref * 100 if min_close and ref else None
         else:
             max_fav = max_adv = None
+        if max_fav is not None and max_adv is not None:
+            # excursions: favourable never below 0, adverse never above 0
+            max_fav, max_adv = max(max_fav, 0.0), min(max_adv, 0.0)
 
         if any(v is not None for v in (p5, p10, p20)):
             conn.execute("""

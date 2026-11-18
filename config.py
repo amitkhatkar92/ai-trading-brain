@@ -465,6 +465,27 @@ NSE_HOLIDAYS: frozenset = frozenset({
 })
 
 
+def _merge_synced_nse_holidays(static: frozenset) -> frozenset:
+    """Add NSE-published holidays for calendar years the static list does not cover
+    (data/nse_holidays_synced.json, written by data_integrity.nse_holiday_sync). A static
+    date is never overridden or removed."""
+    try:
+        import json as _json
+        import os as _os
+        _path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "data", "nse_holidays_synced.json")
+        with open(_path, "r", encoding="utf-8") as _fh:
+            _years = _json.load(_fh).get("years", {})
+        _static_years = {_d.year for _d in static}
+        _extra = {_dt.date.fromisoformat(_s) for _y, _days in _years.items()
+                  if int(_y) not in _static_years for _s in _days}
+        return frozenset(static | _extra)
+    except Exception:
+        return static
+
+
+NSE_HOLIDAYS = _merge_synced_nse_holidays(NSE_HOLIDAYS)
+
+
 # ─────────────────────────────────────────────
 # MLS Phase 6 — Autonomous Market Learning Scheduler
 # ─────────────────────────────────────────────

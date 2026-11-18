@@ -294,6 +294,10 @@ class OrderRecord:
     signal_vix:        float = 0.0   # India VIX at signal creation
     signal_distortion: bool  = False # was a distortion event active?
     confidence_score:  float = 0.0   # DecisionEngine score at entry (for smart-swap ranking)
+    # Price extremes seen by TradeMonitor while the position was held (0.0 = not tracked,
+    # e.g. restored after a restart). Feed symbol follow-through (best/worst excursion).
+    mfe_price:         float = 0.0   # highest validated price since entry
+    mae_price:         float = 0.0   # lowest validated price since entry
     # Carry-expiry retry counter — incremented each time check_and_expire_carries
     # attempts but fails to write the CLOSE row.  Capped at _CARRY_EXPIRY_MAX_RETRIES
     # to prevent a persistently-broken symbol from silently blocking expiry forever.
@@ -3582,6 +3586,14 @@ class OrderManager:
                         rec.status = "closed"
                         rec.governance_state = "CLOSED"  # no longer exposure-active
                         rec.closed_at = now              # timestamp for GovernanceScoreAudit
+                        if not self._paper_mode:
+                            # Live restart recovery reads only the live journal. Without this
+                            # CLOSE a restart resurrects the order as open and expires it again,
+                            # sending a real SELL against whatever shares the symbol now holds.
+                            self._append_live_journal(
+                                "CLOSE", rec,
+                                extra={"exit_price": exit_price, "pnl": pnl, "reason": "SESSION_EXPIRED"},
+                            )
                         try:
                             from knowledge_system.option_research_observer import observe_equity_exit
                             observe_equity_exit(rec, exit_price, "SESSION_EXPIRED")
@@ -5107,6 +5119,21 @@ class OrderManager:
                 "[LiveJournal] Restored %d close-time entries for cooldown tracking.",
                 len(_RECENT_CLOSE_TIMES),
             )
+
+        # Carry expiry used to record SESSION_EXPIRED only in the paper CSV. An order closed
+        # that way has no live-journal CLOSE and would be restored as open on every restart,
+        # then expired again with a real SELL. Treat a CSV CLOSE/CANCELLED as closed too.
+        try:
+            if opened and os.path.exists(PAPER_TRADE_LOG):
+                _oi = _JOURNAL_HEADER.index("order_id")
+                _ei = _JOURNAL_HEADER.index("event")
+                with open(PAPER_TRADE_LOG, newline="", encoding="utf-8") as _csv_fh:
+                    for _parts in csv.reader(_csv_fh):
+                        if len(_parts) > _ei and _parts[_oi].strip() in opened \
+                                and _parts[_ei].strip().upper() in ("CLOSE", "CANCELLED"):
+                            closed.add(_parts[_oi].strip())
+        except Exception as _csv_exc:
+            log.debug("[LiveJournal] CSV close cross-check skipped: %s", _csv_exc)
 
         to_restore = {oid: row for oid, row in opened.items() if oid not in closed}
         if not to_restore:

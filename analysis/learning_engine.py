@@ -183,7 +183,7 @@ def _load_sft(db_dir: str) -> dict:
     if conn is None:
         return {"records": []}
     try:
-        records = _rows(conn, "SELECT * FROM sft_log")
+        records = _rows(conn, "SELECT * FROM symbol_follow_through_metrics")
     except Exception:
         records = []
     conn.close()
