@@ -1880,6 +1880,15 @@ class OrderManager:
         attempts = self.__dict__.setdefault("_sl_ensure_attempts", {})
         today = now.date().isoformat()
         placed = 0
+        # Stops that already work at the broker (placed before a restart, so the restored
+        # records do not know them). Adopted instead of stacking a second order that the
+        # broker would reject ("sell more than you hold") or that would lock shares twice.
+        working: List[Dict[str, Any]] = []
+        if hasattr(self._broker, "get_working_stop_orders"):
+            try:
+                working = list(self._broker.get_working_stop_orders() or [])
+            except Exception:
+                working = []
         for oid, rec in list(self._orders.items()):
             if (rec.status != "open" or rec.direction != "BUY" or rec.stop_loss <= 0 or rec.quantity <= 0
                     or rec.fill_status not in ("FILLED", "PARTIALLY_FILLED")
@@ -1894,6 +1903,12 @@ class OrderManager:
             if not ltp or ltp <= rec.stop_loss:
                 continue                         # no price, or the stop is already crossed: monitor exits
             if self._broker_sl_alive(rec):
+                continue
+            sec_id = self._broker_security_id(rec.symbol)
+            existing = next((w for w in working if w["security_id"] == sec_id and w["quantity"] >= rec.quantity), None)
+            if existing is not None:
+                working.remove(existing)
+                rec.sl_order_id, rec.sl_placed_date = existing["order_id"], today
                 continue
             held = self._broker_held_quantity(rec.symbol)
             claimed = sum(

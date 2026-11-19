@@ -317,6 +317,26 @@ class DhanBroker:
             log.error("[DhanBroker] Cancel failed %s: %s", order_id, exc)
             return False
 
+    def get_working_stop_orders(self) -> List[Dict[str, Any]]:
+        """Today's still-working SELL stop-loss orders (read-only). Empty list on any failure."""
+        if not self._connected or self._dhan is None:
+            return []
+        try:
+            response = self._dhan.get_order_list()
+            rows = response.get("data", []) if isinstance(response, dict) else (response or [])
+            return [
+                {"order_id": str(r.get("orderId", "")), "security_id": str(r.get("securityId", "")),
+                 "symbol": str(r.get("tradingSymbol", "")), "quantity": int(r.get("quantity", 0) or 0),
+                 "trigger_price": float(r.get("triggerPrice", 0) or 0)}
+                for r in rows if isinstance(r, dict)
+                and str(r.get("orderType", "")).upper() in ("STOP_LOSS", "STOP_LOSS_MARKET")
+                and str(r.get("transactionType", "")).upper() == "SELL"
+                and str(r.get("orderStatus", "")).upper() in ("PENDING", "TRIGGER_PENDING", "TRANSIT", "OPEN")
+            ]
+        except Exception as exc:
+            log.warning("[DhanBroker] get_working_stop_orders failed: %s", exc)
+            return []
+
     def get_positions(self) -> Dict[str, Any]:
         if not self._connected or self._dhan is None:
             return {}

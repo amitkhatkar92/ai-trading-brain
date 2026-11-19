@@ -259,7 +259,21 @@ def test_the_broker_stop_is_cancelled_before_the_system_exits_the_position():
     assert rec.sl_order_id == ""
 
 
-def test_orchestrator_calls_the_stop_upkeep_each_monitor_cycle():
+def test_a_stop_already_working_at_the_broker_is_adopted_not_duplicated():
+    with _patch_map(), _at(10, 0):
+        om = _sl_om()
+        om._broker.get_working_stop_orders.return_value = [
+            {"order_id": "SL-EXIST", "security_id": "3045", "symbol": "SBIN", "quantity": 4, "trigger_price": 1060.0}]
+        assert om.ensure_broker_stop_losses({"SBIN": 1135.0}) == 0
+        om._broker.place_sl_order.assert_not_called()
+        assert om._orders["A"].sl_order_id == "SL-EXIST"
+        small = _sl_om()
+        small._broker.get_working_stop_orders.return_value = [
+            {"order_id": "SL-SMALL", "security_id": "3045", "symbol": "SBIN", "quantity": 2, "trigger_price": 1060.0}]
+        assert small.ensure_broker_stop_losses({"SBIN": 1135.0}) == 1       # too small to cover this position
+
+
+def test_the_orchestrator_calls_the_stop_upkeep_each_monitor_cycle():
     from pathlib import Path
     source = (Path(__file__).resolve().parents[1] / "orchestrator" / "master_orchestrator.py").read_text(encoding="utf-8")
     assert "ensure_broker_stop_losses(" in source
