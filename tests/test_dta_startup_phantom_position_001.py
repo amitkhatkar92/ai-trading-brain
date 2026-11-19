@@ -102,7 +102,9 @@ class TestStartupPhantomPositionCleanup:
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
             om.reconcile_startup_fills()
         assert "34126091640603" in om._orders
-        assert om._orders["34126091640603"].fill_status == "API_ERROR"
+        # the broker still holds it: confirmed FILLED from holdings instead of sitting in
+        # API_ERROR forever (the day-scoped order endpoints can never resolve it)
+        assert om._orders["34126091640603"].fill_status == "FILLED"
 
     def test_same_day_order_not_touched(self):
         """An order restored from TODAY's journal must never be swept, even

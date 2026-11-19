@@ -444,6 +444,16 @@ class OptionsOrderManager:
                 # All legs rolled back inside _place_live_legs; clean up
                 with self._lock:
                     self._orders.pop(oid, None)
+                if str(self.last_rejection_detail or "").startswith("INSUFFICIENT_FUNDS"):
+                    # Options are deliberately unfunded: the structure is tracked as a virtual
+                    # (quote-priced) position by the observation pipeline so its P/L can be
+                    # judged before capital is allocated. This is expected, not a failure.
+                    log.info(
+                        "[OptionsOrderManager] [ObservationOnly] %s %s not placed (account not "
+                        "funded for options); virtual P/L is recorded by the research pipeline.",
+                        rec.symbol, stype,
+                    )
+                    return None
                 log.error(
                     "[OptionsOrderManager] [LivePlacementFailed] %s %s — "
                     "leg placement failed; position not recorded.",

@@ -103,9 +103,10 @@ class TestCrossDayBrokerPositionCheck:
             om = _make_om_live_with_broker(broker)
             _insert_stuck_order(om, placed_at=datetime.now() - timedelta(days=1))
             updated = om.reconcile_pending_orders()
-        assert "ORD-COAL-001" not in updated
-        assert "ORD-COAL-001" in om._orders
-        assert om._orders["ORD-COAL-001"].fill_status == "API_ERROR"
+        assert "ORD-COAL-001" in updated                 # now settled from the broker's holdings
+        assert "ORD-COAL-001" in om._orders              # ...and still tracked as an open position
+        assert om._orders["ORD-COAL-001"].fill_status == "FILLED"
+        assert om._orders["ORD-COAL-001"].reconciliation_source == "BROKER_HOLDINGS_CONFIRMED"
 
     def test_cleanup_is_safe_when_no_trade_monitor_injected(self):
         """_trade_monitor defaults to None — cleanup must not raise."""

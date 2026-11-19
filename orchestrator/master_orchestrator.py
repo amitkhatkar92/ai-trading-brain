@@ -2867,7 +2867,7 @@ class MasterOrchestrator:
             opportunity_id = meta.get("opportunity_id")
             if not opportunity_id:
                 return
-            expiry = meta.get("expiry_date") or getattr(signal, "expiry", None)
+            expiry = meta.get("expiry_date") or meta.get("expiry") or getattr(signal, "expiry", None)
             if isinstance(expiry, str):
                 expiry_date = expiry
             elif isinstance(expiry, date):
@@ -4964,6 +4964,14 @@ class MasterOrchestrator:
                 )
         except Exception as _pr_exc:
             log.debug("[Monitor] reconcile_pending_orders skipped: %s", _pr_exc)
+
+        # Keep a working broker-side stop under every held long (DAY orders lapse nightly).
+        try:
+            _sl_placed = self.order_manager.ensure_broker_stop_losses(locals().get("_live_pf") or {})
+            if _sl_placed:
+                log.info("[Monitor] BrokerSL restored %d stop-loss order(s).", _sl_placed)
+        except Exception as _sl_exc:
+            log.debug("[Monitor] ensure_broker_stop_losses skipped: %s", _sl_exc)
 
     def _persist_monitor_ts(self, ts: datetime) -> None:
         """Atomically write _last_monitor_ts to data/monitor_state.json.

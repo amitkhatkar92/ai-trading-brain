@@ -298,6 +298,9 @@ class OrderRecord:
     # e.g. restored after a restart). Feed symbol follow-through (best/worst excursion).
     mfe_price:         float = 0.0   # highest validated price since entry
     mae_price:         float = 0.0   # lowest validated price since entry
+    # Calendar date (ISO) a broker-side stop-loss was last (re)placed by ensure_broker_stop_losses().
+    # Broker stop orders are DAY orders, so one placed on an earlier day no longer exists.
+    sl_placed_date:    str   = ""
     # Carry-expiry retry counter — incremented each time check_and_expire_carries
     # attempts but fails to write the CLOSE row.  Capped at _CARRY_EXPIRY_MAX_RETRIES
     # to prevent a persistently-broken symbol from silently blocking expiry forever.
@@ -1351,6 +1354,7 @@ class OrderManager:
             )
             _exit_order_id = "PHANTOM_ALREADY_FLAT"
         else:
+            self._cancel_broker_sl(rec)
             _exit_order_id = self._broker_place(rec.symbol, close_dir, rec.quantity, exit_price,
                                                 order_type="MARKET", product_type=rec.product_type)
         # D-001: If live broker rejected the exit order, do NOT mark closed — position
@@ -1731,6 +1735,193 @@ class OrderManager:
                 log.debug("[PartialFill] status check failed %s: %s", oid, exc)
         return updated
 
+    def _broker_security_id(self, symbol: str) -> Optional[str]:
+        """Dhan security id for an equity symbol (static map, then the dynamic universe map)."""
+        try:
+            from data_feeds.dhan_feed import DHAN_SECURITY_MAP as _DSM
+            _sym = symbol.upper().replace(".NS", "").replace(".BO", "")
+            _meta = _DSM.get(_sym)
+            if not _meta:
+                from data_feeds import get_feed_manager
+                _meta = get_feed_manager().dhan._extra_map.get(_sym)
+            return str(_meta["security_id"]) if _meta else None
+        except Exception:
+            return None
+
+    def _broker_held_quantity(self, symbol: str) -> Optional[int]:
+        """Shares of `symbol` the broker holds right now (positions book or settled holdings,
+        whichever is larger, so a position that sits in both is not double counted).
+
+        None when neither book could be read. Read-only; never places or cancels an order.
+        """
+        if not self._broker:
+            return None
+        sec_id = self._broker_security_id(symbol)
+        if not sec_id:
+            return None
+        quantities: List[int] = []
+        try:
+            resp = self._broker.get_positions() if hasattr(self._broker, "get_positions") else None
+            if isinstance(resp, dict) and resp.get("status") == "success" and isinstance(resp.get("data"), list):
+                quantities.append(sum(
+                    max(int(r.get("netQty", 0) or 0), 0)
+                    for r in resp["data"] if isinstance(r, dict) and str(r.get("securityId", "")) == sec_id))
+        except Exception:
+            pass
+        try:
+            resp = self._broker.get_portfolio() if hasattr(self._broker, "get_portfolio") else None
+            if isinstance(resp, dict) and resp.get("status") == "success" and isinstance(resp.get("data"), list):
+                quantities.append(sum(
+                    int(r.get("totalQty", 0) or 0)
+                    for r in resp["data"] if isinstance(r, dict) and str(r.get("securityId", "")) == sec_id))
+        except Exception:
+            pass
+        return max(quantities) if quantities else None
+
+    def _resolve_cross_day_fill(self, rec: "OrderRecord", known_fill_price: float = 0.0) -> bool:
+        """Settle the fill state of a prior-day BUY from the broker's holdings.
+
+        Dhan's order-by-id and order-list endpoints only cover the current day, so a carry
+        placed earlier can never be looked up and used to sit in API_ERROR for good, with
+        three failing broker calls every reconcile cycle. Called only AFTER the normal
+        order lookup left the order unresolved. The broker's position/holdings books do
+        reflect it: when they hold at least this order's shares (on top of the other open
+        orders for the symbol) the order was filled. The fill price is the journal value
+        (`known_fill_price`) or the order's entry price; the source is recorded as
+        holdings-confirmed.
+        """
+        if rec.direction != "BUY" or rec.fill_status in ("FILLED", "PARTIALLY_FILLED"):
+            return False
+        if not (rec.placed_at and rec.placed_at.date() < datetime.now().date()):
+            return False
+        held = self._broker_held_quantity(rec.symbol)
+        if held is None:
+            return False
+        claimed = sum(
+            o.quantity for o in self._orders.values()
+            if o is not rec and o.status == "open" and o.symbol == rec.symbol
+            and o.direction == "BUY" and o.fill_status in ("FILLED", "PARTIALLY_FILLED"))
+        if held < claimed + rec.quantity:
+            return False
+        rec.fill_status           = "FILLED"
+        rec.filled_quantity       = rec.quantity
+        rec.actual_fill_price     = known_fill_price if known_fill_price > 0 else (
+            rec.actual_fill_price if rec.actual_fill_price > 0 else rec.entry_price)
+        rec.requested_price       = rec.entry_price
+        rec.reconciliation_source = "BROKER_HOLDINGS_CONFIRMED"
+        rec.reconciliation_ts     = datetime.now(timezone.utc).isoformat()
+        # a later OPEN row supersedes the earlier PENDING one on restart
+        self._append_live_journal("OPEN", rec)
+        log.info(
+            "[FillReconcile] %s order_id=%s prior-day order confirmed FILLED from broker "
+            "holdings (held=%d, needed=%d); fill price %.2f is the recorded/entry price.",
+            rec.symbol, rec.order_id, held, claimed + rec.quantity, rec.actual_fill_price,
+        )
+        return True
+
+    _SL_LIVE_STATUSES = frozenset({"PENDING", "TRIGGER_PENDING", "TRANSIT", "OPEN",
+                                   "PART_TRADED", "PARTIALLY_TRADED"})
+
+    def _broker_sl_alive(self, rec: "OrderRecord") -> bool:
+        """True when this record's broker stop-loss order is still working today."""
+        if not rec.sl_order_id:
+            return False
+        today = datetime.now().date()
+        placed_today = (rec.sl_placed_date == today.isoformat()
+                        or (not rec.sl_placed_date and rec.placed_at and rec.placed_at.date() == today))
+        if not placed_today:
+            return False                         # DAY order from an earlier session: gone
+        try:
+            status = self._broker.get_order_status(rec.sl_order_id) or {}
+        except Exception:
+            return True                          # cannot tell: do not stack a second order
+        raw = str(status.get("status", "")).upper()
+        if not raw:
+            return True                          # unreconcilable this cycle: do not stack
+        return raw in self._SL_LIVE_STATUSES
+
+    def _cancel_broker_sl(self, rec: "OrderRecord") -> None:
+        """Cancel this record's broker stop-loss before the system exits the position itself,
+        so the pending stop cannot lock the shares the exit order needs. Best effort."""
+        if self._paper_mode or not self._broker or not rec.sl_order_id:
+            return
+        try:
+            if self._broker_sl_alive(rec) and hasattr(self._broker, "cancel_order"):
+                self._broker.cancel_order(rec.sl_order_id)
+                log.info("[BrokerSL] Cancelled stop %s for %s before system exit.", rec.sl_order_id, rec.symbol)
+        except Exception as exc:
+            log.warning("[BrokerSL] Could not cancel stop %s for %s: %s", rec.sl_order_id, rec.symbol, exc)
+        finally:
+            rec.sl_order_id = ""
+
+    SL_WINDOW_START = (9, 20)    # stop orders are rejected in the 09:00-09:15 pre-open
+    SL_WINDOW_END   = (15, 10)   # the exchange cancels pending stops from 15:15
+    SL_RETRY_MINUTES = 30
+    SL_MAX_ATTEMPTS_PER_DAY = 3
+
+    def ensure_broker_stop_losses(self, live_prices: Optional[Dict[str, float]] = None) -> int:
+        """Keep a working broker-side stop-loss under every held long position.
+
+        Stop orders are DAY orders, so a carried (CNC) position has none on the next
+        session, and the exchange can cancel one mid-day (SBIN 2026-11-18: accepted 13:04,
+        cancelled 15:15 with "ST Orders are not allowed in preopen"). The internal stop in
+        TradeMonitor still works while the system is up, but this restores the broker-side
+        protection. A stop is placed only when: live mode, inside the permitted window,
+        the position is filled, the live price is above the stop, the broker really holds
+        the shares, and no working stop exists. Throttled and capped per day.
+        Returns the number of stops placed.
+        """
+        if self._paper_mode or not self._broker or not hasattr(self._broker, "place_sl_order"):
+            return 0
+        now = datetime.now()
+        if not (self.SL_WINDOW_START <= (now.hour, now.minute) <= self.SL_WINDOW_END):
+            return 0
+        last_try = self.__dict__.setdefault("_sl_ensure_ts", {})
+        attempts = self.__dict__.setdefault("_sl_ensure_attempts", {})
+        today = now.date().isoformat()
+        placed = 0
+        for oid, rec in list(self._orders.items()):
+            if (rec.status != "open" or rec.direction != "BUY" or rec.stop_loss <= 0 or rec.quantity <= 0
+                    or rec.fill_status not in ("FILLED", "PARTIALLY_FILLED")
+                    or oid.startswith(("SIM_", "REPAIR-"))):
+                continue
+            prior = last_try.get(oid)
+            if prior and (now - prior) < timedelta(minutes=self.SL_RETRY_MINUTES):
+                continue
+            if attempts.get((oid, today), 0) >= self.SL_MAX_ATTEMPTS_PER_DAY:
+                continue
+            ltp = (live_prices or {}).get(rec.symbol)
+            if not ltp or ltp <= rec.stop_loss:
+                continue                         # no price, or the stop is already crossed: monitor exits
+            if self._broker_sl_alive(rec):
+                continue
+            held = self._broker_held_quantity(rec.symbol)
+            claimed = sum(
+                o.quantity for o in self._orders.values()
+                if o is not rec and o.status == "open" and o.symbol == rec.symbol and o.direction == "BUY"
+                and o.sl_order_id and o.sl_placed_date == today)
+            if held is None or held - claimed < rec.quantity:
+                continue                         # never offer shares the account does not have free
+            last_try[oid] = now
+            attempts[(oid, today)] = attempts.get((oid, today), 0) + 1
+            tick = _resolve_tick_size(rec.symbol)
+            new_id = self._broker.place_sl_order(
+                symbol=rec.symbol, exchange="NSE", transaction_type="SELL", quantity=rec.quantity,
+                trigger_price=_round_to_tick(rec.stop_loss, tick),
+                price=_round_to_tick(rec.stop_loss * 0.995, tick),
+                product_type=rec.product_type,
+            )
+            if new_id:
+                rec.sl_order_id = new_id
+                rec.sl_placed_date = today
+                placed += 1
+                log.info("[BrokerSL] Placed stop %s for %s qty=%d trigger=%.2f (restored protection).",
+                         new_id, rec.symbol, rec.quantity, rec.stop_loss)
+            else:
+                log.warning("[BrokerSL] Stop placement failed for %s %s (attempt %d/%d today).",
+                            rec.symbol, oid, attempts[(oid, today)], self.SL_MAX_ATTEMPTS_PER_DAY)
+        return placed
+
     def _broker_confirms_no_open_position(self, symbol: str) -> bool:
         """DTA-COALINDIA-RECONCILE-001: cross-day safety check for orders
         stuck in PENDING/UNRESOLVED/API_ERROR/UNKNOWN.
@@ -1874,8 +2065,17 @@ class OrderManager:
             if oid.startswith("SIM_"):
                 continue
             prev_status = rec.fill_status
+            _known_fill = rec.actual_fill_price
             self._reconcile_fill(rec)
+            if (rec.fill_status in ("API_ERROR", "PENDING", "UNRESOLVED", "UNKNOWN")
+                    and self._resolve_cross_day_fill(rec, _known_fill)):
+                updated.append(oid)
+                continue
             if rec.fill_status != prev_status:
+                if rec.fill_status in ("FILLED", "PARTIALLY_FILLED"):
+                    # the order filled after its OPEN row was journaled as PENDING; record
+                    # it so a restart does not restore it as unresolved
+                    self._append_live_journal("OPEN", rec)
                 log.info(
                     "[PendingReconcile] %s %s: %s → %s  fill_price=%.2f  qty=%d",
                     rec.symbol, oid, prev_status, rec.fill_status,
@@ -3533,6 +3733,7 @@ class OrderManager:
                                 rec.symbol, oid,
                             )
                         else:
+                            self._cancel_broker_sl(rec)
                             _cnc_close_dir = "SELL" if rec.direction == "BUY" else "BUY"
                             _cnc_exit_oid = self._broker_place(
                                 rec.symbol, _cnc_close_dir, rec.quantity, exit_price,
@@ -5186,6 +5387,16 @@ class OrderManager:
                     adaptive_target   = expanded_targets.get(oid),
                 )
                 self._orders[oid] = rec
+                _jfs = str(row.get("fill_status") or "")
+                if (_jfs in ("FILLED", "PARTIALLY_FILLED") and rec.actual_fill_price > 0
+                        and float(row.get("actual_fill_price") or 0) > 0
+                        and _placed_at is not None and _placed_at.date() < datetime.now().date()):
+                    # A prior-day order the journal already recorded as filled: the broker's
+                    # order endpoints are day-scoped and can never re-verify it, so trust the
+                    # journal instead of degrading it to an unresolvable API_ERROR.
+                    rec.fill_status = _jfs
+                    rec.filled_quantity = rec.quantity
+                    rec.reconciliation_source = "LIVE_JOURNAL"
                 # D-008: use Position object, not plain dict — downstream code
                 # accesses pos.ltp, pos.has_live_ltp, etc. as attributes.
                 _fill_price = rec.actual_fill_price or rec.entry_price
@@ -5229,7 +5440,12 @@ class OrderManager:
                 continue  # already resolved
             if oid.startswith("SIM_"):
                 continue  # paper / sim — not a live order
+            _known_fill = rec.actual_fill_price
             self._reconcile_fill(rec)
+            if (rec.fill_status in ("API_ERROR", "PENDING", "UNRESOLVED", "UNKNOWN")
+                    and self._resolve_cross_day_fill(rec, _known_fill)):
+                reconciled += 1
+                continue
             reconciled += 1
             log.info(
                 "[StartupReconcile] order_id=%s symbol=%s fill_status=%s "

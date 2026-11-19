@@ -266,6 +266,14 @@ def _parse_extra_security_map(result: Any) -> Dict[str, Dict[str, Any]]:
     return extra
 
 
+def _safe_dte(expiry_iso: str, today: "date") -> Optional[int]:
+    """Calendar days from today to an ISO expiry date, or None if unparseable."""
+    try:
+        return (date.fromisoformat(str(expiry_iso)) - today).days
+    except ValueError:
+        return None
+
+
 class DhanFeed(BaseFeed):
     """
     Full Dhan API v2 feed adapter.
@@ -1751,11 +1759,21 @@ class DhanFeed(BaseFeed):
                     _el_inner = _el.get("data", {})
                     _dates    = _el_inner.get("data", []) if isinstance(_el_inner, dict) else []
                     if _dates:
-                        # Select expiry closest to dte_target (not always _dates[0])
+                        # Select expiry closest to dte_target (not always _dates[0]).
+                        # A near-term expiry (< 7 days) is not tradable/observable for a
+                        # far target: BANKNIFTY lists monthly expiries only, so the closest
+                        # to 20 days could be 5 days out, which the caller then rejected and
+                        # replaced with a synthetic chain. Prefer the nearest expiry that is
+                        # at least 7 days out when one exists.
                         _today_d   = date.today()
-                        _best_exp  = _dates[0]
+                        _usable    = _dates
+                        if dte_target >= 14:
+                            _far = [d for d in _dates
+                                    if _safe_dte(d, _today_d) is not None and _safe_dte(d, _today_d) >= 7]
+                            _usable = _far or _dates
+                        _best_exp  = _usable[0]
                         _best_diff = float("inf")
-                        for _d in _dates:
+                        for _d in _usable:
                             try:
                                 _d_dte  = (date.fromisoformat(_d) - _today_d).days
                                 _d_diff = abs(_d_dte - dte_target)
