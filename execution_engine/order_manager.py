@@ -1905,7 +1905,8 @@ class OrderManager:
             if self._broker_sl_alive(rec):
                 continue
             sec_id = self._broker_security_id(rec.symbol)
-            existing = next((w for w in working if w["security_id"] == sec_id and w["quantity"] >= rec.quantity), None)
+            existing = min((w for w in working if w["security_id"] == sec_id and w["quantity"] >= rec.quantity),
+                           key=lambda w: w["quantity"], default=None)
             if existing is not None:
                 working.remove(existing)
                 rec.sl_order_id, rec.sl_placed_date = existing["order_id"], today

@@ -273,6 +273,18 @@ def test_a_stop_already_working_at_the_broker_is_adopted_not_duplicated():
         assert small.ensure_broker_stop_losses({"SBIN": 1135.0}) == 1       # too small to cover this position
 
 
+def test_the_smallest_sufficient_working_stop_is_adopted_for_each_position():
+    with _patch_map(), _at(10, 0):
+        om = _sl_om(holdings=12)
+        om._orders["B"] = _rec("B", qty=3, days_old=1, fill="FILLED")
+        om._broker.get_working_stop_orders.return_value = [
+            {"order_id": "SL-4", "security_id": "3045", "symbol": "SBIN", "quantity": 4, "trigger_price": 1113.4},
+            {"order_id": "SL-3", "security_id": "3045", "symbol": "SBIN", "quantity": 3, "trigger_price": 1082.4}]
+        assert om.ensure_broker_stop_losses({"SBIN": 1135.0}) == 0
+        om._broker.place_sl_order.assert_not_called()
+        assert om._orders["A"].sl_order_id == "SL-4" and om._orders["B"].sl_order_id == "SL-3"
+
+
 def test_the_orchestrator_calls_the_stop_upkeep_each_monitor_cycle():
     from pathlib import Path
     source = (Path(__file__).resolve().parents[1] / "orchestrator" / "master_orchestrator.py").read_text(encoding="utf-8")
